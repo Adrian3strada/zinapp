@@ -1,0 +1,9 @@
+# Dominio público con HTTPS automático (Let's Encrypt).
+# Define API_DOMAIN en .env, ej: api.zinapp.mx
+#
+# Levantar: docker compose -f docker-compose.prod.yml --profile https up -d
+
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:8000
+}

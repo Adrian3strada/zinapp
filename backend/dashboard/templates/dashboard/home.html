@@ -1,0 +1,126 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card highlight">
+    <div class="stat-label">Ingresos hoy</div>
+    <div class="stat-value">${{ revenue_today|floatformat:2 }}</div>
+    <div class="stat-sub">{{ orders_delivered_today }} entregas completadas</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Pedidos activos</div>
+    <div class="stat-value">{{ orders_active }}</div>
+    <div class="stat-sub">{{ orders_pending }} pendientes de aceptar</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Pedidos hoy</div>
+    <div class="stat-value">{{ orders_today }}</div>
+    <div class="stat-sub">{{ orders_total }} total histórico</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Repartidores disponibles</div>
+    <div class="stat-value">{{ drivers_available }}</div>
+    <div class="stat-sub">de {{ drivers_total }} registrados</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Restaurantes activos</div>
+    <div class="stat-value">{{ restaurants_active }}</div>
+    <div class="stat-sub">{{ products_total }} productos en catálogo</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Ingresos del mes</div>
+    <div class="stat-value">${{ revenue_month|floatformat:2 }}</div>
+    <div class="stat-sub">Pedidos entregados</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <h3>Pedidos por estado</h3>
+    </div>
+    <div class="panel-card-body padded">
+      <div class="status-bars">
+        {% for item in status_breakdown %}
+          {% if item.count > 0 %}
+          <div class="status-row">
+            <span>{{ item.label }}</span>
+            <div class="status-bar-track">
+              <div class="status-bar-fill {{ item.status }}" style="width: {% widthratio item.count status_breakdown_max 100 %}%;"></div>
+            </div>
+            <strong class="mono">{{ item.count }}</strong>
+          </div>
+          {% endif %}
+        {% empty %}
+          <p class="text-muted">Sin pedidos registrados.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <h3>Usuarios</h3>
+    </div>
+    <div class="panel-card-body padded">
+      <div class="info-list">
+        <div class="info-item">
+          <label>Total registrados</label>
+          <p>{{ users_total }}</p>
+        </div>
+        <div class="info-item">
+          <label>Clientes</label>
+          <p>{{ users_customers }}</p>
+        </div>
+        <div class="info-item">
+          <label>Restaurantes</label>
+          <p>{{ users_restaurants }}</p>
+        </div>
+        <div class="info-item">
+          <label>Repartidores</label>
+          <p>{{ users_drivers }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel-card">
+  <div class="panel-card-header">
+    <h3>Pedidos recientes</h3>
+    <a href="{% url 'dashboard:orders' %}" class="btn btn-ghost btn-sm">Ver todos</a>
+  </div>
+  <div class="panel-card-body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Restaurante</th>
+            <th>Cliente</th>
+            <th>Estado</th>
+            <th class="text-right">Total</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in recent_orders %}
+          <tr>
+            <td><a href="{% url 'dashboard:order-detail' order.pk %}"><strong>#{{ order.id }}</strong></a></td>
+            <td>{{ order.restaurant.name }}</td>
+            <td>{{ order.customer.username }}</td>
+            <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
+            <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
+            <td class="text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-muted" style="text-align:center;padding:32px;">No hay pedidos aún.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+export const colors = {
+  primary: '#1E5DB8',
+  primaryDark: '#164A94',
+  primaryLight: '#EBF2FC',
+  secondary: '#4A90D9',
+  background: '#F4F6FA',
+  surface: '#FFFFFF',
+  surfaceElevated: '#FFFFFF',
+  text: '#1C1C1E',
+  textSecondary: '#636366',
+  textMuted: '#AEAEB2',
+  border: '#E5E5EA',
+  success: '#34C759',
+  warning: '#FF9500',
+  error: '#FF3B30',
+  info: '#1E5DB8',
+  gradientStart: '#1E5DB8',
+  gradientEnd: '#0F3D7A',
+  tabInactive: '#8E8E93',
+  shadow: '#000000',
+};
+
+export const statusColors: Record<string, string> = {
+  pending: '#FF9500',
+  accepted: '#1E5DB8',
+  preparing: '#5856D6',
+  ready: '#34C759',
+  on_the_way: '#1E5DB8',
+  picked_up: '#5856D6',
+  delivered: '#34C759',
+  cancelled: '#FF3B30',
+};

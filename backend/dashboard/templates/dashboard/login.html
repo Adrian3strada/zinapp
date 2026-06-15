@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión · ZinApp Panel</title>
+  <link rel="stylesheet" href="{% static 'dashboard/css/panel.css' %}">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-logo">🍽️</div>
+        <h1>ZinApp</h1>
+        <p>Panel de administración · Zinapécuaro</p>
+      </div>
+
+      {% if form.errors %}
+        <div class="alert alert-error">
+          Usuario o contraseña incorrectos. Intenta de nuevo.
+        </div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="id_username">Usuario</label>
+          <input type="text" name="username" id="id_username" class="form-control" autofocus required>
+        </div>
+        <div class="form-group">
+          <label for="id_password">Contraseña</label>
+          <input type="password" name="password" id="id_password" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Entrar al panel</button>
+      </form>
+
+      <p style="text-align:center;margin-top:20px;font-size:13px;color:#636366;">
+        Cuenta de prueba: <strong>admin_zinapp</strong> / test1234
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,68 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="filters">
+  <a href="{% url 'dashboard:drivers' %}" class="filter-chip {% if available_filter == '' %}active{% endif %}">Todos</a>
+  <a href="?available=1" class="filter-chip {% if available_filter == '1' %}active{% endif %}">Disponibles</a>
+  <a href="?available=0" class="filter-chip {% if available_filter == '0' %}active{% endif %}">No disponibles</a>
+</div>
+
+<div class="panel-card">
+  <div class="panel-card-body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Repartidor</th>
+            <th>Vehículo</th>
+            <th>Placas</th>
+            <th>Disponible</th>
+            <th>Ubicación GPS</th>
+            <th>Actualizado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for profile in drivers %}
+          <tr>
+            <td><strong>{{ profile.user.username }}</strong></td>
+            <td>{{ profile.get_vehicle_type_display }}</td>
+            <td>{{ profile.license_plate|default:"—" }}</td>
+            <td>
+              {% if profile.is_available %}
+                <span class="badge badge-success">Disponible</span>
+              {% else %}
+                <span class="badge badge-muted">No disponible</span>
+              {% endif %}
+            </td>
+            <td class="mono text-muted">
+              {% if profile.current_latitude %}
+                {{ profile.current_latitude }}, {{ profile.current_longitude }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-muted" style="text-align:center;padding:40px;">No hay repartidores.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if available_filter %}&available={{ available_filter }}{% endif %}">← Anterior</a>
+  {% endif %}
+  <span class="current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if available_filter %}&available={{ available_filter }}{% endif %}">Siguiente →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ page_title|default:"Panel" }}{% endblock %} · ZinApp</title>
+  <link rel="stylesheet" href="{% static 'dashboard/css/panel.css' %}">
+</head>
+<body>
+  <div class="overlay" id="overlay"></div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <h1>ZinApp</h1>
+        <span>Panel de operaciones · Zinapécuaro</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
+          <span class="nav-icon">📊</span> Resumen
+        </a>
+        <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
+          <span class="nav-icon">📦</span> Pedidos
+        </a>
+        <a href="{% url 'dashboard:restaurants' %}" class="nav-link {% if nav == 'restaurants' %}active{% endif %}">
+          <span class="nav-icon">🍽️</span> Restaurantes
+        </a>
+        <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
+          <span class="nav-icon">👥</span> Usuarios
+        </a>
+        <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
+          <span class="nav-icon">🛵</span> Repartidores
+        </a>
+        <a href="/admin/" class="nav-link" target="_blank" rel="noopener">
+          <span class="nav-icon">⚙️</span> Django Admin
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div>{{ request.user.get_full_name|default:request.user.username }}</div>
+        <a href="{% url 'dashboard:logout' %}">Cerrar sesión</a>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menú">☰</button>
+          <h2>{{ page_title|default:"Panel" }}</h2>
+        </div>
+        <div class="topbar-user">
+          API: <a href="/api/" target="_blank">/api/</a>
+        </div>
+      </header>
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  <script>
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const toggle = document.getElementById('menuToggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+      });
+      overlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+      });
+    }
+  </script>
+</body>
+</html>

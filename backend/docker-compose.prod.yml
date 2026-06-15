@@ -1,0 +1,60 @@
+# Producción: PostgreSQL + API (+ Caddy HTTPS opcional)
+# Uso: docker compose -f docker-compose.prod.yml up -d
+# Requiere .env con SECRET_KEY, DB_PASSWORD, ALLOWED_HOSTS, etc.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-zinapp_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requerido en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-zinapp_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    env_file:
+      - .env
+    environment:
+      USE_SQLITE: "False"
+      DEBUG: "False"
+      DB_HOST: db
+      DB_PORT: "5432"
+      SERVE_MEDIA: "True"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  caddy:
+    profiles: ["https"]
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,7 @@
+.env
+__pycache__/
+node_modules/
+.expo/
+media/
+*.pyc
+.DS_Store

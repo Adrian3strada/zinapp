@@ -1,0 +1,165 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<p style="margin-bottom:20px;">
+  <a href="{% url 'dashboard:orders' %}">← Volver a pedidos</a>
+  &nbsp;·&nbsp;
+  <a href="/admin/orders/order/{{ order.pk }}/change/" target="_blank">Editar en Django Admin</a>
+</p>
+
+<div class="detail-grid">
+  <div>
+    <div class="panel-card" style="margin-bottom:20px;">
+      <div class="panel-card-header">
+        <h3>Resumen del pedido #{{ order.id }}</h3>
+        {% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}
+      </div>
+      <div class="panel-card-body padded">
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cant.</th>
+                <th class="text-right">Precio</th>
+                <th class="text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in order.items.all %}
+              <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td class="text-right mono">${{ item.unit_price|floatformat:2 }}</td>
+                <td class="text-right mono">${{ item.subtotal|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="text-right text-muted">Subtotal</td>
+                <td class="text-right mono">${{ order.subtotal|floatformat:2 }}</td>
+              </tr>
+              <tr>
+                <td colspan="3" class="text-right text-muted">Envío</td>
+                <td class="text-right mono">${{ order.delivery_fee|floatformat:2 }}</td>
+              </tr>
+              {% if order.discount_amount %}
+              <tr>
+                <td colspan="3" class="text-right text-muted">Descuento</td>
+                <td class="text-right mono">-${{ order.discount_amount|floatformat:2 }}</td>
+              </tr>
+              {% endif %}
+              <tr>
+                <td colspan="3" class="text-right text-bold">Total</td>
+                <td class="text-right mono text-bold">${{ order.total|floatformat:2 }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-card-header"><h3>Seguimiento</h3></div>
+      <div class="panel-card-body padded">
+        {% if order.status == 'cancelled' %}
+          <p style="color:var(--error);font-weight:600;">Este pedido fue cancelado.</p>
+        {% elif timeline_steps %}
+          <div class="timeline">
+            {% for step in timeline_steps %}
+              <div class="timeline-step {{ step.state }}">
+                <div class="timeline-dot">{% if step.state == 'done' %}✓{% endif %}</div>
+                <div>
+                  <strong>{{ step.label }}</strong>
+                  {% if step.state == 'current' %}<span class="text-muted"> · en curso</span>{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel-card" style="margin-bottom:20px;">
+      <div class="panel-card-header"><h3>Entrega</h3></div>
+      <div class="panel-card-body padded">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Dirección</label>
+            <p>{{ order.delivery_address }}</p>
+          </div>
+          {% if order.delivery_notes %}
+          <div class="info-item">
+            <label>Notas</label>
+            <p>{{ order.delivery_notes }}</p>
+          </div>
+          {% endif %}
+          {% if order.delivery_latitude %}
+          <div class="info-item">
+            <label>Coordenadas</label>
+            <p class="mono">{{ order.delivery_latitude }}, {{ order.delivery_longitude }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card" style="margin-bottom:20px;">
+      <div class="panel-card-header"><h3>Participantes</h3></div>
+      <div class="panel-card-body padded">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Cliente</label>
+            <p>{{ order.customer.get_full_name|default:order.customer.username }}</p>
+            <p class="text-muted" style="font-weight:400;">{{ order.customer.phone|default:"Sin teléfono" }}</p>
+          </div>
+          <div class="info-item">
+            <label>Restaurante</label>
+            <p>{{ order.restaurant.name }}</p>
+            <p class="text-muted" style="font-weight:400;">Dueño: {{ order.restaurant.owner.username }}</p>
+          </div>
+          <div class="info-item">
+            <label>Repartidor</label>
+            <p>{% if order.driver %}{{ order.driver.username }}{% else %}Sin asignar{% endif %}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <div class="panel-card-header"><h3>Pago</h3></div>
+      <div class="panel-card-body padded">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Método</label>
+            <p>{{ order.get_payment_method_display }}</p>
+          </div>
+          <div class="info-item">
+            <label>Estado del pago</label>
+            <p>{{ order.get_payment_status_display }}</p>
+          </div>
+          {% if order.coupon %}
+          <div class="info-item">
+            <label>Cupón</label>
+            <p>{{ order.coupon.code }}</p>
+          </div>
+          {% endif %}
+          <div class="info-item">
+            <label>Creado</label>
+            <p>{{ order.created_at|date:"d/m/Y H:i" }}</p>
+          </div>
+          {% if order.delivered_at %}
+          <div class="info-item">
+            <label>Entregado</label>
+            <p>{{ order.delivered_at|date:"d/m/Y H:i" }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

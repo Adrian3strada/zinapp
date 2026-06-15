@@ -1,0 +1,71 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="filters">
+  <a href="{% url 'dashboard:users' %}" class="filter-chip {% if not role_filter %}active{% endif %}">Todos</a>
+  {% for value, label in role_choices %}
+    <a href="?role={{ value }}" class="filter-chip {% if role_filter == value %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+
+  <form class="search-form" method="get">
+    {% if role_filter %}<input type="hidden" name="role" value="{{ role_filter }}">{% endif %}
+    <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar usuario…">
+    <button type="submit" class="btn btn-ghost btn-sm">Buscar</button>
+  </form>
+</div>
+
+<div class="panel-card">
+  <div class="panel-card-body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Teléfono</th>
+            <th>Activo</th>
+            <th>Registro</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td><strong>{{ u.username }}</strong></td>
+            <td>{{ u.get_full_name|default:"—" }}</td>
+            <td class="text-muted">{{ u.email|default:"—" }}</td>
+            <td><span class="badge badge-role">{{ u.get_role_display }}</span></td>
+            <td>{{ u.phone|default:"—" }}</td>
+            <td>
+              {% if u.is_active %}
+                <span class="badge badge-success">Sí</span>
+              {% else %}
+                <span class="badge badge-muted">No</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">{{ u.date_joined|date:"d/m/Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-muted" style="text-align:center;padding:40px;">No hay usuarios.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">← Anterior</a>
+  {% endif %}
+  <span class="current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">Siguiente →</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

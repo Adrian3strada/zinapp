@@ -1,0 +1,84 @@
+{
+  "expo": {
+    "name": "ZinApp",
+    "slug": "zinapp",
+    "owner": "g2adriaans-team",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/logo.png",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zinapp.delivery",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido."
+      }
+    },
+    "android": {
+      "package": "com.zinapp.delivery",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "56ddb1bb-632f-4087-9a80-e839403c24fc"
+      },
+      "apiUrl": "http://192.168.1.27:8000/api",
+      "deliveryFee": 25,
+      "shipmentSizes": [
+        {
+          "key": "small",
+          "label": "Chico",
+          "fee": 25,
+          "hint": "Sobre, documentos o bolsa pequeña"
+        },
+        {
+          "key": "medium",
+          "label": "Mediano",
+          "fee": 45,
+          "hint": "Caja mediana o varios artículos"
+        },
+        {
+          "key": "large",
+          "label": "Grande",
+          "fee": 70,
+          "hint": "Caja grande o paquete pesado"
+        }
+      ],
+      "transferInfo": {
+        "bank": "BBVA",
+        "clabe": "012180001234567890",
+        "holder": "ZinApp Delivery",
+        "whatsapp": "4431234567",
+        "note": "Envía el comprobante por WhatsApp con tu número de pedido."
+      }
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ZinApp usa tu ubicación para el delivery en Zinapécuaro."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1E5DB8"
+        }
+      ],
+      "expo-image-picker"
+    ]
+  }
+}

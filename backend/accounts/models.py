@@ -1,0 +1,92 @@
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+
+class UserRole(models.TextChoices):
+    CUSTOMER = 'customer', 'Cliente'
+    RESTAURANT = 'restaurant', 'Restaurante'
+    DRIVER = 'driver', 'Repartidor'
+    ADMIN = 'admin', 'Administrador'
+
+
+class User(AbstractUser):
+    role = models.CharField(
+        max_length=20,
+        choices=UserRole.choices,
+        default=UserRole.CUSTOMER,
+    )
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    expo_push_token = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
+
+    def __str__(self):
+        return f'{self.username} ({self.get_role_display()})'
+
+    @property
+    def is_customer(self):
+        return self.role == UserRole.CUSTOMER
+
+    @property
+    def is_restaurant_owner(self):
+        return self.role == UserRole.RESTAURANT
+
+    @property
+    def is_driver(self):
+        return self.role == UserRole.DRIVER
+
+    @property
+    def is_admin_user(self):
+        return self.role == UserRole.ADMIN or self.is_superuser
+
+
+class DeliveryProfile(models.Model):
+    class VehicleType(models.TextChoices):
+        BICYCLE = 'bicycle', 'Bicicleta'
+        MOTORCYCLE = 'motorcycle', 'Motocicleta'
+        CAR = 'car', 'Automóvil'
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='delivery_profile',
+        limit_choices_to={'role': UserRole.DRIVER},
+    )
+    vehicle_type = models.CharField(
+        max_length=20,
+        choices=VehicleType.choices,
+        default=VehicleType.MOTORCYCLE,
+    )
+    license_plate = models.CharField(max_length=20, blank=True)
+    is_available = models.BooleanField(default=True)
+    current_latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    current_longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Perfil de repartidor'
+        verbose_name_plural = 'Perfiles de repartidor'
+
+    def __str__(self):
+        return f'Repartidor: {self.user.username}'
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reset_tokens')
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = 'Token de recuperación'
+        verbose_name_plural = 'Tokens de recuperación'
