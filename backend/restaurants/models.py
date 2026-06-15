@@ -24,6 +24,14 @@ class Restaurant(models.Model):
     description = models.TextField(blank=True)
     address = models.TextField()
     phone = models.CharField(max_length=20, blank=True)
+    whatsapp = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text='WhatsApp para comprobantes de transferencia (opcional; si vacío, usa teléfono del negocio).',
+    )
+    bank_name = models.CharField(max_length=80, blank=True)
+    account_holder = models.CharField(max_length=120, blank=True)
+    clabe = models.CharField(max_length=18, blank=True)
     image = models.ImageField(upload_to='restaurants/', blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

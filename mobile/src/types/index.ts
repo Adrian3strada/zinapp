@@ -43,6 +43,11 @@ export interface Restaurant {
   description: string;
   address: string;
   phone: string;
+  whatsapp?: string;
+  bank_name?: string;
+  account_holder?: string;
+  clabe?: string;
+  has_transfer_info?: boolean;
   image: string | null;
   image_url?: string | null;
   latitude: string | null;

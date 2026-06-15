@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
+import type { TransferInfo } from '../config/payments';
 import { TRANSFER_INFO } from '../config/payments';
 import Button from './Button';
 import { colors } from '../theme/colors';
@@ -15,6 +16,7 @@ interface Props {
   total: string;
   compact?: boolean;
   kind?: TransferKind;
+  transferInfo?: TransferInfo;
 }
 
 export default function TransferPaymentCard({
@@ -22,6 +24,7 @@ export default function TransferPaymentCard({
   total,
   compact,
   kind = 'order',
+  transferInfo = TRANSFER_INFO,
 }: Props) {
   const [copied, setCopied] = useState(false);
   const totalFormatted = formatCurrency(total);
@@ -29,18 +32,22 @@ export default function TransferPaymentCard({
 
   const handleCopyClabe = async () => {
     try {
-      await Share.share({ message: TRANSFER_INFO.clabe, title: 'CLABE ZinApp' });
+      await Share.share({ message: transferInfo.clabe, title: 'CLABE' });
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      Alert.alert('CLABE', TRANSFER_INFO.clabe);
+      Alert.alert('CLABE', transferInfo.clabe);
     }
   };
 
   const handleWhatsApp = async () => {
+    if (!transferInfo.whatsapp?.trim()) {
+      Alert.alert('WhatsApp', 'El local no indicó un WhatsApp para comprobantes.');
+      return;
+    }
     try {
       await openWhatsApp(
-        TRANSFER_INFO.whatsapp,
+        transferInfo.whatsapp,
         transferReceiptMessage(orderId, totalFormatted, kind),
       );
     } catch {
@@ -58,18 +65,20 @@ export default function TransferPaymentCard({
       {orderId > 0 && (
         <Text style={styles.ref}>{itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} #{orderId}</Text>
       )}
-      <Text style={styles.line}>Banco: {TRANSFER_INFO.bank}</Text>
-      <Text style={styles.line}>Titular: {TRANSFER_INFO.holder}</Text>
+      <Text style={styles.line}>Banco: {transferInfo.bank}</Text>
+      <Text style={styles.line}>Titular: {transferInfo.holder}</Text>
       <Pressable style={styles.clabeRow} onPress={handleCopyClabe} hitSlop={HIT_SLOP}>
-        <Text style={styles.clabe}>CLABE: {TRANSFER_INFO.clabe}</Text>
+        <Text style={styles.clabe}>CLABE: {transferInfo.clabe}</Text>
         <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={20} color={colors.primary} />
       </Pressable>
-      <Text style={styles.note}>{TRANSFER_INFO.note}</Text>
-      <Button
-        title="Enviar comprobante por WhatsApp"
-        onPress={handleWhatsApp}
-        style={styles.waBtn}
-      />
+      <Text style={styles.note}>{transferInfo.note}</Text>
+      {transferInfo.whatsapp ? (
+        <Button
+          title="Enviar comprobante por WhatsApp"
+          onPress={handleWhatsApp}
+          style={styles.waBtn}
+        />
+      ) : null}
     </View>
   );
 }

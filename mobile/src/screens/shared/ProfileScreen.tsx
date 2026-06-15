@@ -75,7 +75,11 @@ export default function ProfileScreen() {
     name: '',
     description: '',
     phone: '',
+    whatsapp: '',
     address: '',
+    bank_name: '',
+    account_holder: '',
+    clabe: '',
   });
   const [restaurantImageUri, setRestaurantImageUri] = useState<string | null>(null);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
@@ -110,7 +114,11 @@ export default function ProfileScreen() {
           name: data.name,
           description: data.description ?? '',
           phone: data.phone ?? '',
+          whatsapp: data.whatsapp ?? '',
           address: data.address ?? '',
+          bank_name: data.bank_name ?? '',
+          account_holder: data.account_holder ?? '',
+          clabe: data.clabe ?? '',
         });
         setAcceptingOrders(data.accepting_orders !== false);
         setRestaurantCategory(data.category ?? 'general');
@@ -218,7 +226,11 @@ export default function ProfileScreen() {
       fd.append('name', restaurantForm.name.trim());
       fd.append('description', restaurantForm.description.trim());
       fd.append('phone', restaurantForm.phone.trim());
+      fd.append('whatsapp', restaurantForm.whatsapp.trim());
       fd.append('address', restaurantForm.address.trim());
+      fd.append('bank_name', restaurantForm.bank_name.trim());
+      fd.append('account_holder', restaurantForm.account_holder.trim());
+      fd.append('clabe', restaurantForm.clabe.replace(/\D/g, ''));
       fd.append('category', restaurantCategory);
       fd.append('accepting_orders', acceptingOrders ? 'true' : 'false');
       if (restaurantImageUri) {
@@ -391,8 +403,15 @@ export default function ProfileScreen() {
                 )}
               </Pressable>
               <FormField label="Nombre del restaurante" value={restaurantForm.name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, name: v }))} icon="storefront-outline" embedded required />
-              <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" />
+              <Text style={styles.section}>Contacto</Text>
+              <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" hint="Lo ven clientes y repartidores al coordinar pedidos." />
+              <FormField label="WhatsApp (comprobantes)" value={restaurantForm.whatsapp} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, whatsapp: v }))} icon="logo-whatsapp" embedded keyboardType="phone-pad" hint="Opcional. Si lo dejas vacío, se usa el teléfono del negocio." />
               <FormField label="Dirección del local" value={restaurantForm.address} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, address: v }))} icon="location-outline" embedded multiline required />
+              <Text style={styles.section}>Datos bancarios</Text>
+              <Text style={styles.hint}>Los clientes los ven al pagar por transferencia. Solo tú puedes editarlos.</Text>
+              <FormField label="Banco" value={restaurantForm.bank_name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, bank_name: v }))} icon="business-outline" embedded placeholder="Ej. BBVA, Banorte" />
+              <FormField label="Titular de la cuenta" value={restaurantForm.account_holder} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, account_holder: v }))} icon="person-outline" embedded placeholder="Nombre como aparece en el banco" />
+              <FormField label="CLABE interbancaria" value={restaurantForm.clabe} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, clabe: v }))} icon="card-outline" embedded keyboardType="phone-pad" placeholder="18 dígitos" hint="18 dígitos para recibir transferencias." />
               <FormField label="Descripción" value={restaurantForm.description} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, description: v }))} icon="text-outline" embedded multiline placeholder="Qué ofreces, horarios, especialidades…" />
               <Text style={styles.fieldLabel}>Categoría</Text>
               <View style={styles.categoryRow}>

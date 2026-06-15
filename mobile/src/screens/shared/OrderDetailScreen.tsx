@@ -14,6 +14,7 @@ import OrderTimeline from '../../components/OrderTimeline';
 import ReviewForm from '../../components/ReviewForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
+import { resolveTransferInfo } from '../../config/payments';
 import { useAuth } from '../../context/AuthContext';
 import type { DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -220,7 +221,11 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             order.status !== 'delivered' &&
             order.status !== 'cancelled' && (
               <View style={styles.card}>
-                <TransferPaymentCard orderId={order.id} total={order.total} />
+                <TransferPaymentCard
+                  orderId={order.id}
+                  total={order.total}
+                  transferInfo={resolveTransferInfo(order.restaurant_detail)}
+                />
               </View>
             )}
 

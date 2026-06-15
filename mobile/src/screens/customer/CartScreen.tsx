@@ -21,6 +21,8 @@ import { couponApi, orderApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { DELIVERY_FEE } from '../../config/delivery';
+import { resolveTransferInfo, restaurantHasTransferInfo } from '../../config/payments';
+import type { Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
 export default function CartScreen({ navigation }: CartScreenProps) {
@@ -42,7 +44,30 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     longitude: number;
   } | null>(null);
   const [addressApproximate, setAddressApproximate] = useState(false);
+  const [cartRestaurant, setCartRestaurant] = useState<Restaurant | null>(null);
   const { getCurrentPosition, loading: locating } = useLocation();
+
+  const transferInfo = useMemo(() => resolveTransferInfo(cartRestaurant), [cartRestaurant]);
+  const transferFromRestaurant = restaurantHasTransferInfo(cartRestaurant);
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setCartRestaurant(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await restaurantApi.get(restaurantId);
+        if (!cancelled) setCartRestaurant(data);
+      } catch {
+        if (!cancelled) setCartRestaurant(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId]);
 
   useEffect(() => {
     if (user?.address && !address) {
@@ -323,6 +348,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             couponValidating={couponValidating}
             total={total}
             grandTotal={grandTotal}
+            transferInfo={transferInfo}
+            transferFromRestaurant={transferFromRestaurant}
             onAddressChange={handleAddressChange}
             onNotesChange={setNotes}
             onPaymentMethodChange={setPaymentMethod}

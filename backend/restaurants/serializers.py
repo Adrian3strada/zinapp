@@ -38,17 +38,31 @@ class RestaurantSerializer(serializers.ModelSerializer):
     is_open = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
+    has_transfer_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
         fields = (
             'id', 'owner', 'owner_detail', 'name', 'category', 'description', 'address',
-            'phone', 'image', 'image_url', 'latitude', 'longitude', 'is_active',
+            'phone', 'whatsapp', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
+            'image', 'image_url', 'latitude', 'longitude', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'is_open', 'rating_average',
             'reviews_count', 'products_count',
             'created_at', 'updated_at',
         )
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+    def validate_clabe(self, value):
+        clabe = (value or '').strip()
+        if not clabe:
+            return ''
+        digits = ''.join(c for c in clabe if c.isdigit())
+        if len(digits) != 18:
+            raise serializers.ValidationError('La CLABE debe tener 18 dígitos.')
+        return digits
+
+    def get_has_transfer_info(self, obj):
+        return bool((obj.clabe or '').strip())
 
     def get_products_count(self, obj):
         return obj.products.filter(is_available=True).count()

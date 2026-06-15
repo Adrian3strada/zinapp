@@ -4,7 +4,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DELIVERY_FEE } from '../config/delivery';
-import { TRANSFER_INFO } from '../config/payments';
+import type { TransferInfo } from '../config/payments';
 import DeliveryPinPicker from './DeliveryPinPicker';
 import CoverageZoneHint from './CoverageZoneHint';
 import FormField from './FormField';
@@ -30,6 +30,8 @@ interface Props {
   couponValidating: boolean;
   total: number;
   grandTotal: number;
+  transferInfo: TransferInfo;
+  transferFromRestaurant?: boolean;
   onAddressChange: (text: string) => void;
   onNotesChange: (text: string) => void;
   onPaymentMethodChange: (method: 'cash' | 'transfer' | 'online') => void;
@@ -58,6 +60,8 @@ function CartCheckoutSection({
   couponValidating,
   total,
   grandTotal,
+  transferInfo,
+  transferFromRestaurant = false,
   onAddressChange,
   onNotesChange,
   onPaymentMethodChange,
@@ -175,13 +179,19 @@ function CartCheckoutSection({
         </View>
         {paymentMethod === 'transfer' && (
           <View style={styles.transferBox}>
-            <Text style={styles.transferTitle}>Datos para transferencia</Text>
-            <Text style={styles.transferLine}>Banco: {TRANSFER_INFO.bank}</Text>
-            <Text style={styles.transferLine}>Titular: {TRANSFER_INFO.holder}</Text>
-            <Text style={styles.transferClabe}>CLABE: {TRANSFER_INFO.clabe}</Text>
-            <Text style={styles.transferNote}>
-              WhatsApp: {TRANSFER_INFO.whatsapp} — {TRANSFER_INFO.note}
+            <Text style={styles.transferTitle}>
+              {transferFromRestaurant ? 'Datos del local para transferencia' : 'Datos para transferencia'}
             </Text>
+            <Text style={styles.transferLine}>Banco: {transferInfo.bank}</Text>
+            <Text style={styles.transferLine}>Titular: {transferInfo.holder}</Text>
+            <Text style={styles.transferClabe}>CLABE: {transferInfo.clabe}</Text>
+            {transferInfo.whatsapp ? (
+              <Text style={styles.transferNote}>
+                WhatsApp: {transferInfo.whatsapp} — {transferInfo.note}
+              </Text>
+            ) : (
+              <Text style={styles.transferNote}>{transferInfo.note}</Text>
+            )}
           </View>
         )}
         {paymentMethod === 'online' && (
