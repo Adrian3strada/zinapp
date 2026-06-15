@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { API_URL } from '../config/api';
+import { API_TIMEOUT_MS, API_URL } from '../config/api';
 import type {
   AdminStats,
   AuthResponse,
@@ -25,7 +25,7 @@ import { tokenStorage } from './tokenStorage';
 const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 8000,
+  timeout: API_TIMEOUT_MS,
 });
 
 api.interceptors.request.use(async (config) => {

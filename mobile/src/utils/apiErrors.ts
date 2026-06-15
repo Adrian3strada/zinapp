@@ -1,3 +1,5 @@
+import { API_URL, IS_PRODUCTION_APP } from '../config/api';
+
 const FIELD_LABELS: Record<string, string> = {
   username: 'Usuario',
   email: 'Email',
@@ -46,9 +48,21 @@ export function getApiErrorMessage(error: unknown, fallback = 'Ocurrió un error
       err.code === 'ERR_NETWORK' ||
       err.code === 'ECONNABORTED'
     ) {
-      return 'Sin conexión al servidor. Verifica que el backend esté corriendo con:\npython manage.py runserver 0.0.0.0:8000';
+      if (IS_PRODUCTION_APP) {
+        return (
+          'Sin conexión al servidor. Comprueba que tienes internet e intenta de nuevo en unos segundos.\n\n' +
+          `API: ${API_URL}`
+        );
+      }
+      return (
+        'Sin conexión al servidor. Verifica que el backend esté corriendo con:\n' +
+        'python manage.py runserver 0.0.0.0:8000'
+      );
     }
     if (err.code === 'ECONNABORTED' || msg.includes('timeout')) {
+      if (IS_PRODUCTION_APP) {
+        return 'El servidor tardó en responder (puede estar despertando). Intenta de nuevo.';
+      }
       return 'El servidor tardó demasiado en responder. Intenta de nuevo.';
     }
     return fallback;
