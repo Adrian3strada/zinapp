@@ -19,7 +19,8 @@ import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
 import { useAuth } from '../../context/AuthContext';
 import type { LoginScreenProps } from '../../navigation/types';
-import { API_URL } from '../../config/api';
+import { API_URL, IS_PRODUCTION_APP } from '../../config/api';
+import { getApiErrorMessage } from '../../utils/apiErrors';
 import { colors } from '../../theme/colors';
 import { contentWidth } from '../../utils/responsive';
 import { cardShadow } from '../../theme/shadows';
@@ -39,19 +40,21 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     }
     setLoading(true);
     try {
-      await login({ username: username.trim().toLowerCase(), password });
+      await login({ username: username.trim(), password });
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } };
       if (!axiosErr.response) {
         Alert.alert(
           'Sin conexión al servidor',
-          `No se pudo llegar a:\n${API_URL}\n\n` +
-            '1. Arranca el backend:\n   python manage.py runserver\n\n' +
-            '2. PC y teléfono en la misma Wi‑Fi\n\n' +
-            '3. Revisa extra.apiUrl en mobile/app.json',
+          getApiErrorMessage(err, `No se pudo llegar a:\n${API_URL}`),
+        );
+      } else if (axiosErr.response.status === 401) {
+        Alert.alert(
+          'No se pudo entrar',
+          'Usuario o contraseña incorrectos.\n\nPrueba demo:\nusuario: cliente1\ncontraseña: test1234',
         );
       } else {
-        Alert.alert('Error', 'Usuario o contraseña incorrectos');
+        Alert.alert('Error', getApiErrorMessage(err, 'No se pudo iniciar sesión'));
       }
     } finally {
       setLoading(false);
@@ -136,6 +139,11 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           </Pressable>
 
           <Text style={styles.apiHint}>Servidor: {API_URL}</Text>
+          {IS_PRODUCTION_APP && (
+            <Text style={styles.demoHint}>
+              Demo: cliente1 / test1234 · repartidor1 · rest_pizzas
+            </Text>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -178,5 +186,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     marginTop: 16,
+  },
+  demoHint: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 8,
+    lineHeight: 18,
   },
 });

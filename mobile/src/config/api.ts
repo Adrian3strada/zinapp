@@ -1,4 +1,4 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import Constants from 'expo-constants';
 
 const extra = Constants.expoConfig?.extra as {
   apiUrl?: string;
@@ -8,18 +8,19 @@ const extra = Constants.expoConfig?.extra as {
 /** API pública en Railway (APK / preview / production). */
 export const PRODUCTION_API_URL = 'https://zinapp-api-production.up.railway.app/api';
 
-const isStandaloneApp =
-  Constants.executionEnvironment === ExecutionEnvironment.Standalone;
-
+/** En release (APK/AAB) siempre usar Railway, nunca IP local. */
 function resolveApiUrl(): string {
   const configured = extra?.apiUrl?.trim();
-  const environment =
-    extra?.environment ?? (isStandaloneApp ? 'preview' : 'development');
   const isLocal =
     !configured ||
     /^https?:\/\/(192\.168\.|10\.|localhost|127\.)/.test(configured);
 
-  if (environment === 'preview' || environment === 'production' || isStandaloneApp) {
+  if (!__DEV__) {
+    return isLocal ? PRODUCTION_API_URL : configured!;
+  }
+
+  const environment = extra?.environment ?? 'development';
+  if (environment === 'preview' || environment === 'production') {
     return isLocal ? PRODUCTION_API_URL : configured!;
   }
 
@@ -27,12 +28,8 @@ function resolveApiUrl(): string {
 }
 
 export const API_URL = resolveApiUrl();
-export const API_ENVIRONMENT =
-  extra?.environment ?? (isStandaloneApp ? 'preview' : 'development');
-export const IS_PRODUCTION_APP =
-  isStandaloneApp ||
-  API_ENVIRONMENT === 'preview' ||
-  API_ENVIRONMENT === 'production';
+export const API_ENVIRONMENT = extra?.environment ?? (__DEV__ ? 'development' : 'preview');
+export const IS_PRODUCTION_APP = !__DEV__;
 
 /** Timeout largo: Railway free puede tardar al despertar. */
 export const API_TIMEOUT_MS = IS_PRODUCTION_APP ? 30000 : 8000;
