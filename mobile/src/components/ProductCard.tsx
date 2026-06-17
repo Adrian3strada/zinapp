@@ -30,7 +30,7 @@ function ProductCard({ product, onAdd }: Props) {
       <View style={styles.info}>
         <Text style={styles.name}>{product.name}</Text>
         <Text style={styles.desc} numberOfLines={2}>
-          {product.description}
+          {product.description || ''}
         </Text>
         <Text style={styles.price}>{formatCurrency(product.price)}</Text>
       </View>
@@ -71,7 +71,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...cardShadow,
   },
   addBtnPressed: { opacity: 0.85 },
 });

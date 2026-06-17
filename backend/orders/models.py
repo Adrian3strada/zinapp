@@ -26,6 +26,11 @@ class PaymentStatus(models.TextChoices):
     FAILED = 'failed', 'Fallido'
 
 
+class CancellationSource(models.TextChoices):
+    RESTAURANT_REJECT = 'restaurant_reject', 'Rechazo restaurante'
+    CUSTOMER = 'customer', 'Cliente'
+
+
 class Coupon(models.Model):
     code = models.CharField(max_length=30, unique=True)
     description = models.CharField(max_length=200, blank=True)
@@ -128,6 +133,15 @@ class Order(models.Model):
         choices=PaymentStatus.choices,
         default=PaymentStatus.PENDING,
     )
+    cancellation_source = models.CharField(
+        max_length=20,
+        choices=CancellationSource.choices,
+        blank=True,
+        default='',
+    )
+    pending_reminder_sent = models.BooleanField(default=False)
+    ready_no_driver_reminder_sent = models.BooleanField(default=False)
+    review_reminder_sent = models.BooleanField(default=False)
     coupon = models.ForeignKey(
         Coupon,
         on_delete=models.SET_NULL,
@@ -252,6 +266,7 @@ class Shipment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     driver_nearby_notified = models.BooleanField(default=False)
+    pending_reminder_sent = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Envío'
@@ -287,3 +302,41 @@ class OrderItem(models.Model):
     @property
     def subtotal(self):
         return self.unit_price * self.quantity
+
+
+class IdempotencyRecord(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pendiente'
+        COMPLETED = 'completed', 'Completado'
+
+    key = models.CharField(max_length=64)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='idempotency_records',
+    )
+    scope = models.CharField(max_length=32)
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    response_body = models.JSONField(default=dict, blank=True)
+    status_code = models.PositiveSmallIntegerField(default=201)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Idempotencia'
+        verbose_name_plural = 'Idempotencia'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['key', 'user', 'scope'],
+                name='orders_idempotency_unique',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.scope}:{self.key[:12]}…'

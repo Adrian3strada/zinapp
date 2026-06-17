@@ -1,5 +1,7 @@
 """Utilidades de geocodificación y zona de cobertura (Zinapécuaro, Michoacán)."""
 
+from .zinapecuaro_places import lookup_local_place
+
 import json
 import math
 import re
@@ -56,6 +58,12 @@ def _address_queries(address: str) -> list[tuple[str, bool]]:
     ]
 
     lower = addr.lower()
+    if re.match(r'^(las?|los?|la|el)\s+', lower):
+        queries.append((f'Colonia {addr}, {LOCATION_SUFFIX}', True))
+        name = re.sub(r'^(las?|los?|la|el)\s+', '', addr, flags=re.I).strip()
+        if name and name.lower() != addr.lower():
+            queries.append((f'Colonia {name}, {LOCATION_SUFFIX}', True))
+
     if not lower.startswith(('calle ', 'av. ', 'av ', 'avenida ', 'boulevard ', 'blvd ')):
         queries.append((f'Calle {addr}, {LOCATION_SUFFIX}', False))
 
@@ -93,7 +101,20 @@ def _address_queries(address: str) -> list[tuple[str, bool]]:
     return unique
 
 
+_NOMINATIM_MIN_INTERVAL = 1.05
+_last_nominatim_call = 0.0
+
+
+def _rate_limit_nominatim() -> None:
+    global _last_nominatim_call
+    elapsed = time.monotonic() - _last_nominatim_call
+    if elapsed < _NOMINATIM_MIN_INTERVAL:
+        time.sleep(_NOMINATIM_MIN_INTERVAL - elapsed)
+    _last_nominatim_call = time.monotonic()
+
+
 def _nominatim_search(query: str, limit: int = 5) -> list[dict]:
+    _rate_limit_nominatim()
     params = urllib.parse.urlencode({
         'q': query,
         'format': 'json',
@@ -104,13 +125,71 @@ def _nominatim_search(query: str, limit: int = 5) -> list[dict]:
         'addressdetails': '1',
     })
     url = f'https://nominatim.openstreetmap.org/search?{params}'
-    req = urllib.request.Request(url, headers={'User-Agent': 'ZinApp/1.0 (delivery app)'})
+    req = urllib.request.Request(
+        url,
+        headers={
+            'User-Agent': 'ZinApp/1.0 (contact: admin@zinapp.test)',
+            'Accept-Language': 'es',
+        },
+    )
     try:
-        with urllib.request.urlopen(req, timeout=12) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, OSError):
         return []
     return data if isinstance(data, list) else []
+
+
+def _photon_search(query: str, limit: int = 5) -> list[dict]:
+    """Respaldo cuando Nominatim bloquea o no responde (p. ej. IP de Railway)."""
+    params = urllib.parse.urlencode({
+        'q': query,
+        'limit': limit,
+        'lat': '19.8581',
+        'lon': '-100.8274',
+    })
+    url = f'https://photon.komoot.io/api/?{params}'
+    req = urllib.request.Request(
+        url,
+        headers={'User-Agent': 'ZinApp/1.0 (delivery app)'},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            payload = json.loads(resp.read().decode())
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, OSError):
+        return []
+
+    features = payload.get('features') if isinstance(payload, dict) else []
+    results: list[dict] = []
+    for feature in features or []:
+        if not isinstance(feature, dict):
+            continue
+        coords = feature.get('geometry', {}).get('coordinates') or []
+        if len(coords) < 2:
+            continue
+        props = feature.get('properties') or {}
+        parts = [
+            props.get('name'),
+            props.get('street'),
+            props.get('city') or props.get('town') or props.get('village'),
+            props.get('state'),
+            props.get('country'),
+        ]
+        display = ', '.join(p for p in parts if p)
+        results.append({
+            'lat': coords[1],
+            'lon': coords[0],
+            'display_name': display or query,
+            'importance': 0.5,
+        })
+    return results
+
+
+def _search_geocoder(query: str, limit: int = 5) -> list[dict]:
+    results = _nominatim_search(query, limit=limit)
+    if results:
+        return results
+    return _photon_search(query, limit=limit)
 
 
 def _score_result(result: dict, query: str) -> float:
@@ -137,7 +216,20 @@ def _score_result(result: dict, query: str) -> float:
 
 
 def geocode_address(address: str) -> dict | None:
-    """Geocodifica con Nominatim (OpenStreetMap). Prueba varias formas de la dirección."""
+    """Geocodifica direcciones en Zinapécuaro (gazetteer local + Nominatim + Photon)."""
+    local = lookup_local_place(address)
+    if local:
+        lat = float(round_coordinate(local[0]))
+        lon = float(round_coordinate(local[1]))
+        if is_in_coverage(lat, lon):
+            return {
+                'latitude': lat,
+                'longitude': lon,
+                'display_name': local[2],
+                'in_coverage': True,
+                'approximate': True,
+            }
+
     queries = _address_queries(address)
     if not queries:
         return None
@@ -147,7 +239,7 @@ def geocode_address(address: str) -> dict | None:
     best_approximate = True
 
     for query, approximate in queries:
-        for result in _nominatim_search(query):
+        for result in _search_geocoder(query):
             score = _score_result(result, query)
             if score > best_score:
                 best_score = score

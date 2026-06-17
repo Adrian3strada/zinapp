@@ -5,6 +5,7 @@ import { ActivityIndicator, InteractionManager, View } from 'react-native';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { usePushNotifications } from '../hooks/useNotifications';
+import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import LoginScreen from '../screens/auth/LoginScreen';
 import type { AuthStackParamList } from './types';
 
@@ -61,18 +62,22 @@ export default function RootNavigator() {
   if (!user) {
     return (
       <Suspense fallback={<LoadingScreen />}>
-        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-          <AuthStack.Screen name="Login" component={LoginScreen} />
-          <AuthStack.Screen name="Register" component={RegisterScreen} />
+        <AuthStack.Navigator screenOptions={stackScreenDefaults}>
+          <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <AuthStack.Screen
+            name="Register"
+            component={RegisterScreen}
+            options={{ ...modalPresentationOptions, headerShown: true, title: 'Crear cuenta' }}
+          />
           <AuthStack.Screen
             name="ForgotPassword"
             component={ForgotPasswordScreen}
-            options={{ headerShown: true, title: 'Recuperar contraseña' }}
+            options={{ ...modalPresentationOptions, headerShown: true, title: 'Recuperar contraseña' }}
           />
           <AuthStack.Screen
             name="ResetPassword"
             component={ResetPasswordScreen}
-            options={{ headerShown: true, title: 'Nueva contraseña' }}
+            options={{ ...modalPresentationOptions, headerShown: true, title: 'Nueva contraseña' }}
           />
         </AuthStack.Navigator>
       </Suspense>

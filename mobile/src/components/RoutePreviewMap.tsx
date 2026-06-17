@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import AppMap, { MapMarker } from './AppMap';
 import RouteStatsBar from './RouteStatsBar';
+import type { MapPinType } from './MapPin';
 import { colors } from '../theme/colors';
 import { useStreetRoutes } from '../hooks/useStreetRoutes';
 import type { MapCoordinate } from '../utils/maps';
@@ -11,31 +12,43 @@ import type { StreetRouteSegment } from '../utils/routing';
 import { mapHeight } from '../utils/responsive';
 
 interface Props {
-  pickup: MapCoordinate;
-  delivery: MapCoordinate;
+  from: MapCoordinate;
+  to: MapCoordinate;
   height?: number;
+  title?: string;
+  fromMarker?: { title: string; pinType: MapPinType };
+  toMarker?: { title: string; pinType: MapPinType };
+  statsLabel?: string;
 }
 
-export default function RoutePreviewMap({ pickup, delivery, height }: Props) {
+export default function RoutePreviewMap({
+  from,
+  to,
+  height,
+  title = 'Vista previa de la ruta',
+  fromMarker = { title: 'Recoger', pinType: 'pickup' },
+  toMarker = { title: 'Entregar', pinType: 'delivery' },
+  statsLabel = 'Distancia estimada',
+}: Props) {
   const markers = useMemo<MapMarker[]>(() => [
-    { id: 'pickup', coordinate: pickup, title: 'Recoger', pinType: 'pickup' },
-    { id: 'delivery', coordinate: delivery, title: 'Entregar', pinType: 'delivery' },
-  ], [pickup, delivery]);
+    { id: 'from', coordinate: from, title: fromMarker.title, pinType: fromMarker.pinType },
+    { id: 'to', coordinate: to, title: toMarker.title, pinType: toMarker.pinType },
+  ], [from, to, fromMarker.pinType, fromMarker.title, toMarker.pinType, toMarker.title]);
 
   const routeSegments = useMemo<StreetRouteSegment[]>(() => [{
     id: 'preview',
-    from: pickup,
-    to: delivery,
+    from,
+    to,
     strokeColor: colors.primary,
-    strokeWidth: 3,
-  }], [pickup, delivery]);
+    strokeWidth: 4,
+  }], [from, to]);
 
   const { polylines, stats, loading } = useStreetRoutes(routeSegments);
-  const region = useMemo(() => regionForCoordinates([pickup, delivery]), [pickup, delivery]);
+  const region = useMemo(() => regionForCoordinates([from, to]), [from, to]);
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Vista previa de la ruta</Text>
+      <Text style={styles.title}>{title}</Text>
       <AppMap
         markers={markers}
         polylines={polylines}
@@ -45,7 +58,7 @@ export default function RoutePreviewMap({ pickup, delivery, height }: Props) {
       <RouteStatsBar
         loading={loading}
         items={[{
-          label: 'Distancia estimada',
+          label: statsLabel,
           stats: stats.preview,
           icon: 'navigate',
         }]}

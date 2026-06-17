@@ -41,7 +41,37 @@ python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 ```
 
-### Docker (local / SQLite)
+### PostgreSQL (recomendado para uso real)
+
+**Railway** (producción actual):
+
+```powershell
+cd backend
+.\scripts\deploy-railway.ps1 -Seed
+```
+
+Crea Postgres, desactiva SQLite, corre migraciones y opcionalmente datos demo.
+
+**Docker local con Postgres:**
+
+```powershell
+cd backend
+.\scripts\setup-env.ps1
+# Edita .env: USE_SQLITE=False, DB_HOST=db, DB_PORT=5432
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+.\scripts\setup-database.ps1 -Target docker -Postgres -Seed
+```
+
+**Solo migraciones:**
+
+```powershell
+.\scripts\setup-database.ps1 -Target railway
+.\scripts\setup-database.ps1 -Target local
+```
+
+Health check incluye base de datos: `GET /api/health/` → `{"ok": true, "database": "postgresql"}`
+
+### Docker (local / SQLite rápido)
 
 ```powershell
 cd backend

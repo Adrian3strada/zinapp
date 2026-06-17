@@ -5,7 +5,16 @@ import { getApiErrorMessage } from '../utils/apiErrors';
 
 type FetchPage<T> = (page: number) => Promise<PaginatedResponse<T>>;
 
-export function usePaginatedList<T>(
+export function dedupeById<T extends { id: number }>(list: T[]): T[] {
+  const seen = new Set<number>();
+  return list.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+export function usePaginatedList<T extends { id: number }>(
   fetchPage: FetchPage<T>,
   deps: unknown[] = [],
   errorFallback = 'No se pudieron cargar los datos',
@@ -34,7 +43,9 @@ export function usePaginatedList<T>(
         const data = await fetchPage(page);
         if (generation !== generationRef.current) return;
 
-        setItems((prev) => (page === 1 ? data.results : [...prev, ...data.results]));
+        setItems((prev) =>
+          dedupeById(page === 1 ? data.results : [...prev, ...data.results]),
+        );
         setHasMore(data.next != null);
         pageRef.current = page;
       } catch (err) {

@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'restaurants',
+    'restaurants.apps.RestaurantsConfig',
     'orders',
     'dashboard',
 ]
@@ -68,10 +68,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 USE_SQLITE = config('USE_SQLITE', default=False, cast=bool)
-DATABASE_URL = config('DATABASE_URL', default='')
+DATABASE_URL = config('DATABASE_URL', default='').strip()
 
 if DATABASE_URL:
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+    # Railway / Render inyectan DATABASE_URL al vincular Postgres
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=not DEBUG,
+        ),
+    }
 elif USE_SQLITE:
     DATABASES = {
         'default': {
@@ -87,7 +95,12 @@ else:
             'USER': config('DB_USER', default='postgres'),
             'PASSWORD': config('DB_PASSWORD', default='postgres'),
             'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='5433'),
+            'PORT': config('DB_PORT', default='5432'),
+            'CONN_MAX_AGE': 600,
+            'CONN_HEALTH_CHECKS': True,
+            'OPTIONS': {
+                'connect_timeout': 10,
+            },
         }
     }
 
@@ -156,3 +169,5 @@ SIMPLE_JWT = {
 MERCADOPAGO_ACCESS_TOKEN = config('MERCADOPAGO_ACCESS_TOKEN', default='')
 MERCADOPAGO_BACK_URL = config('MERCADOPAGO_BACK_URL', default='')
 MERCADOPAGO_WEBHOOK_URL = config('MERCADOPAGO_WEBHOOK_URL', default='')
+
+CRON_SECRET = config('CRON_SECRET', default='')

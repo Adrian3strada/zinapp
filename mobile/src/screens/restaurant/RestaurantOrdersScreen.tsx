@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
@@ -34,6 +35,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busyOrderId, setBusyOrderId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const isRefresh = orders.length > 0;
@@ -58,26 +60,34 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
   }, [load]);
 
   const handleAccept = async (order: Order) => {
+    if (busyOrderId != null) return;
+    setBusyOrderId(order.id);
     try {
       await orderApi.accept(order.id);
-      load();
+      await load();
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
+    } finally {
+      setBusyOrderId(null);
     }
   };
 
   const handleReject = (order: Order) => {
-    Alert.alert('Rechazar pedido', `¿Rechazar el pedido #${order.id}?`, [
+    if (busyOrderId != null) return;
+    appAlert('Rechazar pedido', `¿Rechazar el pedido #${order.id}?`, [
       { text: 'No', style: 'cancel' },
       {
         text: 'Rechazar',
         style: 'destructive',
         onPress: async () => {
+          setBusyOrderId(order.id);
           try {
             await orderApi.reject(order.id);
-            load();
+            await load();
           } catch (err) {
-            Alert.alert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+            appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+          } finally {
+            setBusyOrderId(null);
           }
         },
       },
@@ -86,12 +96,15 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   const handleAdvance = async (order: Order) => {
     const next = NEXT_STATUS[order.status];
-    if (!next) return;
+    if (!next || busyOrderId != null) return;
+    setBusyOrderId(order.id);
     try {
       await orderApi.updateStatus(order.id, next.status);
-      load();
+      await load();
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo actualizar'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar'));
+    } finally {
+      setBusyOrderId(null);
     }
   };
 
@@ -136,7 +149,14 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
           >
             <View style={styles.cardTop}>
               <Text style={styles.orderId}>#{item.id}</Text>
-              <OrderStatusBadge status={item.status} label={item.status_display} />
+              <View style={styles.badgeRow}>
+                {item.payment_method === 'online' && item.payment_status !== 'paid' && (
+                  <View style={styles.paymentBadge}>
+                    <Text style={styles.paymentBadgeText}>Pago pendiente</Text>
+                  </View>
+                )}
+                <OrderStatusBadge status={item.status} label={item.status_display} />
+              </View>
             </View>
             <Text style={styles.total}>{formatCurrency(item.total)}</Text>
             <Text style={styles.address} numberOfLines={1}>
@@ -146,14 +166,26 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
             {item.status === 'pending' && (
               <View style={styles.actions}>
-                <Button title="Aceptar" onPress={() => handleAccept(item)} style={styles.btn} />
-                <Button title="Rechazar" variant="danger" onPress={() => handleReject(item)} style={styles.btn} />
+                <Button
+                  title="Aceptar"
+                  onPress={() => handleAccept(item)}
+                  loading={busyOrderId === item.id}
+                  style={styles.btn}
+                />
+                <Button
+                  title="Rechazar"
+                  variant="danger"
+                  onPress={() => handleReject(item)}
+                  loading={busyOrderId === item.id}
+                  style={styles.btn}
+                />
               </View>
             )}
             {NEXT_STATUS[item.status] && (
               <Button
                 title={NEXT_STATUS[item.status].label}
                 onPress={() => handleAdvance(item)}
+                loading={busyOrderId === item.id}
                 style={{ marginTop: 12 }}
               />
             )}
@@ -197,6 +229,14 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  paymentBadge: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  paymentBadgeText: { fontSize: 10, fontWeight: '700', color: '#E65100' },
   orderId: { fontSize: 18, fontWeight: '800', color: colors.text },
   total: { fontSize: 20, fontWeight: '800', color: colors.primary, marginTop: 8 },
   address: { fontSize: 13, color: colors.textSecondary, marginTop: 6 },

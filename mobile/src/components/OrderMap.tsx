@@ -71,9 +71,9 @@ export default function OrderMap({
         id: 'restaurant-delivery',
         from: restaurant,
         to: delivery,
-        strokeColor: colors.border,
-        strokeWidth: 3,
-        lineDashPattern: [8, 6],
+        strokeColor: colors.primary,
+        strokeWidth: 4,
+        lineDashPattern: [6, 4],
       });
     }
 

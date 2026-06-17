@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useState } from 'react';
 import {
-  Alert,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -17,6 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
@@ -48,10 +48,12 @@ const ProductManageRow = React.memo(function ProductManageRow({
   product,
   onEdit,
   onToggle,
+  toggling,
 }: {
   product: Product;
   onEdit: (product: Product) => void;
   onToggle: (product: Product, available: boolean) => void;
+  toggling: boolean;
 }) {
   const unavailable = !product.is_available;
 
@@ -87,6 +89,7 @@ const ProductManageRow = React.memo(function ProductManageRow({
       <Switch
         value={product.is_available}
         onValueChange={(v) => onToggle(product, v)}
+        disabled={toggling}
         trackColor={{ true: colors.primary, false: colors.border }}
         accessibilityLabel={`Disponibilidad de ${product.name}`}
       />
@@ -104,6 +107,7 @@ export default function RestaurantManageScreen() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<ProductDraft | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   const availableCount = products.filter((p) => p.is_available).length;
 
@@ -129,15 +133,20 @@ export default function RestaurantManageScreen() {
   }, [load]);
 
   const toggleProduct = async (product: Product, available: boolean) => {
+    if (togglingId === product.id) return;
+    setTogglingId(product.id);
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, is_available: available } : p)),
+    );
     try {
-      const fd = new FormData();
-      fd.append('is_available', available ? 'true' : 'false');
-      await productApi.update(product.id, fd);
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, is_available: available } : p)),
-      );
+      await productApi.patch(product.id, { is_available: available });
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err));
+      setProducts((prev) =>
+        prev.map((p) => (p.id === product.id ? { ...p, is_available: !available } : p)),
+      );
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar el producto.'));
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -175,7 +184,7 @@ export default function RestaurantManageScreen() {
         editor.imageUri);
 
     if (isNewDraft) {
-      Alert.alert('Cerrar formulario', '¿Descartar el producto nuevo?', [
+      appAlert('Cerrar formulario', '¿Descartar el producto nuevo?', [
         { text: 'Seguir editando', style: 'cancel' },
         { text: 'Descartar', style: 'destructive', onPress: () => setEditor(null) },
       ]);
@@ -187,7 +196,7 @@ export default function RestaurantManageScreen() {
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permiso', 'Necesitamos acceso a tus fotos.');
+      appAlert('Permiso', 'Necesitamos acceso a tus fotos.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -202,7 +211,7 @@ export default function RestaurantManageScreen() {
   const saveProduct = async () => {
     if (!restaurant || !editor) return;
     if (!editor.name.trim() || !editor.price.trim()) {
-      Alert.alert('Producto', 'Nombre y precio son obligatorios.');
+      appAlert('Producto', 'Nombre y precio son obligatorios.');
       return;
     }
     setSaving(true);
@@ -227,9 +236,9 @@ export default function RestaurantManageScreen() {
       }
       setEditor(null);
       await load();
-      Alert.alert('Listo', editor.id ? 'Producto actualizado' : 'Producto agregado');
+      appAlert('Listo', editor.id ? 'Producto actualizado' : 'Producto agregado');
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo guardar el producto'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el producto'));
     } finally {
       setSaving(false);
     }
@@ -237,7 +246,7 @@ export default function RestaurantManageScreen() {
 
   const deleteProduct = () => {
     if (!editor?.id) return;
-    Alert.alert('Eliminar producto', `¿Quitar "${editor.name}" del menú?`, [
+    appAlert('Eliminar producto', `¿Quitar "${editor.name}" del menú?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
@@ -248,9 +257,9 @@ export default function RestaurantManageScreen() {
             await productApi.delete(editor.id!);
             setEditor(null);
             await load();
-            Alert.alert('Listo', 'Producto eliminado');
+            appAlert('Listo', 'Producto eliminado');
           } catch (err) {
-            Alert.alert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
+            appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
           } finally {
             setDeleting(false);
           }
@@ -345,6 +354,7 @@ export default function RestaurantManageScreen() {
                   product={item}
                   onEdit={openEditProduct}
                   onToggle={toggleProduct}
+                  toggling={togglingId === item.id}
                 />
               ))}
             </View>

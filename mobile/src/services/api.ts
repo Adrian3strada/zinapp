@@ -19,6 +19,7 @@ import type {
   User,
 } from '../types';
 import { roundCoordinate } from '../utils/coords';
+import { canRetryOnNetworkError, isMutationMethod, isRetryableNetworkError, sleep, wakeBackend } from './apiWake';
 import { sessionEvents } from './sessionEvents';
 import { tokenStorage } from './tokenStorage';
 
@@ -29,6 +30,9 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
+  if (isMutationMethod(config.method)) {
+    await wakeBackend(true);
+  }
   const token = await tokenStorage.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -73,26 +77,49 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as {
       _retry?: boolean;
+      _networkRetry?: number;
       headers?: Record<string, string>;
       url?: string;
     } | undefined;
-    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
-      return Promise.reject(error);
-    }
-    if (originalRequest.url?.includes('/token/refresh/')) {
-      await tokenStorage.clear();
-      sessionEvents.emitExpired();
+
+    if (!originalRequest) {
       return Promise.reject(error);
     }
 
-    originalRequest._retry = true;
-    const access = await refreshAccessToken();
-    if (!access) return Promise.reject(error);
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (originalRequest.url?.includes('/token/refresh/')) {
+        await tokenStorage.clear();
+        sessionEvents.emitExpired();
+        return Promise.reject(error);
+      }
 
-    if (originalRequest.headers) {
-      originalRequest.headers.Authorization = `Bearer ${access}`;
+      originalRequest._retry = true;
+      const access = await refreshAccessToken();
+      if (!access) return Promise.reject(error);
+
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+      }
+      return api(originalRequest);
     }
-    return api(originalRequest);
+
+    if (
+      isRetryableNetworkError(error)
+      && canRetryOnNetworkError(originalRequest.method, originalRequest.url)
+    ) {
+      const maxRetries = (originalRequest.method ?? 'get').toUpperCase() === 'GET' ? 3 : 2;
+      const attempt = originalRequest._networkRetry ?? 0;
+      if (attempt < maxRetries) {
+        originalRequest._networkRetry = attempt + 1;
+        if (attempt === 0) {
+          await wakeBackend(true);
+        }
+        await sleep(1500 * (attempt + 1));
+        return api(originalRequest);
+      }
+    }
+
+    return Promise.reject(error);
   },
 );
 
@@ -149,10 +176,7 @@ export const authApi = {
   login: (data: LoginPayload) => api.post<AuthResponse>('/auth/login/', data),
   me: () => api.get<User>('/auth/me/'),
   updateMe: (data: Partial<User>) => api.patch<User>('/auth/me/', data),
-  updateMeForm: (data: FormData) =>
-    api.patch<User>('/auth/me/', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  updateMeForm: (data: FormData) => api.patch<User>('/auth/me/', data),
   changePassword: (old_password: string, new_password: string) =>
     api.post('/auth/change-password/', { old_password, new_password }),
   forgotPassword: (username: string) =>
@@ -167,11 +191,12 @@ export const restaurantApi = {
   list: (page = 1) =>
     api.get<PaginatedResponse<Restaurant>>('/restaurants/', { params: { page } }),
   get: (id: number) => api.get<Restaurant & { products: Product[] }>(`/restaurants/${id}/`),
+  toggleFavorite: (id: number) =>
+    api.post<{ is_favorited: boolean }>(`/restaurants/${id}/toggle-favorite/`),
   mine: () => api.get<Restaurant & { products: Product[] }>('/restaurants/mine/'),
-  update: (id: number, data: FormData) =>
-    api.patch<Restaurant>(`/restaurants/${id}/`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  patch: (id: number, data: Partial<Pick<Restaurant, 'accepting_orders' | 'name' | 'phone' | 'address'>>) =>
+    api.patch<Restaurant>(`/restaurants/${id}/`, data),
+  update: (id: number, data: FormData) => api.patch<Restaurant>(`/restaurants/${id}/`, data),
   geocode: (address: string) => api.post<GeocodeResult>('/geocode/', { address }),
   checkCoverage: (latitude: number, longitude: number) =>
     api.post<{ in_coverage: boolean }>('/coverage/check/', {
@@ -203,14 +228,10 @@ export const productApi = {
     api.get<PaginatedResponse<Product>>('/products/', {
       params: { restaurant: restaurantId, page },
     }),
-  update: (id: number, data: FormData) =>
-    api.patch<Product>(`/products/${id}/`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-  create: (data: FormData) =>
-    api.post<Product>('/products/', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  patch: (id: number, data: Partial<Pick<Product, 'name' | 'description' | 'price' | 'is_available'>>) =>
+    api.patch<Product>(`/products/${id}/`, data),
+  update: (id: number, data: FormData) => api.patch<Product>(`/products/${id}/`, data),
+  create: (data: FormData) => api.post<Product>('/products/', data),
   delete: (id: number) => api.delete(`/products/${id}/`),
 };
 
@@ -231,18 +252,24 @@ export const orderApi = {
   list: (page = 1) =>
     api.get<PaginatedResponse<Order>>('/orders/', { params: { page } }),
   get: (id: number) => api.get<Order>(`/orders/${id}/`),
-  create: (data: CreateOrderPayload) =>
-    api.post<Order>('/orders/', {
-      ...data,
-      delivery_latitude:
-        data.delivery_latitude != null
-          ? roundCoordinate(data.delivery_latitude)
-          : undefined,
-      delivery_longitude:
-        data.delivery_longitude != null
-          ? roundCoordinate(data.delivery_longitude)
-          : undefined,
-    }),
+  create: (data: CreateOrderPayload, options?: { idempotencyKey?: string }) =>
+    api.post<Order>(
+      '/orders/',
+      {
+        ...data,
+        delivery_latitude:
+          data.delivery_latitude != null
+            ? roundCoordinate(data.delivery_latitude)
+            : undefined,
+        delivery_longitude:
+          data.delivery_longitude != null
+            ? roundCoordinate(data.delivery_longitude)
+            : undefined,
+      },
+      options?.idempotencyKey
+        ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+        : undefined,
+    ),
   accept: (id: number) => api.post<Order>(`/orders/${id}/accept/`),
   reject: (id: number) => api.post<Order>(`/orders/${id}/reject/`),
   cancel: (id: number) => api.post<Order>(`/orders/${id}/cancel/`),
@@ -285,18 +312,24 @@ export const shipmentApi = {
   list: (page = 1) =>
     api.get<PaginatedResponse<Shipment>>('/shipments/', { params: { page } }),
   get: (id: number) => api.get<Shipment>(`/shipments/${id}/`),
-  create: (data: CreateShipmentPayload) =>
-    api.post<Shipment>('/shipments/', {
-      ...data,
-      pickup_latitude:
-        data.pickup_latitude != null ? roundCoordinate(data.pickup_latitude) : undefined,
-      pickup_longitude:
-        data.pickup_longitude != null ? roundCoordinate(data.pickup_longitude) : undefined,
-      delivery_latitude:
-        data.delivery_latitude != null ? roundCoordinate(data.delivery_latitude) : undefined,
-      delivery_longitude:
-        data.delivery_longitude != null ? roundCoordinate(data.delivery_longitude) : undefined,
-    }),
+  create: (data: CreateShipmentPayload, options?: { idempotencyKey?: string }) =>
+    api.post<Shipment>(
+      '/shipments/',
+      {
+        ...data,
+        pickup_latitude:
+          data.pickup_latitude != null ? roundCoordinate(data.pickup_latitude) : undefined,
+        pickup_longitude:
+          data.pickup_longitude != null ? roundCoordinate(data.pickup_longitude) : undefined,
+        delivery_latitude:
+          data.delivery_latitude != null ? roundCoordinate(data.delivery_latitude) : undefined,
+        delivery_longitude:
+          data.delivery_longitude != null ? roundCoordinate(data.delivery_longitude) : undefined,
+      },
+      options?.idempotencyKey
+        ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+        : undefined,
+    ),
   cancel: (id: number) => api.post<Shipment>(`/shipments/${id}/cancel/`),
   available: () => api.get<Shipment[]>('/shipments/available/'),
   acceptDelivery: (id: number) => api.post<Shipment>(`/shipments/${id}/accept-delivery/`),
@@ -326,6 +359,16 @@ export const reviewApi = {
 export const adminApi = {
   stats: () => api.get<AdminStats>('/admin/stats/'),
   users: () => api.get<PaginatedResponse<User>>('/auth/users/'),
+};
+
+export interface AppConfig {
+  online_payments_enabled: boolean;
+  support_whatsapp: string;
+  coverage_label: string;
+}
+
+export const configApi = {
+  get: () => api.get<AppConfig>('/config/'),
 };
 
 export default api;

@@ -372,6 +372,10 @@ class OrderStatusUpdateSerializer(serializers.Serializer):
         now = timezone.now()
 
         order.status = new_status
+        if new_status == OrderStatus.CANCELLED:
+            source = self.context.get('cancellation_source')
+            if source:
+                order.cancellation_source = source
         if new_status == OrderStatus.ACCEPTED:
             order.accepted_at = now
         elif new_status == OrderStatus.READY:

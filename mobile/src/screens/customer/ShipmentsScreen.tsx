@@ -1,8 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
@@ -23,6 +23,7 @@ import ScreenContainer from '../../components/ScreenContainer';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { useAuth } from '../../context/AuthContext';
 import { getShipmentFee, MIN_SHIPMENT_FEE, SHIPMENT_SIZES } from '../../config/delivery';
+import { useAppConfig } from '../../hooks/useAppConfig';
 import { useLocation } from '../../hooks/useLocation';
 import type { ShipmentsScreenProps } from '../../navigation/types';
 import { restaurantApi, shipmentApi } from '../../services/api';
@@ -30,21 +31,33 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Shipment, ShipmentSize } from '../../types';
-import { getApiErrorMessage } from '../../utils/apiErrors';
+import { dedupeById } from '../../hooks/usePaginatedList';
+import { createIdempotencyKey } from '../../utils/idempotency';
+import { runWithRetry } from '../../utils/runWithRetry';
 import { formatCurrency } from '../../utils/format';
 
 type AddressField = 'pickup' | 'delivery';
 
-const PAYMENT_OPTIONS = [
+const PAYMENT_OPTIONS_BASE = [
   { key: 'cash' as const, label: 'Efectivo', icon: 'cash-outline' as const },
   { key: 'transfer' as const, label: 'Transferencia', icon: 'card-outline' as const },
-  { key: 'online' as const, label: 'En línea', icon: 'phone-portrait-outline' as const },
 ];
 
 export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { config: appConfig } = useAppConfig();
   const { getCurrentPosition, loading: locating } = useLocation();
+
+  const paymentOptions = useMemo(() => {
+    if (appConfig.online_payments_enabled) {
+      return [
+        ...PAYMENT_OPTIONS_BASE,
+        { key: 'online' as const, label: 'En línea', icon: 'phone-portrait-outline' as const },
+      ];
+    }
+    return PAYMENT_OPTIONS_BASE;
+  }, [appConfig.online_payments_enabled]);
 
   const [description, setDescription] = useState('');
   const [size, setSize] = useState<ShipmentSize>('medium');
@@ -65,6 +78,8 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
   const [loadingList, setLoadingList] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const submitInFlight = useRef(false);
+  const submitIdempotencyKey = useRef<string | null>(null);
 
   const shipmentFee = getShipmentFee(size);
   const activeShipments = useMemo(
@@ -76,7 +91,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
     if (!silent) setLoadingList(true);
     try {
       const { data } = await shipmentApi.list();
-      setShipments(data.results ?? []);
+      setShipments(dedupeById(data.results ?? []));
       setListError(null);
     } catch (err) {
       if (shipments.length === 0) {
@@ -92,6 +107,12 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
   useEffect(() => {
     loadShipments();
   }, [loadShipments]);
+
+  useEffect(() => {
+    if (!appConfig.online_payments_enabled && paymentMethod === 'online') {
+      setPaymentMethod('cash');
+    }
+  }, [appConfig.online_payments_enabled, paymentMethod]);
 
   const handleAddressChange = (field: AddressField, text: string) => {
     if (field === 'pickup') {
@@ -124,7 +145,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
   const handleGeocode = async (field: AddressField) => {
     const address = field === 'pickup' ? pickupAddress : deliveryAddress;
     if (!address.trim()) {
-      Alert.alert('Dirección', 'Escribe una dirección primero.');
+      appAlert('Dirección', 'Escribe una dirección primero.');
       return;
     }
     setGeocodingField(field);
@@ -143,15 +164,15 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
         setDeliveryApproximate(!!data.approximate);
       }
       if (data.approximate) {
-        Alert.alert(
+        appAlert(
           'Ubicación aproximada',
           'Encontramos la calle o colonia, pero no el número exacto. Confirma que la dirección sea correcta, o usa «Mi ubicación».',
         );
       } else if (!data.in_coverage) {
-        Alert.alert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
+        appAlert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
       }
     } catch (err) {
-      Alert.alert('Geocodificación', getApiErrorMessage(err, 'No se encontró la dirección.'));
+      appAlert('Geocodificación', getApiErrorMessage(err, 'No se encontró la dirección.'));
     } finally {
       setGeocodingField(null);
     }
@@ -160,7 +181,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
   const handleUseLocation = async (field: AddressField) => {
     const coords = await getCurrentPosition();
     if (!coords) {
-      Alert.alert('Ubicación', 'Activa el permiso de ubicación.');
+      appAlert('Ubicación', 'Activa el permiso de ubicación.');
       return;
     }
     if (field === 'pickup') {
@@ -193,16 +214,21 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
   };
 
   const handleSubmit = async () => {
+    if (submitInFlight.current || submitting) return;
     if (!description.trim()) {
-      Alert.alert('Descripción', 'Indica qué vas a enviar.');
+      appAlert('Descripción', 'Indica qué vas a enviar.');
       return;
     }
     if (!pickupAddress.trim() || !deliveryAddress.trim()) {
-      Alert.alert('Direcciones', 'Completa recogida y entrega.');
+      appAlert('Direcciones', 'Completa recogida y entrega.');
       return;
     }
 
+    submitInFlight.current = true;
     setSubmitting(true);
+    if (!submitIdempotencyKey.current) {
+      submitIdempotencyKey.current = createIdempotencyKey();
+    }
     try {
       let pickup = pickupCoords;
       let delivery = deliveryCoords;
@@ -221,24 +247,27 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
       }
 
       if (pickupOk === false || deliveryOk === false) {
-        Alert.alert('Cobertura', 'Ambas direcciones deben estar dentro de Zinapécuaro.');
+        appAlert('Cobertura', 'Ambas direcciones deben estar dentro de Zinapécuaro.');
         return;
       }
 
-      const { data } = await shipmentApi.create({
-        description: description.trim(),
-        size,
-        pickup_address: pickupAddress,
-        pickup_latitude: pickup!.latitude,
-        pickup_longitude: pickup!.longitude,
-        pickup_notes: pickupNotes.trim(),
-        delivery_address: deliveryAddress,
-        delivery_latitude: delivery!.latitude,
-        delivery_longitude: delivery!.longitude,
-        delivery_notes: deliveryNotes.trim(),
-        payment_method: paymentMethod,
-      });
-      Alert.alert('¡Listo!', `Envío #${data.id} registrado. Buscando repartidor…`);
+      const { data } = await runWithRetry(() =>
+        shipmentApi.create({
+          description: description.trim(),
+          size,
+          pickup_address: pickupAddress,
+          pickup_latitude: pickup!.latitude,
+          pickup_longitude: pickup!.longitude,
+          pickup_notes: pickupNotes.trim(),
+          delivery_address: deliveryAddress,
+          delivery_latitude: delivery!.latitude,
+          delivery_longitude: delivery!.longitude,
+          delivery_notes: deliveryNotes.trim(),
+          payment_method: paymentMethod,
+        }, { idempotencyKey: submitIdempotencyKey.current! }),
+      );
+      submitIdempotencyKey.current = null;
+      appAlert('¡Listo!', `Envío #${data.id} registrado. Buscando repartidor…`);
       setDescription('');
       setDeliveryAddress('');
       setPickupNotes('');
@@ -248,8 +277,9 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
       loadShipments(true);
       navigation.navigate('ShipmentDetail', { shipmentId: data.id });
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo crear el envío. Verifica las direcciones.'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo crear el envío. Verifica las direcciones.'));
     } finally {
+      submitInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -365,7 +395,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
           />
 
           {pickupCoords && deliveryCoords && (
-            <RoutePreviewMap pickup={pickupCoords} delivery={deliveryCoords} />
+            <RoutePreviewMap from={pickupCoords} to={deliveryCoords} />
           )}
 
           <FormField
@@ -390,7 +420,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
 
         <FormSection title="Pago">
           <View style={styles.paymentRow}>
-            {PAYMENT_OPTIONS.map((method) => {
+            {paymentOptions.map((method) => {
               const selected = paymentMethod === method.key;
               return (
                 <Pressable

@@ -18,7 +18,8 @@ export default function ScreenContainer({ children, loading, error, onRetry }: P
       <View style={styles.center}>
         <View style={styles.loadingCard}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>Cargando…</Text>
+          <Text style={styles.loadingHint}>Si tarda, el servidor puede estar despertando</Text>
         </View>
       </View>
     );
@@ -62,6 +63,13 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   loadingText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  loadingHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textAlign: 'center',
+    maxWidth: 240,
+    lineHeight: 18,
+  },
   errorCircle: {
     width: 80,
     height: 80,

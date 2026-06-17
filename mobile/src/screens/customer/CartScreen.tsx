@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
   Text,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 
 import CartCheckoutSection from '../../components/CartCheckoutSection';
 import CartLineItem from '../../components/CartLineItem';
@@ -15,18 +15,24 @@ import EmptyState from '../../components/EmptyState';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useAppConfig } from '../../hooks/useAppConfig';
 import { useLocation } from '../../hooks/useLocation';
 import type { CartScreenProps } from '../../navigation/types';
-import { couponApi, orderApi, restaurantApi } from '../../services/api';
+import { couponApi, orderApi, restaurantApi, authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { DELIVERY_FEE } from '../../config/delivery';
 import { resolveTransferInfo, restaurantHasTransferInfo } from '../../config/payments';
 import type { Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { isInCoverage } from '../../utils/coverage';
+import { createIdempotencyKey } from '../../utils/idempotency';
+import { toCoordinate } from '../../utils/maps';
+import { runWithRetry } from '../../utils/runWithRetry';
 
 export default function CartScreen({ navigation }: CartScreenProps) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { config: appConfig } = useAppConfig();
   const { items, total, updateQuantity, clearCart, restaurantId } = useCart();
   const [address, setAddress] = useState(user?.address ?? '');
   const [notes, setNotes] = useState('');
@@ -45,6 +51,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   } | null>(null);
   const [addressApproximate, setAddressApproximate] = useState(false);
   const [cartRestaurant, setCartRestaurant] = useState<Restaurant | null>(null);
+  const checkoutInFlight = useRef(false);
+  const checkoutIdempotencyKey = useRef<string | null>(null);
   const { getCurrentPosition, loading: locating } = useLocation();
 
   const transferInfo = useMemo(() => resolveTransferInfo(cartRestaurant), [cartRestaurant]);
@@ -124,26 +132,26 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
   const handleGeocodeAddress = useCallback(async () => {
     if (!address.trim()) {
-      Alert.alert('Dirección', 'Escribe una dirección primero.');
+      appAlert('Dirección', 'Escribe una dirección primero.');
       return;
     }
     setGeocoding(true);
     try {
-      const { data } = await restaurantApi.geocode(address);
+      const { data } = await runWithRetry(() => restaurantApi.geocode(address));
       setDeliveryCoords({ latitude: data.latitude, longitude: data.longitude });
       setAddress(data.display_name);
       setCoverageOk(data.in_coverage);
       setAddressApproximate(!!data.approximate);
       if (data.approximate) {
-        Alert.alert(
+        appAlert(
           'Ubicación aproximada',
-          'Encontramos la calle o colonia, pero no el número exacto. Confirma que el punto en el mapa sea correcto, o usa «Usar mi ubicación».',
+          'Encontramos la calle o colonia, pero no el número exacto. Si hace falta, ajusta la dirección escrita.',
         );
       } else if (!data.in_coverage) {
-        Alert.alert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
+        appAlert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
       }
     } catch (err) {
-      Alert.alert('Geocodificación', getApiErrorMessage(err, 'No se encontró la dirección. Intenta con más detalle.'));
+      appAlert('Geocodificación', getApiErrorMessage(err, 'No se encontró la dirección. Intenta con más detalle.'));
     } finally {
       setGeocoding(false);
     }
@@ -156,30 +164,19 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       setDiscount(parseFloat(data.discount_amount));
       setCouponApplied(true);
       setCouponError(null);
-      Alert.alert('Cupón aplicado', data.description || data.code);
+      appAlert('Cupón aplicado', data.description || data.code);
     } catch (err) {
       setDiscount(0);
       setCouponApplied(false);
       setCouponError(getApiErrorMessage(err, 'Código inválido o no aplicable.'));
-      Alert.alert('Cupón', getApiErrorMessage(err, 'Código inválido o no aplicable.'));
+      appAlert('Cupón', getApiErrorMessage(err, 'Código inválido o no aplicable.'));
     }
   }, [couponCode, total]);
-
-  const handlePinChange = useCallback(async (coord: { latitude: number; longitude: number }) => {
-    setDeliveryCoords(coord);
-    setAddressApproximate(false);
-    try {
-      const { data } = await restaurantApi.checkCoverage(coord.latitude, coord.longitude);
-      setCoverageOk(data.in_coverage);
-    } catch {
-      setCoverageOk(null);
-    }
-  }, []);
 
   const handleUseMyLocation = useCallback(async () => {
     const coords = await getCurrentPosition();
     if (!coords) {
-      Alert.alert('Ubicación', 'Activa el permiso de ubicación para marcar el punto de entrega.');
+      appAlert('Ubicación', 'Activa el permiso de ubicación para marcar el punto de entrega.');
       return;
     }
     setDeliveryCoords(coords);
@@ -187,51 +184,102 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     if (!address.trim()) {
       setAddress('Mi ubicación actual (Zinapécuaro)');
     }
+
+    const localOk = isInCoverage(coords.latitude, coords.longitude);
+    setCoverageOk(localOk);
+
+    if (!localOk) {
+      appAlert(
+        'GPS fuera de zona',
+        'Tu ubicación no está en Zinapécuaro. Escribe tu calle y usa «Buscar dirección».',
+      );
+      return;
+    }
+
     try {
       const { data } = await restaurantApi.checkCoverage(coords.latitude, coords.longitude);
       setCoverageOk(data.in_coverage);
-      if (!data.in_coverage) {
-        Alert.alert(
-          'GPS fuera de zona',
-          'Tu ubicación actual no está en Zinapécuaro. Escribe tu calle y usa «Buscar dirección en mapa».',
-        );
-      }
-    } catch (err) {
-      setCoverageOk(null);
-      Alert.alert('Cobertura', getApiErrorMessage(err, 'No se pudo verificar la zona de entrega.'));
+    } catch {
+      // Mantener verificación local; no bloquear si Railway tarda en despertar
     }
   }, [address, getCurrentPosition]);
 
+  const handlePinChange = useCallback((coord: { latitude: number; longitude: number }) => {
+    setDeliveryCoords(coord);
+    setAddressApproximate(false);
+    setCoverageOk(isInCoverage(coord.latitude, coord.longitude));
+  }, []);
+
+  useEffect(() => {
+    if (!appConfig.online_payments_enabled && paymentMethod === 'online') {
+      setPaymentMethod('cash');
+    }
+  }, [appConfig.online_payments_enabled, paymentMethod]);
+
+  const offerSaveAddress = useCallback(
+    (savedAddress: string) => {
+      if (user?.role !== 'customer') return;
+      const trimmed = savedAddress.trim();
+      if (!trimmed || trimmed === (user.address ?? '').trim()) return;
+      appAlert(
+        '¿Guardar dirección?',
+        'Usar esta dirección como tu dirección habitual para próximos pedidos.',
+        [
+          { text: 'Ahora no', style: 'cancel' },
+          {
+            text: 'Guardar',
+            onPress: async () => {
+              try {
+                const fd = new FormData();
+                fd.append('address', trimmed);
+                await authApi.updateMeForm(fd);
+                await refreshUser();
+              } catch {
+                // opcional; no bloquear flujo
+              }
+            },
+          },
+        ],
+      );
+    },
+    [user?.role, user?.address, refreshUser],
+  );
+
   const handleCheckout = useCallback(async () => {
+    if (checkoutInFlight.current || loading) return;
     if (!restaurantId || items.length === 0) {
-      Alert.alert('Carrito vacío');
+      appAlert('Carrito vacío');
       return;
     }
     if (!address.trim()) {
-      Alert.alert('Error', 'Ingresa la dirección de entrega');
+      appAlert('Error', 'Ingresa la dirección de entrega');
       return;
     }
     if (coverageOk === false) {
-      Alert.alert('Cobertura', 'La dirección está fuera de la zona de entrega.');
+      appAlert('Cobertura', 'La dirección está fuera de la zona de entrega.');
       return;
     }
     if (!deliveryCoords) {
-      Alert.alert(
+      appAlert(
         'Ubicación',
-        'Marca tu punto de entrega en el mapa, con «Buscar dirección» o «Usar mi ubicación».',
+        'Usa «Buscar dirección» o «Usar mi ubicación GPS» antes de confirmar.',
       );
       return;
     }
     if (coverageOk !== true) {
-      Alert.alert('Cobertura', 'Confirma tu dirección en el mapa antes de pedir.');
+      appAlert('Cobertura', 'Confirma tu dirección con «Buscar dirección» antes de pedir.');
       return;
     }
     if (couponValidating) {
-      Alert.alert('Cupón', 'Espera a que se actualice el descuento.');
+      appAlert('Cupón', 'Espera a que se actualice el descuento.');
       return;
     }
 
+    checkoutInFlight.current = true;
     setLoading(true);
+    if (!checkoutIdempotencyKey.current) {
+      checkoutIdempotencyKey.current = createIdempotencyKey();
+    }
     try {
       const { data } = await orderApi.create({
         restaurant_id: restaurantId,
@@ -245,24 +293,31 @@ export default function CartScreen({ navigation }: CartScreenProps) {
           product_id: i.product.id,
           quantity: i.quantity,
         })),
-      });
+      }, { idempotencyKey: checkoutIdempotencyKey.current });
       if (paymentMethod === 'online') {
         const payRes = await orderApi.initiatePayment(data.id);
+        clearCart();
+        checkoutIdempotencyKey.current = null;
         if (payRes.data.payment_url) {
-          clearCart();
           await Linking.openURL(payRes.data.payment_url);
-          navigation.navigate('OrderDetail', { orderId: data.id });
-          return;
+        } else if (payRes.data.message) {
+          appAlert(
+            'Pedido creado — pago pendiente',
+            `${payRes.data.message}\n\nPuedes pagar desde el detalle del pedido.`,
+          );
         }
-        if (payRes.data.message) {
-          Alert.alert('Pago en línea', payRes.data.message);
-        }
+        offerSaveAddress(address);
+        navigation.navigate('OrderDetail', { orderId: data.id });
+        return;
       }
       clearCart();
+      checkoutIdempotencyKey.current = null;
+      offerSaveAddress(address);
       navigation.navigate('OrderDetail', { orderId: data.id });
     } catch (err) {
-      Alert.alert('No se pudo crear el pedido', getApiErrorMessage(err, 'Verifica la dirección e intenta de nuevo.'));
+      appAlert('No se pudo crear el pedido', getApiErrorMessage(err, 'Verifica la dirección e intenta de nuevo.'));
     } finally {
+      checkoutInFlight.current = false;
       setLoading(false);
     }
   }, [
@@ -276,8 +331,10 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     paymentMethod,
     couponApplied,
     couponCode,
+    loading,
     clearCart,
     navigation,
+    offerSaveAddress,
   ]);
 
   const handleDecrease = useCallback(
@@ -294,6 +351,16 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     () => Math.max(total + DELIVERY_FEE - discount, 0),
     [total, discount],
   );
+
+  const routePreview = useMemo(() => {
+    const from = toCoordinate(cartRestaurant?.latitude, cartRestaurant?.longitude);
+    if (!from || !deliveryCoords) return null;
+    return {
+      from,
+      to: deliveryCoords,
+      fromTitle: cartRestaurant?.name,
+    };
+  }, [cartRestaurant, deliveryCoords]);
 
   if (items.length === 0) {
     return (
@@ -340,6 +407,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             couponError={couponError}
             discount={discount}
             deliveryCoords={deliveryCoords}
+            routePreview={routePreview}
             coverageOk={coverageOk}
             addressApproximate={addressApproximate}
             locating={locating}
@@ -350,6 +418,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             grandTotal={grandTotal}
             transferInfo={transferInfo}
             transferFromRestaurant={transferFromRestaurant}
+            onlinePaymentsEnabled={appConfig.online_payments_enabled}
             onAddressChange={handleAddressChange}
             onNotesChange={setNotes}
             onPaymentMethodChange={setPaymentMethod}

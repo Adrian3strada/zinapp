@@ -6,10 +6,14 @@ import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerActiveDeliveriesProvider, useCustomerActiveDeliveries } from '../context/CustomerActiveDeliveriesContext';
+import AppErrorBoundary from '../components/AppErrorBoundary';
 import { useCart } from '../context/CartContext';
+import CartScreen from '../screens/customer/CartScreen';
+import MenuScreen from '../screens/customer/MenuScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import type {
   CartScreenProps,
   CustomerStackParamList,
@@ -22,8 +26,6 @@ import type {
   ShipmentsScreenProps,
 } from './types';
 
-const CartScreen = React.lazy(() => import('../screens/customer/CartScreen'));
-const MenuScreen = React.lazy(() => import('../screens/customer/MenuScreen'));
 const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScreen'));
 const OffersScreen = React.lazy(() => import('../screens/customer/OffersScreen'));
 const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
@@ -43,11 +45,11 @@ function TabFallback() {
   );
 }
 
-function LazyCartScreen(props: CartScreenProps) {
+function CartScreenWithBoundary(props: CartScreenProps) {
   return (
-    <Suspense fallback={<TabFallback />}>
+    <AppErrorBoundary>
       <CartScreen {...props} />
-    </Suspense>
+    </AppErrorBoundary>
   );
 }
 
@@ -67,11 +69,11 @@ function LazyProfileScreen() {
   );
 }
 
-function LazyMenuScreen(props: MenuScreenProps) {
+function MenuScreenWithBoundary(props: MenuScreenProps) {
   return (
-    <Suspense fallback={<TabFallback />}>
+    <AppErrorBoundary>
       <MenuScreen {...props} />
-    </Suspense>
+    </AppErrorBoundary>
   );
 }
 
@@ -162,10 +164,10 @@ function CustomerTabs() {
       />
       <Tab.Screen
         name="Carrito"
-        component={LazyCartScreen}
+        component={CartScreenWithBoundary}
         options={{
           title: 'Mi carrito',
-          tabBarBadge: itemCount > 0 ? itemCount : undefined,
+          tabBarBadge: itemCount > 0 ? String(itemCount) : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart" size={size} color={color} />
           ),
@@ -197,15 +199,7 @@ function LazyShipmentDetailScreen(props: import('./types').ShipmentDetailScreenP
 export default function CustomerNavigator() {
   return (
     <CustomerActiveDeliveriesProvider>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: { backgroundColor: colors.surface },
-          headerTintColor: colors.primary,
-          headerTitleStyle: { fontWeight: '700', color: colors.text },
-          headerShadowVisible: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
+      <Stack.Navigator screenOptions={stackScreenDefaults}>
         <Stack.Screen
           name="Main"
           component={CustomerTabs}
@@ -214,32 +208,32 @@ export default function CustomerNavigator() {
         <Stack.Screen
           name="Comida"
           component={LazyRestaurantsScreen}
-          options={{ title: 'Comida' }}
+          options={{ ...modalPresentationOptions, title: 'Comida' }}
         />
         <Stack.Screen
           name="Ofertas"
           component={LazyOffersScreen}
-          options={{ title: 'Ofertas' }}
+          options={{ ...modalPresentationOptions, title: 'Ofertas' }}
         />
         <Stack.Screen
           name="Envios"
           component={LazyShipmentsScreen}
-          options={{ title: 'Envíos' }}
+          options={{ ...modalPresentationOptions, title: 'Envíos' }}
         />
         <Stack.Screen
           name="Menu"
-          component={LazyMenuScreen}
-          options={{ title: 'Menú' }}
+          component={MenuScreenWithBoundary}
+          options={{ ...modalPresentationOptions, title: 'Menú' }}
         />
         <Stack.Screen
           name="OrderDetail"
           component={LazyOrderDetailScreen}
-          options={{ title: 'Seguimiento' }}
+          options={{ ...modalPresentationOptions, title: 'Seguimiento' }}
         />
         <Stack.Screen
           name="ShipmentDetail"
           component={LazyShipmentDetailScreen}
-          options={{ title: 'Seguimiento de envío' }}
+          options={{ ...modalPresentationOptions, title: 'Seguimiento de envío' }}
         />
       </Stack.Navigator>
     </CustomerActiveDeliveriesProvider>

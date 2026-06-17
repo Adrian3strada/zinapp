@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 
 import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
 import type { MapCoordinate } from '../utils/maps';
-import { ZINAPECUARO_REGION } from '../utils/maps';
+import { isValidCoordinate, ZINAPECUARO_REGION } from '../utils/maps';
+import { shouldRenderNativeMap, shouldUseOsmWebMap } from '../utils/mapProvider';
 import { mapHeight } from '../utils/responsive';
+import MapErrorBoundary from './MapErrorBoundary';
 import MapPin, { MAP_PIN_ANCHOR, MapPinType } from './MapPin';
+import OsmWebMap from './OsmWebMap';
 
 interface Props {
   title: string;
@@ -28,11 +31,12 @@ export default function AddressPinPicker({
 }: Props) {
   const mapRef = useRef<MapView>(null);
   const mapHeightValue = height ?? mapHeight(0.24);
+  const safeCoordinate = isValidCoordinate(coordinate) ? coordinate : null;
 
   const initialRegion: Region = useMemo(() => {
-    if (coordinate) {
+    if (safeCoordinate) {
       return {
-        ...coordinate,
+        ...safeCoordinate,
         latitudeDelta: 0.012,
         longitudeDelta: 0.012,
       };
@@ -41,54 +45,82 @@ export default function AddressPinPicker({
   }, []);
 
   useEffect(() => {
-    if (!coordinate || !mapRef.current) return;
+    if (!safeCoordinate || !mapRef.current) return;
     mapRef.current.animateToRegion(
       {
-        ...coordinate,
+        ...safeCoordinate,
         latitudeDelta: 0.012,
         longitudeDelta: 0.012,
       },
       350,
     );
-  }, [coordinate?.latitude, coordinate?.longitude]);
+  }, [safeCoordinate?.latitude, safeCoordinate?.longitude]);
 
-  const handlePress = (event: { nativeEvent: { coordinate: MapCoordinate } }) => {
-    onCoordinateChange(event.nativeEvent.coordinate);
+  const applyCoordinate = (coord: MapCoordinate) => {
+    if (isValidCoordinate(coord)) {
+      onCoordinateChange(coord);
+    }
   };
 
-  const handleDragEnd = (event: { nativeEvent: { coordinate: MapCoordinate } }) => {
-    onCoordinateChange(event.nativeEvent.coordinate);
-  };
+  if (!shouldRenderNativeMap()) {
+    if (shouldUseOsmWebMap()) {
+      return (
+        <View style={styles.wrap}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.hint}>{hint}</Text>
+          <OsmWebMap
+            height={mapHeightValue}
+            pinCoordinate={safeCoordinate}
+            interactive
+            onCoordinateChange={applyCoordinate}
+          />
+        </View>
+      );
+    }
+    return (
+      <View style={styles.wrap}>
+        <Text style={styles.title}>{title}</Text>
+        <View style={[styles.mapBox, styles.fallback, { height: mapHeightValue }, cardShadow]}>
+          <Text style={styles.fallbackText}>
+            Mapa no disponible. Escribe tu dirección con colonia y calle.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.hint}>{hint}</Text>
-      <View style={[styles.mapBox, { height: mapHeightValue }, cardShadow]}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={initialRegion}
-          onPress={handlePress}
-          scrollEnabled
-          zoomEnabled
-          rotateEnabled={false}
-          pitchEnabled={false}
-        >
-          {coordinate && (
-            <Marker
-              coordinate={coordinate}
-              draggable
-              onDragEnd={handleDragEnd}
-              anchor={MAP_PIN_ANCHOR}
-              tracksViewChanges={false}
-            >
-              <MapPin type={pinType} />
-            </Marker>
-          )}
-        </MapView>
-      </View>
+      <MapErrorBoundary height={mapHeightValue}>
+        <View style={[styles.mapBox, { height: mapHeightValue }, cardShadow]}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={initialRegion}
+            onPress={(event) => applyCoordinate(event.nativeEvent.coordinate)}
+            scrollEnabled
+            zoomEnabled
+            rotateEnabled={false}
+            pitchEnabled={false}
+            liteMode={Platform.OS === 'android'}
+          >
+            {safeCoordinate && (
+              <Marker
+                coordinate={safeCoordinate}
+                draggable
+                onDragEnd={(event) => applyCoordinate(event.nativeEvent.coordinate)}
+                anchor={MAP_PIN_ANCHOR}
+                tracksViewChanges={false}
+              >
+                <MapPin type={pinType} />
+              </Marker>
+            )}
+          </MapView>
+        </View>
+      </MapErrorBoundary>
     </View>
   );
 }
@@ -103,4 +135,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   map: { flex: 1 },
+  fallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: colors.primaryLight,
+  },
+  fallbackText: { color: colors.textSecondary, textAlign: 'center', fontSize: 13, lineHeight: 19 },
 });

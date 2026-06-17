@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 
 import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
@@ -13,6 +14,7 @@ import OrderStatusBadge from '../../components/OrderStatusBadge';
 import OrderTimeline from '../../components/OrderTimeline';
 import ReviewForm from '../../components/ReviewForm';
 import ScreenContainer from '../../components/ScreenContainer';
+import OnlinePaymentBanner from '../../components/OnlinePaymentBanner';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { resolveTransferInfo } from '../../config/payments';
 import { useAuth } from '../../context/AuthContext';
@@ -58,6 +60,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const load = useCallback(async (isMounted: () => boolean) => {
     try {
@@ -97,7 +100,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
 
   const handleCancel = useCallback(() => {
     if (!order) return;
-    Alert.alert(
+    appAlert(
       'Cancelar pedido',
       '¿Seguro que quieres cancelar? Solo puedes hacerlo antes de que esté listo para recoger.',
       [
@@ -106,64 +109,98 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
           text: 'Sí, cancelar',
           style: 'destructive',
           onPress: async () => {
+            if (actionBusy) return;
+            setActionBusy(true);
             try {
               const { data } = await orderApi.cancel(order.id);
               setOrder(data);
             } catch (err) {
-              Alert.alert('Error', getApiErrorMessage(err, 'No se pudo cancelar el pedido.'));
+              appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar el pedido.'));
+            } finally {
+              setActionBusy(false);
             }
           },
         },
       ],
     );
-  }, [order]);
+  }, [order, actionBusy]);
 
   const reloadOrder = useCallback(() => {
     load(() => true);
   }, [load]);
 
   const handleRestaurantAccept = useCallback(async () => {
-    if (!order) return;
+    if (!order || actionBusy) return;
+    setActionBusy(true);
     try {
       await orderApi.accept(order.id);
       reloadOrder();
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
+    } finally {
+      setActionBusy(false);
     }
-  }, [order, reloadOrder]);
+  }, [order, actionBusy, reloadOrder]);
 
   const handleRestaurantReject = useCallback(() => {
-    if (!order) return;
-    Alert.alert('Rechazar pedido', '¿Seguro que quieres rechazar este pedido?', [
+    if (!order || actionBusy) return;
+    appAlert('Rechazar pedido', '¿Seguro que quieres rechazar este pedido?', [
       { text: 'No', style: 'cancel' },
       {
         text: 'Rechazar',
         style: 'destructive',
         onPress: async () => {
+          setActionBusy(true);
           try {
             await orderApi.reject(order.id);
             reloadOrder();
           } catch (err) {
-            Alert.alert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+            appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+          } finally {
+            setActionBusy(false);
           }
         },
       },
     ]);
-  }, [order, reloadOrder]);
+  }, [order, actionBusy, reloadOrder]);
 
   const handleRestaurantAdvance = useCallback(async () => {
-    if (!order) return;
+    if (!order || actionBusy) return;
     const next = RESTAURANT_NEXT_STATUS[order.status];
     if (!next) return;
+    setActionBusy(true);
     try {
       await orderApi.updateStatus(order.id, next.status);
       reloadOrder();
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo actualizar'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar'));
+    } finally {
+      setActionBusy(false);
     }
-  }, [order, reloadOrder]);
+  }, [order, actionBusy, reloadOrder]);
+
+  const handlePayOnline = useCallback(async (): Promise<string | null> => {
+    if (!order || actionBusy) return null;
+    setActionBusy(true);
+    try {
+      const { data } = await orderApi.initiatePayment(order.id);
+      if (data.payment_url) return data.payment_url;
+      if (data.message) appAlert('Pago en línea', data.message);
+      return null;
+    } catch (err) {
+      appAlert('Pago', getApiErrorMessage(err, 'No se pudo iniciar el pago.'));
+      return null;
+    } finally {
+      setActionBusy(false);
+    }
+  }, [order, actionBusy]);
 
   if (!order && !loading && !error) return null;
+
+  const awaitingOnlinePayment =
+    order?.payment_method === 'online'
+    && order.payment_status !== 'paid'
+    && order.status !== 'cancelled';
 
   const visual = getRestaurantVisual(order?.restaurant_detail?.name ?? '');
 
@@ -195,7 +232,20 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             {STATUS_HINTS[order.status] && (
               <Text style={styles.heroEta}>{STATUS_HINTS[order.status]}</Text>
             )}
+            {user?.role === 'restaurant' && awaitingOnlinePayment && order.status === 'pending' && (
+              <Text style={styles.heroPaymentWarn}>
+                Esperando pago en línea del cliente antes de confirmar
+              </Text>
+            )}
           </LinearGradient>
+
+          {user?.role === 'customer' && order.payment_method === 'online' && (
+            <OnlinePaymentBanner
+              order={order}
+              onRefresh={reloadOrder}
+              onPay={handlePayOnline}
+            />
+          )}
 
           {user?.role === 'customer' && isLiveTracking && (
             <View style={styles.inlineBanner}>
@@ -305,14 +355,15 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               <Text style={styles.section}>Gestionar pedido</Text>
               {order.status === 'pending' && (
                 <View style={styles.restaurantActions}>
-                  <Button title="Aceptar pedido" onPress={handleRestaurantAccept} style={styles.restaurantBtn} />
-                  <Button title="Rechazar" variant="danger" onPress={handleRestaurantReject} style={styles.restaurantBtn} />
+                  <Button title="Aceptar pedido" onPress={handleRestaurantAccept} loading={actionBusy} style={styles.restaurantBtn} />
+                  <Button title="Rechazar" variant="danger" onPress={handleRestaurantReject} loading={actionBusy} style={styles.restaurantBtn} />
                 </View>
               )}
               {RESTAURANT_NEXT_STATUS[order.status] && (
                 <Button
                   title={RESTAURANT_NEXT_STATUS[order.status].label}
                   onPress={handleRestaurantAdvance}
+                  loading={actionBusy}
                 />
               )}
             </View>
@@ -320,7 +371,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
 
           {user?.role === 'customer' && CUSTOMER_CANCELLABLE.includes(order.status) && (
             <View style={styles.card}>
-              <Button title="Cancelar pedido" variant="danger" onPress={handleCancel} />
+              <Button title="Cancelar pedido" variant="danger" onPress={handleCancel} loading={actionBusy} />
             </View>
           )}
 
@@ -381,6 +432,12 @@ const styles = StyleSheet.create({
   heroTitle: { fontSize: 26, fontWeight: '800', color: '#FFF' },
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   heroEta: { fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
+  heroPaymentWarn: {
+    fontSize: 12,
+    color: '#FFE082',
+    fontWeight: '600',
+    marginTop: 4,
+  },
   inlineBanner: { marginHorizontal: 16, marginTop: 12 },
   card: {
     backgroundColor: colors.surface,

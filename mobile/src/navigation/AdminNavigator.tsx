@@ -12,6 +12,7 @@ import RestaurantsScreen from '../screens/customer/RestaurantsScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import { colors } from '../theme/colors';
+import { modalPresentationOptions } from './modalOptions';
 import type { AdminStackParamList, AdminTabParamList } from './types';
 
 const MenuScreen = React.lazy(() => import('../screens/customer/MenuScreen'));
@@ -91,12 +92,12 @@ export default function AdminNavigator() {
       <Stack.Screen
         name="Menu"
         component={LazyMenuScreen}
-        options={{ headerShown: true, title: 'Menú', headerTintColor: colors.primary }}
+        options={{ ...modalPresentationOptions, headerShown: true, title: 'Menú' }}
       />
       <Stack.Screen
         name="OrderDetail"
         component={OrderDetailScreen}
-        options={{ headerShown: true, title: 'Pedido', headerTintColor: colors.primary }}
+        options={{ ...modalPresentationOptions, headerShown: true, title: 'Pedido' }}
       />
     </Stack.Navigator>
   );

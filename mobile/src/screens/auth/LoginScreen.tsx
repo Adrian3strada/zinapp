@@ -2,7 +2,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BrandLogo from '../../components/BrandLogo';
@@ -19,7 +19,7 @@ import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
 import { useAuth } from '../../context/AuthContext';
 import type { LoginScreenProps } from '../../navigation/types';
-import { API_URL, IS_PRODUCTION_APP } from '../../config/api';
+import { API_URL } from '../../config/api';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { colors } from '../../theme/colors';
 import { contentWidth } from '../../utils/responsive';
@@ -35,7 +35,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
   const handleLogin = async () => {
     if (!username.trim() || !password) {
-      Alert.alert('Datos incompletos', 'Ingresa usuario y contraseña.');
+      appAlert('Datos incompletos', 'Ingresa usuario y contraseña.');
       return;
     }
     setLoading(true);
@@ -44,17 +44,19 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number } };
       if (!axiosErr.response) {
-        Alert.alert(
+        appAlert(
           'Sin conexión al servidor',
           getApiErrorMessage(err, `No se pudo llegar a:\n${API_URL}`),
         );
       } else if (axiosErr.response.status === 401) {
-        Alert.alert(
+        appAlert(
           'No se pudo entrar',
-          'Usuario o contraseña incorrectos.\n\nPrueba demo:\nusuario: cliente1\ncontraseña: test1234',
+          __DEV__
+            ? 'Usuario o contraseña incorrectos.\n\nPrueba demo:\nusuario: cliente1\ncontraseña: test1234'
+            : 'Usuario o contraseña incorrectos. Verifica tus datos o usa «Recuperar contraseña».',
         );
       } else {
-        Alert.alert('Error', getApiErrorMessage(err, 'No se pudo iniciar sesión'));
+        appAlert('Error', getApiErrorMessage(err, 'No se pudo iniciar sesión'));
       }
     } finally {
       setLoading(false);
@@ -138,8 +140,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <Text style={styles.linkBold}>Regístrate</Text>
           </Pressable>
 
-          <Text style={styles.apiHint}>Servidor: {API_URL}</Text>
-          {IS_PRODUCTION_APP && (
+          {__DEV__ && <Text style={styles.apiHint}>Servidor: {API_URL}</Text>}
+          {__DEV__ && (
             <Text style={styles.demoHint}>
               Demo: cliente1 / test1234 · repartidor1 · rest_pizzas
             </Text>

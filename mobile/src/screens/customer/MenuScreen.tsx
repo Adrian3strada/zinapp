@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import FloatingCartBar from '../../components/FloatingCartBar';
@@ -39,6 +40,8 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const insets = useSafeAreaInsets();
   const isCustomer = user?.role === 'customer';
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [favorited, setFavorited] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
 
   const visual = getRestaurantVisual(restaurant?.name ?? restaurantName);
   const imageUri = resolveMediaUrl(restaurant?.image_url ?? restaurant?.image);
@@ -46,9 +49,26 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   useEffect(() => {
     restaurantApi
       .get(restaurantId)
-      .then(({ data }) => setRestaurant(data))
+      .then(({ data }) => {
+        setRestaurant(data);
+        setFavorited(data.is_favorited === true);
+      })
       .catch(() => {});
   }, [restaurantId]);
+
+  const handleToggleFavorite = useCallback(async () => {
+    if (!isCustomer || togglingFavorite) return;
+    setTogglingFavorite(true);
+    try {
+      const { data } = await restaurantApi.toggleFavorite(restaurantId);
+      setFavorited(data.is_favorited);
+      setRestaurant((current) => (current ? { ...current, is_favorited: data.is_favorited } : current));
+    } catch {
+      appAlert('Error', 'No se pudo guardar la preferencia de avisos.');
+    } finally {
+      setTogglingFavorite(false);
+    }
+  }, [isCustomer, restaurantId, togglingFavorite]);
 
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await productApi.listByRestaurant(restaurantId, page);
@@ -69,7 +89,13 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     navigation.setOptions({ title: restaurant?.name ?? restaurantName });
   }, [navigation, restaurant?.name, restaurantName]);
 
-  const handleAdd = useCallback((product: Product) => addItem(product), [addItem]);
+  const handleAdd = useCallback((product: Product) => {
+    try {
+      addItem(product);
+    } catch {
+      // Evita cierre nativo si algo falla al agregar
+    }
+  }, [addItem]);
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => <MenuProductRow product={item} onAdd={handleAdd} />,
@@ -103,10 +129,26 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
               <Text style={styles.closedBannerText}>Cerrado — no recibe pedidos ahora</Text>
             </View>
           )}
+          {isCustomer && (
+            <Pressable
+              style={[styles.notifyRow, favorited && styles.notifyRowActive]}
+              onPress={handleToggleFavorite}
+              disabled={togglingFavorite}
+            >
+              <Ionicons
+                name={favorited ? 'notifications' : 'notifications-outline'}
+                size={16}
+                color={favorited ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.notifyText, favorited && styles.notifyTextActive]}>
+                {favorited ? 'Te avisamos cuando abra' : 'Avísame cuando abra'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </LinearGradient>
     ),
-    [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta],
+    [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta, isCustomer, favorited, togglingFavorite, handleToggleFavorite],
   );
 
   const listFooter = useMemo(
@@ -169,5 +211,24 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   closedBannerText: { fontSize: 12, fontWeight: '700', color: colors.error },
+  notifyRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  notifyRowActive: {
+    borderColor: colors.primary + '55',
+    backgroundColor: colors.primary + '12',
+  },
+  notifyText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  notifyTextActive: { color: colors.primary },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: 40 },
 });

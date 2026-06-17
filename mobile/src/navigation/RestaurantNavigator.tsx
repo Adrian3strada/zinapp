@@ -11,6 +11,7 @@ import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import type { RestaurantStackParamList, RestaurantTabParamList } from './types';
 
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
@@ -93,15 +94,7 @@ function RestaurantTabs() {
 
 export default function RestaurantNavigator() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.primary,
-        headerTitleStyle: { fontWeight: '700', color: colors.text },
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
+    <Stack.Navigator screenOptions={stackScreenDefaults}>
       <Stack.Screen
         name="Main"
         component={RestaurantTabs}
@@ -110,7 +103,7 @@ export default function RestaurantNavigator() {
       <Stack.Screen
         name="OrderDetail"
         component={OrderDetailScreen}
-        options={{ title: 'Detalle' }}
+        options={{ ...modalPresentationOptions, title: 'Detalle' }}
       />
     </Stack.Navigator>
   );

@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../utils/appAlert';
 
 import type { TransferInfo } from '../config/payments';
 import { TRANSFER_INFO } from '../config/payments';
@@ -36,13 +37,13 @@ export default function TransferPaymentCard({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      Alert.alert('CLABE', transferInfo.clabe);
+      appAlert('CLABE', transferInfo.clabe);
     }
   };
 
   const handleWhatsApp = async () => {
     if (!transferInfo.whatsapp?.trim()) {
-      Alert.alert('WhatsApp', 'El local no indicó un WhatsApp para comprobantes.');
+      appAlert('WhatsApp', 'El local no indicó un WhatsApp para comprobantes.');
       return;
     }
     try {
@@ -51,7 +52,7 @@ export default function TransferPaymentCard({
         transferReceiptMessage(orderId, totalFormatted, kind),
       );
     } catch {
-      Alert.alert('WhatsApp', 'No se pudo abrir WhatsApp. Instálalo o envía el comprobante manualmente.');
+      appAlert('WhatsApp', 'No se pudo abrir WhatsApp. Instálalo o envía el comprobante manualmente.');
     }
   };
 

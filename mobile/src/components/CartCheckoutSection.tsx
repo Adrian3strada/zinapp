@@ -1,13 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DELIVERY_FEE } from '../config/delivery';
 import type { TransferInfo } from '../config/payments';
+import DeliveryLocationStatus from './DeliveryLocationStatus';
 import DeliveryPinPicker from './DeliveryPinPicker';
 import CoverageZoneHint from './CoverageZoneHint';
 import FormField from './FormField';
+import RoutePreviewMap from './RoutePreviewMap';
 import { colors } from '../theme/colors';
 import { HIT_SLOP } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
@@ -22,6 +23,11 @@ interface Props {
   couponError: string | null;
   discount: number;
   deliveryCoords: { latitude: number; longitude: number } | null;
+  routePreview?: {
+    from: { latitude: number; longitude: number };
+    to: { latitude: number; longitude: number };
+    fromTitle?: string;
+  } | null;
   coverageOk: boolean | null;
   addressApproximate?: boolean;
   locating: boolean;
@@ -34,6 +40,7 @@ interface Props {
   transferFromRestaurant?: boolean;
   onAddressChange: (text: string) => void;
   onNotesChange: (text: string) => void;
+  onlinePaymentsEnabled?: boolean;
   onPaymentMethodChange: (method: 'cash' | 'transfer' | 'online') => void;
   onCouponChange: (text: string) => void;
   onApplyCoupon: () => void;
@@ -52,6 +59,7 @@ function CartCheckoutSection({
   couponError,
   discount,
   deliveryCoords,
+  routePreview,
   coverageOk,
   addressApproximate,
   locating,
@@ -62,6 +70,7 @@ function CartCheckoutSection({
   grandTotal,
   transferInfo,
   transferFromRestaurant = false,
+  onlinePaymentsEnabled = false,
   onAddressChange,
   onNotesChange,
   onPaymentMethodChange,
@@ -93,27 +102,34 @@ function CartCheckoutSection({
         <Pressable style={styles.locationBtn} onPress={onUseLocation} hitSlop={HIT_SLOP}>
           <Ionicons name="navigate" size={18} color={colors.primary} />
           <Text style={styles.locationBtnText}>
-            {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación en el mapa'}
+            {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación GPS'}
           </Text>
         </Pressable>
         <Pressable style={styles.locationBtn} onPress={onGeocode} hitSlop={HIT_SLOP}>
           <Ionicons name="search" size={18} color={colors.primary} />
           <Text style={styles.locationBtnText}>
-            {geocoding ? 'Buscando dirección...' : 'Buscar dirección en mapa'}
+            {geocoding ? 'Buscando dirección...' : 'Buscar dirección'}
           </Text>
         </Pressable>
         <DeliveryPinPicker coordinate={deliveryCoords} onCoordinateChange={onPinChange} />
-        {deliveryCoords && (
-          <Text style={[styles.coordsHint, coverageOk === false && styles.outOfCoverage]}>
-            {coverageOk === false
-              ? '⚠️ Fuera de zona — busca tu calle en el mapa'
-              : addressApproximate
-                ? '📍 Ubicación aproximada en la calle — confirma el punto'
-                : coverageOk === true
-                  ? '📍 Punto de entrega en Zinapécuaro'
-                  : '📍 Ubicación marcada (confirma con «Buscar dirección»)'}
-          </Text>
+        {routePreview && (
+          <RoutePreviewMap
+            from={routePreview.from}
+            to={routePreview.to}
+            title="Ruta de entrega"
+            statsLabel="Ruta restaurante → entrega"
+            fromMarker={{
+              title: routePreview.fromTitle ?? 'Restaurante',
+              pinType: 'restaurant',
+            }}
+            toMarker={{ title: 'Entrega', pinType: 'delivery' }}
+          />
         )}
+        <DeliveryLocationStatus
+          coordinate={deliveryCoords}
+          coverageOk={coverageOk}
+          addressApproximate={addressApproximate}
+        />
         <FormField
           label="Notas para el repartidor"
           value={notes}
@@ -158,7 +174,9 @@ function CartCheckoutSection({
           {([
             { key: 'cash', label: 'Efectivo', icon: 'cash-outline' },
             { key: 'transfer', label: 'Transferencia', icon: 'card-outline' },
-            { key: 'online', label: 'En línea', icon: 'phone-portrait-outline' },
+            ...(onlinePaymentsEnabled
+              ? [{ key: 'online' as const, label: 'En línea', icon: 'phone-portrait-outline' as const }]
+              : []),
           ] as const).map((opt) => (
             <Pressable
               key={opt.key}
@@ -194,7 +212,12 @@ function CartCheckoutSection({
             )}
           </View>
         )}
-        {paymentMethod === 'online' && (
+        {!onlinePaymentsEnabled && (
+          <Text style={styles.onlineHint}>
+            Pago en línea (Mercado Pago) estará disponible pronto. Usa efectivo o transferencia.
+          </Text>
+        )}
+        {paymentMethod === 'online' && onlinePaymentsEnabled && (
           <Text style={styles.onlineHint}>
             Pago en línea con Mercado Pago (tarjeta, OXXO, etc.).
           </Text>
@@ -234,18 +257,12 @@ function CartCheckoutSection({
           pressed && !loading && !couponValidating && styles.checkoutPressed,
         ]}
       >
-        <LinearGradient
-          pointerEvents="none"
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.checkoutBtn}
-        >
+        <View style={styles.checkoutBtn}>
           <Text style={styles.checkoutText}>
             {loading ? 'Procesando...' : couponValidating ? 'Actualizando cupón...' : 'Confirmar pedido'}
           </Text>
           <Text style={styles.checkoutTotal}>{formatCurrency(grandTotal)}</Text>
-        </LinearGradient>
+        </View>
       </Pressable>
     </View>
   );
@@ -327,6 +344,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 18,
     borderRadius: 16,
+    backgroundColor: colors.primary,
   },
   checkoutText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
   checkoutTotal: { color: '#FFF', fontSize: 17, fontWeight: '800' },

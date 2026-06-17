@@ -15,6 +15,7 @@ import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
+import { modalPresentationOptions } from './modalOptions';
 import type { DriverStackParamList, DriverTabParamList } from './types';
 
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
@@ -99,30 +100,27 @@ export default function DriverNavigator() {
         name="OrderDetail"
         component={OrderDetailScreen}
         options={{
+          ...modalPresentationOptions,
           headerShown: true,
           title: 'Entrega',
-          headerStyle: { backgroundColor: colors.surface },
-          headerTintColor: colors.primary,
         }}
       />
       <Stack.Screen
         name="ShipmentDetail"
         component={ShipmentDetailScreen}
         options={{
+          ...modalPresentationOptions,
           headerShown: true,
           title: 'Envío',
-          headerStyle: { backgroundColor: colors.surface },
-          headerTintColor: colors.primary,
         }}
       />
       <Stack.Screen
         name="DriverMap"
         component={DriverMapScreen}
         options={{
+          ...modalPresentationOptions,
           headerShown: true,
           title: 'Mapa de entrega',
-          headerStyle: { backgroundColor: colors.surface },
-          headerTintColor: colors.primary,
         }}
       />
     </Stack.Navigator>

@@ -1,6 +1,9 @@
-# Producción: PostgreSQL + API (+ Caddy HTTPS opcional)
-# Uso: docker compose -f docker-compose.prod.yml up -d
-# Requiere .env con SECRET_KEY, DB_PASSWORD, ALLOWED_HOSTS, etc.
+# Producción — PostgreSQL + API (+ Caddy HTTPS opcional)
+# Uso: copy .env.production.example .env  (rellena SECRET_KEY, DB_PASSWORD, CRON_SECRET)
+#      docker compose -f docker-compose.prod.yml up -d --build
+#      docker compose -f docker-compose.prod.yml --profile https up -d --build
+
+name: zinapp-prod
 
 services:
   db:
@@ -20,22 +23,41 @@ services:
 
   api:
     build: .
+    image: zinapp-api:prod
     env_file:
       - .env
     environment:
+      PORT: ${PORT:-8000}
       USE_SQLITE: "False"
       DEBUG: "False"
       DB_HOST: db
       DB_PORT: "5432"
-      SERVE_MEDIA: "True"
+      SERVE_MEDIA: ${SERVE_MEDIA:-True}
+      SEED_DATA: ${SEED_DATA:-false}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-3}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - media:/app/media
+    ports:
+      - "${API_PUBLISH_PORT:-8000}:${PORT:-8000}"
     expose:
-      - "8000"
+      - "${PORT:-8000}"
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   caddy:
     profiles: ["https"]
@@ -50,7 +72,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

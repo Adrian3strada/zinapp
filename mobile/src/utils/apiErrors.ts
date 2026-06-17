@@ -1,4 +1,4 @@
-import { API_URL, IS_PRODUCTION_APP } from '../config/api';
+import { IS_PRODUCTION_APP } from '../config/api';
 
 const FIELD_LABELS: Record<string, string> = {
   username: 'Usuario',
@@ -34,10 +34,22 @@ function friendlyMessage(field: string, raw: string): string {
 
 export function getApiErrorMessage(error: unknown, fallback = 'Ocurrió un error'): string {
   const err = error as {
-    response?: { data?: Record<string, unknown> | { detail?: string } };
+    response?: { status?: number; data?: Record<string, unknown> | { detail?: string } };
     message?: string;
     code?: string;
   };
+
+  const httpStatus = err.response?.status;
+  if (httpStatus === 409) {
+    const data = err.response?.data;
+    if (typeof data === 'object' && data && 'detail' in data && typeof data.detail === 'string') {
+      return data.detail;
+    }
+    return 'Tu solicitud se está procesando. Espera unos segundos.';
+  }
+  if (httpStatus === 502 || httpStatus === 503 || httpStatus === 504) {
+    return 'El servidor está despertando. Espera unos segundos e intenta de nuevo.';
+  }
 
   const data = err.response?.data;
   if (!data) {
@@ -49,10 +61,7 @@ export function getApiErrorMessage(error: unknown, fallback = 'Ocurrió un error
       err.code === 'ECONNABORTED'
     ) {
       if (IS_PRODUCTION_APP) {
-        return (
-          'Sin conexión al servidor. Comprueba que tienes internet e intenta de nuevo en unos segundos.\n\n' +
-          `API: ${API_URL}`
-        );
+        return 'El servidor tardó en responder (puede estar despertando). Espera unos segundos e intenta de nuevo.';
       }
       return (
         'Sin conexión al servidor. Verifica que el backend esté corriendo con:\n' +

@@ -2,7 +2,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -13,10 +12,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
 import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
@@ -34,7 +35,9 @@ import type { DeliveryProfile, Restaurant } from '../../types';
 import type { DriverTabParamList } from '../../navigation/types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
+import { restaurantHasTransferInfo } from '../../config/payments';
 import { appendImage, pickImageFromLibrary } from '../../utils/imagePicker';
+import { formatRestaurantHours } from '../../utils/restaurantMeta';
 
 const ROLE_LABELS: Record<string, string> = {
   customer: 'Cliente',
@@ -42,6 +45,21 @@ const ROLE_LABELS: Record<string, string> = {
   driver: 'Repartidor',
   admin: 'Administrador',
 };
+
+function fromApiTime(value?: string | null): string {
+  if (!value) return '';
+  const [hour, minute] = value.split(':');
+  return `${hour}:${minute}`;
+}
+
+function toApiTime(value: string): string | null {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+}
 
 export default function ProfileScreen() {
   const { user, refreshUser, logout } = useAuth();
@@ -80,10 +98,13 @@ export default function ProfileScreen() {
     bank_name: '',
     account_holder: '',
     clabe: '',
+    opening_time: '',
+    closing_time: '',
   });
   const [restaurantImageUri, setRestaurantImageUri] = useState<string | null>(null);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [togglingOrders, setTogglingOrders] = useState(false);
+  const [driverUpdating, setDriverUpdating] = useState(false);
   const [restaurantLoadError, setRestaurantLoadError] = useState<string | null>(null);
   const [restaurantCategory, setRestaurantCategory] = useState('general');
 
@@ -119,6 +140,8 @@ export default function ProfileScreen() {
           bank_name: data.bank_name ?? '',
           account_holder: data.account_holder ?? '',
           clabe: data.clabe ?? '',
+          opening_time: fromApiTime(data.opening_time),
+          closing_time: fromApiTime(data.closing_time),
         });
         setAcceptingOrders(data.accepting_orders !== false);
         setRestaurantCategory(data.category ?? 'general');
@@ -156,18 +179,16 @@ export default function ProfileScreen() {
   };
 
   const handleToggleAcceptingOrders = async (value: boolean) => {
-    if (!restaurant) return;
+    if (!restaurant || togglingOrders) return;
     setAcceptingOrders(value);
     setTogglingOrders(true);
     try {
-      const fd = new FormData();
-      fd.append('accepting_orders', value ? 'true' : 'false');
-      const { data } = await restaurantApi.update(restaurant.id, fd);
+      const { data } = await restaurantApi.patch(restaurant.id, { accepting_orders: value });
       setRestaurant(data);
       setAcceptingOrders(data.accepting_orders !== false);
     } catch (err) {
       setAcceptingOrders(!value);
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo actualizar el estado del local'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar el estado del local'));
     } finally {
       setTogglingOrders(false);
     }
@@ -186,9 +207,9 @@ export default function ProfileScreen() {
       await authApi.updateMeForm(fd);
       await refreshUser();
       setAvatarUri(null);
-      Alert.alert('Perfil actualizado');
+      appAlert('Perfil actualizado');
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo guardar el perfil'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el perfil'));
     } finally {
       setSaving(false);
     }
@@ -196,7 +217,7 @@ export default function ProfileScreen() {
 
   const handleSaveDriver = async () => {
     if (vehicleNeedsPlate(vehicleType) && !licensePlate.trim()) {
-      Alert.alert('Placas requeridas', 'Indica las placas de tu moto o auto.');
+      appAlert('Placas requeridas', 'Indica las placas de tu moto o auto.');
       return;
     }
     setSaving(true);
@@ -206,18 +227,33 @@ export default function ProfileScreen() {
         license_plate: licensePlate.trim(),
       });
       await loadRoleData();
-      Alert.alert('Datos de repartidor guardados');
+      appAlert('Datos de repartidor guardados');
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err));
+      appAlert('Error', getApiErrorMessage(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleDriverAvailability = async (value: boolean) => {
+    if (driverUpdating) return;
+    const previous = driverProfile?.is_available ?? false;
+    setDriverProfile((prev) => (prev ? { ...prev, is_available: value } : prev));
+    setDriverUpdating(true);
+    try {
+      await deliveryApi.setAvailability(value);
+    } catch (err) {
+      setDriverProfile((prev) => (prev ? { ...prev, is_available: previous } : prev));
+      appAlert('Disponibilidad', getApiErrorMessage(err, 'No se pudo actualizar tu estado.'));
+    } finally {
+      setDriverUpdating(false);
     }
   };
 
   const handleSaveRestaurant = async () => {
     if (!restaurant) return;
     if (!restaurantForm.name.trim() || !restaurantForm.address.trim()) {
-      Alert.alert('Completa nombre y dirección del negocio');
+      appAlert('Completa nombre y dirección del negocio');
       return;
     }
     setSaving(true);
@@ -233,15 +269,19 @@ export default function ProfileScreen() {
       fd.append('clabe', restaurantForm.clabe.replace(/\D/g, ''));
       fd.append('category', restaurantCategory);
       fd.append('accepting_orders', acceptingOrders ? 'true' : 'false');
+      const openTime = toApiTime(restaurantForm.opening_time);
+      const closeTime = toApiTime(restaurantForm.closing_time);
+      if (openTime) fd.append('opening_time', openTime);
+      if (closeTime) fd.append('closing_time', closeTime);
       if (restaurantImageUri) {
         appendImage(fd, 'image', restaurantImageUri, 'restaurant.jpg');
       }
       const { data } = await restaurantApi.update(restaurant.id, fd);
       setRestaurant(data);
       setRestaurantImageUri(null);
-      Alert.alert('Negocio actualizado');
+      appAlert('Negocio actualizado');
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo guardar el negocio'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el negocio'));
     } finally {
       setSaving(false);
     }
@@ -249,16 +289,16 @@ export default function ProfileScreen() {
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword) {
-      Alert.alert('Completa ambas contraseñas');
+      appAlert('Completa ambas contraseñas');
       return;
     }
     try {
       await authApi.changePassword(oldPassword, newPassword);
       setOldPassword('');
       setNewPassword('');
-      Alert.alert('Contraseña cambiada');
+      appAlert('Contraseña cambiada');
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err));
+      appAlert('Error', getApiErrorMessage(err));
     }
   };
 
@@ -338,6 +378,17 @@ export default function ProfileScreen() {
 
           {user.role === 'driver' && (
             <View style={styles.card}>
+              <Text style={styles.section}>Disponibilidad</Text>
+              <DriverAvailabilityBanner
+                isAvailable={driverProfile?.is_available ?? false}
+                updating={driverUpdating}
+                onToggle={handleToggleDriverAvailability}
+              />
+            </View>
+          )}
+
+          {user.role === 'driver' && (
+            <View style={styles.card}>
               <Text style={styles.section}>Datos de repartidor</Text>
               <Text style={styles.hint}>Esta info la ven los clientes cuando llevas su pedido.</Text>
               <Text style={styles.fieldLabel}>Tipo de vehículo</Text>
@@ -359,14 +410,12 @@ export default function ProfileScreen() {
                   Estado: {driverProfile.is_available ? 'Disponible' : 'No disponible'}
                 </Text>
               )}
-              {user.role === 'driver' && (
-                <Button
-                  title="Ir a entregas disponibles"
-                  variant="secondary"
-                  onPress={() => driverTabNav.navigate('Disponibles')}
-                  style={{ marginBottom: spacing.md }}
-                />
-              )}
+              <Button
+                title="Ir a entregas disponibles"
+                variant="secondary"
+                onPress={() => driverTabNav.navigate('Disponibles')}
+                style={{ marginBottom: spacing.md }}
+              />
               <Button title="Guardar datos de repartidor" variant="secondary" onPress={handleSaveDriver} loading={saving} />
             </View>
           )}
@@ -388,6 +437,14 @@ export default function ProfileScreen() {
           {user.role === 'restaurant' && restaurant && (
             <View style={styles.card}>
               <Text style={styles.section}>Tu negocio</Text>
+              {!restaurantHasTransferInfo(restaurant) && (
+                <View style={styles.warnBanner}>
+                  <Ionicons name="warning-outline" size={20} color={colors.warning} />
+                  <Text style={styles.warnText}>
+                    Agrega tu CLABE para que los clientes te paguen por transferencia directamente.
+                  </Text>
+                </View>
+              )}
               <Text style={styles.hint}>Logo o foto que verán los clientes en la app.</Text>
               <Pressable style={styles.logoBox} onPress={handlePickRestaurantImage} hitSlop={HIT_SLOP}>
                 {restaurantImageUri || restaurant.image_url ? (
@@ -412,6 +469,32 @@ export default function ProfileScreen() {
               <FormField label="Banco" value={restaurantForm.bank_name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, bank_name: v }))} icon="business-outline" embedded placeholder="Ej. BBVA, Banorte" />
               <FormField label="Titular de la cuenta" value={restaurantForm.account_holder} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, account_holder: v }))} icon="person-outline" embedded placeholder="Nombre como aparece en el banco" />
               <FormField label="CLABE interbancaria" value={restaurantForm.clabe} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, clabe: v }))} icon="card-outline" embedded keyboardType="phone-pad" placeholder="18 dígitos" hint="18 dígitos para recibir transferencias." />
+              <Text style={styles.section}>Horario del local</Text>
+              <Text style={styles.hint}>
+                Horario actual: {formatRestaurantHours(restaurant.opening_time, restaurant.closing_time) ?? 'Sin definir (siempre abierto si recibes pedidos)'}
+              </Text>
+              <View style={styles.hoursRow}>
+                <View style={styles.hourField}>
+                  <FormField
+                    label="Abre"
+                    value={restaurantForm.opening_time}
+                    onChangeText={(v) => setRestaurantForm((f) => ({ ...f, opening_time: v }))}
+                    icon="time-outline"
+                    embedded
+                    placeholder="09:00"
+                  />
+                </View>
+                <View style={styles.hourField}>
+                  <FormField
+                    label="Cierra"
+                    value={restaurantForm.closing_time}
+                    onChangeText={(v) => setRestaurantForm((f) => ({ ...f, closing_time: v }))}
+                    icon="time-outline"
+                    embedded
+                    placeholder="22:00"
+                  />
+                </View>
+              </View>
               <FormField label="Descripción" value={restaurantForm.description} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, description: v }))} icon="text-outline" embedded multiline placeholder="Qué ofreces, horarios, especialidades…" />
               <Text style={styles.fieldLabel}>Categoría</Text>
               <View style={styles.categoryRow}>
@@ -543,5 +626,17 @@ const styles = StyleSheet.create({
   ordersToggleInfo: { flex: 1 },
   ordersToggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   ordersToggleHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
+  warnBanner: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: '#FFF8E1',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: spacing.md,
+  },
+  warnText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+  hoursRow: { flexDirection: 'row', gap: 10 },
+  hourField: { flex: 1 },
   logout: { marginHorizontal: spacing.screen, marginTop: spacing.sm },
 });

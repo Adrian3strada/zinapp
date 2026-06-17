@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,21 +21,21 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
 
   const handleSubmit = async () => {
     if (password.length < 6) {
-      Alert.alert('Contraseña', 'Debe tener al menos 6 caracteres.');
+      appAlert('Contraseña', 'Debe tener al menos 6 caracteres.');
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Contraseñas', 'Las contraseñas no coinciden.');
+      appAlert('Contraseñas', 'Las contraseñas no coinciden.');
       return;
     }
     setLoading(true);
     try {
       await authApi.resetPassword(route.params.token, password);
-      Alert.alert('Listo', 'Contraseña actualizada.', [
+      appAlert('Listo', 'Contraseña actualizada.', [
         { text: 'Iniciar sesión', onPress: () => navigation.navigate('Login') },
       ]);
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'Token inválido o expirado.'));
+      appAlert('Error', getApiErrorMessage(err, 'Token inválido o expirado.'));
     } finally {
       setLoading(false);
     }

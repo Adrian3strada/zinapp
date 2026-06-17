@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
+import { appAlert } from '../utils/appAlert';
 
 import { deliveryApi } from '../services/api';
 import { getApiErrorMessage } from '../utils/apiErrors';
@@ -35,16 +35,19 @@ export function DriverProfileProvider({ children }: { children: React.ReactNode 
   }, [refresh]);
 
   const toggleAvailability = useCallback(async (value: boolean) => {
+    if (updating) return;
+    const previous = isAvailable;
+    setIsAvailable(value);
     setUpdating(true);
     try {
       await deliveryApi.setAvailability(value);
-      setIsAvailable(value);
     } catch (err) {
-      Alert.alert('Disponibilidad', getApiErrorMessage(err, 'No se pudo actualizar tu estado.'));
+      setIsAvailable(previous);
+      appAlert('Disponibilidad', getApiErrorMessage(err, 'No se pudo actualizar tu estado.'));
     } finally {
       setUpdating(false);
     }
-  }, []);
+  }, [isAvailable, updating]);
 
   const value = useMemo(
     () => ({ isAvailable, loading, updating, toggleAvailability, refresh }),

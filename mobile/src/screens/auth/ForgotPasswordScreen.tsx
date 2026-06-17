@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
@@ -18,7 +19,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
   const handleSubmit = async () => {
     const user = username.trim().toLowerCase();
     if (!user) {
-      Alert.alert('Usuario requerido', 'Ingresa tu nombre de usuario.');
+      appAlert('Usuario requerido', 'Ingresa tu nombre de usuario.');
       return;
     }
     setLoading(true);
@@ -28,9 +29,9 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         navigation.navigate('ResetPassword', { token: data.reset_token });
         return;
       }
-      Alert.alert('Listo', data.detail);
+      appAlert('Listo', data.detail);
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo procesar la solicitud.'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo procesar la solicitud.'));
     } finally {
       setLoading(false);
     }
@@ -47,7 +48,9 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
       >
         <Text style={styles.title}>Recuperar contraseña</Text>
         <Text style={styles.subtitle}>
-          Te enviaremos un enlace o token para restablecer tu acceso.
+          {__DEV__
+            ? 'En desarrollo recibirás un token para continuar en la siguiente pantalla.'
+            : 'Si olvidaste tu contraseña, escríbenos por WhatsApp al 443 123 4567 con tu usuario.'}
         </Text>
 
         <FormSection title="Tu cuenta">
@@ -60,7 +63,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             required
             autoCapitalize="none"
             autoCorrect={false}
-            hint="En desarrollo recibirás un token para continuar."
+            hint={__DEV__ ? 'En desarrollo recibirás un token para continuar.' : 'Usa el mismo usuario con el que inicias sesión.'}
           />
           <Button title={loading ? 'Enviando…' : 'Continuar'} onPress={handleSubmit} disabled={loading} size="lg" />
         </FormSection>

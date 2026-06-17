@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 
 import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
 import DriverJobCard from '../../components/DriverJobCard';
@@ -28,6 +29,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -79,22 +81,27 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
   }, [items]);
 
   const handleAccept = async (item: AvailableItem) => {
-    if (hasActiveDelivery) {
-      Alert.alert('Entrega en curso', 'Termina tu entrega actual antes de aceptar otra.');
-      navigation.navigate('Entregas');
+    if (acceptingId || hasActiveDelivery) {
+      if (hasActiveDelivery) {
+        appAlert('Entrega en curso', 'Termina tu entrega actual antes de aceptar otra.');
+        navigation.navigate('Entregas');
+      }
       return;
     }
+    setAcceptingId(item.id);
     try {
       if (item.kind === 'order') {
         await orderApi.acceptDelivery(item.order.id);
       } else {
         await shipmentApi.acceptDelivery(item.shipment.id);
       }
-      Alert.alert('¡Listo!', 'Entrega aceptada');
+      appAlert('¡Listo!', 'Entrega aceptada');
       load(true);
       navigation.navigate('Entregas');
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo aceptar la entrega'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar la entrega'));
+    } finally {
+      setAcceptingId(null);
     }
   };
 
@@ -173,6 +180,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
                 onAccept={() => handleAccept(item)}
                 acceptLabel={hasActiveDelivery ? 'Entrega en curso' : 'Aceptar pedido'}
                 acceptDisabled={acceptDisabled}
+                acceptLoading={acceptingId === item.id}
               />
             );
           }
@@ -195,6 +203,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               onAccept={() => handleAccept(item)}
               acceptLabel={hasActiveDelivery ? 'Entrega en curso' : 'Aceptar envío'}
               acceptDisabled={acceptDisabled}
+              acceptLoading={acceptingId === item.id}
             />
           );
         }}

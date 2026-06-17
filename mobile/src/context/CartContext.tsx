@@ -1,7 +1,14 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
+import { appAlert } from '../utils/appAlert';
 
 import type { CartItem, Product } from '../types';
+
+function resolveRestaurantId(product: Product): number {
+  const value = product.restaurant as number | { id?: number };
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value && typeof value === 'object' && typeof value.id === 'number') return value.id;
+  return 0;
+}
 
 interface CartContextValue {
   items: CartItem[];
@@ -21,8 +28,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
-    if (restaurantId && restaurantId !== product.restaurant) {
-      Alert.alert(
+    const productRestaurantId = resolveRestaurantId(product);
+    if (!product?.id || !productRestaurantId) {
+      appAlert('Error', 'No se pudo agregar este producto. Intenta de nuevo.');
+      return;
+    }
+
+    const safeQty = Math.max(1, Math.floor(quantity) || 1);
+
+    if (restaurantId && restaurantId !== productRestaurantId) {
+      appAlert(
         'Cambiar restaurante',
         'Tu carrito tiene productos de otro restaurante. ¿Vaciar y agregar este?',
         [
@@ -30,8 +45,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           {
             text: 'Vaciar y agregar',
             onPress: () => {
-              setItems([{ product, quantity }]);
-              setRestaurantId(product.restaurant);
+              setItems([{ product, quantity: safeQty }]);
+              setRestaurantId(productRestaurantId);
             },
           },
         ],
@@ -39,17 +54,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setRestaurantId(product.restaurant);
+    setRestaurantId(productRestaurantId);
     setItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
         return prev.map((i) =>
           i.product.id === product.id
-            ? { ...i, quantity: i.quantity + quantity }
+            ? { ...i, quantity: i.quantity + safeQty }
             : i
         );
       }
-      return [...prev, { product, quantity }];
+      return [...prev, { product, quantity: safeQty }];
     });
   }, [restaurantId]);
 

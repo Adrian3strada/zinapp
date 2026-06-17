@@ -33,6 +33,7 @@ interface Props {
   onAccept?: () => void;
   acceptLabel?: string;
   acceptDisabled?: boolean;
+  acceptLoading?: boolean;
   onNavigate?: () => void;
   onDelivered?: () => void;
   onPickedUp?: () => void;
@@ -52,6 +53,7 @@ export default function DriverJobCard({
   onAccept,
   acceptLabel = 'Aceptar entrega',
   acceptDisabled,
+  acceptLoading,
   onNavigate,
   onDelivered,
   onPickedUp,
@@ -112,6 +114,7 @@ export default function DriverJobCard({
           title={acceptLabel}
           onPress={onAccept}
           disabled={acceptDisabled}
+          loading={acceptLoading}
           style={styles.actionBtn}
         />
       )}

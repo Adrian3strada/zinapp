@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, ImageStyle, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
@@ -13,14 +13,24 @@ interface Props {
 
 const SIZES = { sm: 56, md: 80, lg: 120 };
 
+function isSafeImageUri(uri: string): boolean {
+  const trimmed = uri.trim();
+  return trimmed.startsWith('https://') || trimmed.startsWith('http://') || trimmed.startsWith('file://');
+}
+
 export default function FoodImage({ emoji, color, size = 'md', imageUri, style }: Props) {
   const dim = SIZES[size];
+  const [failed, setFailed] = useState(false);
 
-  if (imageUri) {
+  const showImage = Boolean(imageUri && isSafeImageUri(imageUri) && !failed);
+
+  if (showImage) {
     return (
       <Image
-        source={{ uri: imageUri }}
-        style={{ width: dim, height: dim, borderRadius: dim * 0.2 }}
+        source={{ uri: imageUri! }}
+        style={[{ width: dim, height: dim, borderRadius: dim * 0.2 }, style as ImageStyle]}
+        onError={() => setFailed(true)}
+        resizeMode="cover"
       />
     );
   }

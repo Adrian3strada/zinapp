@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../utils/appAlert';
 
 import { reviewApi } from '../services/api';
 import { getApiErrorMessage } from '../utils/apiErrors';
@@ -48,7 +49,7 @@ export default function ReviewForm({ orderId, hasDriver, onSubmitted }: Props) {
       });
       onSubmitted();
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo enviar la calificación'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo enviar la calificación'));
     } finally {
       setLoading(false);
     }

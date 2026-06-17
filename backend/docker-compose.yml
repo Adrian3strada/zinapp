@@ -1,28 +1,61 @@
+# Desarrollo local — SQLite, puerto 8000
+# Uso: copy .env.docker.example .env  →  docker compose up -d --build
+#      .\scripts\setup-env.ps1  →  .\scripts\deploy-docker.ps1
+
+name: zinapp-dev
+
 services:
   api:
     build: .
+    image: zinapp-api:dev
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     env_file:
       - .env
     environment:
-      USE_SQLITE: "True"
-      SERVE_MEDIA: "True"
-      ALLOWED_HOSTS: "*"
+      PORT: ${PORT:-8000}
+      USE_SQLITE: ${USE_SQLITE:-True}
+      DEBUG: ${DEBUG:-True}
+      SERVE_MEDIA: ${SERVE_MEDIA:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-*}
+      SEED_DATA: ${SEED_DATA:-false}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
     volumes:
       - ./db.sqlite3:/app/db.sqlite3
       - ./media:/app/media
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
 
-  # Descomenta para PostgreSQL en producción:
-  # db:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_DB: zinapp_db
-  #     POSTGRES_USER: postgres
-  #     POSTGRES_PASSWORD: postgres
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
+  # Perfil opcional: Postgres local (USE_SQLITE=False en .env)
+  # Uso: docker compose --profile postgres up -d --build
+  db:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-zinapp_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-zinapp_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-# volumes:
-#   pgdata:
+volumes:
+  pgdata_dev:

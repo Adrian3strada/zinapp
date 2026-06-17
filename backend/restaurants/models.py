@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class RestaurantCategory(models.TextChoices):
@@ -39,6 +40,7 @@ class Restaurant(models.Model):
     accepting_orders = models.BooleanField(default=True)
     opening_time = models.TimeField(null=True, blank=True)
     closing_time = models.TimeField(null=True, blank=True)
+    last_open_notification_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,6 +51,43 @@ class Restaurant(models.Model):
 
     def __str__(self):
         return self.name
+
+    def is_open_now(self) -> bool:
+        if not self.is_active or not self.accepting_orders:
+            return False
+        if not self.opening_time or not self.closing_time:
+            return True
+        now = timezone.localtime().time()
+        if self.opening_time <= self.closing_time:
+            return self.opening_time <= now <= self.closing_time
+        return now >= self.opening_time or now <= self.closing_time
+
+
+class RestaurantFavorite(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='restaurant_favorites',
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name='favorites',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Restaurante favorito'
+        verbose_name_plural = 'Restaurantes favoritos'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'restaurant'],
+                name='unique_restaurant_favorite',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} → {self.restaurant.name}'
 
 
 class Product(models.Model):

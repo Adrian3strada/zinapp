@@ -6,14 +6,19 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot\..
 
 if (-not (Test-Path ".env")) {
-    Copy-Item ".env.example" ".env"
-    Write-Host "Se creó .env desde .env.example — edítalo antes de producción real." -ForegroundColor Yellow
+    if (Test-Path ".env.docker.example") {
+        & "$PSScriptRoot\setup-env.ps1"
+    } elseif (Test-Path ".env.example") {
+        Copy-Item ".env.example" ".env"
+        Write-Host "Se creó .env desde .env.example — edítalo antes de producción real." -ForegroundColor Yellow
+    }
 }
 
 Write-Host "Construyendo imagen..."
 docker compose build
 
 Write-Host "Migraciones..."
+docker compose run --rm api python scripts/wait_for_db.py
 docker compose run --rm api python manage.py migrate --noinput
 
 Write-Host "Collectstatic..."

@@ -202,7 +202,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class PushTokenSerializer(serializers.Serializer):
-    expo_push_token = serializers.CharField(max_length=255)
+    expo_push_token = serializers.CharField(max_length=255, allow_blank=True)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

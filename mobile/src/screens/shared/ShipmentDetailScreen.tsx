@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import Button from '../../components/Button';
@@ -79,7 +80,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
 
   const handleCancel = () => {
     if (!shipment) return;
-    Alert.alert('Cancelar envío', '¿Seguro? Solo puedes cancelar mientras esté pendiente.', [
+    appAlert('Cancelar envío', '¿Seguro? Solo puedes cancelar mientras esté pendiente.', [
       { text: 'No', style: 'cancel' },
       {
         text: 'Sí, cancelar',
@@ -89,7 +90,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             const { data } = await shipmentApi.cancel(shipment.id);
             setShipment(data);
           } catch (err) {
-            Alert.alert('Error', getApiErrorMessage(err, 'No se pudo cancelar.'));
+            appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar.'));
           }
         },
       },
@@ -102,7 +103,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
       const { data } = await shipmentApi.markDelivered(shipment.id);
       setShipment(data);
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado.'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado.'));
     }
   };
 
@@ -112,7 +113,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
       const { data } = await shipmentApi.markPickedUp(shipment.id);
       setShipment(data);
     } catch (err) {
-      Alert.alert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido.'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido.'));
     }
   };
 

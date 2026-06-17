@@ -1,11 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
-import { cardShadow } from '../theme/shadows';
 import { HIT_SLOP, spacing } from '../theme/spacing';
 import { formatCurrency } from '../utils/format';
 
@@ -26,13 +24,7 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
       onPress={onPress}
       hitSlop={HIT_SLOP}
     >
-      <LinearGradient
-        pointerEvents="none"
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.bar, cardShadow]}
-      >
+      <View style={styles.bar}>
         <View style={styles.left}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{itemCount}</Text>
@@ -41,7 +33,7 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
         </View>
         <Text style={styles.total}>{formatCurrency(total)}</Text>
         <Ionicons name="chevron-forward" size={20} color="#FFF" />
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
@@ -61,6 +53,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 16,
     gap: 12,
+    backgroundColor: colors.primary,
+    elevation: 4,
   },
   left: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: {

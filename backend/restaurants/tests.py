@@ -24,6 +24,16 @@ class GeocodeTests(TestCase):
     def test_is_in_coverage_zinapecuaro_center(self):
         self.assertTrue(is_in_coverage(19.858, -100.827))
 
+    def test_las_galeras_colonia(self):
+        result = geocode_address('Las Galeras')
+        self.assertIsNotNone(result)
+        self.assertTrue(result['in_coverage'])
+
+    def test_felix_ireta_by_colonia_name(self):
+        result = geocode_address('Félix Ireta')
+        self.assertIsNotNone(result)
+        self.assertTrue(result['in_coverage'])
+
 
 class RestaurantPaymentInfoTests(TestCase):
     def setUp(self):

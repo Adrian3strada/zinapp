@@ -31,5 +31,5 @@ export const API_URL = resolveApiUrl();
 export const API_ENVIRONMENT = extra?.environment ?? (__DEV__ ? 'development' : 'preview');
 export const IS_PRODUCTION_APP = !__DEV__;
 
-/** Timeout largo: Railway free puede tardar al despertar. */
-export const API_TIMEOUT_MS = IS_PRODUCTION_APP ? 30000 : 8000;
+/** Timeout largo: Railway puede tardar al despertar (cold start). */
+export const API_TIMEOUT_MS = IS_PRODUCTION_APP ? 90000 : 15000;

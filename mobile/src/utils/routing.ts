@@ -1,6 +1,7 @@
 import type { MapPolyline } from '../components/AppMap';
 import { restaurantApi } from '../services/api';
 import type { MapCoordinate } from './maps';
+import { isValidCoordinate, sanitizeCoordinates } from './maps';
 import { roundCoordinate } from './coords';
 
 export interface StreetRouteStats {
@@ -18,7 +19,8 @@ const routeCache = new Map<string, CachedRoute>();
 /** ~150 m — agrupa recálculos cuando el repartidor se mueve poco. */
 export function snapCoordinate(coord: MapCoordinate, gridMeters = 150): MapCoordinate {
   const latStep = gridMeters / 111_320;
-  const lngStep = gridMeters / (111_320 * Math.cos((coord.latitude * Math.PI) / 180));
+  const cosLat = Math.max(Math.abs(Math.cos((coord.latitude * Math.PI) / 180)), 0.01);
+  const lngStep = gridMeters / (111_320 * cosLat);
   return {
     latitude: Math.round(coord.latitude / latStep) * latStep,
     longitude: Math.round(coord.longitude / lngStep) * lngStep,
@@ -62,16 +64,27 @@ export async function fetchStreetRoute(
   to: MapCoordinate,
   dynamic = false,
 ): Promise<CachedRoute> {
+  if (!isValidCoordinate(from) || !isValidCoordinate(to)) {
+    return {
+      coordinates: [],
+      distanceMeters: null,
+      durationSeconds: null,
+      isEstimated: true,
+    };
+  }
+
   const key = routeKey(from, to, dynamic);
   const cached = routeCache.get(key);
   if (cached) return cached;
 
   try {
     const { data } = await restaurantApi.route(from, to);
-    const coords = (data.coordinates ?? []).map((c) => ({
-      latitude: c.latitude,
-      longitude: c.longitude,
-    }));
+    const coords = sanitizeCoordinates(
+      (data.coordinates ?? []).map((c) => ({
+        latitude: c.latitude,
+        longitude: c.longitude,
+      })),
+    );
     if (coords.length >= 2) {
       const result: CachedRoute = {
         coordinates: coords,

@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Alert, Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { appAlert } from '../utils/appAlert';
 
 import { colors } from '../theme/colors';
 import { openWhatsApp } from '../utils/whatsapp';
@@ -18,7 +19,7 @@ export default function ContactWhatsAppButton({ phone, message, label = 'Contact
     try {
       await openWhatsApp(phone, message);
     } catch (err) {
-      Alert.alert('WhatsApp', err instanceof Error ? err.message : 'No se pudo abrir WhatsApp.');
+      appAlert('WhatsApp', err instanceof Error ? err.message : 'No se pudo abrir WhatsApp.');
     }
   };
 

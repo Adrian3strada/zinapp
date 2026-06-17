@@ -19,7 +19,18 @@ from accounts.permissions import (
     IsRestaurantOwnerOrAdmin,
 )
 
-from .models import Coupon, Order, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentStatus
+from .idempotency import idempotent_create
+from .models import (
+    CancellationSource,
+    Coupon,
+    Order,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+    Review,
+    Shipment,
+    ShipmentStatus,
+)
 from .serializers import (
     CouponPublicSerializer,
     CouponSerializer,
@@ -111,11 +122,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        order = serializer.save()
-        output = OrderSerializer(order, context={'request': request})
-        return Response(output.data, status=status.HTTP_201_CREATED)
+        def do_create():
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            order = serializer.save()
+            output = OrderSerializer(order, context={'request': request})
+            return Response(output.data, status=status.HTTP_201_CREATED)
+
+        return idempotent_create(request, 'order_create', do_create)
 
     @action(detail=True, methods=['post'], url_path='update-status')
     def update_status(self, request, pk=None):
@@ -175,7 +189,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
             serializer = OrderStatusUpdateSerializer(
                 data={'status': OrderStatus.CANCELLED},
-                context={'order': order},
+                context={
+                    'order': order,
+                    'cancellation_source': CancellationSource.RESTAURANT_REJECT,
+                },
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -209,7 +226,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
             serializer = OrderStatusUpdateSerializer(
                 data={'status': OrderStatus.CANCELLED},
-                context={'order': order},
+                context={
+                    'order': order,
+                    'cancellation_source': CancellationSource.CUSTOMER,
+                },
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -500,11 +520,14 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        shipment = serializer.save()
-        output = ShipmentSerializer(shipment, context={'request': request})
-        return Response(output.data, status=status.HTTP_201_CREATED)
+        def do_create():
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            shipment = serializer.save()
+            output = ShipmentSerializer(shipment, context={'request': request})
+            return Response(output.data, status=status.HTTP_201_CREATED)
+
+        return idempotent_create(request, 'shipment_create', do_create)
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):

@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import {
-  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -11,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MapMarker } from '../../components/AppMap';
@@ -92,7 +92,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
   const openRestaurant = useCallback(
     (restaurant: Restaurant) => {
       if (restaurant.is_open === false) {
-        Alert.alert('Cerrado', `${restaurant.name} no está recibiendo pedidos en este momento.`);
+        appAlert('Cerrado', `${restaurant.name} no está recibiendo pedidos en este momento.`);
         return;
       }
       navigation.navigate('Menu', {

@@ -4,6 +4,7 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 type RootParams = {
   OrderDetail: { orderId: number };
   ShipmentDetail: { shipmentId: number };
+  Menu: { restaurantId: number; restaurantName: string };
 };
 
 export const navigationRef = createNavigationContainerRef<RootParams>();
@@ -28,19 +29,35 @@ export function navigateToShipment(shipmentId: number) {
   );
 }
 
+export function navigateToMenu(restaurantId: number, restaurantName = 'Restaurante') {
+  if (!navigationRef.isReady()) return;
+  navigationRef.dispatch(
+    CommonActions.navigate({
+      name: 'Menu',
+      params: { restaurantId, restaurantName },
+    }),
+  );
+}
+
 export function handleNotificationNavigation(data: Record<string, unknown> | undefined) {
-  const type = data?.type;
-  const shipmentRaw = data?.shipmentId;
-  if (type === 'shipment' || type === 'driver_nearby') {
-    const shipmentId = parseId(shipmentRaw);
-    if (shipmentId != null) {
-      navigateToShipment(shipmentId);
+  if (data?.type === 'restaurant_open') {
+    const restaurantId = parseId(data.restaurantId);
+    if (restaurantId != null) {
+      const name = typeof data.restaurantName === 'string' ? data.restaurantName : 'Restaurante';
+      navigateToMenu(restaurantId, name);
       return;
     }
   }
+
   const orderId = parseId(data?.orderId);
+  const shipmentId = parseId(data?.shipmentId);
+
   if (orderId != null) {
     navigateToOrder(orderId);
+    return;
+  }
+  if (shipmentId != null) {
+    navigateToShipment(shipmentId);
   }
 }
 

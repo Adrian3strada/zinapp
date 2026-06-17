@@ -1,5 +1,4 @@
 from django.db.models import Avg
-from django.utils import timezone
 from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
@@ -36,6 +35,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
     products_count = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
     has_transfer_info = serializers.SerializerMethodField()
@@ -46,7 +46,8 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'id', 'owner', 'owner_detail', 'name', 'category', 'description', 'address',
             'phone', 'whatsapp', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
             'image', 'image_url', 'latitude', 'longitude', 'is_active',
-            'accepting_orders', 'opening_time', 'closing_time', 'is_open', 'rating_average',
+            'accepting_orders', 'opening_time', 'closing_time', 'is_open', 'is_favorited',
+            'rating_average',
             'reviews_count', 'products_count',
             'created_at', 'updated_at',
         )
@@ -71,16 +72,13 @@ class RestaurantSerializer(serializers.ModelSerializer):
         return build_image_url(obj, self.context.get('request'))
 
     def get_is_open(self, obj):
-        if not obj.is_active:
+        return obj.is_open_now()
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if not request or not getattr(request.user, 'is_customer', False):
             return False
-        if not obj.accepting_orders:
-            return False
-        if not obj.opening_time or not obj.closing_time:
-            return True
-        now = timezone.localtime().time()
-        if obj.opening_time <= obj.closing_time:
-            return obj.opening_time <= now <= obj.closing_time
-        return now >= obj.opening_time or now <= obj.closing_time
+        return obj.favorites.filter(user=request.user).exists()
 
     def get_rating_average(self, obj):
         agg = obj.reviews.aggregate(avg=Avg('restaurant_rating'))

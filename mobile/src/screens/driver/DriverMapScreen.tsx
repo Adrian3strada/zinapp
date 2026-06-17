@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 
 import AppMap, { MapMarker } from '../../components/AppMap';
 import RouteStatsBar from '../../components/RouteStatsBar';
@@ -68,7 +69,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
             const msg = getApiErrorMessage(err, 'No se cargó el envío');
             setLoadError(msg);
             if (!hasDataRef.current) {
-              Alert.alert('Error', msg);
+              appAlert('Error', msg);
             }
           })
           .finally(() => {
@@ -95,7 +96,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
             const msg = getApiErrorMessage(err, 'No se cargó el pedido');
             setLoadError(msg);
             if (!hasDataRef.current) {
-              Alert.alert('Error', msg);
+              appAlert('Error', msg);
             }
           })
           .finally(() => {

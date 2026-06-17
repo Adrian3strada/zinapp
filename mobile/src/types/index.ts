@@ -55,6 +55,7 @@ export interface Restaurant {
   is_active: boolean;
   accepting_orders?: boolean;
   is_open?: boolean;
+  is_favorited?: boolean;
   rating_average?: number | null;
   reviews_count?: number;
   opening_time?: string | null;

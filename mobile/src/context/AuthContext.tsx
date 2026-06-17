@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 import { authApi, LoginPayload, RegisterPayload } from '../services/api';
+import { clearPushToken, registerPushNotifications } from '../services/pushRegistration';
 import { sessionEvents } from '../services/sessionEvents';
 import { tokenStorage } from '../services/tokenStorage';
 import { userCache } from '../services/userCache';
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const logout = useCallback(async () => {
+    await clearPushToken();
     await tokenStorage.clear();
     await userCache.clear();
     setUser(null);
@@ -88,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await tokenStorage.setTokens(response.access, response.refresh);
     setUser(response.user);
     await userCache.set(response.user);
+    void registerPushNotifications();
   };
 
   const register = async (data: RegisterPayload) => {

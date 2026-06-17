@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
@@ -98,7 +99,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 
   const handlePickedUp = async (item: DeliveryItem) => {
     if (item.kind !== 'shipment') return;
-    Alert.alert('Confirmar recogida', '¿Ya recogiste el paquete?', [
+    appAlert('Confirmar recogida', '¿Ya recogiste el paquete?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Sí, recogido',
@@ -107,7 +108,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
             await shipmentApi.markPickedUp(item.shipment.id);
             load(true);
           } catch (err) {
-            Alert.alert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido'));
+            appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido'));
           }
         },
       },
@@ -115,7 +116,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
   };
 
   const handleDelivered = async (item: DeliveryItem) => {
-    Alert.alert('Confirmar entrega', '¿Marcar como entregado?', [
+    appAlert('Confirmar entrega', '¿Marcar como entregado?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Sí, entregado',
@@ -131,7 +132,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
             load(true);
             navigation.navigate('ShipmentDetail', { shipmentId: item.shipment.id });
           } catch (err) {
-            Alert.alert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
+            appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
           }
         },
       },

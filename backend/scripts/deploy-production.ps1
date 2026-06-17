@@ -19,11 +19,12 @@ if ($WithHttps) {
 
 if (-not (Test-Path ".env")) {
     if (Test-Path ".env.production.example") {
+        Write-Host "Ejecuta: .\scripts\setup-env.ps1 -Production" -ForegroundColor Yellow
         Copy-Item ".env.production.example" ".env"
         Write-Host "Se creó .env desde .env.production.example — edítalo antes de continuar." -ForegroundColor Yellow
         exit 1
     }
-    Write-Host "Falta .env. Copia .env.production.example y configura SECRET_KEY, DB_PASSWORD, ALLOWED_HOSTS." -ForegroundColor Red
+    Write-Host "Falta .env. Copia .env.production.example o usa setup-env.ps1 -Production." -ForegroundColor Red
     exit 1
 }
 
@@ -41,6 +42,7 @@ Write-Host "Construyendo imagen..." -ForegroundColor Cyan
 docker compose @composeArgs build
 
 Write-Host "Migraciones..." -ForegroundColor Cyan
+docker compose @composeArgs run --rm api python scripts/wait_for_db.py
 docker compose @composeArgs run --rm api python manage.py migrate --noinput
 
 Write-Host "Collectstatic..." -ForegroundColor Cyan

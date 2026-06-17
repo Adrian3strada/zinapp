@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BrandLogo from '../../components/BrandLogo';
@@ -72,19 +72,19 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     const phone = form.phone.trim();
 
     if (!username) {
-      Alert.alert('Usuario requerido', 'Elige un nombre de usuario único.');
+      appAlert('Usuario requerido', 'Elige un nombre de usuario único.');
       return;
     }
     if (email && !EMAIL_REGEX.test(email)) {
-      Alert.alert('Email inválido', 'Usa un formato como nombre@correo.com o déjalo vacío.');
+      appAlert('Email inválido', 'Usa un formato como nombre@correo.com o déjalo vacío.');
       return;
     }
     if (!form.first_name.trim() || !form.last_name.trim()) {
-      Alert.alert('Nombre completo', 'Indica tu nombre y apellido.');
+      appAlert('Nombre completo', 'Indica tu nombre y apellido.');
       return;
     }
     if (phoneRequired && !phone) {
-      Alert.alert(
+      appAlert(
         'Teléfono requerido',
         form.role === 'driver'
           ? 'Los repartidores necesitan teléfono para coordinar entregas.'
@@ -93,30 +93,30 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       return;
     }
     if (!form.password) {
-      Alert.alert('Contraseña requerida', 'Ingresa una contraseña.');
+      appAlert('Contraseña requerida', 'Ingresa una contraseña.');
       return;
     }
     if (form.password !== form.password_confirm) {
-      Alert.alert('Contraseñas', 'Las contraseñas no coinciden.');
+      appAlert('Contraseñas', 'Las contraseñas no coinciden.');
       return;
     }
     if (form.password.length < 6) {
-      Alert.alert('Contraseña', 'Debe tener al menos 6 caracteres.');
+      appAlert('Contraseña', 'Debe tener al menos 6 caracteres.');
       return;
     }
     if (form.role === 'restaurant') {
       if (!form.restaurant_name.trim()) {
-        Alert.alert('Restaurante', 'Indica el nombre de tu negocio.');
+        appAlert('Restaurante', 'Indica el nombre de tu negocio.');
         return;
       }
       if (!form.restaurant_address.trim()) {
-        Alert.alert('Restaurante', 'Indica la dirección del negocio.');
+        appAlert('Restaurante', 'Indica la dirección del negocio.');
         return;
       }
     }
     if (form.role === 'driver') {
       if (plateRequired && !form.license_plate.trim()) {
-        Alert.alert('Placas requeridas', 'Indica las placas de tu moto o auto.');
+        appAlert('Placas requeridas', 'Indica las placas de tu moto o auto.');
         return;
       }
     }
@@ -133,7 +133,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         license_plate: form.role === 'driver' ? form.license_plate.trim() : undefined,
       });
       if (form.role === 'driver') {
-        Alert.alert(
+        appAlert(
           '¡Bienvenido repartidor!',
           'Tu cuenta está lista. Activa tu disponibilidad en la pestaña Disponibles cuando quieras recibir pedidos.',
         );
@@ -141,12 +141,12 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     } catch (err: unknown) {
       const error = err as Error & { message?: string };
       if (error.message === 'LOGIN_AFTER_REGISTER') {
-        Alert.alert('Cuenta creada', 'Ya puedes iniciar sesión.', [
+        appAlert('Cuenta creada', 'Ya puedes iniciar sesión.', [
           { text: 'Ir a login', onPress: () => navigation.goBack() },
         ]);
         return;
       }
-      Alert.alert('No se pudo registrar', getApiErrorMessage(err, 'Verifica los datos e intenta de nuevo.'));
+      appAlert('No se pudo registrar', getApiErrorMessage(err, 'Verifica los datos e intenta de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -247,7 +247,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             onChangeText={(v) => update('address', v)}
             icon="location-outline"
             multiline
-            placeholder="Calle, número, colonia"
+            placeholder="Ej. Félix Ireta, Las Galeras, Av. Hidalgo 64"
           />
         </FormSection>
 

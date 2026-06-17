@@ -2,31 +2,40 @@ from django.db.models import F
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from accounts.notifications import notify_order_status, notify_shipment_status
+from accounts.notifications import (
+    notify_order_status,
+    notify_payment_confirmed,
+    notify_shipment_status,
+)
 
-from .models import Order, OrderStatus, Shipment, ShipmentStatus
+from .models import Order, OrderStatus, PaymentStatus, Shipment, ShipmentStatus
 
 
 @receiver(pre_save, sender=Order)
-def cache_previous_status(sender, instance, **kwargs):
+def cache_previous_order_state(sender, instance, **kwargs):
     if instance.pk:
         try:
-            previous = Order.objects.get(pk=instance.pk).status
-            instance._previous_status = previous
+            previous = Order.objects.get(pk=instance.pk)
+            instance._previous_status = previous.status
+            instance._previous_payment_status = previous.payment_status
             if (
                 instance.status == OrderStatus.ON_THE_WAY
-                and previous != OrderStatus.ON_THE_WAY
+                and previous.status != OrderStatus.ON_THE_WAY
             ):
                 instance.driver_nearby_notified = False
         except Order.DoesNotExist:
             instance._previous_status = None
+            instance._previous_payment_status = None
     else:
         instance._previous_status = None
+        instance._previous_payment_status = None
 
 
 @receiver(post_save, sender=Order)
 def order_status_changed(sender, instance, created, **kwargs):
     previous = getattr(instance, '_previous_status', None)
+    previous_payment = getattr(instance, '_previous_payment_status', None)
+
     if (
         not created
         and previous != instance.status
@@ -38,6 +47,19 @@ def order_status_changed(sender, instance, created, **kwargs):
         Coupon.objects.filter(pk=instance.coupon_id, times_used__gt=0).update(
             times_used=F('times_used') - 1,
         )
+    if created:
+        from restaurants.models import RestaurantFavorite
+
+        RestaurantFavorite.objects.get_or_create(
+            user=instance.customer,
+            restaurant=instance.restaurant,
+        )
+    if (
+        not created
+        and previous_payment != instance.payment_status
+        and instance.payment_status == PaymentStatus.PAID
+    ):
+        notify_payment_confirmed(instance)
     if created or previous != instance.status:
         notify_order_status(instance)
 

@@ -26,7 +26,12 @@ class GeocodeView(APIView):
         result = geocode_address(address)
         if not result:
             return Response(
-                {'detail': 'No se encontró la dirección. Intenta ser más específico.'},
+                {
+                    'detail': (
+                        'No se encontró la dirección. Escribe colonia y calle '
+                        '(ej. Félix Ireta, Las Galeras, Av. Hidalgo 64).'
+                    ),
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(result)
@@ -143,6 +148,26 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='toggle-favorite')
+    def toggle_favorite(self, request, pk=None):
+        if not request.user.is_customer:
+            return Response(
+                {'detail': 'Solo los clientes pueden guardar favoritos.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        from .models import RestaurantFavorite
+
+        restaurant = self.get_object()
+        favorite = RestaurantFavorite.objects.filter(
+            user=request.user,
+            restaurant=restaurant,
+        ).first()
+        if favorite:
+            favorite.delete()
+            return Response({'is_favorited': False})
+        RestaurantFavorite.objects.create(user=request.user, restaurant=restaurant)
+        return Response({'is_favorited': True})
 
 
 class ProductViewSet(viewsets.ModelViewSet):

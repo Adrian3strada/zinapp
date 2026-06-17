@@ -8,16 +8,25 @@ logger = logging.getLogger(__name__)
 
 EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 
-STATUS_MESSAGES = {
+ORDER_CUSTOMER_MESSAGES = {
+    'pending': 'Recibimos tu pedido. El restaurante lo confirmará pronto.',
     'accepted': 'Tu pedido fue aceptado por el restaurante.',
     'preparing': 'El restaurante está preparando tu pedido.',
-    'ready': 'Tu pedido está listo para recoger.',
+    'ready': 'Tu pedido está listo. Esperando repartidor.',
     'on_the_way': '¡Tu pedido va en camino!',
     'delivered': 'Pedido entregado. ¡Buen provecho!',
     'cancelled': 'Tu pedido fue cancelado.',
 }
 
-SHIPMENT_STATUS_MESSAGES = {
+ORDER_OWNER_MESSAGES = {
+    'pending': 'Nuevo pedido pendiente. Confírmalo cuando puedas.',
+    'ready': 'Pedido listo — esperando repartidor.',
+    'on_the_way': 'El repartidor recogió el pedido.',
+    'delivered': 'Pedido entregado al cliente.',
+    'cancelled': 'Pedido cancelado.',
+}
+
+SHIPMENT_CUSTOMER_MESSAGES = {
     'pending': 'Tu envío fue registrado. Buscando repartidor…',
     'picked_up': 'El repartidor va a recoger tu paquete.',
     'on_the_way': '¡Tu paquete va en camino!',
@@ -26,7 +35,21 @@ SHIPMENT_STATUS_MESSAGES = {
 }
 
 
-def send_push_to_user(user, title: str, body: str, data: dict | None = None) -> bool:
+def _driver_name(user) -> str:
+    if not user:
+        return 'Tu repartidor'
+    name = (user.get_full_name() or user.first_name or user.username or '').strip()
+    return name or 'Tu repartidor'
+
+
+def send_push_to_user(
+    user,
+    title: str,
+    body: str,
+    data: dict | None = None,
+    *,
+    channel_id: str = 'orders',
+) -> bool:
     token = getattr(user, 'expo_push_token', '') or ''
     if not token or not token.startswith('ExponentPushToken'):
         return False
@@ -35,11 +58,17 @@ def send_push_to_user(user, title: str, body: str, data: dict | None = None) -> 
         'to': token,
         'title': title,
         'body': body,
-        'sound': 'default',
+        'sound': 'bell.wav',
+        'priority': 'high',
+        'channelId': channel_id,
         'data': data or {},
     }
-    if getattr(settings, 'DEBUG', False):
-        logger.info('Push [%s]: %s — %s', user.username, title, body)
+    payload['android'] = {
+        'channelId': channel_id,
+        'priority': 'high',
+        'sound': 'bell.wav',
+        'vibrate': [0, 250, 250, 250],
+    }
 
     try:
         req = urllib.request.Request(
@@ -49,86 +78,135 @@ def send_push_to_user(user, title: str, body: str, data: dict | None = None) -> 
             method='POST',
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return resp.status == 200
+            raw = resp.read().decode()
+            if resp.status != 200:
+                return False
+            result = json.loads(raw) if raw else {}
+            ticket = (result.get('data') or [{}])[0]
+            if ticket.get('status') == 'error':
+                details = ticket.get('details') or {}
+                if details.get('error') == 'DeviceNotRegistered':
+                    user.expo_push_token = ''
+                    user.save(update_fields=['expo_push_token'])
+                logger.warning(
+                    'Push rechazado para %s: %s',
+                    user.username,
+                    details.get('error', ticket),
+                )
+                return False
+            if getattr(settings, 'DEBUG', False):
+                logger.info('Push [%s]: %s — %s', user.username, title, body)
+            return True
     except Exception as exc:
         logger.warning('Push falló para %s: %s', user.username, exc)
         return False
 
 
-def notify_order_status(order):
-    message = STATUS_MESSAGES.get(order.status)
-    if not message:
-        return
+def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> None:
+    from accounts.models import User, UserRole
 
+    drivers = User.objects.filter(
+        role=UserRole.DRIVER,
+        delivery_profile__is_available=True,
+    ).exclude(expo_push_token='')
+    for driver in drivers:
+        send_push_to_user(driver, title, body, data, channel_id='deliveries')
+
+
+def notify_order_status(order):
     title = f'Pedido #{order.id}'
     data = {'orderId': order.id, 'status': order.status}
+    status = order.status
+    restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
+    total_label = f'${order.total:.2f}'
 
-    send_push_to_user(order.customer, title, message, data)
+    customer_msg = ORDER_CUSTOMER_MESSAGES.get(status)
+    if status == 'pending':
+        customer_msg = (
+            f'¡Encargaste en {restaurant_name}! '
+            f'Pedido #{order.id} por {total_label}. '
+            f'El restaurante confirmará pronto.'
+        )
+    elif status == 'on_the_way' and order.driver:
+        customer_msg = f'¡Tu pedido va en camino! {_driver_name(order.driver)} te lo lleva.'
+    elif status == 'cancelled':
+        from orders.models import CancellationSource
 
-    if order.status in ('pending', 'ready', 'cancelled') and order.restaurant.owner:
-        owner_msg = {
-            'pending': f'Nuevo pedido #{order.id} pendiente.',
-            'ready': f'Pedido #{order.id} listo — esperando repartidor.',
-            'cancelled': f'Pedido #{order.id} cancelado.',
-        }.get(order.status)
-        if owner_msg:
-            send_push_to_user(order.restaurant.owner, title, owner_msg, data)
-
-    if order.status == 'ready':
-        from accounts.models import User, UserRole
-        drivers = User.objects.filter(
-            role=UserRole.DRIVER,
-            delivery_profile__is_available=True,
-        ).exclude(expo_push_token='')
-        for driver in drivers:
-            send_push_to_user(
-                driver,
-                'Entrega disponible',
-                f'Pedido #{order.id} listo en {order.restaurant.name}.',
-                data,
+        if order.cancellation_source == CancellationSource.RESTAURANT_REJECT:
+            customer_msg = (
+                f'{restaurant_name} no pudo tomar tu pedido #{order.id}. '
+                f'Prueba otro local.'
             )
+        else:
+            customer_msg = ORDER_CUSTOMER_MESSAGES['cancelled']
+    if customer_msg:
+        send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders')
 
-    if order.driver and order.status in ('on_the_way', 'delivered'):
-        driver_msg = {
-            'on_the_way': f'Entrega #{order.id} asignada.',
-            'delivered': f'Entrega #{order.id} completada.',
-        }.get(order.status)
-        if driver_msg:
-            send_push_to_user(order.driver, title, driver_msg, data)
+    if order.restaurant and order.restaurant.owner:
+        owner_msg = ORDER_OWNER_MESSAGES.get(status)
+        if status == 'pending':
+            owner_msg = (
+                f'¡Ya encargaron! Pedido #{order.id} por {total_label}. '
+                f'Confírmalo en la app.'
+            )
+        if owner_msg:
+            owner_title = f'Pedido #{order.id}'
+            send_push_to_user(order.restaurant.owner, owner_title, owner_msg, data)
+
+    if status == 'ready':
+        _broadcast_to_available_drivers(
+            'Entrega disponible',
+            f'Pedido #{order.id} listo en {order.restaurant.name}.',
+            data,
+        )
+
+    if order.driver:
+        if status == 'delivered':
+            send_push_to_user(
+                order.driver,
+                title,
+                f'Entrega #{order.id} completada.',
+                data,
+                channel_id='deliveries',
+            )
+        elif status == 'cancelled':
+            send_push_to_user(
+                order.driver,
+                title,
+                f'El pedido #{order.id} fue cancelado.',
+                data,
+                channel_id='deliveries',
+            )
 
 
 def notify_shipment_status(shipment):
-    message = SHIPMENT_STATUS_MESSAGES.get(shipment.status)
-    if not message:
-        return
-
     title = f'Envío #{shipment.id}'
     data = {'shipmentId': shipment.id, 'status': shipment.status, 'type': 'shipment'}
+    status = shipment.status
 
-    send_push_to_user(shipment.customer, title, message, data)
+    customer_msg = SHIPMENT_CUSTOMER_MESSAGES.get(status)
+    if status == 'on_the_way' and shipment.driver:
+        customer_msg = f'¡Tu paquete va en camino! {_driver_name(shipment.driver)} te lo lleva.'
+    if customer_msg:
+        send_push_to_user(shipment.customer, title, customer_msg, data, channel_id='deliveries')
 
-    if shipment.status == 'pending':
-        from accounts.models import User, UserRole
-        drivers = User.objects.filter(
-            role=UserRole.DRIVER,
-            delivery_profile__is_available=True,
-        ).exclude(expo_push_token='')
-        for driver in drivers:
-            send_push_to_user(
-                driver,
-                'Envío disponible',
-                f'Envío #{shipment.id}: {shipment.description[:60]}',
-                data,
-            )
+    if status == 'pending':
+        _broadcast_to_available_drivers(
+            'Envío disponible',
+            f'Envío #{shipment.id}: {shipment.description[:60]}',
+            data,
+        )
 
-    if shipment.driver and shipment.status in ('picked_up', 'on_the_way', 'delivered'):
-        driver_msg = {
+    if shipment.driver:
+        driver_messages = {
             'picked_up': f'Envío #{shipment.id} — ve a recoger el paquete.',
             'on_the_way': f'Envío #{shipment.id} — lleva el paquete al destino.',
             'delivered': f'Envío #{shipment.id} completado.',
-        }.get(shipment.status)
+            'cancelled': f'El envío #{shipment.id} fue cancelado.',
+        }
+        driver_msg = driver_messages.get(status)
         if driver_msg:
-            send_push_to_user(shipment.driver, title, driver_msg, data)
+            send_push_to_user(shipment.driver, title, driver_msg, data, channel_id='deliveries')
 
 
 def _format_nearby_distance(distance_meters: float) -> str:
@@ -148,6 +226,7 @@ def notify_driver_nearby_order(order, distance_meters: float) -> None:
             'status': 'on_the_way',
             'type': 'driver_nearby',
         },
+        channel_id='orders',
     )
 
 
@@ -162,4 +241,104 @@ def notify_driver_nearby_shipment(shipment, distance_meters: float) -> None:
             'status': 'on_the_way',
             'type': 'driver_nearby',
         },
+        channel_id='deliveries',
+    )
+
+
+def notify_restaurant_opened(restaurant) -> None:
+    from restaurants.models import RestaurantFavorite
+
+    title = f'{restaurant.name} abrió'
+    body = f'¡{restaurant.name} ya está recibiendo pedidos! Encarga ahora.'
+    data = {
+        'restaurantId': restaurant.id,
+        'restaurantName': restaurant.name,
+        'type': 'restaurant_open',
+    }
+    favorites = RestaurantFavorite.objects.filter(
+        restaurant=restaurant,
+    ).select_related('user').exclude(user__expo_push_token='')
+    for favorite in favorites:
+        send_push_to_user(favorite.user, title, body, data, channel_id='orders')
+
+
+def notify_payment_confirmed(order) -> None:
+    title = f'Pedido #{order.id}'
+    data = {'orderId': order.id, 'status': order.status, 'type': 'payment_confirmed'}
+    total_label = f'${order.total:.2f}'
+
+    send_push_to_user(
+        order.customer,
+        title,
+        f'Pago recibido por {total_label}. Tu pedido sigue en proceso.',
+        data,
+        channel_id='orders',
+    )
+
+    if order.restaurant and order.restaurant.owner:
+        send_push_to_user(
+            order.restaurant.owner,
+            title,
+            f'Pago confirmado del pedido #{order.id} ({total_label}). Ya puedes prepararlo.',
+            data,
+        )
+
+
+def notify_pending_order_reminder(order) -> None:
+    if not order.restaurant or not order.restaurant.owner:
+        return
+    data = {'orderId': order.id, 'status': order.status, 'type': 'pending_reminder'}
+    send_push_to_user(
+        order.restaurant.owner,
+        f'Pedido #{order.id}',
+        f'El pedido #{order.id} sigue esperando confirmación. Respóndele al cliente.',
+        data,
+    )
+
+
+def notify_ready_no_driver(order) -> None:
+    data = {'orderId': order.id, 'status': order.status, 'type': 'ready_no_driver'}
+    restaurant_name = order.restaurant.name if order.restaurant_id else 'el local'
+
+    if order.restaurant and order.restaurant.owner:
+        send_push_to_user(
+            order.restaurant.owner,
+            f'Pedido #{order.id}',
+            f'Pedido #{order.id} listo — aún sin repartidor.',
+            data,
+        )
+
+    _broadcast_to_available_drivers(
+        'Entrega urgente',
+        f'Pedido #{order.id} lleva rato esperando en {restaurant_name}.',
+        data,
+    )
+
+
+def notify_review_reminder(order) -> None:
+    restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
+    send_push_to_user(
+        order.customer,
+        f'Pedido #{order.id}',
+        f'¿Cómo estuvo tu pedido en {restaurant_name}? Déjanos una reseña.',
+        {
+            'orderId': order.id,
+            'status': 'delivered',
+            'type': 'review_reminder',
+        },
+        channel_id='orders',
+    )
+
+
+def notify_shipment_pending_reminder(shipment) -> None:
+    send_push_to_user(
+        shipment.customer,
+        f'Envío #{shipment.id}',
+        f'Tu envío #{shipment.id} sigue buscando repartidor. Te avisamos cuando alguien lo tome.',
+        {
+            'shipmentId': shipment.id,
+            'status': 'pending',
+            'type': 'shipment_pending_reminder',
+        },
+        channel_id='deliveries',
     )

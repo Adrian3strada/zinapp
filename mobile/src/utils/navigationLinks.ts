@@ -1,4 +1,6 @@
-import { Alert, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
+
+import { appAlert } from './appAlert';
 
 import type { MapCoordinate } from './maps';
 
@@ -14,7 +16,7 @@ export async function openGoogleMapsNav(coord: MapCoordinate, label?: string) {
     const supported = await Linking.canOpenURL(url!);
     await Linking.openURL(supported ? url! : web);
   } catch {
-    Alert.alert('Mapas', label ? `No se pudo abrir navegación a ${label}` : 'No se pudo abrir Google Maps');
+    appAlert('Mapas', label ? `No se pudo abrir navegación a ${label}` : 'No se pudo abrir Google Maps');
   }
 }
 
@@ -23,7 +25,7 @@ export async function openWazeNav(coord: MapCoordinate) {
   try {
     await Linking.openURL(url);
   } catch {
-    Alert.alert('Waze', 'No se pudo abrir Waze. ¿Está instalado?');
+    appAlert('Waze', 'No se pudo abrir Waze. ¿Está instalado?');
   }
 }
 
@@ -32,7 +34,7 @@ export function showNavigationPicker(
   title: string,
   address?: string,
 ) {
-  Alert.alert(
+  appAlert(
     title,
     address ?? `${coord.latitude.toFixed(5)}, ${coord.longitude.toFixed(5)}`,
     [

@@ -1,0 +1,22 @@
+name: ZinApp cron jobs
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run scheduled notifications
+        env:
+          CRON_SECRET: ${{ secrets.RAILWAY_CRON_TOKEN }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "RAILWAY_CRON_TOKEN not set — skipping cron"
+            exit 0
+          fi
+          curl -fsS --retry 2 --max-time 120 -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://zinapp-api-production.up.railway.app/api/cron/run/
