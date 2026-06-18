@@ -30,6 +30,19 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
+  if (config.data instanceof FormData) {
+    // Axios debe armar multipart/form-data con boundary; JSON rompe la subida de imágenes.
+    if (config.headers) {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+        config.headers.delete('content-type');
+      } else {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
+    config.timeout = Math.max(config.timeout ?? 0, 120000);
+  }
   if (isMutationMethod(config.method)) {
     await wakeBackend(true);
   }
@@ -80,6 +93,7 @@ api.interceptors.response.use(
       _networkRetry?: number;
       headers?: Record<string, string>;
       url?: string;
+      method?: string;
     } | undefined;
 
     if (!originalRequest) {

@@ -8,11 +8,17 @@ import { spacing } from '../theme/spacing';
 interface Props {
   children?: React.ReactNode;
   loading?: boolean;
+  /** Si se pasa, muestra skeleton en lugar del spinner a pantalla completa. */
+  loadingSkeleton?: React.ReactNode;
   error?: string | null;
   onRetry?: () => void;
 }
 
-export default function ScreenContainer({ children, loading, error, onRetry }: Props) {
+export default function ScreenContainer({ children, loading, loadingSkeleton, error, onRetry }: Props) {
+  if (loading && loadingSkeleton) {
+    return <View style={styles.container}>{loadingSkeleton}</View>;
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -58,9 +64,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     padding: spacing.xxl,
-    borderRadius: 20,
+    borderRadius: 22,
     minWidth: 180,
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   loadingText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
   loadingHint: {

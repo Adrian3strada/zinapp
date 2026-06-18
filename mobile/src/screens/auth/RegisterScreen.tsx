@@ -169,7 +169,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 24 }]}
         >
-          <BrandLogo width={180} />
+          <BrandLogo variant="light" width={220} compact />
           <Text style={styles.title}>Crear cuenta</Text>
           <Text style={styles.subtitle}>Elige cómo usarás ZinApp en Zinapécuaro</Text>
         </LinearGradient>

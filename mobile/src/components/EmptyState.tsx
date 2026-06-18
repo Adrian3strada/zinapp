@@ -63,5 +63,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 280,
   },
-  btn: { marginTop: spacing.xl, minWidth: 220 },
+  btn: { marginTop: spacing.xl, minWidth: 220, alignSelf: 'center' },
 });

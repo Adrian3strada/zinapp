@@ -15,10 +15,9 @@ import {
 import { appAlert } from '../../utils/appAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import Button from '../../components/Button';
+import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
 import ProfileAvatarPicker from '../../components/ProfileAvatarPicker';
@@ -63,7 +62,7 @@ function toApiTime(value: string): string | null {
 
 export default function ProfileScreen() {
   const { user, refreshUser, logout } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
   const driverTabNav = useNavigation<BottomTabNavigationProp<DriverTabParamList>>();
   const [form, setForm] = useState({
     first_name: '',
@@ -309,15 +308,15 @@ export default function ProfileScreen() {
     user.role === 'customer' ? 'Dirección habitual de entrega' : 'Dirección personal';
 
   const scrollPadding = {
-    paddingBottom: insets.bottom + spacing.tabBar + spacing.xxl,
+    paddingBottom: tabBottomPadding(spacing.xxl),
   };
 
   return (
     <ScreenContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardHeaderless()}
       >
         <ScrollView
           contentContainerStyle={[styles.container, scrollPadding]}
@@ -556,6 +555,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    zIndex: 1,
   },
   name: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: spacing.md },
   username: { color: 'rgba(255,255,255,0.85)', marginTop: 2 },
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     ...cardShadow,
   },
-  cardOverlap: { marginTop: -32 },
+  cardOverlap: { marginTop: -32, zIndex: 2, elevation: 4 },
   section: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: spacing.sm, letterSpacing: -0.2 },
   hint: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md, lineHeight: 18 },
   fieldLabel: {

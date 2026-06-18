@@ -2,11 +2,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import type { OffersScreenProps } from '../../navigation/types';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { couponApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -59,7 +60,7 @@ function CouponCard({
 }
 
 export default function OffersScreen({ navigation }: OffersScreenProps) {
-  const insets = useSafeAreaInsets();
+  const { scrollPaddingBottom } = useTabScreenInsets();
   const [coupons, setCoupons] = useState<PublicCoupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,12 +90,19 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
   }, [navigation]);
 
   return (
-    <ScreenContainer loading={loading && coupons.length === 0} error={error} onRetry={() => load()}>
+    <ScreenContainer
+      loading={loading && coupons.length === 0}
+      loadingSkeleton={
+        <ScrollView contentContainerStyle={[styles.container, scrollPaddingBottom()]}>
+          <View style={styles.heroSkeleton} />
+          <ListSkeleton count={3} variant="coupon" />
+        </ScrollView>
+      }
+      error={error}
+      onRetry={() => load()}
+    >
       <ScrollView
-        contentContainerStyle={[
-          styles.container,
-          { paddingBottom: insets.bottom + spacing.lg },
-        ]}
+        contentContainerStyle={[styles.container, scrollPaddingBottom()]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />
@@ -133,7 +141,15 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: spacing.screen },
+  container: { paddingHorizontal: spacing.screen, flexGrow: 1 },
+  heroSkeleton: {
+    marginHorizontal: -spacing.screen,
+    height: 160,
+    backgroundColor: colors.borderLight,
+    marginBottom: spacing.lg,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
   hero: {
     marginHorizontal: -spacing.screen,
     paddingHorizontal: spacing.xl,

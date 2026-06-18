@@ -3,11 +3,13 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EmptyState from '../../components/EmptyState';
 import ListFooter from '../../components/ListFooter';
+import ListSkeleton from '../../components/ListSkeleton';
 import LiveBadge from '../../components/LiveBadge';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import ScreenContainer from '../../components/ScreenContainer';
 import SectionHeader from '../../components/SectionHeader';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AdminOrdersScreenProps } from '../../navigation/types';
 import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -15,6 +17,7 @@ import { cardShadow } from '../../theme/shadows';
 import { formatCurrency } from '../../utils/format';
 
 export default function AdminOrdersScreen({ navigation }: AdminOrdersScreenProps) {
+  const { listPaddingBottom } = useTabScreenInsets();
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await orderApi.list(page);
     return data;
@@ -32,11 +35,20 @@ export default function AdminOrdersScreen({ navigation }: AdminOrdersScreenProps
   } = usePaginatedList(fetchPage, [fetchPage], 'No se pudieron cargar los pedidos');
 
   return (
-    <ScreenContainer loading={loading && orders.length === 0} error={error} onRetry={refresh}>
+    <ScreenContainer
+      loading={loading && orders.length === 0}
+      loadingSkeleton={
+        <View style={[styles.skeletonWrap, listPaddingBottom()]}>
+          <ListSkeleton count={5} variant="order" />
+        </View>
+      }
+      error={error}
+      onRetry={refresh}
+    >
       <FlatList
         data={orders}
         keyExtractor={(o) => String(o.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={refresh}
         refreshing={refreshing}
         onEndReached={loadMore}
@@ -61,7 +73,7 @@ export default function AdminOrdersScreen({ navigation }: AdminOrdersScreenProps
 
           return (
             <Pressable
-              style={styles.card}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
               onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
             >
               <View style={styles.row}>
@@ -91,8 +103,18 @@ export default function AdminOrdersScreen({ navigation }: AdminOrdersScreenProps
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 16, paddingBottom: 32 },
-  card: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10, ...cardShadow },
+  list: { padding: 16, flexGrow: 1 },
+  skeletonWrap: { flex: 1, padding: 16 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...cardShadow,
+  },
+  cardPressed: { opacity: 0.94 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   badges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   id: { fontWeight: '800', fontSize: 16, color: colors.text },

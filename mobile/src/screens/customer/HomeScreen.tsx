@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ActiveDeliveryStrip from '../../components/ActiveDeliveryStrip';
 import HomeHero from '../../components/HomeHero';
@@ -9,12 +8,13 @@ import { useAuth } from '../../context/AuthContext';
 import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesContext';
 import { useCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import type { HomeScreenProps } from '../../navigation/types';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { insets, scrollPaddingBottom } = useTabScreenInsets();
   const {
     activeOrderCount,
     activeShipmentCount,
@@ -45,7 +45,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     <ScrollView
       contentContainerStyle={[
         styles.container,
-        { paddingBottom: insets.bottom + spacing.tabBar + spacing.lg },
+        scrollPaddingBottom(),
       ]}
       showsVerticalScrollIndicator={false}
       refreshControl={

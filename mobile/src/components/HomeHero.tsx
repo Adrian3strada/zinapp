@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
+import { BrandMark } from './BrandLogo';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
@@ -42,6 +43,10 @@ export default function HomeHero({
 
       <View style={styles.row}>
         <View style={styles.textBlock}>
+          <View style={styles.brandRow}>
+            <BrandMark size={32} variant="light" />
+            <Text style={styles.brandLabel}>ZinApp</Text>
+          </View>
           <Text style={styles.greeting}>{greeting}</Text>
           <View style={styles.locationRow}>
             <View style={styles.locationPill}>
@@ -98,11 +103,24 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   textBlock: { flex: 1, paddingRight: spacing.md },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: spacing.sm,
+  },
+  brandLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.92)',
+    letterSpacing: 0.4,
+  },
   greeting: {
     fontSize: 26,
     fontWeight: '800',
     color: '#FFF',
     letterSpacing: -0.5,
+    marginTop: 2,
   },
   locationRow: { marginTop: spacing.sm },
   locationPill: {

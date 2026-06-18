@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.success,
     backgroundColor: colors.primaryLight + '44',
   },
-  pressed: { opacity: 0.92, transform: [{ scale: 0.992 }] },
+  pressed: { opacity: 0.92 },
   emojiBox: {
     width: 48,
     height: 48,

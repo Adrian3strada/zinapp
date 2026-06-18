@@ -2,14 +2,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
+import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import ScreenContainer from '../../components/ScreenContainer';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { RestaurantStackParamList, RestaurantTabParamList } from '../../navigation/types';
 import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -30,7 +32,7 @@ const NEXT_STATUS: Record<string, { status: string; label: string }> = {
 };
 
 export default function RestaurantOrdersScreen({ navigation }: Props) {
-  const insets = useSafeAreaInsets();
+  const { insets, listPaddingBottom } = useTabScreenInsets();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -108,17 +110,33 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     }
   };
 
+  const initialLoading = loading && orders.length === 0;
+
   return (
-    <ScreenContainer loading={loading && orders.length === 0} error={error} onRetry={load}>
+    <ScreenContainer
+      loading={initialLoading}
+      loadingSkeleton={
+        <View style={[styles.skeletonWrap, { paddingTop: insets.top + spacing.sm }, listPaddingBottom()]}>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTitleBone} />
+          </View>
+          <View style={styles.stats}>
+            <View style={styles.statBoxSkeleton} />
+            <View style={styles.statBoxSkeleton} />
+          </View>
+          <ListSkeleton count={3} variant="order" />
+        </View>
+      }
+      error={error}
+      onRetry={load}
+    >
       <FlatList
         data={orders}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[
           styles.list,
-          {
-            paddingTop: insets.top + spacing.sm,
-            paddingBottom: insets.bottom + spacing.tabBar + spacing.lg,
-          },
+          { paddingTop: insets.top + spacing.sm },
+          listPaddingBottom(),
         ]}
         onRefresh={load}
         refreshing={refreshing}
@@ -144,7 +162,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
         }
         renderItem={({ item }) => (
           <Pressable
-            style={styles.card}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
             onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
           >
             <View style={styles.cardTop}>
@@ -192,10 +210,13 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
           </Pressable>
         )}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>✨</Text>
-            <Text style={styles.emptyText}>Sin pedidos activos</Text>
-          </View>
+          !loading ? (
+            <EmptyState
+              emoji="✨"
+              title="Sin pedidos activos"
+              subtitle="Cuando llegue un pedido nuevo, aparecerá aquí al instante."
+            />
+          ) : null
         }
       />
     </ScreenContainer>
@@ -203,7 +224,8 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.screen },
+  list: { paddingHorizontal: spacing.screen, flexGrow: 1 },
+  skeletonWrap: { flex: 1, paddingHorizontal: spacing.screen },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -211,6 +233,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text, flex: 1 },
+  headerTitleBone: {
+    width: 180,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: colors.borderLight,
+  },
   stats: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   statBox: {
     flex: 1,
@@ -219,15 +247,24 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
+  statBoxSkeleton: {
+    flex: 1,
+    height: 80,
+    borderRadius: 14,
+    backgroundColor: colors.borderLight,
+  },
   statNum: { fontSize: 28, fontWeight: '800', color: colors.primary },
   statLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 22,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
+  cardPressed: { opacity: 0.94 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   paymentBadge: {
@@ -242,7 +279,4 @@ const styles = StyleSheet.create({
   address: { fontSize: 13, color: colors.textSecondary, marginTop: 6 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
   btn: { flex: 1 },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyEmoji: { fontSize: 48 },
-  emptyText: { color: colors.textMuted, marginTop: 8, fontSize: 16 },
 });

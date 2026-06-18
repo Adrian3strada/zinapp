@@ -10,8 +10,8 @@ import RestaurantManageScreen from '../screens/restaurant/RestaurantManageScreen
 import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import { colors } from '../theme/colors';
-import { spacing } from '../theme/spacing';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
+import { tabBarScreenOptions } from './tabBarOptions';
 import type { RestaurantStackParamList, RestaurantTabParamList } from './types';
 
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
@@ -40,20 +40,7 @@ function RestaurantTabs() {
   const pendingCount = useRestaurantPendingCount();
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabInactive,
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '700' },
-        tabBarStyle: {
-          height: spacing.tabBar + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: insets.bottom,
-        },
-      }}
-    >
+    <Tab.Navigator screenOptions={tabBarScreenOptions(insets)}>
       <Tab.Screen
         name="Pedidos"
         component={RestaurantOrdersScreen}

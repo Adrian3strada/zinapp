@@ -24,7 +24,12 @@ function resolveApiUrl(): string {
     return isLocal ? PRODUCTION_API_URL : configured!;
   }
 
-  return configured || 'http://192.168.1.27:8000/api';
+  // Expo Go / dev: override con EXPO_PUBLIC_API_URL; si no, app.json (Railway) o producción
+  const devOverride = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (devOverride) return devOverride;
+  if (configured && isLocal) return configured;
+
+  return configured || PRODUCTION_API_URL;
 }
 
 export const API_URL = resolveApiUrl();

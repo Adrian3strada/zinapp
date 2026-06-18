@@ -4,8 +4,10 @@ import { appAlert } from '../../utils/appAlert';
 
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { orderApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import type { Order, Shipment } from '../../types';
@@ -27,6 +29,7 @@ function isActiveItem(item: DeliveryItem): boolean {
 }
 
 export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenProps) {
+  const { listPaddingBottom } = useTabScreenInsets();
   const [items, setItems] = useState<DeliveryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -218,11 +221,20 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
   };
 
   return (
-    <ScreenContainer loading={loading && items.length === 0} error={error} onRetry={() => load()}>
+    <ScreenContainer
+      loading={loading && items.length === 0}
+      loadingSkeleton={
+        <View style={[styles.skeletonWrap, listPaddingBottom()]}>
+          <ListSkeleton count={3} variant="job" />
+        </View>
+      }
+      error={error}
+      onRetry={() => load()}
+    >
       <FlatList
         data={listData}
         keyExtractor={(row) => row.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={() => load(true)}
         refreshing={refreshing}
         renderItem={({ item: row }) => {
@@ -250,6 +262,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 
 const styles = StyleSheet.create({
   list: { padding: 16, flexGrow: 1 },
+  skeletonWrap: { flex: 1, padding: 16 },
   sectionHeader: {
     fontSize: 13,
     fontWeight: '800',

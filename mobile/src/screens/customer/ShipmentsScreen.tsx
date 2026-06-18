@@ -10,8 +10,7 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
@@ -35,6 +34,7 @@ import { dedupeById } from '../../hooks/usePaginatedList';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { runWithRetry } from '../../utils/runWithRetry';
 import { formatCurrency } from '../../utils/format';
+import { getApiErrorMessage } from '../../utils/apiErrors';
 
 type AddressField = 'pickup' | 'delivery';
 
@@ -44,7 +44,7 @@ const PAYMENT_OPTIONS_BASE = [
 ];
 
 export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
-  const insets = useSafeAreaInsets();
+  const { scrollPaddingBottom } = useTabScreenInsets();
   const { user } = useAuth();
   const { config: appConfig } = useAppConfig();
   const { getCurrentPosition, loading: locating } = useLocation();
@@ -289,7 +289,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
       <ScrollView
         contentContainerStyle={[
           styles.container,
-          { paddingBottom: insets.bottom + spacing.lg },
+          scrollPaddingBottom(),
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

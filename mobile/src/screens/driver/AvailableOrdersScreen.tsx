@@ -7,10 +7,12 @@ import { appAlert } from '../../utils/appAlert';
 import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
 import { orderApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -23,6 +25,7 @@ type AvailableItem =
 
 export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
+  const { listPaddingBottom } = useTabScreenInsets();
   const { isAvailable, updating, toggleAvailability } = useDriverProfileContext();
   const { hasActiveDelivery } = useDriverActiveDeliveries();
   const [items, setItems] = useState<AvailableItem[]>([]);
@@ -114,13 +117,23 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
   };
 
   const acceptDisabled = !isAvailable || hasActiveDelivery;
+  const initialLoading = loading && items.length === 0;
 
   return (
-    <ScreenContainer loading={loading && items.length === 0} error={error} onRetry={() => load()}>
+    <ScreenContainer
+      loading={initialLoading}
+      loadingSkeleton={
+        <View style={[styles.skeletonWrap, listPaddingBottom()]}>
+          <ListSkeleton count={4} variant="job" />
+        </View>
+      }
+      error={error}
+      onRetry={() => load()}
+    >
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={() => load(true)}
         refreshing={refreshing}
         ListHeaderComponent={
@@ -227,12 +240,13 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
 
 const styles = StyleSheet.create({
   list: { padding: 16, flexGrow: 1 },
+  skeletonWrap: { flex: 1, padding: 16, paddingTop: 16 },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     padding: 18,
-    borderRadius: 16,
+    borderRadius: 22,
     marginBottom: 16,
   },
   bannerIcon: {
@@ -250,7 +264,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     backgroundColor: colors.primaryLight,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 12,
     alignItems: 'center',
@@ -260,7 +274,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     backgroundColor: colors.background,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 12,
     alignItems: 'flex-start',

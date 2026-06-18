@@ -76,5 +76,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...cardShadow,
   },
-  addBtnPressed: { opacity: 0.88, transform: [{ scale: 0.96 }] },
+  addBtnPressed: { opacity: 0.88 },
 });

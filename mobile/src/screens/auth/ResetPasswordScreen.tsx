@@ -5,6 +5,7 @@ import { appAlert } from '../../utils/appAlert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BrandLogo from '../../components/BrandLogo';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
@@ -58,7 +59,7 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 28 }]}
         >
-          <Text style={styles.heroEmoji}>🔑</Text>
+          <BrandLogo variant="light" width={200} compact showTagline={false} />
           <Text style={styles.title}>Nueva contraseña</Text>
           <Text style={styles.heroSub}>Elige una contraseña segura para tu cuenta.</Text>
         </LinearGradient>
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
   },
   heroEmoji: { fontSize: 40, marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: '#FFF' },
+  title: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: 12 },
   heroSub: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',

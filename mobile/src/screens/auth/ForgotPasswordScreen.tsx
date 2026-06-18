@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import BrandLogo from '../../components/BrandLogo';
 import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import FormField from '../../components/FormField';
@@ -65,7 +66,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 28 }]}
         >
-          <Text style={styles.heroEmoji}>🔐</Text>
+          <BrandLogo variant="light" width={200} compact showTagline={false} />
           <Text style={styles.title}>Recuperar contraseña</Text>
           <Text style={styles.heroSub}>
             {__DEV__
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
   },
   heroEmoji: { fontSize: 40, marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '800', color: '#FFF', letterSpacing: -0.3 },
+  title: { fontSize: 22, fontWeight: '800', color: '#FFF', letterSpacing: -0.3, marginTop: 12 },
   heroSub: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',

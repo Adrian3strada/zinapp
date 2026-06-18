@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 
+import { supportsRemotePush } from '../utils/expoRuntime';
 import { authApi } from './api';
 import { setupNotificationChannels } from './notificationsSetup';
 
@@ -11,6 +11,10 @@ function getExpoProjectId(): string | undefined {
 
 /** Pide permiso, obtiene token Expo y lo registra en el backend. */
 export async function registerPushNotifications(): Promise<boolean> {
+  if (!supportsRemotePush()) return false;
+
+  const Notifications = await import('expo-notifications');
+
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
   if (existing !== 'granted') {

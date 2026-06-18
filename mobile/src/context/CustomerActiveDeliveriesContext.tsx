@@ -36,3 +36,8 @@ export function useCustomerActiveDeliveries(): CustomerActiveDeliveriesValue {
   }
   return ctx;
 }
+
+/** Para pantallas compartidas (detalle pedido/envío) cuando el provider puede no existir. */
+export function useOptionalCustomerActiveDeliveries(): CustomerActiveDeliveriesValue | null {
+  return useContext(CustomerActiveDeliveriesContext);
+}

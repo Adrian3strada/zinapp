@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 
 import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
@@ -32,6 +32,7 @@ import type { Product, Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
+import { appendImage } from '../../utils/imagePicker';
 import { resolveMediaUrl } from '../../utils/media';
 
 interface ProductDraft {
@@ -98,7 +99,7 @@ const ProductManageRow = React.memo(function ProductManageRow({
 });
 
 export default function RestaurantManageScreen() {
-  const insets = useSafeAreaInsets();
+  const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,11 +223,7 @@ export default function RestaurantManageScreen() {
       fd.append('price', editor.price.trim());
       fd.append('is_available', editor.is_available ? 'true' : 'false');
       if (editor.imageUri) {
-        fd.append('image', {
-          uri: editor.imageUri,
-          name: 'product.jpg',
-          type: 'image/jpeg',
-        } as unknown as Blob);
+        appendImage(fd, 'image', editor.imageUri, 'product.jpg');
       }
       if (editor.id) {
         await productApi.update(editor.id, fd);
@@ -274,15 +271,15 @@ export default function RestaurantManageScreen() {
 
   const scrollPadding = {
     paddingHorizontal: spacing.screen,
-    paddingBottom: insets.bottom + spacing.tabBar + spacing.xxl,
+    paddingBottom: tabBottomPadding(spacing.xxl),
   };
 
   return (
     <ScreenContainer error={error} onRetry={load}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardHeaderless()}
       >
         <ScrollView
           contentContainerStyle={scrollPadding}
@@ -388,7 +385,7 @@ export default function RestaurantManageScreen() {
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.modalScroll}
+                contentContainerStyle={[styles.modalScroll, { paddingBottom: insets.bottom + 16 }]}
               >
                 <Pressable style={styles.photoBox} onPress={pickImage} hitSlop={HIT_SLOP}>
                   {editor?.imageUri || editor?.image_url ? (
@@ -446,31 +443,31 @@ export default function RestaurantManageScreen() {
                     trackColor={{ true: colors.primary, false: colors.border }}
                   />
                 </View>
-              </ScrollView>
 
-              <View style={styles.modalActions}>
-                <Button
-                  title="Cancelar"
-                  variant="secondary"
-                  onPress={closeEditor}
-                  style={styles.modalActionBtn}
-                />
-                <Button
-                  title="Guardar"
-                  onPress={saveProduct}
-                  loading={saving}
-                  style={styles.modalActionBtn}
-                />
-              </View>
-              {editor?.id && (
-                <Button
-                  title="Eliminar producto"
-                  variant="danger"
-                  onPress={deleteProduct}
-                  loading={deleting}
-                  style={styles.deleteBtn}
-                />
-              )}
+                <View style={styles.modalActions}>
+                  <Button
+                    title="Cancelar"
+                    variant="secondary"
+                    onPress={closeEditor}
+                    style={styles.modalActionBtn}
+                  />
+                  <Button
+                    title="Guardar"
+                    onPress={saveProduct}
+                    loading={saving}
+                    style={styles.modalActionBtn}
+                  />
+                </View>
+                {editor?.id && (
+                  <Button
+                    title="Eliminar producto"
+                    variant="danger"
+                    onPress={deleteProduct}
+                    loading={deleting}
+                    style={styles.deleteBtn}
+                  />
+                )}
+              </ScrollView>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -486,8 +483,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
     marginBottom: spacing.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   heroIcon: {
@@ -527,14 +525,14 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 22,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
-  section: { fontSize: 16, fontWeight: '700', color: colors.text },
+  section: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -583,8 +581,8 @@ const styles = StyleSheet.create({
   },
   modal: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: 16,
     paddingHorizontal: 20,
     maxHeight: '92%',
@@ -626,10 +624,10 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderLight,
   },
   modalActionBtn: { flex: 1 },
   deleteBtn: { marginTop: 10 },

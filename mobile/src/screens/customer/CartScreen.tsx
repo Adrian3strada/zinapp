@@ -28,11 +28,13 @@ import type { Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { toCoordinate } from '../../utils/maps';
 import { runWithRetry } from '../../utils/runWithRetry';
 
 export default function CartScreen({ navigation }: CartScreenProps) {
   const { user, refreshUser } = useAuth();
+  const { keyboardWithHeader, tabBottomPadding } = useTabScreenInsets();
   const { config: appConfig } = useAppConfig();
   const { items, total, updateQuantity, clearCart, restaurantId } = useCart();
   const [address, setAddress] = useState(user?.address ?? '');
@@ -372,13 +374,15 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   if (items.length === 0) {
     return (
       <ScreenContainer>
-        <EmptyState
-          emoji="🛒"
-          title="Tu carrito está vacío"
-          subtitle="Explora restaurantes y agrega platillos"
-          actionLabel="Ver restaurantes"
-          onAction={() => navigation.navigate('Inicio')}
-        />
+        <View style={[styles.emptyWrap, { paddingBottom: tabBottomPadding() }]}>
+          <EmptyState
+            emoji="🛒"
+            title="Tu carrito está vacío"
+            subtitle="Explora restaurantes y agrega platillos"
+            actionLabel="Ver restaurantes"
+            onAction={() => navigation.navigate('Inicio')}
+          />
+        </View>
       </ScreenContainer>
     );
   }
@@ -387,21 +391,24 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     <ScreenContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={keyboardWithHeader()}
       >
         <ScrollView
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: tabBottomPadding(spacing.xl) },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.orderHeader}>
             <View style={styles.orderHeaderText}>
-              <Text style={styles.sectionTitle}>Tu pedido</Text>
+              <Text style={styles.sectionTitle}>{cartRestaurant?.name ?? 'Tu pedido'}</Text>
               {cartRestaurant ? (
                 <Text style={styles.restaurantSub}>
-                  {cartRestaurant.name} · {items.length} artículo{items.length !== 1 ? 's' : ''}
+                  {items.length} artículo{items.length !== 1 ? 's' : ''} · Revisa y confirma abajo
                 </Text>
               ) : null}
             </View>
@@ -453,7 +460,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  list: { padding: spacing.screen, paddingBottom: spacing.xxl },
+  emptyWrap: { flex: 1, justifyContent: 'center' },
+  list: { padding: spacing.screen },
   orderHeader: { marginBottom: 14 },
   orderHeaderText: { gap: 4 },
   sectionTitle: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },

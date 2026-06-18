@@ -100,6 +100,7 @@ else:
             'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'connect_timeout': 10,
+                **({'sslmode': 'disable'} if DEBUG else {}),
             },
         }
     }

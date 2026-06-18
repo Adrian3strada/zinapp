@@ -10,17 +10,18 @@ import {
   View,
 } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MapMarker } from '../../components/AppMap';
 import EmptyState from '../../components/EmptyState';
 import HomeHero from '../../components/HomeHero';
 import ListFooter from '../../components/ListFooter';
+import ListSkeleton from '../../components/ListSkeleton';
 import RestaurantCard from '../../components/RestaurantCard';
 import ScreenContainer from '../../components/ScreenContainer';
 import SearchField from '../../components/SearchField';
 import { useAuth } from '../../context/AuthContext';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { RestaurantsScreenProps } from '../../navigation/types';
 import { restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -36,7 +37,7 @@ const AppMap = React.lazy(() => import('../../components/AppMap'));
 
 export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps) {
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { insets, listPaddingBottom } = useTabScreenInsets();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RestaurantCategoryKey>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -237,11 +238,20 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 
   if (viewMode === 'map') {
     return (
-      <ScreenContainer loading={loading && restaurants.length === 0} error={error} onRetry={refresh}>
+      <ScreenContainer
+        loading={loading && restaurants.length === 0}
+        loadingSkeleton={
+          <View style={[styles.skeletonWrap, listPaddingBottom()]}>
+            <ListSkeleton count={5} variant="restaurant" />
+          </View>
+        }
+        error={error}
+        onRetry={refresh}
+      >
         <FlatList
           data={filtered}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, listPaddingBottom()]}
           onRefresh={refresh}
           refreshing={refreshing}
           onEndReached={loadMore}
@@ -264,11 +274,20 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
   }
 
   return (
-    <ScreenContainer loading={loading && restaurants.length === 0} error={error} onRetry={refresh}>
+    <ScreenContainer
+      loading={loading && restaurants.length === 0}
+      loadingSkeleton={
+        <View style={[styles.skeletonWrap, listPaddingBottom()]}>
+          <ListSkeleton count={5} variant="restaurant" />
+        </View>
+      }
+      error={error}
+      onRetry={refresh}
+    >
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={refresh}
         refreshing={refreshing}
         onEndReached={loadMore}
@@ -292,7 +311,8 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
+  list: { paddingHorizontal: spacing.screen, flexGrow: 1 },
+  skeletonWrap: { flex: 1, paddingHorizontal: spacing.screen, paddingTop: spacing.lg },
   hero: { marginHorizontal: -spacing.screen },
   searchWrap: { marginTop: spacing.lg },
   categories: { paddingVertical: spacing.lg, gap: spacing.sm, paddingRight: spacing.screen },

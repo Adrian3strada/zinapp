@@ -1,10 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import ListSkeleton from '../../components/ListSkeleton';
 import EmptyState from '../../components/EmptyState';
 import FloatingCartBar from '../../components/FloatingCartBar';
 import ListFooter from '../../components/ListFooter';
@@ -94,6 +96,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const handleAdd = useCallback((product: Product) => {
     try {
       addItem(product);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
       // Evita cierre nativo si algo falla al agregar
     }
@@ -179,11 +182,24 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   }, [navigation]);
 
   return (
-    <ScreenContainer loading={loading && products.length === 0} error={error} onRetry={refresh}>
+    <ScreenContainer
+      loading={loading && products.length === 0}
+      loadingSkeleton={
+        <View style={[styles.list, { paddingBottom: listPaddingBottom }]}>
+          <ListSkeleton count={5} variant="restaurant" />
+        </View>
+      }
+      error={error}
+      onRetry={refresh}
+    >
       <FlatList
         data={products}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
+        contentContainerStyle={[
+          styles.list,
+          { paddingBottom: listPaddingBottom },
+          products.length === 0 && !loading ? styles.listEmpty : null,
+        ]}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={listFooter}
@@ -206,12 +222,14 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
 
 const styles = StyleSheet.create({
   list: { padding: spacing.screen, paddingTop: 0 },
+  listEmpty: { flexGrow: 1, justifyContent: 'center' },
   bannerWrap: {
     marginHorizontal: -spacing.screen,
     marginBottom: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
+    overflow: 'hidden',
     ...cardShadow,
   },
   bannerImageWrap: {

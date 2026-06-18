@@ -1,6 +1,5 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 /** Nombre del tono empaquetado en el APK (assets/sounds/bell.wav). */
@@ -21,7 +20,8 @@ export function resolveNotificationChannel(
 }
 
 /** Configura handler y canales Android (sonido + vibración). */
-export function configureNotifications(): void {
+export async function configureNotifications(): Promise<void> {
+  const Notifications = await import('expo-notifications');
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -35,6 +35,8 @@ export function configureNotifications(): void {
 
 export async function setupNotificationChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
+
+  const Notifications = await import('expo-notifications');
 
   const channelBase = {
     sound: NOTIFICATION_SOUND,
@@ -59,26 +61,26 @@ export async function setupNotificationChannels(): Promise<void> {
   });
 }
 
+const bellSource = require('../../assets/sounds/bell.wav');
+let bellPlayer: AudioPlayer | null = null;
 let bellPlaying = false;
 
 async function playBellSound(): Promise<void> {
   if (bellPlaying) return;
   bellPlaying = true;
   try {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      shouldDuckAndroid: true,
+    await setAudioModeAsync({
+      playsInSilentMode: true,
     });
-    const { sound } = await Audio.Sound.createAsync(
-      require('../../assets/sounds/bell.wav'),
-      { shouldPlay: true, volume: 1 },
-    );
-    sound.setOnPlaybackStatusUpdate((status) => {
-      if (status.isLoaded && status.didJustFinish) {
-        void sound.unloadAsync();
-        bellPlaying = false;
-      }
-    });
+    if (!bellPlayer) {
+      bellPlayer = createAudioPlayer(bellSource);
+    } else {
+      bellPlayer.seekTo(0);
+    }
+    bellPlayer.play();
+    setTimeout(() => {
+      bellPlaying = false;
+    }, 1200);
   } catch {
     bellPlaying = false;
   }

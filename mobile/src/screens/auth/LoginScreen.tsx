@@ -90,7 +90,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 32 }]}
         >
-          <BrandLogo width={Math.min(280, contentWidth())} />
+          <BrandLogo variant="light" width={Math.min(260, contentWidth() - 48)} />
           <Text style={styles.subtitle}>Delivery y servicios en Zinapécuaro</Text>
           <View style={styles.heroPills}>
             <View style={styles.pill}>

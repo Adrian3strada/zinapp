@@ -12,8 +12,8 @@ import CartScreen from '../screens/customer/CartScreen';
 import MenuScreen from '../screens/customer/MenuScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import { colors } from '../theme/colors';
-import { spacing } from '../theme/spacing';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
+import { tabBarScreenOptions } from './tabBarOptions';
 import type {
   CartScreenProps,
   CustomerStackParamList,
@@ -113,29 +113,11 @@ function CustomerTabs() {
   const { itemCount } = useCart();
   const { activeOrderCount } = useCustomerActiveDeliveries();
   const insets = useSafeAreaInsets();
-  const tabBarHeight = spacing.tabBar + insets.bottom;
 
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabInactive,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.borderLight,
-          elevation: 0,
-          shadowOpacity: 0,
-          paddingTop: 10,
-          paddingBottom: insets.bottom + 6,
-          height: tabBarHeight + 4,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 4 },
-        tabBarItemStyle: { paddingVertical: 2 },
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '700' },
-        headerShadowVisible: false,
+        ...tabBarScreenOptions(insets),
         lazy: true,
       }}
     >

@@ -1,28 +1,48 @@
-import type { AppDialogButton } from '../context/AppDialogContext';
+import { Alert } from 'react-native';
 
-type DialogBridge = (
-  config: { title: string; message: string; buttons?: AppDialogButton[] },
-) => void;
+export type AppDialogButtonStyle = 'default' | 'cancel' | 'destructive';
 
-let bridge: DialogBridge | null = null;
+export type AppDialogButton = {
+  text: string;
+  onPress?: () => void;
+  style?: AppDialogButtonStyle;
+};
 
-export function registerAppAlert(show: DialogBridge): void {
-  bridge = show;
+function mapAlertButtons(buttons: AppDialogButton[]) {
+  return buttons.map((btn) => ({
+    text: btn.text,
+    style:
+      btn.style === 'destructive'
+        ? ('destructive' as const)
+        : btn.style === 'cancel'
+          ? ('cancel' as const)
+          : ('default' as const),
+    onPress: btn.onPress,
+  }));
 }
 
-/** Sustituto de Alert.alert con modal inferior nativo de la app. */
+/** Diálogos nativos — fiables en Expo Go y APK (sin Modal bloqueado). */
 export function appAlert(
   title: string,
   message?: string,
   buttons?: AppDialogButton[],
 ): void {
-  if (!bridge) {
-    console.warn('[appAlert]', title, message);
-    return;
-  }
-  bridge({
-    title,
-    message: message ?? '',
-    buttons,
-  });
+  const normalized: AppDialogButton[] = buttons?.length
+    ? buttons
+    : [{ text: 'OK', style: 'default' }];
+
+  Alert.alert(title, message ?? '', mapAlertButtons(normalized), { cancelable: true });
+}
+
+/** Atajo para confirmaciones destructivas. */
+export function appConfirm(
+  title: string,
+  message: string,
+  onConfirm: () => void,
+  confirmLabel = 'Confirmar',
+): void {
+  appAlert(title, message, [
+    { text: 'No', style: 'cancel' },
+    { text: confirmLabel, style: 'destructive', onPress: onConfirm },
+  ]);
 }

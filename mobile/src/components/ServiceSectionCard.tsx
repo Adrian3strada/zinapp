@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     minHeight: 112,
     ...cardShadow,
   },
-  pressed: { opacity: 0.95, transform: [{ scale: 0.992 }] },
+  pressed: { opacity: 0.95 },
   gradient: {
     flex: 1,
     flexDirection: 'row',

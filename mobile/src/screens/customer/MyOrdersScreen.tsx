@@ -4,11 +4,13 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EmptyState from '../../components/EmptyState';
 import ListFooter from '../../components/ListFooter';
+import ListSkeleton from '../../components/ListSkeleton';
 import LiveBadge from '../../components/LiveBadge';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import ScreenContainer from '../../components/ScreenContainer';
 import SectionHeader from '../../components/SectionHeader';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
+import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { MyOrdersScreenProps } from '../../navigation/types';
 import { orderApi } from '../../services/api';
 import { colors, statusColors } from '../../theme/colors';
@@ -73,6 +75,7 @@ function OrderCard({
 }
 
 export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
+  const { listPaddingBottom } = useTabScreenInsets();
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await orderApi.list(page);
     return data;
@@ -120,11 +123,20 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
   );
 
   return (
-    <ScreenContainer loading={loading && orders.length === 0} error={error} onRetry={refresh}>
+    <ScreenContainer
+      loading={loading && orders.length === 0}
+      loadingSkeleton={
+        <View style={[styles.skeletonWrap, listPaddingBottom()]}>
+          <ListSkeleton count={4} variant="order" />
+        </View>
+      }
+      error={error}
+      onRetry={refresh}
+    >
       <FlatList
         data={orders}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={refresh}
         refreshing={refreshing}
         onEndReached={loadMore}
@@ -153,6 +165,7 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
 
 const styles = StyleSheet.create({
   list: { padding: spacing.screen, flexGrow: 1 },
+  skeletonWrap: { flex: 1, padding: spacing.screen },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -171,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight + '66',
     borderColor: colors.primary + '44',
   },
-  cardPressed: { opacity: 0.94, transform: [{ scale: 0.992 }] },
+  cardPressed: { opacity: 0.94 },
   content: { flex: 1, gap: 5 },
   restaurant: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   orderId: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },

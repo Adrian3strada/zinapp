@@ -2,7 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import Button from '../../components/Button';
@@ -16,6 +17,7 @@ import ShipmentMap from '../../components/ShipmentMap';
 import ShipmentTimeline from '../../components/ShipmentTimeline';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { useAuth } from '../../context/AuthContext';
+import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import type { DriverStackParamList, ShipmentDetailScreenProps } from '../../navigation/types';
 import { shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -41,9 +43,12 @@ const STATUS_HINTS: Record<string, string> = {
 export default function ShipmentDetailScreen({ route, navigation }: ShipmentDetailScreenProps) {
   const { shipmentId } = route.params;
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const activeDeliveries = useOptionalCustomerActiveDeliveries();
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
 
   const isDriver = user?.role === 'driver';
   const isCustomer = user?.role === 'customer';
@@ -79,22 +84,25 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
   }, [load, shipment?.status, isLive]);
 
   const handleCancel = () => {
-    if (!shipment) return;
-    appAlert('Cancelar envío', '¿Seguro? Solo puedes cancelar mientras esté pendiente.', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const { data } = await shipmentApi.cancel(shipment.id);
-            setShipment(data);
-          } catch (err) {
-            appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar.'));
-          }
-        },
+    if (!shipment || actionBusy) return;
+    appConfirm(
+      'Cancelar envío',
+      '¿Seguro? Solo puedes cancelar mientras esté pendiente.',
+      async () => {
+        setActionBusy(true);
+        try {
+          const { data } = await shipmentApi.cancel(shipment.id);
+          setShipment(data);
+          await activeDeliveries?.refresh();
+          appAlert('Listo', `Envío #${data.id} cancelado.`);
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar.'));
+        } finally {
+          setActionBusy(false);
+        }
       },
-    ]);
+      'Sí, cancelar',
+    );
   };
 
   const handleDelivered = async () => {
@@ -127,7 +135,10 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
   return (
     <ScreenContainer loading={loading} error={error} onRetry={load}>
       {shipment && (
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
           <LinearGradient colors={['#2A9D8F', '#264653']} style={styles.hero}>
             <Text style={styles.heroSize}>{shipment.size_display}</Text>
             <Text style={styles.heroTitle}>Envío #{shipment.id}</Text>
@@ -262,7 +273,13 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
 
           {isCustomer && shipment.status === 'pending' && (
             <View style={styles.card}>
-              <Button title="Cancelar envío" variant="danger" onPress={handleCancel} />
+              <Button
+                title="Cancelar envío"
+                variant="danger"
+                onPress={handleCancel}
+                loading={actionBusy}
+                disabled={actionBusy}
+              />
             </View>
           )}
 

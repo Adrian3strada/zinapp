@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -5,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
   ViewStyle,
 } from 'react-native';
 
@@ -33,6 +35,51 @@ export default function Button({
 }: Props) {
   const isDisabled = disabled || loading;
 
+  const inner = loading ? (
+    <ActivityIndicator
+      color={variant === 'secondary' || variant === 'ghost' ? colors.primary : '#FFF'}
+    />
+  ) : (
+    <Text
+      style={[
+        styles.text,
+        styles[`text_${variant}`],
+        size === 'lg' && styles.textLg,
+      ]}
+    >
+      {title}
+    </Text>
+  );
+
+  if (variant === 'primary' && !isDisabled) {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        hitSlop={HIT_SLOP}
+        android_ripple={{ color: 'rgba(255,255,255,0.25)' }}
+        style={({ pressed }) => [
+          styles.base,
+          styles[size],
+          styles.primaryWrap,
+          cardShadow,
+          pressed && styles.pressed,
+          isDisabled && styles.disabled,
+          style,
+        ]}
+      >
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.primaryGradient, size === 'lg' && styles.primaryGradientLg]}
+        >
+          {inner}
+        </LinearGradient>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
@@ -53,21 +100,7 @@ export default function Button({
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === 'secondary' || variant === 'ghost' ? colors.primary : '#FFF'}
-        />
-      ) : (
-        <Text
-          style={[
-            styles.text,
-            styles[`text_${variant}`],
-            size === 'lg' && styles.textLg,
-          ]}
-        >
-          {title}
-        </Text>
-      )}
+      {inner}
     </Pressable>
   );
 }
@@ -82,6 +115,16 @@ const styles = StyleSheet.create({
   },
   md: { paddingVertical: 14, paddingHorizontal: 20 },
   lg: { paddingVertical: 18, paddingHorizontal: 24 },
+  primaryWrap: { padding: 0, backgroundColor: 'transparent', overflow: 'hidden' },
+  primaryGradient: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+  },
+  primaryGradientLg: { paddingVertical: 18, paddingHorizontal: 24 },
   primary: { backgroundColor: colors.primary },
   secondary: { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary },
   danger: { backgroundColor: colors.error },

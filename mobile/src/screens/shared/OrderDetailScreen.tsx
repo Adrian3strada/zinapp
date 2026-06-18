@@ -2,7 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 
 import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
@@ -18,6 +19,7 @@ import OnlinePaymentBanner from '../../components/OnlinePaymentBanner';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { resolveTransferInfo } from '../../config/payments';
 import { useAuth } from '../../context/AuthContext';
+import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import { useAppConfig } from '../../hooks/useAppConfig';
 import type { DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -58,6 +60,8 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const { orderId } = route.params;
   const promptReview = 'promptReview' in route.params ? route.params.promptReview : false;
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const activeDeliveries = useOptionalCustomerActiveDeliveries();
   const { config: appConfig } = useAppConfig();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,31 +105,26 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   }, [load, order?.status, pollMs]);
 
   const handleCancel = useCallback(() => {
-    if (!order) return;
-    appAlert(
+    if (!order || actionBusy) return;
+    appConfirm(
       'Cancelar pedido',
       '¿Seguro que quieres cancelar? Solo puedes hacerlo antes de que esté listo para recoger.',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Sí, cancelar',
-          style: 'destructive',
-          onPress: async () => {
-            if (actionBusy) return;
-            setActionBusy(true);
-            try {
-              const { data } = await orderApi.cancel(order.id);
-              setOrder(data);
-            } catch (err) {
-              appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar el pedido.'));
-            } finally {
-              setActionBusy(false);
-            }
-          },
-        },
-      ],
+      async () => {
+        setActionBusy(true);
+        try {
+          const { data } = await orderApi.cancel(order.id);
+          setOrder(data);
+          await activeDeliveries?.refresh();
+          appAlert('Listo', `Pedido #${data.id} cancelado.`);
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar el pedido.'));
+        } finally {
+          setActionBusy(false);
+        }
+      },
+      'Sí, cancelar',
     );
-  }, [order, actionBusy]);
+  }, [order, actionBusy, activeDeliveries]);
 
   const reloadOrder = useCallback(() => {
     load(() => true);
@@ -216,7 +215,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
       }}
     >
       {order && (
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}>
           <LinearGradient
             colors={[colors.gradientStart, colors.gradientEnd]}
             style={styles.hero}

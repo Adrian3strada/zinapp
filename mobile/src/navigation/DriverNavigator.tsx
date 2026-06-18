@@ -14,8 +14,8 @@ import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import { colors } from '../theme/colors';
-import { spacing } from '../theme/spacing';
 import { modalPresentationOptions } from './modalOptions';
+import { tabBarScreenOptions } from './tabBarOptions';
 import type { DriverStackParamList, DriverTabParamList } from './types';
 
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
@@ -46,21 +46,7 @@ function DriverTabs() {
   useDriverLocationSharing(true, hasActiveDelivery, isAvailable || hasActiveDelivery);
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabInactive,
-        tabBarStyle: {
-          height: spacing.tabBar + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: insets.bottom,
-        },
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '700' },
-        headerShadowVisible: false,
-      }}
-    >
+    <Tab.Navigator screenOptions={tabBarScreenOptions(insets)}>
       <Tab.Screen
         name="Disponibles"
         component={AvailableOrdersScreen}

@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     ...cardShadow,
   },
-  pressed: { opacity: 0.96, transform: [{ scale: 0.995 }] },
+  pressed: { opacity: 0.96 },
   closed: { opacity: 0.72 },
   imageWrap: {
     height: 148,

@@ -6,6 +6,7 @@ import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { usePushNotifications } from '../hooks/useNotifications';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
+import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
 import type { AuthStackParamList } from './types';
 
@@ -21,9 +22,9 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 function LoadingScreen() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }}>
-      <BrandLogo width={220} />
-      <ActivityIndicator size="large" color="#1E5DB8" style={{ marginTop: 24 }} />
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <BrandLogo variant="dark" width={240} />
+      <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 28 }} />
     </View>
   );
 }
