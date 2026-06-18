@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +12,8 @@ import { useAppConfig } from '../../hooks/useAppConfig';
 import type { ForgotPasswordScreenProps } from '../../navigation/types';
 import { authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { cardShadow } from '../../theme/shadows';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatWhatsAppDisplay, passwordResetWhatsAppMessage } from '../../utils/supportContact';
 
@@ -54,19 +57,35 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Recuperar contraseña</Text>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          style={[styles.hero, { paddingTop: insets.top + 28 }]}
+        >
+          <Text style={styles.heroEmoji}>🔐</Text>
+          <Text style={styles.title}>Recuperar contraseña</Text>
+          <Text style={styles.heroSub}>
+            {__DEV__
+              ? 'En desarrollo recibirás un token para continuar.'
+              : showWhatsAppHelp
+                ? 'Te ayudamos por WhatsApp o correo.'
+                : 'Te enviaremos instrucciones si tenemos tu correo.'}
+          </Text>
+        </LinearGradient>
+
+        <View style={[styles.formWrap, cardShadow]}>
         <Text style={styles.subtitle}>
           {__DEV__
-            ? 'En desarrollo recibirás un token para continuar en la siguiente pantalla.'
+            ? 'Ingresa tu usuario para obtener el token de restablecimiento.'
             : showWhatsAppHelp
-              ? `Confirma tu usuario y te ayudamos por WhatsApp${supportPhone ? ` al ${formatWhatsAppDisplay(supportPhone)}` : ''}.`
-              : 'Ingresa tu usuario. Si tenemos tu correo registrado, te enviaremos instrucciones.'}
+              ? `Confirma tu usuario${supportPhone ? ` — soporte al ${formatWhatsAppDisplay(supportPhone)}` : ''}.`
+              : 'Ingresa el mismo usuario con el que inicias sesión.'}
         </Text>
 
-        <FormSection title="Tu cuenta">
+        <FormSection title="Tu cuenta" variant="plain">
           <FormField
             label="Usuario"
             value={username}
@@ -102,6 +121,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         )}
 
         <Button title="Volver al login" variant="ghost" onPress={() => navigation.goBack()} />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -109,9 +129,32 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: 24 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 15, color: colors.textSecondary, marginTop: 8, lineHeight: 22 },
-  whatsAppBlock: { gap: 12, marginBottom: 8 },
+  hero: {
+    alignItems: 'center',
+    paddingBottom: 40,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroEmoji: { fontSize: 40, marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#FFF', letterSpacing: -0.3 },
+  heroSub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  formWrap: {
+    backgroundColor: colors.surface,
+    marginHorizontal: 20,
+    marginTop: -24,
+    borderRadius: 24,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 4, lineHeight: 20 },
+  whatsAppBlock: { gap: 12, marginBottom: 8, marginTop: 8 },
   whatsAppHint: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 });

@@ -100,7 +100,13 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
           <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />
         }
       >
-        <LinearGradient colors={['#E85D04', '#C44D00']} style={styles.hero}>
+        <LinearGradient
+          colors={[colors.accent, '#EA580C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroDecor} />
           <Text style={styles.heroEmoji}>🏷️</Text>
           <Text style={styles.heroTitle}>Ofertas</Text>
           <Text style={styles.heroSub}>
@@ -131,14 +137,24 @@ const styles = StyleSheet.create({
   hero: {
     marginHorizontal: -spacing.screen,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.xl + 4,
     alignItems: 'center',
     marginBottom: spacing.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
-  heroEmoji: { fontSize: 40, marginBottom: 8 },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFF' },
+  heroDecor: {
+    position: 'absolute',
+    top: -40,
+    right: -30,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  heroEmoji: { fontSize: 44, marginBottom: 10 },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFF', letterSpacing: -0.5 },
   heroSub: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
@@ -147,23 +163,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   couponCard: {
-    borderRadius: 16,
+    borderRadius: 22,
     marginBottom: spacing.md,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
-  couponGradient: { padding: spacing.lg },
+  couponGradient: { padding: spacing.lg + 2 },
   couponTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   codeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.warning + '22',
+    backgroundColor: colors.warning + '18',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
-  codeText: { fontSize: 16, fontWeight: '800', color: colors.warning, letterSpacing: 1 },
+  codeText: { fontSize: 15, fontWeight: '800', color: colors.warning, letterSpacing: 1.2 },
   discount: { fontSize: 14, fontWeight: '700', color: colors.primary, flex: 1, textAlign: 'right' },
   couponDesc: { fontSize: 14, color: colors.text, marginTop: 10, lineHeight: 20 },
   couponMin: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
@@ -172,9 +190,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
+    marginTop: 16,
+    paddingVertical: 13,
+    borderRadius: 14,
     backgroundColor: colors.primaryLight,
   },
   useBtnText: { fontSize: 14, fontWeight: '700', color: colors.primary },

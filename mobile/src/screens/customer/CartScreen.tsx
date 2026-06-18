@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 
@@ -395,7 +396,16 @@ export default function CartScreen({ navigation }: CartScreenProps) {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionTitle}>Tu pedido</Text>
+          <View style={styles.orderHeader}>
+            <View style={styles.orderHeaderText}>
+              <Text style={styles.sectionTitle}>Tu pedido</Text>
+              {cartRestaurant ? (
+                <Text style={styles.restaurantSub}>
+                  {cartRestaurant.name} · {items.length} artículo{items.length !== 1 ? 's' : ''}
+                </Text>
+              ) : null}
+            </View>
+          </View>
           {items.map((item) => (
             <CartLineItem
               key={item.product.id}
@@ -444,5 +454,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { padding: spacing.screen, paddingBottom: spacing.xxl },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginBottom: 12 },
+  orderHeader: { marginBottom: 14 },
+  orderHeaderText: { gap: 4 },
+  sectionTitle: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  restaurantSub: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
 });

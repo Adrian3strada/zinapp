@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -21,6 +22,8 @@ import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
 import type { RegisterScreenProps } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { cardShadow } from '../../theme/shadows';
 import type { DeliveryProfile, UserRole } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
@@ -158,14 +161,20 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <BrandLogo width={200} style={{ marginBottom: 8, alignSelf: 'center' }} />
-        <Text style={styles.title}>Crear cuenta</Text>
-        <Text style={styles.subtitle}>Elige cómo usarás ZinApp en Zinapécuaro</Text>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          style={[styles.hero, { paddingTop: insets.top + 24 }]}
+        >
+          <BrandLogo width={180} />
+          <Text style={styles.title}>Crear cuenta</Text>
+          <Text style={styles.subtitle}>Elige cómo usarás ZinApp en Zinapécuaro</Text>
+        </LinearGradient>
 
+        <View style={[styles.formArea, cardShadow]}>
         <FormSection title="1. Tipo de cuenta">
           <View style={styles.roles}>
             {ROLES.map((r) => (
@@ -353,6 +362,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
           onPress={() => navigation.goBack()}
           style={{ marginTop: 8 }}
         />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -360,14 +370,30 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: 24 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  hero: {
+    alignItems: 'center',
+    paddingBottom: 40,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  formArea: {
+    backgroundColor: colors.surface,
+    marginHorizontal: 20,
+    marginTop: -24,
+    borderRadius: 24,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  title: { fontSize: 24, fontWeight: '800', color: '#FFF', textAlign: 'center', marginTop: 12 },
   subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    marginBottom: 20,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 6,
     textAlign: 'center',
-    lineHeight: 21,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 },
   fieldHint: { fontSize: 12, color: colors.textMuted, marginTop: 4, lineHeight: 17 },
@@ -376,10 +402,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     padding: 12,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: colors.background,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     gap: 4,
     minHeight: 92,
   },

@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   textWrap: { flex: 1 },
-  title: { fontSize: 18, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  subtitleOnly: { fontSize: 14, fontWeight: '600', color: colors.primary, marginTop: 0 },
+  title: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 4, fontWeight: '500' },
+  subtitleOnly: { fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 0 },
 });

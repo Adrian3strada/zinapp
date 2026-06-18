@@ -304,7 +304,12 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
           />
         }
       >
-        <LinearGradient colors={['#2A9D8F', '#264653']} style={styles.hero}>
+        <LinearGradient
+          colors={[colors.success, '#0D9488']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
           <View style={styles.heroIcon}>
             <Text style={styles.heroEmoji}>📦</Text>
           </View>
@@ -516,23 +521,24 @@ const styles = StyleSheet.create({
   hero: {
     marginHorizontal: -spacing.screen,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.xl + 4,
     alignItems: 'center',
     marginBottom: spacing.md,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   heroIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  heroEmoji: { fontSize: 32 },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFF', textAlign: 'center' },
+  heroEmoji: { fontSize: 34 },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFF', textAlign: 'center', letterSpacing: -0.3 },
   heroSub: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
@@ -562,10 +568,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     backgroundColor: colors.background,
   },
   sizeCardActive: {

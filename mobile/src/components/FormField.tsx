@@ -52,7 +52,12 @@ export default function FormField({
           multiline && styles.inputWrapMultiline,
         ]}
       >
-        <Ionicons name={icon} size={18} color={colors.textMuted} style={multiline ? styles.iconTop : undefined} />
+        <Ionicons
+          name={icon}
+          size={18}
+          color={embedded ? colors.textMuted : colors.primary}
+          style={multiline ? styles.iconTop : undefined}
+        />
         <TextInput
           style={[styles.input, multiline && styles.inputMultiline]}
           placeholder={placeholder ?? label}
@@ -73,24 +78,30 @@ export default function FormField({
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 4 },
-  label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 4 },
+  wrap: { marginBottom: 6 },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 8,
+    marginTop: 4,
+  },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingHorizontal: 14,
     marginBottom: 6,
     gap: 10,
-    minHeight: 50,
+    minHeight: 52,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   inputWrapEmbedded: { backgroundColor: colors.background },
   inputWrapMultiline: { alignItems: 'flex-start', paddingVertical: 12 },
   iconTop: { marginTop: 2 },
-  input: { flex: 1, fontSize: 15, color: colors.text },
+  input: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '500' },
   inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
   hint: { fontSize: 11, color: colors.textMuted, marginBottom: 8, lineHeight: 16 },
 });

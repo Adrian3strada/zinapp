@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -10,7 +11,7 @@ import CoverageZoneHint from './CoverageZoneHint';
 import FormField from './FormField';
 import RoutePreviewMap from './RoutePreviewMap';
 import { colors } from '../theme/colors';
-import { HIT_SLOP } from '../theme/spacing';
+import { HIT_SLOP, spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import { formatCurrency } from '../utils/format';
 
@@ -257,12 +258,19 @@ function CartCheckoutSection({
           pressed && !loading && !couponValidating && styles.checkoutPressed,
         ]}
       >
-        <View style={styles.checkoutBtn}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.checkoutBtn}
+        >
           <Text style={styles.checkoutText}>
             {loading ? 'Procesando...' : couponValidating ? 'Actualizando cupón...' : 'Confirmar pedido'}
           </Text>
-          <Text style={styles.checkoutTotal}>{formatCurrency(grandTotal)}</Text>
-        </View>
+          <View style={styles.checkoutTotalPill}>
+            <Text style={styles.checkoutTotal}>{formatCurrency(grandTotal)}</Text>
+          </View>
+        </LinearGradient>
       </Pressable>
     </View>
   );
@@ -274,12 +282,14 @@ const styles = StyleSheet.create({
   footer: { marginTop: 8, gap: 14 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 22,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  cardTitle: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   couponRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   couponField: { flex: 1 },
   couponFormField: { marginBottom: 0 },
@@ -335,7 +345,7 @@ const styles = StyleSheet.create({
   totalRow: { marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
   totalLabel: { fontSize: 18, fontWeight: '800', color: colors.text },
   totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
-  checkoutWrap: { borderRadius: 16, marginTop: 4, overflow: 'hidden' },
+  checkoutWrap: { borderRadius: 18, marginTop: 4, overflow: 'hidden' },
   checkoutPressed: { opacity: 0.92 },
   checkoutDisabled: { opacity: 0.55 },
   checkoutBtn: {
@@ -343,9 +353,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 18,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
+    borderRadius: 18,
   },
   checkoutText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
-  checkoutTotal: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  checkoutTotalPill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  checkoutTotal: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 });

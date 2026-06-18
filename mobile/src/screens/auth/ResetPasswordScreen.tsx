@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +11,8 @@ import FormSection from '../../components/FormSection';
 import type { ResetPasswordScreenProps } from '../../navigation/types';
 import { authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
+import { cardShadow } from '../../theme/shadows';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
 export default function ResetPasswordScreen({ navigation, route }: ResetPasswordScreenProps) {
@@ -47,13 +50,21 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Nueva contraseña</Text>
-        <Text style={styles.subtitle}>Elige una contraseña segura para tu cuenta.</Text>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          style={[styles.hero, { paddingTop: insets.top + 28 }]}
+        >
+          <Text style={styles.heroEmoji}>🔑</Text>
+          <Text style={styles.title}>Nueva contraseña</Text>
+          <Text style={styles.heroSub}>Elige una contraseña segura para tu cuenta.</Text>
+        </LinearGradient>
 
-        <FormSection title="Seguridad">
+        <View style={[styles.formWrap, cardShadow]}>
+        <FormSection title="Seguridad" variant="plain">
           <FormField
             label="Nueva contraseña"
             value={password}
@@ -84,6 +95,7 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
           />
           <Button title={loading ? 'Guardando…' : 'Restablecer'} onPress={handleSubmit} disabled={loading} size="lg" />
         </FormSection>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -91,7 +103,29 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-  container: { padding: 24 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.textSecondary, marginVertical: 12, lineHeight: 20 },
+  hero: {
+    alignItems: 'center',
+    paddingBottom: 40,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroEmoji: { fontSize: 40, marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#FFF' },
+  heroSub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  formWrap: {
+    backgroundColor: colors.surface,
+    marginHorizontal: 20,
+    marginTop: -24,
+    borderRadius: 24,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
 });
