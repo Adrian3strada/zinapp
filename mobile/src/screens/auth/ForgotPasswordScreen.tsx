@@ -1,20 +1,28 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
+import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
+import { useAppConfig } from '../../hooks/useAppConfig';
 import type { ForgotPasswordScreenProps } from '../../navigation/types';
 import { authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { formatWhatsAppDisplay, passwordResetWhatsAppMessage } from '../../utils/supportContact';
 
 export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScreenProps) {
   const insets = useSafeAreaInsets();
+  const { config, loading: configLoading } = useAppConfig();
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const supportPhone = config.support_whatsapp?.trim();
+  const showWhatsAppHelp = !__DEV__ && config.password_reset_via_whatsapp && Boolean(supportPhone);
 
   const handleSubmit = async () => {
     const user = username.trim().toLowerCase();
@@ -29,7 +37,10 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         navigation.navigate('ResetPassword', { token: data.reset_token });
         return;
       }
-      appAlert('Listo', data.detail);
+      setSubmitted(true);
+      if (!showWhatsAppHelp) {
+        appAlert('Solicitud recibida', data.detail);
+      }
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo procesar la solicitud.'));
     } finally {
@@ -50,7 +61,9 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         <Text style={styles.subtitle}>
           {__DEV__
             ? 'En desarrollo recibirás un token para continuar en la siguiente pantalla.'
-            : 'Si olvidaste tu contraseña, escríbenos por WhatsApp al 443 123 4567 con tu usuario.'}
+            : showWhatsAppHelp
+              ? `Confirma tu usuario y te ayudamos por WhatsApp${supportPhone ? ` al ${formatWhatsAppDisplay(supportPhone)}` : ''}.`
+              : 'Ingresa tu usuario. Si tenemos tu correo registrado, te enviaremos instrucciones.'}
         </Text>
 
         <FormSection title="Tu cuenta">
@@ -63,10 +76,30 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             required
             autoCapitalize="none"
             autoCorrect={false}
-            hint={__DEV__ ? 'En desarrollo recibirás un token para continuar.' : 'Usa el mismo usuario con el que inicias sesión.'}
+            hint={__DEV__ ? 'En desarrollo recibirás un token para continuar.' : undefined}
           />
-          <Button title={loading ? 'Enviando…' : 'Continuar'} onPress={handleSubmit} disabled={loading} size="lg" />
+          {!submitted && (
+            <Button
+              title={loading ? 'Enviando…' : showWhatsAppHelp ? 'Continuar' : 'Solicitar ayuda'}
+              onPress={handleSubmit}
+              disabled={loading || configLoading}
+              size="lg"
+            />
+          )}
         </FormSection>
+
+        {submitted && showWhatsAppHelp && supportPhone && (
+          <View style={styles.whatsAppBlock}>
+            <Text style={styles.whatsAppHint}>
+              Toca el botón para escribirnos por WhatsApp con tu usuario. Te respondemos lo antes posible.
+            </Text>
+            <ContactWhatsAppButton
+              phone={supportPhone}
+              message={passwordResetWhatsAppMessage(username.trim().toLowerCase())}
+              label="Abrir WhatsApp con soporte"
+            />
+          </View>
+        )}
 
         <Button title="Volver al login" variant="ghost" onPress={() => navigation.goBack()} />
       </ScrollView>
@@ -78,5 +111,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24 },
   title: { fontSize: 26, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.textSecondary, marginVertical: 12, lineHeight: 20 },
+  subtitle: { fontSize: 15, color: colors.textSecondary, marginTop: 8, lineHeight: 22 },
+  whatsAppBlock: { gap: 12, marginBottom: 8 },
+  whatsAppHint: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
 });

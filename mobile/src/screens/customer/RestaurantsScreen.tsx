@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { Suspense, useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import {
@@ -15,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MapMarker } from '../../components/AppMap';
 import EmptyState from '../../components/EmptyState';
+import HomeHero from '../../components/HomeHero';
 import ListFooter from '../../components/ListFooter';
 import RestaurantCard from '../../components/RestaurantCard';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -135,35 +135,21 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
   const header = useMemo(
     () => (
       <>
-        <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          style={[styles.hero, { paddingTop: insets.top + spacing.md }]}
+        <HomeHero
+          firstName={user?.first_name}
+          topInset={insets.top}
+          onProfilePress={() => navigation.navigate('Main', { screen: 'Perfil' })}
+          style={styles.hero}
         >
-          <View style={styles.heroTop}>
-            <View>
-              <Text style={styles.greeting}>Hola, {user?.first_name || 'Cliente'} 👋</Text>
-              <View style={styles.locationRow}>
-                <Ionicons name="location" size={16} color="#FFF" />
-                <Text style={styles.location}>Zinapécuaro, Mich.</Text>
-              </View>
-            </View>
-            <Pressable
-              onPress={() => navigation.navigate('Main', { screen: 'Perfil' })}
-              style={styles.profileBtn}
-              accessibilityLabel="Ir a mi perfil"
-            >
-              <Ionicons name="person-circle-outline" size={28} color="#FFF" />
-            </Pressable>
-          </View>
-
           <View style={styles.searchWrap}>
             <SearchField
               value={search}
               onChangeText={setSearch}
               placeholder="Buscar restaurantes o comida…"
+              elevated
             />
           </View>
-        </LinearGradient>
+        </HomeHero>
 
         <ScrollView
           horizontal
@@ -176,6 +162,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
               style={[styles.chip, category === cat.key && styles.chipActive]}
               onPress={() => setCategory(cat.key)}
             >
+              <Text style={styles.chipEmoji}>{cat.emoji}</Text>
               <Text style={[styles.chipText, category === cat.key && styles.chipTextActive]}>
                 {cat.label}
               </Text>
@@ -184,7 +171,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
         </ScrollView>
 
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Restaurantes cerca de ti</Text>
+          <Text style={styles.sectionTitle}>Cerca de ti</Text>
           <View style={styles.viewToggle}>
             <Pressable
               style={[styles.toggleBtn, viewMode === 'list' && styles.toggleActive]}
@@ -306,31 +293,27 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 
 const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
-  hero: {
-    marginHorizontal: -spacing.screen,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxl,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  location: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '500' },
-  profileBtn: { padding: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12 },
-  searchWrap: { marginTop: spacing.xl },
-  categories: { paddingVertical: spacing.lg, gap: spacing.sm },
+  hero: { marginHorizontal: -spacing.screen },
+  searchWrap: { marginTop: spacing.lg },
+  categories: { paddingVertical: spacing.lg, gap: spacing.sm, paddingRight: spacing.screen },
   chip: {
-    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 24,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     marginRight: spacing.sm,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipEmoji: { fontSize: 15 },
+  chipText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
   chipTextActive: { color: '#FFF' },
   sectionRow: {
     flexDirection: 'row',
@@ -338,13 +321,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
   viewToggle: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 4,
     gap: 4,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   toggleBtn: { padding: 8, borderRadius: 8 },
   toggleActive: { backgroundColor: colors.primary },

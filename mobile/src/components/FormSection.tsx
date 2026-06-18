@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 
 interface Props {
@@ -9,11 +10,12 @@ interface Props {
   hint?: string;
   children: React.ReactNode;
   style?: ViewStyle;
+  variant?: 'card' | 'plain';
 }
 
-export default function FormSection({ title, hint, children, style }: Props) {
+export default function FormSection({ title, hint, children, style, variant = 'card' }: Props) {
   return (
-    <View style={[styles.section, style]}>
+    <View style={[variant === 'card' ? styles.sectionCard : styles.sectionPlain, style]}>
       <Text style={styles.title}>{title}</Text>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       {children}
@@ -22,15 +24,20 @@ export default function FormSection({ title, hint, children, style }: Props) {
 }
 
 const styles = StyleSheet.create({
-  section: {
+  sectionCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
-  title: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  hint: { fontSize: 13, color: colors.textSecondary, marginBottom: 12, lineHeight: 18 },
+  sectionPlain: {
+    backgroundColor: 'transparent',
+    padding: 0,
+    marginBottom: 0,
+  },
+  title: { fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 4, letterSpacing: -0.2 },
+  hint: { fontSize: 13, color: colors.textSecondary, marginBottom: 14, lineHeight: 18 },
 });

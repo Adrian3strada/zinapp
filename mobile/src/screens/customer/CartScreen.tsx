@@ -55,7 +55,13 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const checkoutIdempotencyKey = useRef<string | null>(null);
   const { getCurrentPosition, loading: locating } = useLocation();
 
-  const transferInfo = useMemo(() => resolveTransferInfo(cartRestaurant), [cartRestaurant]);
+  const transferInfo = useMemo(
+    () =>
+      resolveTransferInfo(cartRestaurant, {
+        whatsapp: appConfig.support_whatsapp,
+      }),
+    [cartRestaurant, appConfig.support_whatsapp],
+  );
   const transferFromRestaurant = restaurantHasTransferInfo(cartRestaurant);
 
   useEffect(() => {

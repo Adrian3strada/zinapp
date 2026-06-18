@@ -2,6 +2,7 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.mail import send_mail
 from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
@@ -71,7 +72,24 @@ class ForgotPasswordView(APIView):
             expires_at=timezone.now() + timedelta(hours=2),
         )
         response = {'detail': 'Si el usuario existe, recibirás instrucciones para restablecer.'}
-        if settings.DEBUG:
+        if user.email and getattr(settings, 'EMAIL_HOST', '') and getattr(settings, 'EMAIL_HOST_USER', ''):
+            try:
+                send_mail(
+                    subject='Restablece tu contraseña — ZinApp',
+                    message=(
+                        f'Hola {user.first_name or user.username},\n\n'
+                        f'Tu código para restablecer contraseña en ZinApp:\n\n{token_value}\n\n'
+                        'Válido 2 horas. En la app: Recuperar contraseña → pegar el código.'
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception:
+                if settings.DEBUG:
+                    response['reset_token'] = reset_token.token
+                    response['hint'] = 'Email falló — usa este token en desarrollo.'
+        elif settings.DEBUG:
             response['reset_token'] = reset_token.token
             response['hint'] = 'En desarrollo: usa este token en /api/auth/reset-password/'
         return Response(response)

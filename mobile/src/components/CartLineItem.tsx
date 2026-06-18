@@ -3,11 +3,12 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
-import { HIT_SLOP } from '../theme/spacing';
+import { HIT_SLOP, spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { CartItem } from '../types';
 import { formatCurrency } from '../utils/format';
 import { getProductEmoji } from '../utils/foodVisuals';
+import { resolveMediaUrl } from '../utils/media';
 import FoodImage from './FoodImage';
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
 
 function CartLineItem({ item, onDecrease, onIncrease }: Props) {
   const { product, quantity } = item;
+  const lineTotal = Number(product.price) * quantity;
 
   return (
     <View style={styles.item}>
@@ -25,10 +27,14 @@ function CartLineItem({ item, onDecrease, onIncrease }: Props) {
         emoji={getProductEmoji(product.name)}
         color={colors.primary}
         size="sm"
+        imageUri={resolveMediaUrl(product.image_url ?? product.image)}
       />
       <View style={styles.itemInfo}>
-        <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.price}>{formatCurrency(product.price)}</Text>
+        <Text style={styles.name} numberOfLines={2}>
+          {product.name}
+        </Text>
+        <Text style={styles.unitPrice}>{formatCurrency(product.price)} c/u</Text>
+        <Text style={styles.lineTotal}>{formatCurrency(lineTotal)}</Text>
       </View>
       <View style={styles.qtyRow}>
         <Pressable
@@ -40,11 +46,11 @@ function CartLineItem({ item, onDecrease, onIncrease }: Props) {
         </Pressable>
         <Text style={styles.qty}>{quantity}</Text>
         <Pressable
-          style={styles.qtyBtn}
+          style={[styles.qtyBtn, styles.qtyBtnAdd]}
           onPress={() => onIncrease(product.id, quantity)}
           hitSlop={HIT_SLOP}
         >
-          <Ionicons name="add" size={18} color={colors.primary} />
+          <Ionicons name="add" size={18} color="#FFF" />
         </Pressable>
       </View>
     </View>
@@ -58,23 +64,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 10,
-    gap: 12,
+    padding: spacing.md,
+    borderRadius: 18,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
   itemInfo: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '700', color: colors.text },
-  price: { color: colors.primary, marginTop: 2, fontWeight: '600' },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  name: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  unitPrice: { color: colors.textMuted, marginTop: 2, fontSize: 12, fontWeight: '500' },
+  lineTotal: { color: colors.primary, marginTop: 4, fontWeight: '800', fontSize: 15 },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   qtyBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  qty: { fontSize: 16, fontWeight: '700', minWidth: 24, textAlign: 'center' },
+  qtyBtnAdd: { backgroundColor: colors.primary },
+  qty: { fontSize: 16, fontWeight: '800', minWidth: 22, textAlign: 'center' },
 });

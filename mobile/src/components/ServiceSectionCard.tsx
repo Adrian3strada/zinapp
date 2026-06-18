@@ -32,7 +32,13 @@ export default function ServiceSectionCard({
       onPress={onPress}
       hitSlop={HIT_SLOP}
     >
-      <LinearGradient colors={gradientColors} style={styles.gradient}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
+        <View style={styles.decor} />
         <View style={styles.emojiCircle}>
           <Text style={styles.emoji}>{emoji}</Text>
           {badge != null && badge > 0 && (
@@ -45,7 +51,9 @@ export default function ServiceSectionCard({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.9)" />
+        <View style={styles.arrow}>
+          <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.95)" />
+        </View>
       </LinearGradient>
     </Pressable>
   );
@@ -53,51 +61,71 @@ export default function ServiceSectionCard({
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 20,
+    borderRadius: 22,
     overflow: 'hidden',
-    minHeight: 108,
+    minHeight: 112,
     ...cardShadow,
   },
-  pressed: { opacity: 0.94, transform: [{ scale: 0.995 }] },
+  pressed: { opacity: 0.95, transform: [{ scale: 0.992 }] },
   gradient: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-    gap: spacing.lg,
-    minHeight: 108,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    gap: spacing.md,
+    minHeight: 112,
+    position: 'relative',
+  },
+  decor: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    right: -30,
+    top: -30,
   },
   emojiCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: -4,
+    right: -4,
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: { fontSize: 11, fontWeight: '800', color: colors.primary },
-  emoji: { fontSize: 28 },
+  badgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  emoji: { fontSize: 26 },
   textBlock: { flex: 1 },
-  title: { fontSize: 22, fontWeight: '800', color: '#FFF' },
+  title: { fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: -0.3 },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.88)',
     marginTop: 4,
     fontWeight: '500',
     lineHeight: 18,
+  },
+  arrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

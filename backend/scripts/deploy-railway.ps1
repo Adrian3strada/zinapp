@@ -52,6 +52,7 @@ railway variable set DEBUG=False --service $serviceName
 railway variable set USE_SQLITE=False --service $serviceName
 railway variable set ALLOWED_HOSTS=.railway.app --service $serviceName
 railway variable set SERVE_MEDIA=True --service $serviceName
+railway variable set DEMO_ACCOUNTS_ENABLED=True --service $serviceName
 
 if (-not $vars.DATABASE_URL) {
     Write-Host 'Vinculando DATABASE_URL desde Postgres...' -ForegroundColor Cyan

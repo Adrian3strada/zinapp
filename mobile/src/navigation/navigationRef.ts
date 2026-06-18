@@ -9,38 +9,60 @@ type RootParams = {
 
 export const navigationRef = createNavigationContainerRef<RootParams>();
 
+const NAV_RETRY_MS = 250;
+const NAV_MAX_ATTEMPTS = 20;
+
+/** Espera a que el contenedor de navegación esté listo (p. ej. app abierta desde push). */
+function navigateWhenReady(action: () => void): void {
+  const attempt = (n: number) => {
+    if (navigationRef.isReady()) {
+      action();
+      return;
+    }
+    if (n < NAV_MAX_ATTEMPTS) {
+      setTimeout(() => attempt(n + 1), NAV_RETRY_MS);
+    }
+  };
+  attempt(0);
+}
+
 export function navigateToOrder(orderId: number) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.dispatch(
-    CommonActions.navigate({
-      name: 'OrderDetail',
-      params: { orderId },
-    }),
-  );
+  navigateWhenReady(() => {
+    navigationRef.dispatch(
+      CommonActions.navigate({
+        name: 'OrderDetail',
+        params: { orderId },
+      }),
+    );
+  });
 }
 
 export function navigateToShipment(shipmentId: number) {
-  if (!navigationRef.isReady()) return;
-  navigationRef.dispatch(
-    CommonActions.navigate({
-      name: 'ShipmentDetail',
-      params: { shipmentId },
-    }),
-  );
+  navigateWhenReady(() => {
+    navigationRef.dispatch(
+      CommonActions.navigate({
+        name: 'ShipmentDetail',
+        params: { shipmentId },
+      }),
+    );
+  });
 }
 
 export function navigateToMenu(restaurantId: number, restaurantName = 'Restaurante') {
-  if (!navigationRef.isReady()) return;
-  navigationRef.dispatch(
-    CommonActions.navigate({
-      name: 'Menu',
-      params: { restaurantId, restaurantName },
-    }),
-  );
+  navigateWhenReady(() => {
+    navigationRef.dispatch(
+      CommonActions.navigate({
+        name: 'Menu',
+        params: { restaurantId, restaurantName },
+      }),
+    );
+  });
 }
 
 export function handleNotificationNavigation(data: Record<string, unknown> | undefined) {
-  if (data?.type === 'restaurant_open') {
+  if (!data) return;
+
+  if (data.type === 'restaurant_open') {
     const restaurantId = parseId(data.restaurantId);
     if (restaurantId != null) {
       const name = typeof data.restaurantName === 'string' ? data.restaurantName : 'Restaurante';
@@ -49,8 +71,8 @@ export function handleNotificationNavigation(data: Record<string, unknown> | und
     }
   }
 
-  const orderId = parseId(data?.orderId);
-  const shipmentId = parseId(data?.shipmentId);
+  const orderId = parseId(data.orderId);
+  const shipmentId = parseId(data.shipmentId);
 
   if (orderId != null) {
     navigateToOrder(orderId);

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import LiveBadge from './LiveBadge';
 import { colors } from '../theme/colors';
+import { spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { ActiveDeliveryItem } from '../context/CustomerActiveDeliveriesContext';
 
@@ -18,15 +19,19 @@ export default function ActiveDeliveryStrip({ items, onPress }: Props) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.heading}>
-        {items.some((i) => i.isLive) ? 'En camino ahora' : 'Pedidos y envíos activos'}
+        {items.some((i) => i.isLive) ? 'En camino ahora' : 'Activos'}
       </Text>
       {items.map((item) => (
         <Pressable
           key={`${item.kind}-${item.id}`}
-          style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.card,
+            item.isLive && styles.cardLive,
+            pressed && styles.pressed,
+          ]}
           onPress={() => onPress(item)}
         >
-          <View style={styles.iconWrap}>
+          <View style={[styles.iconWrap, item.isLive && styles.iconWrapLive]}>
             <Text style={styles.emoji}>{item.emoji}</Text>
           </View>
           <View style={styles.body}>
@@ -34,10 +39,16 @@ export default function ActiveDeliveryStrip({ items, onPress }: Props) {
               <Text style={styles.title}>{item.title}</Text>
               {item.isLive && <LiveBadge compact />}
             </View>
-            <Text style={styles.subtitle} numberOfLines={1}>{item.subtitle}</Text>
-            <Text style={styles.status}>{item.statusDisplay}</Text>
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {item.subtitle}
+            </Text>
+            <Text style={[styles.status, item.isLive && styles.statusLive]}>
+              {item.statusDisplay}
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <View style={styles.arrow}>
+            <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          </View>
         </Pressable>
       ))}
     </View>
@@ -45,37 +56,54 @@ export default function ActiveDeliveryStrip({ items, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 10, marginBottom: 4 },
+  wrap: { gap: spacing.sm },
   heading: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.text,
+    letterSpacing: -0.3,
     marginBottom: 2,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 18,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
-  pressed: { opacity: 0.92 },
+  cardLive: {
+    borderColor: colors.primary + '44',
+    backgroundColor: colors.primaryLight + '88',
+  },
+  pressed: { opacity: 0.94, transform: [{ scale: 0.996 }] },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 14,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: { fontSize: 22 },
+  iconWrapLive: { backgroundColor: colors.surface },
+  emoji: { fontSize: 24 },
   body: { flex: 1, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   title: { fontSize: 15, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  status: { fontSize: 12, color: colors.primary, fontWeight: '700', marginTop: 2 },
+  status: { fontSize: 12, color: colors.textMuted, fontWeight: '700', marginTop: 2 },
+  statusLive: { color: colors.primary },
+  arrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
 });

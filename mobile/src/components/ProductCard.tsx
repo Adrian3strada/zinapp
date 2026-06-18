@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
-import { HIT_SLOP } from '../theme/spacing';
+import { HIT_SLOP, spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { Product } from '../types';
 import { formatCurrency } from '../utils/format';
@@ -29,17 +29,20 @@ function ProductCard({ product, onAdd }: Props) {
       />
       <View style={styles.info}>
         <Text style={styles.name}>{product.name}</Text>
-        <Text style={styles.desc} numberOfLines={2}>
-          {product.description || ''}
-        </Text>
+        {product.description ? (
+          <Text style={styles.desc} numberOfLines={2}>
+            {product.description}
+          </Text>
+        ) : null}
         <Text style={styles.price}>{formatCurrency(product.price)}</Text>
       </View>
       <Pressable
         style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
         onPress={onAdd}
         hitSlop={HIT_SLOP}
+        accessibilityLabel={`Agregar ${product.name}`}
       >
-        <Ionicons name="add" size={24} color="#FFF" />
+        <Ionicons name="add" size={22} color="#FFF" />
       </Pressable>
     </View>
   );
@@ -52,25 +55,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    gap: 12,
+    borderRadius: 18,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
   info: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text },
-  desc: { fontSize: 12, color: colors.textSecondary, marginTop: 3, lineHeight: 17 },
-  price: { fontSize: 16, fontWeight: '800', color: colors.primary, marginTop: 8 },
+  name: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  desc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
+  price: { fontSize: 17, fontWeight: '800', color: colors.primary, marginTop: 8 },
   addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 15,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...cardShadow,
   },
-  addBtnPressed: { opacity: 0.85 },
+  addBtnPressed: { opacity: 0.88, transform: [{ scale: 0.96 }] },
 });

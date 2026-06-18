@@ -4,6 +4,8 @@ set -e
 echo "ZinApp API - esperando base de datos"
 python scripts/wait_for_db.py
 
+mkdir -p /app/media
+
 echo "ZinApp API - migrate + collectstatic"
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput

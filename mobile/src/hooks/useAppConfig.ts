@@ -4,7 +4,8 @@ import { configApi, type AppConfig } from '../services/api';
 
 const DEFAULT_CONFIG: AppConfig = {
   online_payments_enabled: false,
-  support_whatsapp: '4431234567',
+  support_whatsapp: '',
+  password_reset_via_whatsapp: false,
   coverage_label: 'Zinapécuaro, Michoacán',
 };
 
@@ -27,6 +28,10 @@ async function fetchConfig(): Promise<AppConfig> {
     });
 
   return loadPromise;
+}
+
+export function prefetchAppConfig(): Promise<AppConfig> {
+  return fetchConfig();
 }
 
 export function useAppConfig() {

@@ -9,10 +9,15 @@ import BackendWake from './src/components/BackendWake';
 import { AppDialogProvider } from './src/context/AppDialogContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
+import { prefetchAppConfig } from './src/hooks/useAppConfig';
 import { navigationRef } from './src/navigation/navigationRef';
 import RootNavigator from './src/navigation/RootNavigator';
 
 export default function App() {
+  React.useEffect(() => {
+    void prefetchAppConfig();
+  }, []);
+
   return (
     <AppErrorBoundary>
       <SafeAreaProvider>

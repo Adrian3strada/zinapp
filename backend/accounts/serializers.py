@@ -1,8 +1,10 @@
 from datetime import time
 
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from restaurants.fields import CoordinateField
@@ -205,8 +207,24 @@ class PushTokenSerializer(serializers.Serializer):
     expo_push_token = serializers.CharField(max_length=255, allow_blank=True)
 
 
+DEMO_USERNAMES = frozenset({
+    'cliente1',
+    'repartidor1',
+    'rest_pizzas',
+    'rest_shukrani',
+    'rest_jardines',
+    'admin_zinapp',
+})
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        username = (attrs.get(self.username_field) or '').strip().lower()
+        if not getattr(settings, 'DEMO_ACCOUNTS_ENABLED', True) and username in DEMO_USERNAMES:
+            raise AuthenticationFailed(
+                'Las cuentas de demostración están desactivadas. Crea una cuenta nueva o contacta soporte.',
+                code='demo_disabled',
+            )
         data = super().validate(attrs)
         data['user'] = UserSerializer(self.user).data
         return data

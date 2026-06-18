@@ -1,10 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
+import { elevatedShadow } from '../theme/shadows';
 import { formatCurrency } from '../utils/format';
 
 interface Props {
@@ -20,11 +22,16 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
 
   return (
     <Pressable
-      style={[styles.wrapper, { bottom: insets.bottom + spacing.lg }]}
+      style={[styles.wrapper, { bottom: insets.bottom + spacing.md }]}
       onPress={onPress}
       hitSlop={HIT_SLOP}
     >
-      <View style={styles.bar}>
+      <LinearGradient
+        colors={[colors.primary, colors.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.bar}
+      >
         <View style={styles.left}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{itemCount}</Text>
@@ -32,8 +39,10 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
           <Text style={styles.label}>Ver carrito</Text>
         </View>
         <Text style={styles.total}>{formatCurrency(total)}</Text>
-        <Ionicons name="chevron-forward" size={20} color="#FFF" />
-      </View>
+        <View style={styles.arrow}>
+          <Ionicons name="arrow-forward" size={18} color={colors.primary} />
+        </View>
+      </LinearGradient>
     </Pressable>
   );
 }
@@ -45,27 +54,36 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.screen,
     right: spacing.screen,
+    ...elevatedShadow,
+    borderRadius: 20,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     gap: 12,
-    backgroundColor: colors.primary,
-    elevation: 4,
   },
-  left: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  left: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   badge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    minWidth: 30,
+    height: 30,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   badgeText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
   label: { color: '#FFF', fontWeight: '700', fontSize: 16 },
   total: { color: '#FFF', fontWeight: '800', fontSize: 17 },
+  arrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

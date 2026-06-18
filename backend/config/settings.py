@@ -134,8 +134,11 @@ LOGOUT_REDIRECT_URL = '/panel/login/'
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 SERVE_MEDIA = config('SERVE_MEDIA', default=DEBUG, cast=bool)
+
+SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
+DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -171,3 +174,13 @@ MERCADOPAGO_BACK_URL = config('MERCADOPAGO_BACK_URL', default='')
 MERCADOPAGO_WEBHOOK_URL = config('MERCADOPAGO_WEBHOOK_URL', default='')
 
 CRON_SECRET = config('CRON_SECRET', default='')
+
+EMAIL_HOST = config('EMAIL_HOST', default='').strip()
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='').strip()
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default=EMAIL_HOST_USER or 'noreply@zinapp.mx',
+)

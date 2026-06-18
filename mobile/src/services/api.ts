@@ -364,6 +364,7 @@ export const adminApi = {
 export interface AppConfig {
   online_payments_enabled: boolean;
   support_whatsapp: string;
+  password_reset_via_whatsapp: boolean;
   coverage_label: string;
 }
 

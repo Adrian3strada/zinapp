@@ -21,7 +21,9 @@ import { useAuth } from '../../context/AuthContext';
 import type { LoginScreenProps } from '../../navigation/types';
 import { API_URL } from '../../config/api';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { wakeBackend } from '../../services/apiWake';
 import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/spacing';
 import { contentWidth } from '../../utils/responsive';
 import { cardShadow } from '../../theme/shadows';
 
@@ -31,6 +33,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [statusHint, setStatusHint] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
@@ -39,27 +42,37 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       return;
     }
     setLoading(true);
+    setStatusHint('Conectando con el servidor…');
     try {
+      await wakeBackend(true);
+      setStatusHint('Verificando credenciales…');
       await login({ username: username.trim(), password });
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number } };
+      const axiosErr = err as { response?: { status?: number; data?: { code?: string } } };
       if (!axiosErr.response) {
         appAlert(
           'Sin conexión al servidor',
-          getApiErrorMessage(err, `No se pudo llegar a:\n${API_URL}`),
+          getApiErrorMessage(
+            err,
+            'El servidor puede estar despertando. Espera unos segundos e intenta de nuevo.',
+          ),
         );
       } else if (axiosErr.response.status === 401) {
+        const demoBlocked = axiosErr.response.data?.code === 'demo_disabled';
         appAlert(
           'No se pudo entrar',
-          __DEV__
-            ? 'Usuario o contraseña incorrectos.\n\nPrueba demo:\nusuario: cliente1\ncontraseña: test1234'
-            : 'Usuario o contraseña incorrectos. Verifica tus datos o usa «Recuperar contraseña».',
+          demoBlocked
+            ? 'Las cuentas demo ya no están disponibles. Regístrate o contacta soporte.'
+            : __DEV__
+              ? 'Usuario o contraseña incorrectos.\n\nPrueba demo:\nusuario: cliente1\ncontraseña: test1234'
+              : 'Usuario o contraseña incorrectos. Verifica tus datos o usa «Recuperar contraseña».',
         );
       } else {
         appAlert('Error', getApiErrorMessage(err, 'No se pudo iniciar sesión'));
       }
     } finally {
       setLoading(false);
+      setStatusHint('');
     }
   };
 
@@ -92,7 +105,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         </LinearGradient>
 
         <View style={[styles.formWrap, cardShadow]}>
-          <FormSection title="Iniciar sesión" hint="Usa tu usuario y contraseña de ZinApp.">
+          <FormSection title="Iniciar sesión" hint="Tu usuario y contraseña de ZinApp." variant="plain">
             <FormField
               label="Usuario"
               value={username}
@@ -129,6 +142,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
               size="lg"
               style={styles.btn}
             />
+            {loading && statusHint ? (
+              <Text style={styles.statusHint}>{statusHint}</Text>
+            ) : null}
           </FormSection>
 
           <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgot}>
@@ -173,11 +189,23 @@ const styles = StyleSheet.create({
   },
   pillText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
   formWrap: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     marginHorizontal: 20,
-    marginTop: -28,
+    marginTop: -32,
+    borderRadius: 24,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   btn: { marginTop: 4 },
+  statusHint: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 10,
+    lineHeight: 18,
+    paddingHorizontal: 8,
+  },
   forgot: { alignItems: 'center', marginTop: 4 },
   forgotText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
   link: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },

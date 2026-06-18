@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import EmptyState from '../../components/EmptyState';
 import FloatingCartBar from '../../components/FloatingCartBar';
 import ListFooter from '../../components/ListFooter';
 import ProductCard from '../../components/ProductCard';
@@ -16,6 +17,7 @@ import type { MenuScreenProps } from '../../navigation/types';
 import { productApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import { cardShadow } from '../../theme/shadows';
 import type { Product, Restaurant } from '../../types';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
@@ -111,16 +113,28 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
 
   const banner = useMemo(
     () => (
-      <LinearGradient
-        colors={[visual.color + 'CC', visual.color + '44']}
-        style={styles.banner}
-      >
-        <FoodImage emoji={visual.emoji} color={visual.color} size="lg" imageUri={imageUri} />
-        <View style={styles.bannerInfo}>
+      <View style={styles.bannerWrap}>
+        <View style={styles.bannerImageWrap}>
+          <FoodImage
+            emoji={visual.emoji}
+            color={visual.color}
+            size="lg"
+            imageUri={imageUri}
+            style={styles.bannerImage}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(15,23,42,0.7)']}
+            style={styles.bannerGradient}
+          />
+          <View style={styles.bannerEmojiBadge}>
+            <Text style={styles.bannerEmoji}>{visual.emoji}</Text>
+          </View>
+        </View>
+        <View style={styles.bannerBody}>
           <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
           {bannerMeta ? (
             <View style={styles.bannerMeta}>
-              <Ionicons name="information-circle-outline" size={14} color={colors.textSecondary} />
+              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.bannerMetaText}>{bannerMeta}</Text>
             </View>
           ) : null}
@@ -146,7 +160,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
             </Pressable>
           )}
         </View>
-      </LinearGradient>
+      </View>
     ),
     [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta, isCustomer, favorited, togglingFavorite, handleToggleFavorite],
   );
@@ -176,7 +190,9 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
         ListHeaderComponent={banner}
         renderItem={renderItem}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>Menú vacío por ahora</Text> : null
+          !loading ? (
+            <EmptyState emoji="🍽️" title="Menú vacío" subtitle="Este restaurante aún no tiene platillos publicados." />
+          ) : null
         }
         {...FLATLIST_TUNING}
       />
@@ -189,46 +205,64 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  list: { padding: spacing.screen },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-    padding: spacing.lg,
-    borderRadius: 16,
+  list: { padding: spacing.screen, paddingTop: 0 },
+  bannerWrap: {
+    marginHorizontal: -spacing.screen,
     marginBottom: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    ...cardShadow,
   },
-  bannerInfo: { flex: 1 },
-  bannerName: { fontSize: 20, fontWeight: '800', color: colors.text },
-  bannerMeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 6 },
+  bannerImageWrap: {
+    height: 160,
+    backgroundColor: colors.primaryLight,
+    position: 'relative',
+  },
+  bannerImage: { width: '100%', height: 160, borderRadius: 0 },
+  bannerGradient: { ...StyleSheet.absoluteFillObject },
+  bannerEmojiBadge: {
+    position: 'absolute',
+    bottom: 12,
+    left: spacing.screen,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerEmoji: { fontSize: 24 },
+  bannerBody: { padding: spacing.lg, paddingTop: spacing.md },
+  bannerName: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  bannerMeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
   bannerMetaText: { flex: 1, fontSize: 13, color: colors.textSecondary, fontWeight: '500', lineHeight: 18 },
   closedBanner: {
-    marginTop: 8,
-    backgroundColor: colors.error + '18',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    marginTop: 10,
+    backgroundColor: colors.error + '14',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
     alignSelf: 'flex-start',
   },
   closedBannerText: { fontSize: 12, fontWeight: '700', color: colors.error },
   notifyRow: {
-    marginTop: 10,
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
+    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   notifyRowActive: {
     borderColor: colors.primary + '55',
-    backgroundColor: colors.primary + '12',
+    backgroundColor: colors.primaryLight,
   },
-  notifyText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  notifyText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   notifyTextActive: { color: colors.primary },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: 40 },
 });

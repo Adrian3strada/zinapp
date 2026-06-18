@@ -1,10 +1,10 @@
 import type { Restaurant } from '../types';
 
 export const RESTAURANT_CATEGORIES = [
-  { label: 'Todos', key: null },
-  { label: 'Pizzas', key: 'pizzas' },
-  { label: 'Makis', key: 'makis' },
-  { label: 'Mexicana', key: 'mexicana' },
+  { label: 'Todos', key: null, emoji: '✨' },
+  { label: 'Pizzas', key: 'pizzas', emoji: '🍕' },
+  { label: 'Makis', key: 'makis', emoji: '🍣' },
+  { label: 'Mexicana', key: 'mexicana', emoji: '🌮' },
 ] as const;
 
 export type RestaurantCategoryKey = typeof RESTAURANT_CATEGORIES[number]['key'];

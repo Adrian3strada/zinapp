@@ -1,10 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ActiveDeliveryStrip from '../../components/ActiveDeliveryStrip';
+import HomeHero from '../../components/HomeHero';
 import ServiceSectionCard from '../../components/ServiceSectionCard';
 import { useAuth } from '../../context/AuthContext';
 import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesContext';
@@ -46,35 +45,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     <ScrollView
       contentContainerStyle={[
         styles.container,
-        { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.tabBar + spacing.lg },
+        { paddingBottom: insets.bottom + spacing.tabBar + spacing.lg },
       ]}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
       }
     >
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
+      <HomeHero
+        firstName={user?.first_name}
+        topInset={insets.top}
+        onProfilePress={() => navigation.navigate('Perfil')}
         style={styles.hero}
       >
-        <View style={styles.heroTop}>
-          <View>
-            <Text style={styles.greeting}>Hola, {user?.first_name || 'Cliente'} 👋</Text>
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={16} color="#FFF" />
-              <Text style={styles.location}>Zinapécuaro, Mich.</Text>
-            </View>
-          </View>
-          <Pressable
-            onPress={() => navigation.navigate('Perfil')}
-            style={styles.profileBtn}
-            accessibilityLabel="Ir a mi perfil"
-          >
-            <Ionicons name="person-circle-outline" size={28} color="#FFF" />
-          </Pressable>
-        </View>
-        <Text style={styles.heroTagline}>¿Qué necesitas hoy?</Text>
-      </LinearGradient>
+        <Text style={styles.tagline}>¿Qué necesitas hoy?</Text>
+      </HomeHero>
 
       {stripItems.length > 0 && (
         <ActiveDeliveryStrip items={stripItems} onPress={handleDeliveryPress} />
@@ -89,9 +74,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.sections}>
         <ServiceSectionCard
           title="Ofertas"
-          subtitle="Cupones y promociones para ahorrar"
+          subtitle="Cupones y promos para ahorrar"
           emoji="🏷️"
-          colors={['#E85D04', '#C44D00']}
+          colors={['#EA580C', '#C2410C']}
           onPress={() => navigation.navigate('Ofertas')}
         />
         <ServiceSectionCard
@@ -104,9 +89,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         />
         <ServiceSectionCard
           title="Envíos"
-          subtitle="Chico, mediano o grande · desde $25 en Zinapécuaro"
+          subtitle="Chico, mediano o grande · desde $25"
           emoji="📦"
-          colors={['#2A9D8F', '#1F7268']}
+          colors={['#0D9488', '#0F766E']}
           badge={activeShipmentCount}
           onPress={() => navigation.navigate('Envios')}
         />
@@ -124,29 +109,18 @@ const styles = StyleSheet.create({
   },
   hero: {
     marginHorizontal: -spacing.screen,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  location: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '500' },
-  profileBtn: { padding: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12 },
-  heroTagline: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.85)',
+  tagline: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.9)',
     marginTop: spacing.lg,
     fontWeight: '600',
   },
-  sections: { gap: spacing.lg },
+  sections: { gap: spacing.md, marginTop: spacing.xs },
   refreshError: {
     backgroundColor: colors.primaryLight,
-    borderRadius: 10,
-    padding: 10,
-    marginTop: -8,
+    borderRadius: 14,
+    padding: 12,
   },
-  refreshErrorText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
+  refreshErrorText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', fontWeight: '600' },
 });

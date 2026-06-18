@@ -6,3 +6,7 @@ dockerfilePath = "Dockerfile"
 healthcheckPath = "/api/health/"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
+
+[[deploy.volumes]]
+mountPath = "/app/media"
+name = "zinapp-media"

@@ -18,6 +18,7 @@ import OnlinePaymentBanner from '../../components/OnlinePaymentBanner';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { resolveTransferInfo } from '../../config/payments';
 import { useAuth } from '../../context/AuthContext';
+import { useAppConfig } from '../../hooks/useAppConfig';
 import type { DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { orderApi } from '../../services/api';
@@ -57,6 +58,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const { orderId } = route.params;
   const promptReview = 'promptReview' in route.params ? route.params.promptReview : false;
   const { user } = useAuth();
+  const { config: appConfig } = useAppConfig();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -274,7 +276,9 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                 <TransferPaymentCard
                   orderId={order.id}
                   total={order.total}
-                  transferInfo={resolveTransferInfo(order.restaurant_detail)}
+                  transferInfo={resolveTransferInfo(order.restaurant_detail, {
+                    whatsapp: appConfig.support_whatsapp,
+                  })}
                 />
               </View>
             )}

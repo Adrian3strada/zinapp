@@ -76,9 +76,12 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
     def get_is_favorited(self, obj):
         request = self.context.get('request')
-        if not request or not getattr(request.user, 'is_customer', False):
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
             return False
-        return obj.favorites.filter(user=request.user).exists()
+        if not getattr(user, 'is_customer', False):
+            return False
+        return obj.favorites.filter(user=user).exists()
 
     def get_rating_average(self, obj):
         agg = obj.reviews.aggregate(avg=Avg('restaurant_rating'))
