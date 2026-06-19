@@ -71,7 +71,7 @@ jobs:
           fi
           VERSION=$(node -p "require('./app.json').expo.version")
           OUT="zinapp-v${VERSION}-build${GITHUB_RUN_NUMBER}.apk"
-          cp "$APK" "../$OUT"
+          cp "$APK" "$OUT"
           echo "file=$OUT" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
