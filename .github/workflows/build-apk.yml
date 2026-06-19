@@ -1,0 +1,102 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prebuild Android project
+        env:
+          EXPO_PUBLIC_ENV: preview
+          EXPO_PUBLIC_API_URL: https://zinapp-api-production.up.railway.app/api
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Build release APK
+        env:
+          EXPO_ANDROID_USE_DEBUG_KEYSTORE: 'true'
+          EXPO_PUBLIC_ENV: preview
+          EXPO_PUBLIC_API_URL: https://zinapp-api-production.up.railway.app/api
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Prepare APK artifact
+        id: apk
+        run: |
+          APK=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          if [ -z "$APK" ]; then
+            echo "No APK found"
+            exit 1
+          fi
+          VERSION=$(node -p "require('./app.json').expo.version")
+          OUT="zinapp-v${VERSION}-build${GITHUB_RUN_NUMBER}.apk"
+          cp "$APK" "../$OUT"
+          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zinapp-apk
+          path: mobile/${{ steps.apk.outputs.file }}
+          retention-days: 90
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v${{ steps.apk.outputs.version }}-b${{ github.run_number }}
+          name: ZinApp Android v${{ steps.apk.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            APK de ZinApp para instalación directa en Android.
+
+            - Versión: **${{ steps.apk.outputs.version }}**
+            - API: `https://zinapp-api-production.up.railway.app/api`
+            - Build: #${{ github.run_number }}
+
+            Descarga el archivo `.apk` de abajo e instálalo (activa "orígenes desconocidos" si Android lo pide).
+          files: mobile/${{ steps.apk.outputs.file }}
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
