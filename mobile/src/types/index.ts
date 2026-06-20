@@ -101,6 +101,7 @@ export interface Review {
 
 export interface OrderActiveSummary {
   id: number;
+  code?: string;
   status: OrderStatus;
   status_display: string;
   restaurant_name?: string;
@@ -124,6 +125,7 @@ export interface ShipmentActiveSummary {
 
 export interface Order {
   id: number;
+  code?: string;
   customer: number;
   customer_detail?: User;
   restaurant: number;

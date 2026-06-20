@@ -75,6 +75,31 @@ class OrderApiTests(TestCase):
         }, format='json')
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data['discount_amount'], '10.00')
+        self.assertTrue(response.data['code'])
+        self.assertEqual(len(response.data['code']), 6)
+
+    def test_order_code_is_unique(self):
+        from restaurants.models import Product
+
+        product = Product.objects.create(
+            restaurant=self.restaurant,
+            name='Taco',
+            price=Decimal('50.00'),
+        )
+        self.client.force_authenticate(self.customer)
+        payload = {
+            'restaurant_id': self.restaurant.id,
+            'delivery_address': 'Calle 1, Zinapécuaro',
+            'delivery_latitude': '19.860273',
+            'delivery_longitude': '-100.828562',
+            'payment_method': 'cash',
+            'items': [{'product_id': product.id, 'quantity': 1}],
+        }
+        first = self.client.post('/api/orders/', payload, format='json')
+        second = self.client.post('/api/orders/', payload, format='json')
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertNotEqual(first.data['code'], second.data['code'])
 
     def test_create_order_rounds_high_precision_coordinates(self):
         from restaurants.models import Product

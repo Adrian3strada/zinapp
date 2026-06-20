@@ -12,6 +12,7 @@ import SectionHeader from '../../components/SectionHeader';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { MyOrdersScreenProps } from '../../navigation/types';
+import { formatOrderLabel } from '../../utils/orderDisplay';
 import { orderApi } from '../../services/api';
 import { colors, statusColors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -49,7 +50,7 @@ function OrderCard({
       <FoodImage emoji={visual.emoji} color={visual.color} size="sm" />
       <View style={styles.content}>
         <Text style={styles.restaurant}>{item.restaurant_detail?.name}</Text>
-        <Text style={styles.orderId}>Pedido #{item.id}</Text>
+        <Text style={styles.orderId}>{formatOrderLabel(item)}</Text>
         <View style={styles.badgeRow}>
           <OrderStatusBadge status={item.status} label={item.status_display} />
           {isLive && <LiveBadge label="En camino" />}

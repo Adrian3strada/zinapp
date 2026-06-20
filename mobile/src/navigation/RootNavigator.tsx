@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { ActivityIndicator, InteractionManager, View } from 'react-native';
 
 import BrandLogo from '../components/BrandLogo';
@@ -8,7 +8,10 @@ import { usePushNotifications } from '../hooks/useNotifications';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
-import type { AuthStackParamList } from './types';
+import AppDialogScreen from '../screens/shared/AppDialogScreen';
+import type { AuthStackParamList, RootStackParamList } from './types';
+import { openAppDialog } from './navigationRef';
+import { registerDialogNavigator } from '../utils/appDialogStore';
 
 const CustomerNavigator = React.lazy(() => import('./CustomerNavigator'));
 const DriverNavigator = React.lazy(() => import('./DriverNavigator'));
@@ -19,6 +22,7 @@ const ForgotPasswordScreen = React.lazy(() => import('../screens/auth/ForgotPass
 const ResetPasswordScreen = React.lazy(() => import('../screens/auth/ResetPasswordScreen'));
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 function LoadingScreen() {
   return (
@@ -43,7 +47,7 @@ function RoleNavigator({ role }: { role: string }) {
   }
 }
 
-export default function RootNavigator() {
+function MainRoutes() {
   const { user, isLoading } = useAuth();
   const [deferPush, setDeferPush] = React.useState(false);
 
@@ -89,5 +93,29 @@ export default function RootNavigator() {
     <Suspense fallback={<LoadingScreen />}>
       <RoleNavigator role={user.role} />
     </Suspense>
+  );
+}
+
+export default function RootNavigator() {
+  useEffect(() => {
+    registerDialogNavigator(openAppDialog);
+    return () => registerDialogNavigator(() => {});
+  }, []);
+
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="Main" component={MainRoutes} />
+      <RootStack.Screen
+        name="AppDialog"
+        component={AppDialogScreen}
+        options={{
+          presentation: 'transparentModal',
+          animation: 'fade',
+          headerShown: false,
+          gestureEnabled: false,
+          contentStyle: { backgroundColor: 'transparent' },
+        }}
+      />
+    </RootStack.Navigator>
   );
 }

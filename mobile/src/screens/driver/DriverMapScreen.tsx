@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
+import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import AppMap, { MapMarker } from '../../components/AppMap';
 import RouteStatsBar from '../../components/RouteStatsBar';
@@ -246,7 +247,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       primaryCoord: restaurant,
       secondaryCoord: delivery,
       nextStopLabel: goToDelivery ? 'Ir a entrega' : 'Ir al restaurante',
-      title: `Navegación · Pedido #${order.id}`,
+      title: `Navegación · ${formatOrderLabel(order)}`,
       subtitle: goToDelivery ? order.delivery_address : (order.restaurant_detail?.name ?? ''),
     };
   }, [order, shipment, userLocation]);

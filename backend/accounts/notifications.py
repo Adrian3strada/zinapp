@@ -113,8 +113,13 @@ def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> None:
         send_push_to_user(driver, title, body, data, channel_id='deliveries')
 
 
+def _order_ref(order) -> str:
+    return order.code or f'#{order.id}'
+
+
 def notify_order_status(order):
-    title = f'Pedido #{order.id}'
+    ref = _order_ref(order)
+    title = f'Pedido {ref}'
     data = {'orderId': order.id, 'status': order.status}
     status = order.status
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
@@ -124,7 +129,7 @@ def notify_order_status(order):
     if status == 'pending':
         customer_msg = (
             f'¡Encargaste en {restaurant_name}! '
-            f'Pedido #{order.id} por {total_label}. '
+            f'Pedido {ref} por {total_label}. '
             f'El restaurante confirmará pronto.'
         )
     elif status == 'on_the_way' and order.driver:
@@ -134,7 +139,7 @@ def notify_order_status(order):
 
         if order.cancellation_source == CancellationSource.RESTAURANT_REJECT:
             customer_msg = (
-                f'{restaurant_name} no pudo tomar tu pedido #{order.id}. '
+                f'{restaurant_name} no pudo tomar tu pedido {ref}. '
                 f'Prueba otro local.'
             )
         else:
@@ -146,17 +151,17 @@ def notify_order_status(order):
         owner_msg = ORDER_OWNER_MESSAGES.get(status)
         if status == 'pending':
             owner_msg = (
-                f'¡Ya encargaron! Pedido #{order.id} por {total_label}. '
+                f'¡Ya encargaron! Pedido {ref} por {total_label}. '
                 f'Confírmalo en la app.'
             )
         if owner_msg:
-            owner_title = f'Pedido #{order.id}'
+            owner_title = f'Pedido {ref}'
             send_push_to_user(order.restaurant.owner, owner_title, owner_msg, data)
 
     if status == 'ready':
         _broadcast_to_available_drivers(
             'Entrega disponible',
-            f'Pedido #{order.id} listo en {order.restaurant.name}.',
+            f'Pedido {ref} listo en {order.restaurant.name}.',
             data,
         )
 
@@ -165,7 +170,7 @@ def notify_order_status(order):
             send_push_to_user(
                 order.driver,
                 title,
-                f'Entrega #{order.id} completada.',
+                f'Entrega {ref} completada.',
                 data,
                 channel_id='deliveries',
             )
@@ -173,7 +178,7 @@ def notify_order_status(order):
             send_push_to_user(
                 order.driver,
                 title,
-                f'El pedido #{order.id} fue cancelado.',
+                f'El pedido {ref} fue cancelado.',
                 data,
                 channel_id='deliveries',
             )
@@ -217,9 +222,10 @@ def _format_nearby_distance(distance_meters: float) -> str:
 
 def notify_driver_nearby_order(order, distance_meters: float) -> None:
     dist = _format_nearby_distance(distance_meters)
+    ref = _order_ref(order)
     send_push_to_user(
         order.customer,
-        f'Pedido #{order.id}',
+        f'Pedido {ref}',
         f'¡Tu repartidor está cerca! (~{dist})',
         {
             'orderId': order.id,
@@ -263,7 +269,8 @@ def notify_restaurant_opened(restaurant) -> None:
 
 
 def notify_payment_confirmed(order) -> None:
-    title = f'Pedido #{order.id}'
+    ref = _order_ref(order)
+    title = f'Pedido {ref}'
     data = {'orderId': order.id, 'status': order.status, 'type': 'payment_confirmed'}
     total_label = f'${order.total:.2f}'
 
@@ -279,7 +286,7 @@ def notify_payment_confirmed(order) -> None:
         send_push_to_user(
             order.restaurant.owner,
             title,
-            f'Pago confirmado del pedido #{order.id} ({total_label}). Ya puedes prepararlo.',
+            f'Pago confirmado del pedido {ref} ({total_label}). Ya puedes prepararlo.',
             data,
         )
 
@@ -287,39 +294,42 @@ def notify_payment_confirmed(order) -> None:
 def notify_pending_order_reminder(order) -> None:
     if not order.restaurant or not order.restaurant.owner:
         return
+    ref = _order_ref(order)
     data = {'orderId': order.id, 'status': order.status, 'type': 'pending_reminder'}
     send_push_to_user(
         order.restaurant.owner,
-        f'Pedido #{order.id}',
-        f'El pedido #{order.id} sigue esperando confirmación. Respóndele al cliente.',
+        f'Pedido {ref}',
+        f'El pedido {ref} sigue esperando confirmación. Respóndele al cliente.',
         data,
     )
 
 
 def notify_ready_no_driver(order) -> None:
+    ref = _order_ref(order)
     data = {'orderId': order.id, 'status': order.status, 'type': 'ready_no_driver'}
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el local'
 
     if order.restaurant and order.restaurant.owner:
         send_push_to_user(
             order.restaurant.owner,
-            f'Pedido #{order.id}',
-            f'Pedido #{order.id} listo — aún sin repartidor.',
+            f'Pedido {ref}',
+            f'Pedido {ref} listo — aún sin repartidor.',
             data,
         )
 
     _broadcast_to_available_drivers(
         'Entrega urgente',
-        f'Pedido #{order.id} lleva rato esperando en {restaurant_name}.',
+        f'Pedido {ref} lleva rato esperando en {restaurant_name}.',
         data,
     )
 
 
 def notify_review_reminder(order) -> None:
+    ref = _order_ref(order)
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
     send_push_to_user(
         order.customer,
-        f'Pedido #{order.id}',
+        f'Pedido {ref}',
         f'¿Cómo estuvo tu pedido en {restaurant_name}? Déjanos una reseña.',
         {
             'orderId': order.id,

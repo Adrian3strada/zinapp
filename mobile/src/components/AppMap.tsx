@@ -208,7 +208,7 @@ export default function AppMap({
           markers={safeMarkers.map((m) => ({
             id: m.id,
             coordinate: m.coordinate,
-            color: m.pinType === 'delivery' ? '#E53935' : m.pinType === 'driver' ? '#43A047' : '#1E5DB8',
+            color: m.pinType === 'delivery' ? '#E53935' : m.pinType === 'driver' ? colors.secondary : colors.primary,
             label: m.title,
           }))}
           polylines={safePolylines.map((line) => ({

@@ -111,7 +111,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = (
-            'id', 'customer', 'customer_detail', 'restaurant', 'restaurant_detail',
+            'id', 'code', 'customer', 'customer_detail', 'restaurant', 'restaurant_detail',
             'driver', 'driver_detail', 'status', 'status_display',
             'payment_method', 'payment_method_display', 'payment_status',
             'payment_status_display', 'delivery_address',
@@ -122,7 +122,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'accepted_at', 'ready_at', 'delivered_at',
         )
         read_only_fields = (
-            'id', 'customer', 'restaurant', 'driver', 'status', 'subtotal',
+            'id', 'code', 'customer', 'restaurant', 'driver', 'status', 'subtotal',
             'delivery_fee', 'total', 'payment_status', 'payment_method',
             'discount_amount', 'delivery_address', 'delivery_latitude',
             'delivery_longitude', 'coupon',
@@ -149,6 +149,11 @@ class OrderSerializer(serializers.ModelSerializer):
         if not profile or not profile.current_latitude or not profile.current_longitude:
             return None
         return profile.updated_at
+
+    def to_representation(self, instance):
+        if not instance.code:
+            instance.ensure_code()
+        return super().to_representation(instance)
 
 
 class OrderCreateSerializer(serializers.Serializer):
@@ -574,10 +579,15 @@ class OrderActiveSerializer(_DriverLocationMixin, serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = (
-            'id', 'status', 'status_display', 'restaurant_name',
+            'id', 'code', 'status', 'status_display', 'restaurant_name',
             'delivery_address', 'delivery_latitude', 'delivery_longitude',
             'driver_latitude', 'driver_longitude', 'driver_location_updated_at',
         )
+
+    def to_representation(self, instance):
+        if not instance.code:
+            instance.ensure_code()
+        return super().to_representation(instance)
 
 
 class ShipmentActiveSerializer(_DriverLocationMixin, serializers.ModelSerializer):

@@ -22,6 +22,7 @@ RESTAURANTS = [
         },
         'restaurant': {
             'name': 'Pizzas & Beer',
+            'category': 'pizzas',
             'description': 'Pizzas, boneless y cerveza. Av. Hidalgo, centro de Zinapécuaro.',
             'address': 'Av. Hidalgo 64-A, Los Pocitos, Centro, 58930 Zinapécuaro de Figueroa, Mich.',
             'phone': '4431112233',
@@ -52,6 +53,7 @@ RESTAURANTS = [
         },
         'restaurant': {
             'name': 'Shukrani Makis',
+            'category': 'makis',
             'description': 'Rollos, makis y comida japonesa. Melchor Ocampo, centro.',
             'address': 'Calle Melchor Ocampo 46 Altos, Centro, 58930 Zinapécuaro de Figueroa, Mich.',
             'phone': '4432029496',
@@ -82,6 +84,7 @@ RESTAURANTS = [
         },
         'restaurant': {
             'name': 'Restaurante Jardines',
+            'category': 'mexicana',
             'description': 'Comida mexicana en Félix Ireta. Antojitos, guisos y desayunos.',
             'address': 'Privada Las Clavelinas 22, Félix Ireta, 58930 Zinapécuaro de Figueroa, Mich.',
             'phone': '4513550486',

@@ -101,6 +101,14 @@ class Review(models.Model):
 
 
 class Order(models.Model):
+    code = models.CharField(
+        max_length=8,
+        unique=True,
+        db_index=True,
+        blank=True,
+        default='',
+        verbose_name='Código',
+    )
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -176,13 +184,31 @@ class Order(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'Pedido #{self.id} - {self.get_status_display()}'
+        ref = self.code or str(self.id or '…')
+        return f'Pedido {ref} - {self.get_status_display()}'
+
+    @property
+    def display_ref(self) -> str:
+        return self.code or f'#{self.id}'
 
     def recalculate_totals(self):
         self.subtotal = sum(item.subtotal for item in self.items.all())
         discount = self.discount_amount or Decimal('0.00')
         self.total = max(self.subtotal + self.delivery_fee - discount, Decimal('0.00'))
         self.save(update_fields=['subtotal', 'total', 'updated_at'])
+
+    def ensure_code(self) -> str:
+        """Asigna y persiste código si falta (p. ej. pedidos previos a la migración)."""
+        if self.code:
+            return self.code
+        from .codes import assign_unique_order_code
+
+        assign_unique_order_code(self)
+        if self.pk:
+            updated = Order.objects.filter(pk=self.pk, code='').update(code=self.code)
+            if not updated:
+                self.refresh_from_db(fields=['code'])
+        return self.code
 
 
 class ShipmentStatus(models.TextChoices):

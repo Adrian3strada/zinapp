@@ -12,6 +12,14 @@ from .models import Order, OrderStatus, PaymentStatus, Shipment, ShipmentStatus
 
 
 @receiver(pre_save, sender=Order)
+def assign_order_code(sender, instance, **kwargs):
+    if not instance.code:
+        from .codes import assign_unique_order_code
+
+        assign_unique_order_code(instance)
+
+
+@receiver(pre_save, sender=Order)
 def cache_previous_order_state(sender, instance, **kwargs):
     if instance.pk:
         try:

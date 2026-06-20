@@ -8,8 +8,8 @@ export type MapPinType = 'restaurant' | 'delivery' | 'driver' | 'pickup';
 const PIN_CONFIG: Record<MapPinType, { color: string; emoji: string; size: number }> = {
   restaurant: { color: colors.primary, emoji: '🍽️', size: 40 },
   delivery: { color: colors.success, emoji: '📍', size: 40 },
-  pickup: { color: '#E76F51', emoji: '📦', size: 40 },
-  driver: { color: '#0F3D7A', emoji: '🛵', size: 44 },
+  pickup: { color: colors.accentDark, emoji: '📦', size: 40 },
+  driver: { color: colors.secondary, emoji: '🛵', size: 44 },
 };
 
 /** Punto de anclaje: la punta del pin coincide con la coordenada GPS. */

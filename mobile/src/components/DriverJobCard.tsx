@@ -72,7 +72,7 @@ export default function DriverJobCard({
             <Ionicons
               name={isFood ? 'restaurant' : 'cube'}
               size={12}
-              color={isFood ? colors.primary : '#E76F51'}
+              color={isFood ? colors.primary : colors.accent}
             />
             <Text style={[styles.typeBadgeText, isFood ? styles.typeFoodText : styles.typeShipmentText]}>
               {isFood ? 'Comida' : 'Envío'}
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   typeFood: { backgroundColor: colors.primaryLight },
-  typeShipment: { backgroundColor: '#E76F5122' },
+  typeShipment: { backgroundColor: colors.accentLight },
   typeBadgeText: { fontSize: 11, fontWeight: '800' },
   typeFoodText: { color: colors.primary },
   typeShipmentText: { color: '#C45C3E' },

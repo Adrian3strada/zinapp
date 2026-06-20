@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
+import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
@@ -165,7 +166,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
         <DriverJobCard
           kind="order"
           id={order.id}
-          title={`Pedido #${order.id}`}
+          title={formatOrderLabel(order)}
           subtitle={order.restaurant_detail?.name}
           restaurantName={order.restaurant_detail?.name}
           status={order.status}
@@ -199,7 +200,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
         status={shipment.status}
         statusLabel={shipment.status_display}
         lines={[
-          { icon: 'cube', iconColor: '#E76F51', text: shipment.pickup_address },
+          { icon: 'cube', iconColor: colors.accent, text: shipment.pickup_address },
           { icon: 'location', iconColor: colors.success, text: shipment.delivery_address },
           ...(shipment.payment_method === 'transfer'
             ? [{ icon: 'card-outline' as const, text: 'Cobrar: transferencia (ya pagado)' }]

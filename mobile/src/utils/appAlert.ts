@@ -1,5 +1,7 @@
 import { Alert } from 'react-native';
 
+import { enqueueAppDialog } from './appDialogStore';
+
 export type AppDialogButtonStyle = 'default' | 'cancel' | 'destructive';
 
 export type AppDialogButton = {
@@ -7,6 +9,20 @@ export type AppDialogButton = {
   onPress?: () => void;
   style?: AppDialogButtonStyle;
 };
+
+type ShowDialogHandler = ((request: {
+  title: string;
+  message?: string;
+  buttons: AppDialogButton[];
+  cancelable?: boolean;
+}) => void) | null;
+
+let showDialogHandler: ShowDialogHandler = null;
+
+/** @deprecated Usa enqueueAppDialog vía appAlert */
+export function registerAppDialogHandler(handler: ShowDialogHandler): void {
+  showDialogHandler = handler;
+}
 
 function mapAlertButtons(buttons: AppDialogButton[]) {
   return buttons.map((btn) => ({
@@ -21,7 +37,17 @@ function mapAlertButtons(buttons: AppDialogButton[]) {
   }));
 }
 
-/** Diálogos nativos — fiables en Expo Go y APK (sin Modal bloqueado). */
+function showNativeAlert(
+  title: string,
+  message: string | undefined,
+  buttons: AppDialogButton[],
+): void {
+  Alert.alert(title, message ?? '', mapAlertButtons(buttons), { cancelable: true });
+}
+
+let useNavigationDialog = true;
+
+/** Diálogos ZinApp (pantalla modal de navegación). Fallback nativo si falla. */
 export function appAlert(
   title: string,
   message?: string,
@@ -31,7 +57,16 @@ export function appAlert(
     ? buttons
     : [{ text: 'OK', style: 'default' }];
 
-  Alert.alert(title, message ?? '', mapAlertButtons(normalized), { cancelable: true });
+  if (useNavigationDialog) {
+    try {
+      enqueueAppDialog(title, message, normalized, true);
+      return;
+    } catch {
+      useNavigationDialog = false;
+    }
+  }
+
+  showNativeAlert(title, message, normalized);
 }
 
 /** Atajo para confirmaciones destructivas. */

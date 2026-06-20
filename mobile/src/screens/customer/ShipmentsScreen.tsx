@@ -305,7 +305,7 @@ export default function ShipmentsScreen({ navigation }: ShipmentsScreenProps) {
         }
       >
         <LinearGradient
-          colors={[colors.success, '#0D9488']}
+          colors={[colors.shipmentStart, colors.shipmentEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}

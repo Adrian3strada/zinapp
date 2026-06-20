@@ -1,19 +1,16 @@
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import { createNavigationContainerRef } from '@react-navigation/native';
 
-type RootParams = {
-  OrderDetail: { orderId: number };
-  ShipmentDetail: { shipmentId: number };
-  Menu: { restaurantId: number; restaurantName: string };
-};
+import type { RootStackParamList } from './types';
+import type { PendingDialog } from '../utils/appDialogStore';
 
-export const navigationRef = createNavigationContainerRef<RootParams>();
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const NAV_RETRY_MS = 250;
 const NAV_MAX_ATTEMPTS = 20;
 
 /** Espera a que el contenedor de navegación esté listo (p. ej. app abierta desde push). */
-function navigateWhenReady(action: () => void): void {
+export function navigateWhenReady(action: () => void): void {
   const attempt = (n: number) => {
     if (navigationRef.isReady()) {
       action();
@@ -24,6 +21,41 @@ function navigateWhenReady(action: () => void): void {
     }
   };
   attempt(0);
+}
+
+function appDialogParams(dialog: PendingDialog) {
+  return {
+    dialogKey: dialog.dialogKey,
+    title: dialog.title,
+    message: dialog.message,
+    buttons: dialog.buttons,
+    cancelable: dialog.cancelable,
+  };
+}
+
+export function openAppDialog(dialog: PendingDialog): void {
+  navigateWhenReady(() => {
+    const state = navigationRef.getRootState();
+    const current = state.routes[state.index];
+    const params = appDialogParams(dialog);
+
+    if (current?.name === 'AppDialog') {
+      navigationRef.dispatch(StackActions.replace('AppDialog', params));
+      return;
+    }
+
+    navigationRef.navigate('AppDialog', params);
+  });
+}
+
+export function closeAppDialog(): void {
+  navigateWhenReady(() => {
+    const state = navigationRef.getRootState();
+    const current = state.routes[state.index];
+    if (current?.name === 'AppDialog') {
+      navigationRef.dispatch(StackActions.pop());
+    }
+  });
 }
 
 export function navigateToOrder(orderId: number) {

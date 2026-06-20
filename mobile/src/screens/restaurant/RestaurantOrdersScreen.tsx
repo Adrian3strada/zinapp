@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
+import { formatOrderLabel, orderRef } from '../../utils/orderDisplay';
 
 import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
@@ -76,7 +77,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   const handleReject = (order: Order) => {
     if (busyOrderId != null) return;
-    appAlert('Rechazar pedido', `¿Rechazar el pedido #${order.id}?`, [
+    appAlert('Rechazar pedido', `¿Rechazar ${formatOrderLabel(order)}?`, [
       { text: 'No', style: 'cancel' },
       {
         text: 'Rechazar',
@@ -166,7 +167,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
           >
             <View style={styles.cardTop}>
-              <Text style={styles.orderId}>#{item.id}</Text>
+              <Text style={styles.orderId}>{orderRef(item)}</Text>
               <View style={styles.badgeRow}>
                 {item.payment_method === 'online' && item.payment_status !== 'paid' && (
                   <View style={styles.paymentBadge}>

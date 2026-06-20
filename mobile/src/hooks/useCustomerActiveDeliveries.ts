@@ -3,6 +3,7 @@ import { InteractionManager } from 'react-native';
 
 import { orderApi, shipmentApi } from '../services/api';
 import type { OrderActiveSummary, ShipmentActiveSummary } from '../types';
+import { formatOrderLabel } from '../utils/orderDisplay';
 
 const ACTIVE_ORDER_STATUSES = ['pending', 'accepted', 'preparing', 'ready', 'on_the_way'] as const;
 const ACTIVE_SHIPMENT_STATUSES = ['pending', 'picked_up', 'on_the_way'] as const;
@@ -22,7 +23,7 @@ function mapOrderToItem(order: OrderActiveSummary): ActiveDeliveryItem {
   return {
     kind: 'order',
     id: order.id,
-    title: `Pedido #${order.id}`,
+    title: formatOrderLabel(order),
     subtitle: order.restaurant_name ?? order.delivery_address,
     status: order.status,
     statusDisplay: order.status_display,

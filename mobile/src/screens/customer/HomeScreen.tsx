@@ -76,7 +76,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           title="Ofertas"
           subtitle="Cupones y promos para ahorrar"
           emoji="🏷️"
-          colors={['#EA580C', '#C2410C']}
+          colors={[colors.accent, colors.primaryDark]}
           onPress={() => navigation.navigate('Ofertas')}
         />
         <ServiceSectionCard
@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           title="Envíos"
           subtitle="Chico, mediano o grande · desde $25"
           emoji="📦"
-          colors={['#0D9488', '#0F766E']}
+          colors={[colors.shipmentStart, colors.shipmentEnd]}
           badge={activeShipmentCount}
           onPress={() => navigation.navigate('Envios')}
         />

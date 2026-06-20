@@ -192,7 +192,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             <Text style={styles.section}>Ruta</Text>
             <View style={styles.routeBlock}>
               <View style={styles.routeRow}>
-                <View style={[styles.routeDot, { backgroundColor: '#E76F51' }]}>
+                <View style={[styles.routeDot, { backgroundColor: colors.accent }]}>
                   <Ionicons name="cube" size={16} color="#FFF" />
                 </View>
                 <View style={styles.routeText}>

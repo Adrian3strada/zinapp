@@ -2,8 +2,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appAlert, appConfirm } from '../../utils/appAlert';
+import { formatOrderLabel, orderRef } from '../../utils/orderDisplay';
 
 import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
@@ -104,6 +106,12 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     };
   }, [load, order?.status, pollMs]);
 
+  useFocusEffect(
+    useCallback(() => {
+      load(() => true);
+    }, [load]),
+  );
+
   const handleCancel = useCallback(() => {
     if (!order || actionBusy) return;
     appConfirm(
@@ -115,7 +123,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
           const { data } = await orderApi.cancel(order.id);
           setOrder(data);
           await activeDeliveries?.refresh();
-          appAlert('Listo', `Pedido #${data.id} cancelado.`);
+          appAlert('Listo', `${formatOrderLabel(data)} cancelado.`);
         } catch (err) {
           appAlert('Error', getApiErrorMessage(err, 'No se pudo cancelar el pedido.'));
         } finally {
@@ -221,7 +229,12 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             style={styles.hero}
           >
             <Text style={styles.heroRestaurant}>{order.restaurant_detail?.name}</Text>
-            <Text style={styles.heroTitle}>Pedido #{order.id}</Text>
+            <View style={styles.heroOrderRef}>
+              <Text style={styles.heroLabel}>Pedido</Text>
+              <Text style={[styles.heroCode, order.code ? styles.heroCodeRandom : null]}>
+                {orderRef(order)}
+              </Text>
+            </View>
             <View style={styles.heroBadges}>
               <OrderStatusBadge
                 status={order.status}
@@ -274,6 +287,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               <View style={styles.card}>
                 <TransferPaymentCard
                   orderId={order.id}
+                  displayRef={orderRef(order)}
                   total={order.total}
                   transferInfo={resolveTransferInfo(order.restaurant_detail, {
                     whatsapp: appConfig.support_whatsapp,
@@ -407,7 +421,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <View style={styles.card}>
               <ContactWhatsAppButton
                 phone={order.driver_detail.phone}
-                message={driverContactMessage(order.id, order.restaurant_detail?.name ?? 'restaurante')}
+                message={driverContactMessage(orderRef(order), order.restaurant_detail?.name ?? 'restaurante')}
                 label="WhatsApp al repartidor"
               />
             </View>
@@ -417,7 +431,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <View style={styles.card}>
               <ContactWhatsAppButton
                 phone={order.customer_detail.phone}
-                message={customerContactMessage(order.id)}
+                message={customerContactMessage(orderRef(order))}
                 label="WhatsApp al cliente"
               />
             </View>
@@ -432,7 +446,10 @@ const styles = StyleSheet.create({
   container: { paddingBottom: 32 },
   hero: { padding: 24, gap: 10 },
   heroRestaurant: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
-  heroTitle: { fontSize: 26, fontWeight: '800', color: '#FFF' },
+  heroOrderRef: { gap: 2 },
+  heroLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 1 },
+  heroCode: { fontSize: 26, fontWeight: '800', color: '#FFF' },
+  heroCodeRandom: { fontSize: 32, letterSpacing: 4, fontVariant: ['tabular-nums'] },
   heroBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   heroEta: { fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
   heroPaymentWarn: {

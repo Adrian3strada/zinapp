@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
+import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
 import DriverJobCard from '../../components/DriverJobCard';
@@ -179,7 +180,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               <DriverJobCard
                 kind="order"
                 id={order.id}
-                title={`Pedido #${order.id}`}
+                title={formatOrderLabel(order)}
                 subtitle={order.restaurant_detail?.name}
                 restaurantName={order.restaurant_detail?.name}
                 lines={[
@@ -205,7 +206,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               title={`Envío #${shipment.id}`}
               subtitle={`${shipment.size_display} · ${shipment.description}`}
               lines={[
-                { icon: 'cube', iconColor: '#E76F51', text: `Recoger: ${shipment.pickup_address}` },
+                { icon: 'cube', iconColor: colors.accent, text: `Recoger: ${shipment.pickup_address}` },
                 { icon: 'location', iconColor: colors.success, text: `Entregar: ${shipment.delivery_address}` },
                 ...(shipment.payment_method === 'cash'
                   ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo' }]

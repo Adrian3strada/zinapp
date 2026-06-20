@@ -2,6 +2,8 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-aud
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
+import { colors } from '../theme/colors';
+
 /** Nombre del tono empaquetado en el APK (assets/sounds/bell.wav). */
 export const NOTIFICATION_SOUND = 'bell.wav';
 
@@ -42,7 +44,7 @@ export async function setupNotificationChannels(): Promise<void> {
     sound: NOTIFICATION_SOUND,
     enableVibrate: true,
     vibrationPattern: [0, 280, 120, 280],
-    lightColor: '#1E5DB8',
+    lightColor: colors.primary,
     showBadge: true,
   };
 

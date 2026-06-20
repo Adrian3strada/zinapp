@@ -14,6 +14,7 @@ import { openWhatsApp, transferReceiptMessage, type TransferKind } from '../util
 
 interface Props {
   orderId: number;
+  displayRef?: string;
   total: string;
   compact?: boolean;
   kind?: TransferKind;
@@ -22,11 +23,13 @@ interface Props {
 
 export default function TransferPaymentCard({
   orderId,
+  displayRef,
   total,
   compact,
   kind = 'order',
   transferInfo = TRANSFER_INFO,
 }: Props) {
+  const refLabel = displayRef ?? (orderId > 0 ? `#${orderId}` : '');
   const [copied, setCopied] = useState(false);
   const totalFormatted = formatCurrency(total);
   const itemLabel = kind === 'shipment' ? 'envío' : 'pedido';
@@ -49,7 +52,7 @@ export default function TransferPaymentCard({
     try {
       await openWhatsApp(
         transferInfo.whatsapp,
-        transferReceiptMessage(orderId, totalFormatted, kind),
+        transferReceiptMessage(refLabel, totalFormatted, kind),
       );
     } catch {
       appAlert('WhatsApp', 'No se pudo abrir WhatsApp. Instálalo o envía el comprobante manualmente.');
@@ -63,9 +66,9 @@ export default function TransferPaymentCard({
         <Text style={styles.title}>Pago por transferencia</Text>
       </View>
       <Text style={styles.amount}>Monto: {totalFormatted}</Text>
-      {orderId > 0 && (
-        <Text style={styles.ref}>{itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} #{orderId}</Text>
-      )}
+      {refLabel ? (
+        <Text style={styles.ref}>{itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} {refLabel}</Text>
+      ) : null}
       <Text style={styles.line}>Banco: {transferInfo.bank}</Text>
       <Text style={styles.line}>Titular: {transferInfo.holder}</Text>
       <Pressable style={styles.clabeRow} onPress={handleCopyClabe} hitSlop={HIT_SLOP}>

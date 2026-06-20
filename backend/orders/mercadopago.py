@@ -29,7 +29,7 @@ def create_checkout_preference(order) -> dict | None:
     payload = {
         'items': [{
             'id': str(order.id),
-            'title': f'Pedido #{order.id} — {order.restaurant.name}',
+            'title': f'Pedido {order.display_ref} — {order.restaurant.name}',
             'quantity': 1,
             'unit_price': float(order.total),
             'currency_id': 'MXN',

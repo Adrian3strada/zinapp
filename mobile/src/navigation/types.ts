@@ -2,6 +2,19 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import type { PendingDialogButton } from '../utils/appDialogStore';
+
+export type RootStackParamList = {
+  Main: undefined;
+  AppDialog: {
+    dialogKey: string;
+    title: string;
+    message: string;
+    buttons: PendingDialogButton[];
+    cancelable?: boolean;
+  };
+};
+
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;

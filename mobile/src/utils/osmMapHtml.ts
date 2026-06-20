@@ -88,8 +88,8 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       if (config.pinCoordinate && m.id === 'pin') return;
       var marker = L.circleMarker([m.coordinate.latitude, m.coordinate.longitude], {
         radius: 8,
-        color: m.color || '#1E5DB8',
-        fillColor: m.color || '#1E5DB8',
+        color: m.color || '#E8622C',
+        fillColor: m.color || '#E8622C',
         fillOpacity: 0.9,
         weight: 2
       }).addTo(map);
@@ -100,7 +100,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       if (!line.coordinates || line.coordinates.length < 2) return;
       L.polyline(
         line.coordinates.map(function(c) { return [c.latitude, c.longitude]; }),
-        { color: line.color || '#1E5DB8', weight: 4, opacity: 0.85 }
+        { color: line.color || '#E8622C', weight: 4, opacity: 0.85 }
       ).addTo(map);
     });
 

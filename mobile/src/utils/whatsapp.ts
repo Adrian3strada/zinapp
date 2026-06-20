@@ -21,33 +21,33 @@ export async function openWhatsApp(phone: string, message: string): Promise<void
 }
 
 export function transferReceiptMessage(
-  id: number,
+  ref: string,
   totalFormatted: string,
   kind: TransferKind = 'order',
 ): string {
   const label = kind === 'shipment' ? 'envío' : 'pedido';
-  if (id <= 0) {
+  if (!ref) {
     return (
       `Hola, envío comprobante de transferencia de un ${label} ` +
       `por ${totalFormatted} en ZinApp Zinapécuaro.`
     );
   }
   return (
-    `Hola, envío comprobante de transferencia del ${label} #${id} ` +
+    `Hola, envío comprobante de transferencia del ${label} ${ref} ` +
     `por ${totalFormatted} en ZinApp Zinapécuaro.`
   );
 }
 
-export function driverContactMessage(orderId: number, restaurantName: string): string {
+export function driverContactMessage(orderRef: string, restaurantName: string): string {
   return (
-    `Hola, soy el cliente del pedido #${orderId} de ${restaurantName} en ZinApp. ` +
+    `Hola, soy el cliente del pedido ${orderRef} de ${restaurantName} en ZinApp. ` +
     '¿Me confirmas tu llegada?'
   );
 }
 
-export function customerContactMessage(orderId: number): string {
+export function customerContactMessage(orderRef: string): string {
   return (
-    `Hola, soy tu repartidor del pedido #${orderId} en ZinApp. ` +
+    `Hola, soy tu repartidor del pedido ${orderRef} en ZinApp. ` +
     'Voy en camino a tu domicilio.'
   );
 }

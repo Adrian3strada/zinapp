@@ -3,14 +3,14 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1A56DB"
+      "backgroundColor": "#E8622C"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -24,13 +24,13 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 117,
+      "versionCode": 118,
       "permissions": [
         "POST_NOTIFICATIONS"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1A56DB"
+        "backgroundColor": "#E8622C"
       }
     },
     "extra": {
@@ -79,7 +79,7 @@
       [
         "expo-notifications",
         {
-          "color": "#1E5DB8",
+          "color": "#E8622C",
           "sounds": ["./assets/sounds/bell.wav"]
         }
       ],
