@@ -81,7 +81,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         />
         <ServiceSectionCard
           title="Comida"
-          subtitle="Restaurantes y delivery a domicilio"
+          subtitle="Locales de tu ciudad"
           emoji="🍽️"
           colors={[colors.gradientStart, colors.gradientEnd]}
           badge={activeOrderCount}

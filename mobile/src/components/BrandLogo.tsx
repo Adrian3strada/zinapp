@@ -11,7 +11,7 @@ export type BrandLogoVariant = 'light' | 'dark' | 'auto';
 interface Props {
   width?: number;
   variant?: BrandLogoVariant;
-  /** Muestra «DELIVERY & SERVICIOS» */
+  /** @deprecated Tagline oculto por defecto; evita repetir «delivery y servicios». */
   showTagline?: boolean;
   /** Solo icono + «ZinApp», sin tagline (headers compactos) */
   compact?: boolean;
@@ -85,7 +85,7 @@ function resolvePalette(variant: BrandLogoVariant) {
 export default function BrandLogo({
   width = 260,
   variant = 'dark',
-  showTagline = true,
+  showTagline = false,
   compact = false,
   style,
   imageStyle,
@@ -102,7 +102,7 @@ export default function BrandLogo({
           source={LOGO_ASSET}
           style={[styles.asset, { width, height: width * 0.38 }, imageStyle]}
           resizeMode="contain"
-          accessibilityLabel="ZinApp Delivery y Servicios"
+          accessibilityLabel="ZinApp"
         />
       </View>
     );

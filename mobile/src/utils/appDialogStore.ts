@@ -48,6 +48,40 @@ export function dismissDialogCallbacks(dialogKey: string): void {
   clearCallbacks(dialogKey);
 }
 
+export function resetDialogState(): void {
+  showing = false;
+  queue.length = 0;
+  callbacks.clear();
+}
+
+export function failOpenDialog(pending: PendingDialog): void {
+  // Navegación no disponible — mostrar diálogo nativo para no perder el aviso.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Alert } = require('react-native') as typeof import('react-native');
+    const alertButtons = pending.buttons.map((btn, index) => ({
+      text: btn.text,
+      style:
+        btn.style === 'destructive'
+          ? ('destructive' as const)
+          : btn.style === 'cancel'
+            ? ('cancel' as const)
+            : ('default' as const),
+      onPress: () => runDialogCallback(pending.dialogKey, index),
+    }));
+    Alert.alert(pending.title, pending.message || undefined, alertButtons, {
+      cancelable: pending.cancelable,
+      onDismiss: pending.cancelable
+        ? () => dismissDialogCallbacks(pending.dialogKey)
+        : undefined,
+    });
+  } catch {
+    dismissDialogCallbacks(pending.dialogKey);
+  }
+  showing = false;
+  queue.length = 0;
+}
+
 export function markDialogClosed(): void {
   showing = false;
   const next = queue.shift();

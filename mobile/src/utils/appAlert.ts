@@ -10,20 +10,6 @@ export type AppDialogButton = {
   style?: AppDialogButtonStyle;
 };
 
-type ShowDialogHandler = ((request: {
-  title: string;
-  message?: string;
-  buttons: AppDialogButton[];
-  cancelable?: boolean;
-}) => void) | null;
-
-let showDialogHandler: ShowDialogHandler = null;
-
-/** @deprecated Usa enqueueAppDialog vía appAlert */
-export function registerAppDialogHandler(handler: ShowDialogHandler): void {
-  showDialogHandler = handler;
-}
-
 function mapAlertButtons(buttons: AppDialogButton[]) {
   return buttons.map((btn) => ({
     text: btn.text,
@@ -47,7 +33,7 @@ function showNativeAlert(
 
 let useNavigationDialog = true;
 
-/** Diálogos ZinApp (pantalla modal de navegación). Fallback nativo si falla. */
+/** Avisos informativos (modal ZinApp con fallback nativo). */
 export function appAlert(
   title: string,
   message?: string,
@@ -69,14 +55,14 @@ export function appAlert(
   showNativeAlert(title, message, normalized);
 }
 
-/** Atajo para confirmaciones destructivas. */
+/** Confirmaciones — diálogo nativo (estable al cancelar pedidos/envíos). */
 export function appConfirm(
   title: string,
   message: string,
   onConfirm: () => void,
   confirmLabel = 'Confirmar',
 ): void {
-  appAlert(title, message, [
+  Alert.alert(title, message, [
     { text: 'No', style: 'cancel' },
     { text: confirmLabel, style: 'destructive', onPress: onConfirm },
   ]);

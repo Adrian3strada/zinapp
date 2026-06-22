@@ -16,7 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 
 import Button from '../../components/Button';
@@ -185,10 +185,12 @@ export default function RestaurantManageScreen() {
         editor.imageUri);
 
     if (isNewDraft) {
-      appAlert('Cerrar formulario', '¿Descartar el producto nuevo?', [
-        { text: 'Seguir editando', style: 'cancel' },
-        { text: 'Descartar', style: 'destructive', onPress: () => setEditor(null) },
-      ]);
+      appConfirm(
+        'Cerrar formulario',
+        '¿Descartar el producto nuevo?',
+        () => setEditor(null),
+        'Descartar',
+      );
       return;
     }
     setEditor(null);
@@ -243,26 +245,24 @@ export default function RestaurantManageScreen() {
 
   const deleteProduct = () => {
     if (!editor?.id) return;
-    appAlert('Eliminar producto', `¿Quitar "${editor.name}" del menú?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          setDeleting(true);
-          try {
-            await productApi.delete(editor.id!);
-            setEditor(null);
-            await load();
-            appAlert('Listo', 'Producto eliminado');
-          } catch (err) {
-            appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
-          } finally {
-            setDeleting(false);
-          }
-        },
+    appConfirm(
+      'Eliminar producto',
+      `¿Quitar "${editor.name}" del menú?`,
+      async () => {
+        setDeleting(true);
+        try {
+          await productApi.delete(editor.id!);
+          setEditor(null);
+          await load();
+          appAlert('Listo', 'Producto eliminado');
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
+        } finally {
+          setDeleting(false);
+        }
       },
-    ]);
+      'Eliminar',
+    );
   };
 
   if (loading) {

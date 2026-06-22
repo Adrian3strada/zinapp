@@ -27,7 +27,7 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 function LoadingScreen() {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <BrandLogo variant="dark" width={240} />
+      <BrandLogo variant="dark" width={240} showTagline={false} compact />
       <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 28 }} />
     </View>
   );

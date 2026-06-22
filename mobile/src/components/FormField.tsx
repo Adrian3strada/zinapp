@@ -5,13 +5,14 @@ import { StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 
 interface Props {
-  label: string;
+  label?: string;
   value: string;
   onChangeText: (value: string) => void;
   icon?: keyof typeof Ionicons.glyphMap;
   placeholder?: string;
   hint?: string;
   required?: boolean;
+  hideLabel?: boolean;
   secureTextEntry?: boolean;
   multiline?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'decimal-pad';
@@ -30,6 +31,7 @@ export default function FormField({
   placeholder,
   hint,
   required,
+  hideLabel = false,
   secureTextEntry,
   multiline,
   keyboardType = 'default',
@@ -41,10 +43,12 @@ export default function FormField({
 }: Props) {
   return (
     <View style={[styles.wrap, style]}>
-      <Text style={styles.label}>
-        {label}
-        {required ? ' *' : ''}
-      </Text>
+      {!hideLabel && label ? (
+        <Text style={styles.label}>
+          {label}
+          {required ? ' *' : ''}
+        </Text>
+      ) : null}
       <View
         style={[
           styles.inputWrap,
@@ -60,7 +64,7 @@ export default function FormField({
         />
         <TextInput
           style={[styles.input, multiline && styles.inputMultiline]}
-          placeholder={placeholder ?? label}
+          placeholder={placeholder ?? label ?? ''}
           placeholderTextColor={colors.textMuted}
           value={value}
           onChangeText={onChangeText}

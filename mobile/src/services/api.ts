@@ -202,8 +202,10 @@ export const authApi = {
 };
 
 export const restaurantApi = {
-  list: (page = 1) =>
-    api.get<PaginatedResponse<Restaurant>>('/restaurants/', { params: { page } }),
+  list: (page = 1, category?: string) =>
+    api.get<PaginatedResponse<Restaurant>>('/restaurants/', {
+      params: { page, ...(category ? { category } : {}) },
+    }),
   get: (id: number) => api.get<Restaurant & { products: Product[] }>(`/restaurants/${id}/`),
   toggleFavorite: (id: number) =>
     api.post<{ is_favorited: boolean }>(`/restaurants/${id}/toggle-favorite/`),

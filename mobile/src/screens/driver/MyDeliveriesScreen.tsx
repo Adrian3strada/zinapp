@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import DriverJobCard from '../../components/DriverJobCard';
@@ -101,46 +101,44 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     [activeItems, pastItems],
   );
 
-  const handlePickedUp = async (item: DeliveryItem) => {
+  const handlePickedUp = (item: DeliveryItem) => {
     if (item.kind !== 'shipment') return;
-    appAlert('Confirmar recogida', '¿Ya recogiste el paquete?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sí, recogido',
-        onPress: async () => {
-          try {
-            await shipmentApi.markPickedUp(item.shipment.id);
-            load(true);
-          } catch (err) {
-            appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido'));
-          }
-        },
+    appConfirm(
+      'Confirmar recogida',
+      '¿Ya recogiste el paquete?',
+      async () => {
+        try {
+          await shipmentApi.markPickedUp(item.shipment.id);
+          load(true);
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido'));
+        }
       },
-    ]);
+      'Sí, recogido',
+    );
   };
 
-  const handleDelivered = async (item: DeliveryItem) => {
-    appAlert('Confirmar entrega', '¿Marcar como entregado?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sí, entregado',
-        onPress: async () => {
-          try {
-            if (item.kind === 'order') {
-              await orderApi.markDelivered(item.order.id);
-              load(true);
-              navigation.navigate('OrderDetail', { orderId: item.order.id, promptReview: true });
-              return;
-            }
-            await shipmentApi.markDelivered(item.shipment.id);
+  const handleDelivered = (item: DeliveryItem) => {
+    appConfirm(
+      'Confirmar entrega',
+      '¿Marcar como entregado?',
+      async () => {
+        try {
+          if (item.kind === 'order') {
+            await orderApi.markDelivered(item.order.id);
             load(true);
-            navigation.navigate('ShipmentDetail', { shipmentId: item.shipment.id });
-          } catch (err) {
-            appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
+            navigation.navigate('OrderDetail', { orderId: item.order.id, promptReview: true });
+            return;
           }
-        },
+          await shipmentApi.markDelivered(item.shipment.id);
+          load(true);
+          navigation.navigate('ShipmentDetail', { shipmentId: item.shipment.id });
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
+        }
       },
-    ]);
+      'Sí, entregado',
+    );
   };
 
   const openMap = (item: DeliveryItem) => {

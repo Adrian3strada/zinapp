@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
-import { cardShadow } from '../theme/shadows';
+import { softShadow } from '../theme/shadows';
 
 interface Props {
   title: string;
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
     minHeight: 112,
-    ...cardShadow,
+    ...softShadow,
   },
   pressed: { opacity: 0.95 },
   gradient: {

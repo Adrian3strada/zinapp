@@ -1,10 +1,10 @@
 const RESTAURANT_VISUALS: Record<string, { emoji: string; color: string }> = {
-  pizzas: { emoji: '🍕', color: '#E8622C' },
-  beer: { emoji: '🍕', color: '#E8622C' },
+  pizzas: { emoji: '🍕', color: '#E85D04' },
+  beer: { emoji: '🍕', color: '#E85D04' },
   maki: { emoji: '🍣', color: '#2A9D8F' },
   shukrani: { emoji: '🍣', color: '#2A9D8F' },
   jardines: { emoji: '🌿', color: '#588157' },
-  tacos: { emoji: '🌮', color: '#E8622C' },
+  tacos: { emoji: '🌮', color: '#1E5DB8' },
   birria: { emoji: '🍖', color: '#C45C26' },
   birriería: { emoji: '🍖', color: '#C45C26' },
   nevería: { emoji: '🍦', color: '#FF6B9D' },
@@ -38,7 +38,7 @@ export function getRestaurantVisual(name: string) {
   for (const [key, visual] of Object.entries(RESTAURANT_VISUALS)) {
     if (lower.includes(key)) return visual;
   }
-  return { emoji: '🍽️', color: '#E8622C' };
+  return { emoji: '🍽️', color: '#1A56DB' };
 }
 
 export function getProductEmoji(name: string): string {

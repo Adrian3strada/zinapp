@@ -153,24 +153,22 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
 
   const handleRestaurantReject = useCallback(() => {
     if (!order || actionBusy) return;
-    appAlert('Rechazar pedido', '¿Seguro que quieres rechazar este pedido?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Rechazar',
-        style: 'destructive',
-        onPress: async () => {
-          setActionBusy(true);
-          try {
-            await orderApi.reject(order.id);
-            reloadOrder();
-          } catch (err) {
-            appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
-          } finally {
-            setActionBusy(false);
-          }
-        },
+    appConfirm(
+      'Rechazar pedido',
+      '¿Seguro que quieres rechazar este pedido?',
+      async () => {
+        setActionBusy(true);
+        try {
+          await orderApi.reject(order.id);
+          reloadOrder();
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+        } finally {
+          setActionBusy(false);
+        }
       },
-    ]);
+      'Rechazar',
+    );
   }, [order, actionBusy, reloadOrder]);
 
   const handleRestaurantAdvance = useCallback(async () => {
@@ -204,7 +202,11 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     }
   }, [order, actionBusy]);
 
-  if (!order && !loading && !error) return null;
+  if (!order && !loading && !error) {
+    return (
+      <ScreenContainer error="No se encontró el pedido." onRetry={() => { setLoading(true); load(() => true); }} />
+    );
+  }
 
   const awaitingOnlinePayment =
     order?.payment_method === 'online'

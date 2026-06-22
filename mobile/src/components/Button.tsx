@@ -12,7 +12,7 @@ import {
 
 import { colors } from '../theme/colors';
 import { HIT_SLOP } from '../theme/spacing';
-import { cardShadow } from '../theme/shadows';
+import { cardShadow, softShadow } from '../theme/shadows';
 
 interface Props {
   title: string;
@@ -62,7 +62,7 @@ export default function Button({
           styles.base,
           styles[size],
           styles.primaryWrap,
-          cardShadow,
+          softShadow,
           pressed && styles.pressed,
           isDisabled && styles.disabled,
           style,
@@ -94,7 +94,7 @@ export default function Button({
         styles.base,
         styles[size],
         styles[variant],
-        variant === 'primary' && cardShadow,
+        variant === 'primary' && softShadow,
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
         style,

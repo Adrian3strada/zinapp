@@ -90,8 +90,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 32 }]}
         >
-          <BrandLogo variant="light" width={Math.min(260, contentWidth() - 48)} />
-          <Text style={styles.subtitle}>Delivery y servicios en Zinapécuaro</Text>
+          <BrandLogo variant="light" width={Math.min(260, contentWidth() - 48)} showTagline={false} />
+          <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
           <View style={styles.heroPills}>
             <View style={styles.pill}>
               <Ionicons name="restaurant" size={14} color="#FFF" />
@@ -105,22 +105,25 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         </LinearGradient>
 
         <View style={[styles.formWrap, cardShadow]}>
-          <FormSection title="Iniciar sesión" hint="Tu usuario y contraseña de ZinApp." variant="plain">
+          <FormSection title="Iniciar sesión" variant="plain" align="center">
             <FormField
+              hideLabel
               label="Usuario"
               value={username}
               onChangeText={setUsername}
               icon="person-outline"
-              placeholder="ej. cliente1"
+              placeholder="Usuario"
               required
               autoCapitalize="none"
               autoCorrect={false}
             />
             <FormField
+              hideLabel
               label="Contraseña"
               value={password}
               onChangeText={setPassword}
               icon="lock-closed-outline"
+              placeholder="Contraseña"
               required
               secureTextEntry={!showPassword}
               autoCorrect={false}

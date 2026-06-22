@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 import { formatOrderLabel, orderRef } from '../../utils/orderDisplay';
 
 import Button from '../../components/Button';
@@ -77,24 +77,22 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   const handleReject = (order: Order) => {
     if (busyOrderId != null) return;
-    appAlert('Rechazar pedido', `¿Rechazar ${formatOrderLabel(order)}?`, [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Rechazar',
-        style: 'destructive',
-        onPress: async () => {
-          setBusyOrderId(order.id);
-          try {
-            await orderApi.reject(order.id);
-            await load();
-          } catch (err) {
-            appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
-          } finally {
-            setBusyOrderId(null);
-          }
-        },
+    appConfirm(
+      'Rechazar pedido',
+      `¿Rechazar ${formatOrderLabel(order)}?`,
+      async () => {
+        setBusyOrderId(order.id);
+        try {
+          await orderApi.reject(order.id);
+          await load();
+        } catch (err) {
+          appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+        } finally {
+          setBusyOrderId(null);
+        }
       },
-    ]);
+      'Rechazar',
+    );
   };
 
   const handleAdvance = async (order: Order) => {

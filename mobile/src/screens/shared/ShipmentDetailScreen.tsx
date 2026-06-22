@@ -106,22 +106,28 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
   };
 
   const handleDelivered = async () => {
-    if (!shipment) return;
+    if (!shipment || actionBusy) return;
+    setActionBusy(true);
     try {
       const { data } = await shipmentApi.markDelivered(shipment.id);
       setShipment(data);
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado.'));
+    } finally {
+      setActionBusy(false);
     }
   };
 
   const handlePickedUp = async () => {
-    if (!shipment) return;
+    if (!shipment || actionBusy) return;
+    setActionBusy(true);
     try {
       const { data } = await shipmentApi.markPickedUp(shipment.id);
       setShipment(data);
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido.'));
+    } finally {
+      setActionBusy(false);
     }
   };
 
@@ -130,7 +136,11 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
     driverNav.navigate('DriverMap', { shipmentId: shipment!.id });
   };
 
-  if (!shipment && !loading && !error) return null;
+  if (!shipment && !loading && !error) {
+    return (
+      <ScreenContainer error="No se encontró el envío." onRetry={load} />
+    );
+  }
 
   return (
     <ScreenContainer loading={loading} error={error} onRetry={load}>

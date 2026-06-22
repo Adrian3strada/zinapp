@@ -17,6 +17,21 @@ jobs:
             echo "RAILWAY_CRON_TOKEN not set — skipping cron"
             exit 0
           fi
-          curl -fsS --retry 2 --max-time 120 -X POST \
+          HTTP=$(curl -sS -o /tmp/cron-body.txt -w "%{http_code}" --retry 2 --max-time 120 -X POST \
             -H "Authorization: Bearer $CRON_SECRET" \
-            https://zinapp-api-production.up.railway.app/api/cron/run/
+            https://zinapp-api-production.up.railway.app/api/cron/run/)
+          cat /tmp/cron-body.txt
+          echo ""
+          echo "HTTP $HTTP"
+          if [ "$HTTP" = "404" ]; then
+            echo "::error::El API en Railway no tiene /api/cron/run/ — haz redeploy del backend (railway up)."
+            exit 1
+          fi
+          if [ "$HTTP" = "401" ]; then
+            echo "::error::Token invalido. Copia CRON_SECRET de Railway al secret RAILWAY_CRON_TOKEN en GitHub."
+            exit 1
+          fi
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Cron fallo con HTTP $HTTP"
+            exit 1
+          fi

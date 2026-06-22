@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { closeAppDialog } from '../../navigation/navigationRef';
@@ -59,7 +54,7 @@ export default function AppDialogScreen({ route, navigation }: Props) {
     finishDialogAction(dialogKey, null, closeModal);
   }, [beginClose, closeModal, dialogKey]);
 
-  const onBackdrop = () => {
+  const onBackdrop = useCallback(() => {
     if (!cancelable || isClosing) return;
     const cancelIndex = buttons.findIndex((b) => b.style === 'cancel');
     if (cancelIndex >= 0) {
@@ -67,7 +62,7 @@ export default function AppDialogScreen({ route, navigation }: Props) {
     } else {
       closeDismiss();
     }
-  };
+  }, [buttons, cancelable, closeDismiss, closeWith, isClosing]);
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', () => {
@@ -78,6 +73,15 @@ export default function AppDialogScreen({ route, navigation }: Props) {
     });
     return unsub;
   }, [dialogKey, navigation]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isClosing) return true;
+      onBackdrop();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isClosing, onBackdrop]);
 
   return (
     <View style={styles.root} pointerEvents={isClosing ? 'none' : 'auto'}>

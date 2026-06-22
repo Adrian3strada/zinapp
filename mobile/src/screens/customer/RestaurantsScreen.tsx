@@ -43,9 +43,9 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const fetchPage = useCallback(async (page: number) => {
-    const { data } = await restaurantApi.list(page);
+    const { data } = await restaurantApi.list(page, category ?? undefined);
     return data;
-  }, []);
+  }, [category]);
 
   const {
     items: restaurants,
@@ -63,8 +63,8 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
       const matchSearch =
         !search ||
         r.name.toLowerCase().includes(search.toLowerCase()) ||
-        r.description.toLowerCase().includes(search.toLowerCase());
-      const matchCat = restaurantMatchesCategory(r, category);
+        (r.description ?? '').toLowerCase().includes(search.toLowerCase());
+      const matchCat = category ? restaurantMatchesCategory(r, category) : true;
       return matchSearch && matchCat;
     });
   }, [restaurants, search, category]);
