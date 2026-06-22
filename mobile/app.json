@@ -3,7 +3,7 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.10",
+    "version": "1.1.11",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -24,7 +24,7 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 120,
+      "versionCode": 121,
       "permissions": [
         "POST_NOTIFICATIONS"
       ],

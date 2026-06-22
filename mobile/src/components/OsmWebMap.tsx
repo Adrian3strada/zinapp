@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -6,7 +6,12 @@ import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
 import type { MapCoordinate } from '../utils/maps';
 import { isValidCoordinate, ZINAPECUARO_REGION } from '../utils/maps';
-import { buildOsmMapHtml, type OsmMapMarker, type OsmMapPolyline } from '../utils/osmMapHtml';
+import {
+  buildOsmMapHtml,
+  buildOsmMapLivePayload,
+  type OsmMapMarker,
+  type OsmMapPolyline,
+} from '../utils/osmMapHtml';
 
 interface Props {
   height?: number;
@@ -17,6 +22,7 @@ interface Props {
   polylines?: OsmMapPolyline[];
   interactive?: boolean;
   pinCoordinate?: MapCoordinate | null;
+  followMarkerId?: string | null;
   onCoordinateChange?: (coord: MapCoordinate) => void;
   onMarkerPress?: (markerId: string) => void;
 }
@@ -31,6 +37,7 @@ export default function OsmWebMap({
   polylines = [],
   interactive = false,
   pinCoordinate = null,
+  followMarkerId = null,
   onCoordinateChange,
   onMarkerPress,
 }: Props) {
@@ -55,19 +62,36 @@ export default function OsmWebMap({
         polylines,
         interactive,
         pinCoordinate,
+        followMarkerId,
       }),
-    [mapCenter, zoom, markers, polylines, interactive, pinCoordinate],
+    [mapCenter, zoom, interactive, pinCoordinate],
   );
 
   const webRef = useRef<WebView>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const livePayload = useMemo(
+    () => buildOsmMapLivePayload({ markers, polylines, followMarkerId, fitAll: !followMarkerId }),
+    [markers, polylines, followMarkerId],
+  );
+
+  const pushLiveData = useCallback((payload: string) => {
+    webRef.current?.injectJavaScript(
+      `window.setMapData && window.setMapData(${payload}); true;`,
+    );
+  }, []);
 
   useEffect(() => {
-    if (!interactive || !isValidCoordinate(pinCoordinate) || !webRef.current) return;
+    if (!mapReady) return;
+    pushLiveData(livePayload);
+  }, [mapReady, livePayload, pushLiveData]);
+
+  useEffect(() => {
+    if (!interactive || !isValidCoordinate(pinCoordinate) || !mapReady) return;
     const { latitude, longitude } = pinCoordinate;
-    webRef.current.injectJavaScript(
+    webRef.current?.injectJavaScript(
       `window.setPinPosition && window.setPinPosition(${latitude}, ${longitude}); true;`,
     );
-  }, [interactive, pinCoordinate?.latitude, pinCoordinate?.longitude]);
+  }, [interactive, pinCoordinate?.latitude, pinCoordinate?.longitude, mapReady]);
 
   const handleMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
@@ -78,6 +102,10 @@ export default function OsmWebMap({
           longitude?: number;
           id?: string;
         };
+        if (data.type === 'ready') {
+          setMapReady(true);
+          return;
+        }
         if (
           data.type === 'move'
           && typeof data.latitude === 'number'

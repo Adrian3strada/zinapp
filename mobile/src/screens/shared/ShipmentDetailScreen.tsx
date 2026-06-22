@@ -52,6 +52,8 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
 
   const isDriver = user?.role === 'driver';
   const isCustomer = user?.role === 'customer';
+  const isDriverTracking =
+    !!shipment?.driver && (shipment.status === 'on_the_way' || shipment.status === 'picked_up');
   const isLive = shipment?.status === 'on_the_way';
   const isPickupPhase = shipment?.status === 'picked_up';
   const driverCoord = shipment
@@ -79,9 +81,9 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
       if (!shipment || ACTIVE_STATUSES.includes(shipment.status)) {
         load();
       }
-    }, isLive ? 2000 : 6000);
+    }, isDriverTracking ? 2000 : 6000);
     return () => clearInterval(interval);
-  }, [load, shipment?.status, isLive]);
+  }, [load, shipment?.status, isDriverTracking]);
 
   const handleCancel = () => {
     if (!shipment || actionBusy) return;
@@ -162,7 +164,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             )}
           </LinearGradient>
 
-          {isCustomer && isLive && shipment.driver_detail?.phone && (
+          {isCustomer && isDriverTracking && shipment.driver_detail?.phone && (
             <View style={styles.inlineBanner}>
               <ContactWhatsAppButton
                 phone={shipment.driver_detail.phone}
@@ -172,14 +174,16 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             </View>
           )}
 
-          {isCustomer && isLive && (
+          {isCustomer && isDriverTracking && (
             <View style={styles.inlineBanner}>
               <DriverNearbyBanner driver={driverCoord} destination={deliveryCoord} />
-              <DeliveryEtaBanner
-                from={driverCoord}
-                to={deliveryCoord}
-                label="Llegada estimada"
-              />
+              {isLive && (
+                <DeliveryEtaBanner
+                  from={driverCoord}
+                  to={deliveryCoord}
+                  label="Llegada estimada"
+                />
+              )}
             </View>
           )}
 
@@ -193,7 +197,11 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
               <Text style={styles.section}>Mapa del envío</Text>
               <ShipmentMap
                 shipment={shipment}
-                followDriver={(isLive && (isCustomer || isDriver)) || (isPickupPhase && isDriver)}
+                followDriver={
+                  !!shipment.driver
+                  && (isCustomer || isDriver)
+                  && (isLive || isPickupPhase)
+                }
               />
             </View>
           )}

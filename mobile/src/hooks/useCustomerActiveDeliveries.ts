@@ -27,7 +27,9 @@ function mapOrderToItem(order: OrderActiveSummary): ActiveDeliveryItem {
     subtitle: order.restaurant_name ?? order.delivery_address,
     status: order.status,
     statusDisplay: order.status_display,
-    isLive: order.status === 'on_the_way',
+    isLive:
+      order.status === 'on_the_way'
+      || (order.status === 'ready' && !!order.driver_latitude && !!order.driver_longitude),
     emoji: '🍽️',
   };
 }
@@ -40,7 +42,7 @@ function mapShipmentToItem(shipment: ShipmentActiveSummary): ActiveDeliveryItem 
     subtitle: shipment.description,
     status: shipment.status,
     statusDisplay: shipment.status_display,
-    isLive: shipment.status === 'on_the_way',
+    isLive: shipment.status === 'on_the_way' || shipment.status === 'picked_up',
     emoji: '📦',
   };
 }
@@ -78,15 +80,19 @@ export function useCustomerActiveDeliveriesState() {
   const liveItems = useMemo<ActiveDeliveryItem[]>(() => {
     const items: ActiveDeliveryItem[] = [];
     for (const order of activeOrders) {
-      if (order.status !== 'on_the_way') continue;
+      if (order.status !== 'on_the_way' && order.status !== 'ready') continue;
+      if (order.status === 'ready' && (!order.driver_latitude || !order.driver_longitude)) continue;
       items.push({
         ...mapOrderToItem(order),
-        subtitle: order.restaurant_name ?? 'En camino a tu domicilio',
+        subtitle:
+          order.status === 'on_the_way'
+            ? (order.restaurant_name ?? 'En camino a tu domicilio')
+            : 'Repartidor en camino al restaurante',
         isLive: true,
       });
     }
     for (const shipment of activeShipments) {
-      if (shipment.status !== 'on_the_way') continue;
+      if (shipment.status !== 'on_the_way' && shipment.status !== 'picked_up') continue;
       items.push({ ...mapShipmentToItem(shipment), isLive: true });
     }
     return items;
@@ -100,8 +106,19 @@ export function useCustomerActiveDeliveriesState() {
     return items.sort((a, b) => Number(b.isLive) - Number(a.isLive));
   }, [activeOrders, activeShipments]);
 
-  const hasLive = liveItems.length > 0;
-  const pollMs = hasLive ? 12000 : 45000;
+  const hasLiveTracking = useMemo(() => {
+    const orderLive = activeOrders.some(
+      (o) =>
+        o.status === 'on_the_way'
+        || (o.status === 'ready' && o.driver_latitude && o.driver_longitude),
+    );
+    const shipmentLive = activeShipments.some(
+      (s) => s.status === 'on_the_way' || s.status === 'picked_up',
+    );
+    return orderLive || shipmentLive;
+  }, [activeOrders, activeShipments]);
+
+  const pollMs = hasLiveTracking ? 3000 : 45000;
 
   useEffect(() => {
     let cancelled = false;

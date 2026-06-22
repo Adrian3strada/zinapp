@@ -37,9 +37,9 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       if (status !== 'granted') return;
       subscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced,
-          distanceInterval: 40,
-          timeInterval: 4000,
+          accuracy: Location.Accuracy.BestForNavigation,
+          distanceInterval: 3,
+          timeInterval: 2000,
         },
         (position) => {
           setUserLocation({
@@ -254,6 +254,23 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
 
   const { polylines, stats, loading: routesLoading } = useStreetRoutes(routeSegments);
 
+  const mapMarkers = useMemo(() => {
+    const list = [...markers];
+    if (userLocation) {
+      list.push({
+        id: 'me',
+        coordinate: userLocation,
+        title: 'Tú',
+        pinType: 'driver',
+      });
+    }
+    return list;
+  }, [markers, userLocation]);
+
+  const region = useMemo(
+    () => regionForCoordinates(mapMarkers.map((m) => m.coordinate)),
+    [mapMarkers],
+  );
   const routeStatItems = useMemo(() => {
     const items = [];
     if (stats['to-next-stop']) {
@@ -273,11 +290,6 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     }
     return items;
   }, [stats, nextStopLabel, isShipment]);
-
-  const region = useMemo(
-    () => regionForCoordinates(markers.map((m) => m.coordinate)),
-    [markers],
-  );
 
   if (loading && !order && !shipment) {
     return <ScreenContainer loading />;
@@ -335,16 +347,15 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
         </View>
       </View>
       <AppMap
-        markers={markers}
+        markers={mapMarkers}
         polylines={polylines}
         region={region}
         height={mapHeight(0.45)}
-        showsUserLocation
-        followsUserLocation
+        followMarkerId={userLocation ? 'me' : null}
         emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
       />
       <Text style={styles.hint}>
-        El punto azul eres tú. La línea sólida es tu ruta al siguiente parada. Toca los botones para abrir Google Maps o Waze.
+        El pin azul eres tú. La línea sólida es tu ruta a la siguiente parada. Toca los botones para abrir Google Maps o Waze.
       </Text>
     </ScreenContainer>
   );

@@ -19,7 +19,9 @@ interface Props {
   trackDriver?: boolean;
 }
 
-const PRE_DRIVER_STATUSES: OrderStatus[] = ['pending', 'accepted', 'preparing', 'ready'];
+const PRE_DRIVER_STATUSES: OrderStatus[] = ['pending', 'accepted', 'preparing'];
+
+const DRIVER_TRACKING_STATUSES: OrderStatus[] = ['ready', 'on_the_way'];
 
 export default function OrderMap({
   order,
@@ -77,7 +79,8 @@ export default function OrderMap({
       });
     }
 
-    const tracking = trackDriver && order.status === 'on_the_way';
+    const tracking =
+      trackDriver && !!order.driver && DRIVER_TRACKING_STATUSES.includes(order.status);
 
     if (showDriver && order.driver) {
       if (driver) {
@@ -110,14 +113,19 @@ export default function OrderMap({
         }
 
         if (tracking) {
-          note = 'Seguimiento en vivo del repartidor.';
+          note =
+            order.status === 'on_the_way'
+              ? 'Seguimiento en vivo del repartidor.'
+              : 'El repartidor va hacia el restaurante.';
         }
-      } else if (order.status === 'on_the_way') {
+      } else if (DRIVER_TRACKING_STATUSES.includes(order.status)) {
         absent.push('ubicación del repartidor');
-        note = 'Esperando ubicación GPS del repartidor...';
+        note = 'Esperando ubicación GPS del repartidor…';
       }
     } else if (showDriver && PRE_DRIVER_STATUSES.includes(order.status)) {
       note = 'El repartidor aparecerá en el mapa cuando tome el pedido.';
+    } else if (showDriver && order.status === 'ready') {
+      note = 'Esperando que un repartidor tome tu pedido.';
     }
 
     const ago = formatTimeAgo(order.driver_location_updated_at);

@@ -39,11 +39,16 @@ function LazyProfileScreen() {
 const Tab = createBottomTabNavigator<DriverTabParamList>();
 const Stack = createNativeStackNavigator<DriverStackParamList>();
 
-function DriverTabs() {
-  const insets = useSafeAreaInsets();
-  const { hasActiveDelivery, activeCount } = useDriverActiveDeliveries();
+function DriverLocationSync() {
+  const { hasActiveDelivery } = useDriverActiveDeliveries(2500);
   const { isAvailable } = useDriverProfileContext();
   useDriverLocationSharing(true, hasActiveDelivery, isAvailable || hasActiveDelivery);
+  return null;
+}
+
+function DriverTabs() {
+  const insets = useSafeAreaInsets();
+  const { activeCount } = useDriverActiveDeliveries(2500);
 
   return (
     <Tab.Navigator screenOptions={tabBarScreenOptions(insets)}>
@@ -80,6 +85,7 @@ function DriverTabs() {
 export default function DriverNavigator() {
   return (
     <DriverProfileProvider>
+      <DriverLocationSync />
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="Main" component={DriverTabs} />
       <Stack.Screen

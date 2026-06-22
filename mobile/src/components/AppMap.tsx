@@ -43,6 +43,21 @@ const EDGE_PADDING = { top: 56, right: 48, bottom: 56, left: 48 };
 const TRACK_EDGE_PADDING = { top: 72, right: 52, bottom: 88, left: 52 };
 const FOLLOW_REGION_DELTA = { latitudeDelta: 0.014, longitudeDelta: 0.014 };
 
+function osmMarkerColor(pinType?: MapPinType, id?: string): string {
+  if (id === 'me') return '#2563EB';
+  switch (pinType) {
+    case 'delivery':
+      return '#E53935';
+    case 'driver':
+      return colors.secondary;
+    case 'pickup':
+      return colors.accent;
+    case 'restaurant':
+    default:
+      return colors.primary;
+  }
+}
+
 function coordsMoved(a: MapCoordinate, b: MapCoordinate, threshold = 0.00004): boolean {
   if (!isValidCoordinate(a) || !isValidCoordinate(b)) return false;
   return (
@@ -208,13 +223,14 @@ export default function AppMap({
           markers={safeMarkers.map((m) => ({
             id: m.id,
             coordinate: m.coordinate,
-            color: m.pinType === 'delivery' ? '#E53935' : m.pinType === 'driver' ? colors.secondary : colors.primary,
+            color: osmMarkerColor(m.pinType, m.id),
             label: m.title,
           }))}
           polylines={safePolylines.map((line) => ({
             coordinates: line.coordinates,
             color: line.strokeColor,
           }))}
+          followMarkerId={followMarkerId}
           onMarkerPress={
             onMarkerPress
               ? (markerId) => {

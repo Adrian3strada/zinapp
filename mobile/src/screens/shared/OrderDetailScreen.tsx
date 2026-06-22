@@ -86,7 +86,9 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     }
   }, [orderId]);
 
-  const isLiveTracking = order?.status === 'on_the_way' && !!order.driver;
+  const isLiveTracking =
+    !!order?.driver
+    && (order.status === 'on_the_way' || order.status === 'ready');
   const pollMs = isLiveTracking ? TRACKING_POLL_MS : DEFAULT_POLL_MS;
 
   useEffect(() => {
@@ -267,13 +269,22 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <View style={styles.inlineBanner}>
               <DriverNearbyBanner
                 driver={toCoordinate(order.driver_latitude, order.driver_longitude)}
-                destination={toCoordinate(order.delivery_latitude, order.delivery_longitude)}
+                destination={
+                  order.status === 'on_the_way'
+                    ? toCoordinate(order.delivery_latitude, order.delivery_longitude)
+                    : toCoordinate(
+                        order.restaurant_detail?.latitude,
+                        order.restaurant_detail?.longitude,
+                      )
+                }
               />
-              <DeliveryEtaBanner
-                from={toCoordinate(order.driver_latitude, order.driver_longitude)}
-                to={toCoordinate(order.delivery_latitude, order.delivery_longitude)}
-                label="Llegada estimada"
-              />
+              {order.status === 'on_the_way' && (
+                <DeliveryEtaBanner
+                  from={toCoordinate(order.driver_latitude, order.driver_longitude)}
+                  to={toCoordinate(order.delivery_latitude, order.delivery_longitude)}
+                  label="Llegada estimada"
+                />
+              )}
             </View>
           )}
 
