@@ -18,6 +18,7 @@ interface Props {
   interactive?: boolean;
   pinCoordinate?: MapCoordinate | null;
   onCoordinateChange?: (coord: MapCoordinate) => void;
+  onMarkerPress?: (markerId: string) => void;
 }
 
 /** Mapa OpenStreetMap en WebView — funciona en Android release sin Google Maps API key. */
@@ -31,6 +32,7 @@ export default function OsmWebMap({
   interactive = false,
   pinCoordinate = null,
   onCoordinateChange,
+  onMarkerPress,
 }: Props) {
   const mapCenter = useMemo(() => {
     if (isValidCoordinate(center)) return center;
@@ -69,25 +71,29 @@ export default function OsmWebMap({
 
   const handleMessage = useCallback(
     (event: { nativeEvent: { data: string } }) => {
-      if (!onCoordinateChange) return;
       try {
         const data = JSON.parse(event.nativeEvent.data) as {
           type?: string;
           latitude?: number;
           longitude?: number;
+          id?: string;
         };
         if (
           data.type === 'move'
           && typeof data.latitude === 'number'
           && typeof data.longitude === 'number'
         ) {
-          onCoordinateChange({ latitude: data.latitude, longitude: data.longitude });
+          onCoordinateChange?.({ latitude: data.latitude, longitude: data.longitude });
+          return;
+        }
+        if (data.type === 'markerPress' && typeof data.id === 'string') {
+          onMarkerPress?.(data.id);
         }
       } catch {
         // ignore malformed messages
       }
     },
-    [onCoordinateChange],
+    [onCoordinateChange, onMarkerPress],
   );
 
   return (
@@ -98,6 +104,7 @@ export default function OsmWebMap({
         style={styles.webview}
         originWhitelist={['*']}
         scrollEnabled={false}
+        nestedScrollEnabled
         bounces={false}
         overScrollMode="never"
         javaScriptEnabled

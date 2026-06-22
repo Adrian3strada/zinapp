@@ -65,10 +65,14 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       attribution: '&copy; OpenStreetMap'
     }).addTo(map);
 
-    function postMove(lat, lng) {
+    function postMessage(payload) {
       if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'move', latitude: lat, longitude: lng }));
+        window.ReactNativeWebView.postMessage(JSON.stringify(payload));
       }
+    }
+
+    function postMove(lat, lng) {
+      postMessage({ type: 'move', latitude: lat, longitude: lng });
     }
 
     var pinMarker = null;
@@ -94,6 +98,11 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         weight: 2
       }).addTo(map);
       if (m.label) marker.bindPopup(m.label);
+      if (m.id) {
+        marker.on('click', function() {
+          postMessage({ type: 'markerPress', id: m.id });
+        });
+      }
     });
 
     (config.polylines || []).forEach(function(line) {

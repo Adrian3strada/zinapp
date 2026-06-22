@@ -215,6 +215,14 @@ export default function AppMap({
             coordinates: line.coordinates,
             color: line.strokeColor,
           }))}
+          onMarkerPress={
+            onMarkerPress
+              ? (markerId) => {
+                  const marker = safeMarkers.find((m) => m.id === markerId);
+                  if (marker) onMarkerPress(marker);
+                }
+              : undefined
+          }
         />
       );
     }
@@ -252,7 +260,7 @@ export default function AppMap({
           zoomEnabled
           rotateEnabled={false}
           pitchEnabled={false}
-          liteMode={Platform.OS === 'android'}
+          liteMode={false}
         >
           {safePolylines.map((line, index) => (
             <Polyline

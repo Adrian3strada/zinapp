@@ -105,7 +105,7 @@ export default function AddressPinPicker({
             zoomEnabled
             rotateEnabled={false}
             pitchEnabled={false}
-            liteMode={Platform.OS === 'android'}
+            liteMode={false}
           >
             {safeCoordinate && (
               <Marker

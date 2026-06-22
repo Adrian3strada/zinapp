@@ -99,7 +99,7 @@ export default function DeliveryPinPicker({
             zoomEnabled
             rotateEnabled={false}
             pitchEnabled={false}
-            liteMode={Platform.OS === 'android'}
+            liteMode={false}
           >
             {safeCoordinate && (
               <Marker
