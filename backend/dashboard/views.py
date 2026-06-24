@@ -1,13 +1,17 @@
+from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView, LogoutView
 from django.db.models import Count, Q
-from django.shortcuts import redirect
-from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse, reverse_lazy
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
 from accounts.models import DeliveryProfile, User, UserRole
 from orders.models import Order, OrderStatus
 from restaurants.models import Restaurant
+from restaurants.setup import restaurant_setup_status
 
 from .mixins import PanelAccessMixin
 from .services import get_dashboard_stats, get_order_timeline
@@ -18,6 +22,13 @@ class PanelLoginView(LoginView):
     redirect_authenticated_user = True
 
     def get_success_url(self):
+        next_url = self.request.GET.get('next') or self.request.POST.get('next')
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            return next_url
         return reverse_lazy('dashboard:home')
 
 
@@ -101,14 +112,77 @@ class RestaurantListView(PanelAccessMixin, ListView):
     def get_queryset(self):
         return Restaurant.objects.select_related('owner').annotate(
             product_count=Count('products'),
+            available_product_count=Count('products', filter=Q(products__is_available=True)),
             order_count=Count('orders'),
-        ).order_by('name')
+        ).order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx['page_title'] = 'Restaurantes'
         ctx['nav'] = 'restaurants'
+        ctx['restaurants_total'] = Restaurant.objects.count()
+        ctx['restaurants_pending'] = Restaurant.objects.filter(is_active=False).count()
         return ctx
+
+
+class RestaurantDetailView(PanelAccessMixin, DetailView):
+    model = Restaurant
+    template_name = 'dashboard/restaurants/detail.html'
+    context_object_name = 'restaurant'
+
+    def get_queryset(self):
+        return Restaurant.objects.select_related('owner').prefetch_related('products')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        restaurant = self.object
+        ctx['page_title'] = restaurant.name
+        ctx['nav'] = 'restaurants'
+        ctx['setup'] = restaurant_setup_status(restaurant)
+        ctx['products'] = restaurant.products.all().order_by('name')
+        return ctx
+
+
+class RestaurantToggleActiveView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        restaurant = get_object_or_404(Restaurant, pk=pk)
+        setup = restaurant_setup_status(restaurant)
+        activating = not restaurant.is_active
+
+        if activating and not setup['complete']:
+            messages.error(
+                request,
+                f'«{restaurant.name}» aún no está listo: el dueño debe completar '
+                f'menú, logo, CLABE, horario y ubicación en la app '
+                f'({setup["done_count"]}/{setup["total_count"]}).',
+            )
+            return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))
+
+        restaurant.is_active = not restaurant.is_active
+        if restaurant.is_active:
+            restaurant.accepting_orders = True
+        else:
+            restaurant.accepting_orders = False
+        restaurant.save(update_fields=['is_active', 'accepting_orders', 'updated_at'])
+        state = 'activado y visible en la app' if restaurant.is_active else 'desactivado'
+        messages.success(request, f'«{restaurant.name}» {state}.')
+        return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))
+
+
+class RestaurantToggleOrdersView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        restaurant = get_object_or_404(Restaurant, pk=pk)
+        if not restaurant.is_active:
+            messages.error(
+                request,
+                f'«{restaurant.name}» está pendiente de activación. Actívalo primero.',
+            )
+            return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))
+        restaurant.accepting_orders = not restaurant.accepting_orders
+        restaurant.save(update_fields=['accepting_orders', 'updated_at'])
+        state = 'recibiendo pedidos' if restaurant.accepting_orders else 'pausado'
+        messages.success(request, f'«{restaurant.name}» ahora está {state}.')
+        return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))
 
 
 class UserListView(PanelAccessMixin, ListView):

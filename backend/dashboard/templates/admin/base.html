@@ -1,0 +1,119 @@
+{% load i18n static %}
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'es-mx' }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
+<head>
+<title>{% block title %}{% endblock %} · ZinApp</title>
+<link rel="stylesheet" href="{% block stylesheet %}{% static 'admin/css/base.css' %}{% endblock %}">
+{% block dark-mode-vars %}{% endblock %}
+<link rel="stylesheet" href="{% static 'dashboard/css/panel.css' %}">
+<link rel="stylesheet" href="{% static 'dashboard/css/admin-panel.css' %}">
+{% block extrastyle %}{% endblock %}
+{% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% block stylesheet_rtl %}{% static 'admin/css/rtl.css' %}{% endblock %}">{% endif %}
+{% block extrahead %}{% endblock %}
+{% block responsive %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{% static 'admin/css/responsive.css' %}">
+{% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% static 'admin/css/responsive_rtl.css' %}">{% endif %}
+{% endblock %}
+{% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
+</head>
+
+<body class="panel-admin-body {% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
+  data-admin-utc-offset="{% now 'Z' %}">
+
+{% if not is_popup %}
+<div class="overlay" id="overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <h1>ZinApp</h1>
+      <span>Panel de operaciones · Zinapécuaro</span>
+    </div>
+    {% include "dashboard/includes/sidebar.html" %}
+    <div class="sidebar-footer">
+      <div>{{ user.get_full_name|default:user.username }}</div>
+      <a href="{% url 'dashboard:logout' %}">Cerrar sesión</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menú">☰</button>
+        <h2>{{ page_title|default:"Gestión de datos" }}</h2>
+      </div>
+      <div class="topbar-user">
+        <a href="{% url 'dashboard:home' %}">← Panel</a>
+      </div>
+    </header>
+    <main class="content panel-admin-content">
+{% endif %}
+
+<div id="container" class="panel-admin-inner {% if is_popup %}panel-admin-popup{% endif %}">
+  {% block header %}{% endblock %}
+
+  {% block nav-breadcrumbs %}
+  {% if not is_popup %}
+  <nav class="panel-admin-breadcrumbs" aria-label="{% translate 'Breadcrumbs' %}">
+    {% block breadcrumbs %}
+    <a href="{% url 'dashboard:home' %}">Panel</a>
+    <span class="sep">›</span>
+    <a href="{% url 'admin:index' %}">Gestión de datos</a>
+    {% if title %}<span class="sep">›</span><span>{{ title }}</span>{% endif %}
+    {% endblock %}
+  </nav>
+  {% endif %}
+  {% endblock %}
+
+  <div class="panel-admin-workspace" id="main">
+    {% block nav-sidebar %}{% endblock %}
+    <div class="panel-admin-main-col" id="content-start" tabindex="-1">
+      {% block messages %}
+      {% if messages %}
+      <div class="panel-messages">
+        {% for message in messages %}
+        <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">{{ message|capfirst }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endblock messages %}
+
+      <div id="content" class="{% block coltype %}colM{% endblock %} panel-admin-card">
+        {% block pretitle %}{% endblock %}
+        {% block content_title %}{% if title %}<h1 class="panel-admin-page-title">{{ title }}</h1>{% endif %}{% endblock %}
+        {% block content_subtitle %}{% if subtitle %}<p class="panel-admin-subtitle">{{ subtitle }}</p>{% endif %}{% endblock %}
+        {% block object-tools %}{% endblock %}
+        {% block content %}{{ content }}{% endblock %}
+        {% block sidebar %}{% endblock %}
+        <div class="clear"></div>
+      </div>
+    </div>
+  </div>
+
+  {% block footer %}{% endblock %}
+</div>
+
+{% if not is_popup %}
+    </main>
+  </div>
+</div>
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const toggle = document.getElementById('menuToggle');
+  if (toggle && sidebar && overlay) {
+    toggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('show');
+    });
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    });
+  }
+</script>
+{% endif %}
+
+</body>
+</html>

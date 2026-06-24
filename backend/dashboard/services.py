@@ -72,7 +72,9 @@ def get_dashboard_stats():
         for choice in OrderStatus
     ]
 
-    total_status = sum(item['count'] for item in status_breakdown) or 1
+    orders_total = orders_qs.count()
+    restaurants_total = Restaurant.objects.count()
+    restaurants_pending = Restaurant.objects.filter(is_active=False).count()
 
     return {
         'users_total': User.objects.count(),
@@ -80,9 +82,13 @@ def get_dashboard_stats():
         'users_restaurants': User.objects.filter(role=UserRole.RESTAURANT).count(),
         'users_drivers': User.objects.filter(role=UserRole.DRIVER).count(),
         'restaurants_active': Restaurant.objects.filter(is_active=True).count(),
-        'restaurants_total': Restaurant.objects.count(),
+        'restaurants_total': restaurants_total,
+        'restaurants_pending': restaurants_pending,
+        'pending_restaurants': Restaurant.objects.filter(is_active=False).select_related(
+            'owner',
+        ).order_by('-created_at')[:10],
         'products_total': Product.objects.count(),
-        'orders_total': orders_qs.count(),
+        'orders_total': orders_total,
         'orders_today': orders_today.count(),
         'orders_pending': orders_qs.filter(status=OrderStatus.PENDING).count(),
         'orders_active': orders_qs.exclude(
@@ -98,7 +104,7 @@ def get_dashboard_stats():
         'drivers_total': DeliveryProfile.objects.count(),
         'status_breakdown': status_breakdown,
         'status_breakdown_max': max((s['count'] for s in status_breakdown), default=1),
-        'total_status': total_status,
+        'has_order_status_data': orders_total > 0,
         'recent_orders': orders_qs.select_related(
             'customer', 'restaurant', 'driver',
         )[:12],

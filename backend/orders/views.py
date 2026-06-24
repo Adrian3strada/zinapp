@@ -450,15 +450,10 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='confirm-payment')
     def confirm_payment(self, request, pk=None):
-        """Simula confirmación de pago (solo desarrollo / admin)."""
-        from django.conf import settings
-
+        """Confirmación manual de pago en línea (solo administrador)."""
         order = self.get_object()
         if not request.user.is_admin_user:
-            if settings.DEBUG and order.customer == request.user:
-                pass
-            else:
-                return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
         if order.payment_method != PaymentMethod.ONLINE:
             return Response(
                 {'detail': 'Este pedido no usa pago en línea.'},
@@ -773,7 +768,9 @@ class AdminStatsView(APIView):
 
         return Response({
             'users': User.objects.count(),
-            'restaurants': Restaurant.objects.filter(is_active=True).count(),
+            'restaurants': Restaurant.objects.count(),
+            'restaurants_active': Restaurant.objects.filter(is_active=True).count(),
+            'restaurants_pending': Restaurant.objects.filter(is_active=False).count(),
             'orders': Order.objects.count(),
             'orders_pending': Order.objects.filter(status=OrderStatus.PENDING).count(),
             'orders_active': Order.objects.exclude(

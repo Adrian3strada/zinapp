@@ -221,6 +221,14 @@ class OrderCreateSerializer(serializers.Serializer):
                     ),
                 })
 
+        payment_method = attrs.get('payment_method')
+        if payment_method == PaymentMethod.ONLINE:
+            from .mercadopago import mercadopago_enabled
+            if not mercadopago_enabled():
+                raise serializers.ValidationError({
+                    'payment_method': 'El pago en línea no está disponible. Usa efectivo o transferencia.',
+                })
+
         return attrs
 
     def create(self, validated_data):
@@ -244,6 +252,20 @@ class OrderCreateSerializer(serializers.Serializer):
         except Restaurant.DoesNotExist:
             raise serializers.ValidationError({
                 'restaurant_id': 'Restaurante no encontrado o inactivo.',
+            })
+
+        if not restaurant.is_open_now():
+            raise serializers.ValidationError({
+                'restaurant_id': (
+                    'Este local no está recibiendo pedidos en este momento '
+                    '(cerrado o fuera de horario).'
+                ),
+            })
+
+        available_count = restaurant.products.filter(is_available=True).count()
+        if available_count < 1:
+            raise serializers.ValidationError({
+                'restaurant_id': 'Este local aún no tiene menú disponible.',
             })
 
         line_items = []
@@ -516,6 +538,10 @@ class ShipmentCreateSerializer(serializers.Serializer):
         attrs = _validate_address_coords(attrs, 'delivery', 'delivery_address')
         if not attrs.get('description', '').strip():
             raise serializers.ValidationError({'description': 'Indica qué vas a enviar.'})
+        if attrs.get('payment_method') == PaymentMethod.ONLINE:
+            raise serializers.ValidationError({
+                'payment_method': 'El pago en línea no está disponible para envíos. Usa efectivo o transferencia.',
+            })
         return attrs
 
     def create(self, validated_data):

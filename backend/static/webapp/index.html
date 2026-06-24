@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>ZinApp</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  <meta name="theme-color" content="#1E5DB8">
+<link rel="icon" href="/app/favicon.ico" /><meta charset="utf-8" />
+<meta name="description" content="Pedidos y envÃ­os locales en ZinapÃ©cuaro. Comida, paquetes y reparto." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="ZinApp" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="/app/manifest.webmanifest" />
+<link rel="preload" href="/app/fonts/ionicons.ttf" as="font" type="font/ttf" crossorigin="anonymous" />
+<style id="zinapp-web-fonts">
+  @font-face {
+    font-family: ionicons;
+    src: url('/app/fonts/ionicons.ttf') format('truetype');
+    font-display: block;
+  }
+</style>
+<style id="zinapp-web-polish">
+  html, body { height: 100%; min-height: 100dvh; margin: 0; }
+  body { overflow: hidden; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  #root { height: 100%; min-height: 100dvh; display: flex; flex: 1; flex-direction: column; width: 100%; min-height: 0; }
+  #root > div { flex: 1; display: flex; flex-direction: column; min-height: 0; height: 100%; width: 100%; }
+  input, textarea, select { font-size: 16px !important; }
+  [role="button"], button, a { cursor: pointer; }
+  [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] { z-index: 1000 !important; }
+  @media (max-width: 767px) {
+    html, body { background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 100%); }
+    #root { justify-content: center; align-items: center; }
+    [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: min(520px, 100vw) !important;
+    }
+  }
+  @media (min-width: 768px) {
+    html, body { background: #f8fafc; overflow: hidden; }
+    #root { justify-content: stretch; align-items: stretch; }
+    #root > div { max-width: none !important; width: 100% !important; }
+  }
+</style></head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>Activa JavaScript para usar ZinApp.</noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script src="/app/_expo/static/js/web/__expo-metro-runtime-37844bfe9405ed99797bdb43820a0459.js" defer></script><script src="/app/_expo/static/js/web/__common-1de112c48413046f140d6d3b7a225410.js" defer></script><script src="/app/_expo/static/js/web/AppEntry-31e0cefbacc5285e05e52920bb880555.js" defer></script>
+</body>
+</html>

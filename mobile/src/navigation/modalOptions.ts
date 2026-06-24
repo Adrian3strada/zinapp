@@ -15,12 +15,13 @@ export const stackScreenDefaults: NativeStackNavigationOptions = {
 /** Pantallas secundarias: suben desde abajo como hoja modal. */
 export const modalPresentationOptions: NativeStackNavigationOptions = {
   ...stackScreenDefaults,
-  presentation: 'modal',
+  presentation: Platform.OS === 'web' ? 'card' : 'modal',
   animation: Platform.select({
     ios: 'default',
     android: 'slide_from_bottom',
+    web: 'default',
     default: 'slide_from_bottom',
   }),
-  gestureEnabled: true,
+  gestureEnabled: Platform.OS !== 'web',
   gestureDirection: 'vertical',
 };

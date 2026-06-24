@@ -1,0 +1,121 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+{% if messages %}
+<div class="panel-messages">
+  {% for message in messages %}
+  <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">{{ message }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="panel-grid-2">
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <h3>{{ restaurant.name }}</h3>
+      <p class="text-muted">{{ restaurant.address }}</p>
+    </div>
+    <div class="panel-card-body">
+      <dl class="detail-list">
+        <dt>Dueño</dt>
+        <dd>{{ restaurant.owner.username }} · {{ restaurant.owner.phone|default:"sin teléfono" }}</dd>
+        <dt>Categoría</dt>
+        <dd>{{ restaurant.get_category_display }}</dd>
+        <dt>Horario</dt>
+        <dd>
+          {% if restaurant.opening_time and restaurant.closing_time %}
+            {{ restaurant.opening_time|time:"H:i" }} – {{ restaurant.closing_time|time:"H:i" }}
+          {% else %}
+            Sin horario
+          {% endif %}
+        </dd>
+        <dt>CLABE</dt>
+        <dd>{% if restaurant.clabe %}••••{{ restaurant.clabe|slice:"-4:" }}{% else %}Pendiente{% endif %}</dd>
+        <dt>Ubicación</dt>
+        <dd>
+          {% if restaurant.latitude and restaurant.longitude %}
+            {{ restaurant.latitude }}, {{ restaurant.longitude }}
+          {% else %}
+            Sin coordenadas
+          {% endif %}
+        </dd>
+      </dl>
+
+      <div class="action-row">
+        <form method="post" action="{% url 'dashboard:restaurant-toggle-active' restaurant.pk %}">
+          {% csrf_token %}
+          {% if restaurant.is_active %}
+            <button type="submit" class="btn btn-muted">Desactivar local</button>
+          {% else %}
+            <button type="submit" class="btn btn-primary" {% if not setup.complete %}disabled title="Completa la checklist primero"{% endif %}>
+              Activar en la app
+            </button>
+          {% endif %}
+        </form>
+        <form method="post" action="{% url 'dashboard:restaurant-toggle-orders' restaurant.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-secondary" {% if not restaurant.is_active %}disabled{% endif %}>
+            {% if restaurant.accepting_orders %}Pausar pedidos{% else %}Recibir pedidos{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-card">
+    <div class="panel-card-header">
+      <h3>Checklist de alta</h3>
+      <p class="text-muted">{{ setup.done_count }}/{{ setup.total_count }} completado</p>
+    </div>
+    <div class="panel-card-body">
+      <ul class="checklist">
+        {% for step in setup.steps %}
+        <li class="{% if step.done %}done{% endif %}">
+          <span>{% if step.done %}✓{% else %}○{% endif %}</span>
+          {{ step.label }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if setup.complete and not restaurant.is_active %}
+      <p class="hint-box success">Listo para activar: pulsa «Activar en la app» para que los clientes vean este local.</p>
+      {% elif not setup.complete %}
+      <p class="hint-box">El dueño debe completar en la app: menú, logo, CLABE, horario y ubicación ({{ setup.done_count }}/{{ setup.total_count }}).</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="panel-card" style="margin-top:20px;">
+  <div class="panel-card-header">
+    <h3>Menú ({{ products|length }})</h3>
+  </div>
+  <div class="panel-card-body">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Platillo</th>
+            <th>Precio</th>
+            <th>Disponible</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+          <tr>
+            <td>{{ product.name }}</td>
+            <td class="mono">${{ product.price }}</td>
+            <td>{% if product.is_available %}Sí{% else %}No{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-muted" style="text-align:center;padding:24px;">Sin platillos aún.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:16px;"><a href="{% url 'dashboard:restaurants' %}">← Volver a restaurantes</a></p>
+{% endblock %}

@@ -72,6 +72,10 @@ class ForgotPasswordView(APIView):
             expires_at=timezone.now() + timedelta(hours=2),
         )
         response = {'detail': 'Si el usuario existe, recibirás instrucciones para restablecer.'}
+        whatsapp = getattr(settings, 'SUPPORT_WHATSAPP', '').strip()
+        if whatsapp and not (user.email and getattr(settings, 'EMAIL_HOST', '') and getattr(settings, 'EMAIL_HOST_USER', '')):
+            response['password_reset_via_whatsapp'] = True
+            response['hint'] = 'Contacta soporte por WhatsApp para restablecer tu contraseña.'
         if user.email and getattr(settings, 'EMAIL_HOST', '') and getattr(settings, 'EMAIL_HOST_USER', ''):
             try:
                 send_mail(

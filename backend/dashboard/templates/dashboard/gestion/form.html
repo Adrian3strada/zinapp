@@ -1,0 +1,31 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<p class="gestion-back"><a href="{{ back_url|default:'/panel/gestion/' }}">← {{ back_label|default:"Volver" }}</a></p>
+
+{% block form_before %}{% endblock %}
+
+<div class="panel-card" style="max-width:640px;">
+  <div class="panel-card-header"><h3>{{ form_title }}</h3></div>
+  <div class="panel-card-body padded">
+    <form method="post" class="gestion-form"{% if form_is_multipart %} enctype="multipart/form-data"{% endif %}>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+      <div class="form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+        {{ field }}
+        {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
+        {% if field.help_text %}<p class="field-hint">{{ field.help_text }}</p>{% endif %}
+      </div>
+      {% endfor %}
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" style="width:auto;">Guardar</button>
+        <a href="{{ cancel_url }}" class="btn btn-ghost" style="width:auto;">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

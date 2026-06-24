@@ -1,0 +1,51 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<p class="gestion-back"><a href="{% url 'gestion:shipments' %}">← Envíos</a></p>
+
+<div class="detail-grid">
+  <div>
+    <div class="panel-card" style="margin-bottom:20px;">
+      <div class="panel-card-header">
+        <h3>Envío #{{ shipment.id }}</h3>
+        <span class="badge badge-role">{{ shipment.get_status_display }}</span>
+      </div>
+      <div class="panel-card-body padded">
+        <div class="table-wrap">
+          <table class="data-table">
+            <tbody>
+              <tr><td class="text-muted">Cliente</td><td>{{ shipment.customer.username }}</td></tr>
+              <tr><td class="text-muted">Descripción</td><td>{{ shipment.description }}</td></tr>
+              <tr><td class="text-muted">Tamaño</td><td>{{ shipment.get_size_display }}</td></tr>
+              <tr><td class="text-muted">Recoger en</td><td>{{ shipment.pickup_address }}</td></tr>
+              <tr><td class="text-muted">Entregar en</td><td>{{ shipment.delivery_address }}</td></tr>
+              <tr><td class="text-muted">Pago</td><td>{{ shipment.get_payment_method_display }}</td></tr>
+              <tr><td class="text-muted">Total</td><td class="mono">${{ shipment.total|floatformat:2 }}</td></tr>
+              <tr><td class="text-muted">Creado</td><td>{{ shipment.created_at|date:"d/m/Y H:i" }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel-card">
+      <div class="panel-card-header"><h3>Actualizar envío</h3></div>
+      <div class="panel-card-body padded">
+        <form method="post" class="gestion-form">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn btn-primary" style="width:auto;">Guardar cambios</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

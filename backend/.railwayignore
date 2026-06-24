@@ -1,0 +1,9 @@
+# Ignorar artefactos locales del backend (Python). No usar node_modules/ aquí:
+# bloqueaba static/webapp/assets/node_modules/ (iconos de navegación en web).
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+db.sqlite3

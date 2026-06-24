@@ -19,7 +19,16 @@ App móvil tipo Didi Food / Uber Eats enfocada en Zinapécuaro, Michoacán.
 - **Cliente** — Restaurantes, carrito, pedidos, envíos, seguimiento en vivo.
 - **Restaurante** — Aceptar/rechazar pedidos, menú, categoría del local.
 - **Repartidor** — Disponibilidad, GPS, entregas de comida y envíos.
-- **Administrador** — Panel Django Admin + dashboard móvil.
+- **Administrador** — Panel web en `/panel/` (operaciones + gestión de datos).
+
+## URLs de producción
+
+| Servicio | URL |
+|----------|-----|
+| App web | `/app/` |
+| Panel admin | `/panel/login/` |
+| Gestión CRUD | `/panel/gestion/` |
+| API | `/api/` |
 
 ## Funcionalidades principales
 
@@ -47,10 +56,15 @@ python manage.py runserver 0.0.0.0:8000
 
 ```powershell
 cd backend
-.\scripts\deploy-railway.ps1 -Seed
+.\scripts\deploy-railway.ps1
 ```
 
-Crea Postgres, desactiva SQLite, corre migraciones y opcionalmente datos demo.
+Crea Postgres, desactiva SQLite y cuentas demo. Usa `-Seed` solo en entornos de prueba.
+
+```powershell
+cd mobile
+npm run build:web:deploy
+```
 
 **Docker local con Postgres:**
 

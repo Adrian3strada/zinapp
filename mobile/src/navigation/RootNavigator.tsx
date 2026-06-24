@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { Suspense, useEffect } from 'react';
-import { ActivityIndicator, InteractionManager, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Platform, View } from 'react-native';
 
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
@@ -9,14 +9,17 @@ import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
 import AppDialogScreen from '../screens/shared/AppDialogScreen';
+import AdminWebRedirectScreen from '../screens/admin/AdminWebRedirectScreen';
 import type { AuthStackParamList, RootStackParamList } from './types';
 import { openAppDialog } from './navigationRef';
 import { registerDialogNavigator } from '../utils/appDialogStore';
+import { isWebPlatform } from '../utils/webPlatform';
+import { getWebResetToken } from '../utils/webDeepLink';
+import { redirectToPanelLogin } from '../utils/panelUrl';
 
 const CustomerNavigator = React.lazy(() => import('./CustomerNavigator'));
 const DriverNavigator = React.lazy(() => import('./DriverNavigator'));
 const RestaurantNavigator = React.lazy(() => import('./RestaurantNavigator'));
-const AdminNavigator = React.lazy(() => import('./AdminNavigator'));
 const RegisterScreen = React.lazy(() => import('../screens/auth/RegisterScreen'));
 const ForgotPasswordScreen = React.lazy(() => import('../screens/auth/ForgotPasswordScreen'));
 const ResetPasswordScreen = React.lazy(() => import('../screens/auth/ResetPasswordScreen'));
@@ -34,13 +37,14 @@ function LoadingScreen() {
 }
 
 function RoleNavigator({ role }: { role: string }) {
+  if (role === 'admin') {
+    return <AdminWebRedirectScreen />;
+  }
   switch (role) {
     case 'restaurant':
       return <RestaurantNavigator />;
     case 'driver':
       return <DriverNavigator />;
-    case 'admin':
-      return <AdminNavigator />;
     case 'customer':
     default:
       return <CustomerNavigator />;
@@ -65,9 +69,13 @@ function MainRoutes() {
   }
 
   if (!user) {
+    const resetToken = Platform.OS === 'web' ? getWebResetToken() : null;
     return (
       <Suspense fallback={<LoadingScreen />}>
-        <AuthStack.Navigator screenOptions={stackScreenDefaults}>
+        <AuthStack.Navigator
+          screenOptions={stackScreenDefaults}
+          initialRouteName={resetToken ? 'ResetPassword' : 'Login'}
+        >
           <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
           <AuthStack.Screen
             name="Register"
@@ -82,6 +90,7 @@ function MainRoutes() {
           <AuthStack.Screen
             name="ResetPassword"
             component={ResetPasswordScreen}
+            initialParams={resetToken ? { token: resetToken } : undefined}
             options={{ ...modalPresentationOptions, headerShown: true, title: 'Nueva contraseña' }}
           />
         </AuthStack.Navigator>
@@ -114,6 +123,7 @@ export default function RootNavigator() {
           headerShown: false,
           gestureEnabled: false,
           contentStyle: { backgroundColor: 'transparent' },
+          ...(Platform.OS === 'web' ? { animationDuration: 150 } : {}),
         }}
       />
     </RootStack.Navigator>

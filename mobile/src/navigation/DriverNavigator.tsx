@@ -16,6 +16,7 @@ import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
+import { useDriverPendingNavigation } from './useDriverPendingNavigation';
 import type { DriverStackParamList, DriverTabParamList } from './types';
 
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
@@ -83,6 +84,8 @@ function DriverTabs() {
 }
 
 export default function DriverNavigator() {
+  useDriverPendingNavigation();
+
   return (
     <DriverProfileProvider>
       <DriverLocationSync />

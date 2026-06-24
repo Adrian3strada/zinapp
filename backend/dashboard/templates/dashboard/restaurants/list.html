@@ -3,7 +3,11 @@
 {% block content %}
 <div class="panel-card">
   <div class="panel-card-header">
-    <h3>{{ restaurants|length }} restaurante{{ restaurants|length|pluralize:"s" }}</h3>
+    <h3>{{ restaurants_total }} restaurante{{ restaurants_total|pluralize:"s" }}</h3>
+    <p class="text-muted" style="margin:8px 0 0;font-size:13px;">
+      Los locales nuevos quedan <strong>pendientes</strong> hasta que el dueño complete menú y perfil en la app y tú los actives aquí.
+      {% if restaurants_pending %}<span class="badge badge-warning" style="margin-left:6px;">{{ restaurants_pending }} por activar</span>{% endif %}
+    </p>
   </div>
   <div class="panel-card-body">
     <div class="table-wrap">
@@ -12,10 +16,10 @@
           <tr>
             <th>Nombre</th>
             <th>Dueño</th>
-            <th>Dirección</th>
-            <th>Productos</th>
+            <th>Menú</th>
             <th>Pedidos</th>
             <th>Estado</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -23,20 +27,26 @@
           <tr>
             <td><strong>{{ restaurant.name }}</strong></td>
             <td>{{ restaurant.owner.username }}</td>
-            <td class="text-muted">{{ restaurant.address|truncatechars:50 }}</td>
-            <td class="mono">{{ restaurant.product_count }}</td>
+            <td class="mono">{{ restaurant.available_product_count }}/{{ restaurant.product_count }}</td>
             <td class="mono">{{ restaurant.order_count }}</td>
             <td>
               {% if restaurant.is_active %}
-                <span class="badge badge-success">Activo</span>
+                {% if restaurant.accepting_orders %}
+                  <span class="badge badge-success">Activo</span>
+                {% else %}
+                  <span class="badge badge-warning">Pausado</span>
+                {% endif %}
               {% else %}
-                <span class="badge badge-muted">Inactivo</span>
+                <span class="badge badge-muted">Pendiente</span>
               {% endif %}
             </td>
+            <td><a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Ver →</a></td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="text-muted" style="text-align:center;padding:40px;">No hay restaurantes.</td>
+            <td colspan="6" class="text-muted" style="text-align:center;padding:40px;">
+              No hay restaurantes registrados. Los dueños se dan de alta desde la app.
+            </td>
           </tr>
           {% endfor %}
         </tbody>

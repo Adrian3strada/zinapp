@@ -12,6 +12,7 @@ def get_public_app_config() -> dict:
         'online_payments_enabled': mercadopago_enabled(),
         'support_whatsapp': settings.SUPPORT_WHATSAPP,
         'password_reset_via_whatsapp': bool(settings.SUPPORT_WHATSAPP) and not email_reset_enabled(),
+        'password_reset_email_enabled': email_reset_enabled(),
         'coverage_label': 'Zinapécuaro, Michoacán',
     }
 

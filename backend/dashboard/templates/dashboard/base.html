@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ page_title|default:"Panel" }}{% endblock %} · ZinApp</title>
   <link rel="stylesheet" href="{% static 'dashboard/css/panel.css' %}">
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <div class="overlay" id="overlay"></div>
@@ -15,26 +16,7 @@
         <h1>ZinApp</h1>
         <span>Panel de operaciones · Zinapécuaro</span>
       </div>
-      <nav class="sidebar-nav">
-        <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
-          <span class="nav-icon">📊</span> Resumen
-        </a>
-        <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
-          <span class="nav-icon">📦</span> Pedidos
-        </a>
-        <a href="{% url 'dashboard:restaurants' %}" class="nav-link {% if nav == 'restaurants' %}active{% endif %}">
-          <span class="nav-icon">🍽️</span> Restaurantes
-        </a>
-        <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
-          <span class="nav-icon">👥</span> Usuarios
-        </a>
-        <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
-          <span class="nav-icon">🛵</span> Repartidores
-        </a>
-        <a href="/admin/" class="nav-link" target="_blank" rel="noopener">
-          <span class="nav-icon">⚙️</span> Django Admin
-        </a>
-      </nav>
+      {% include "dashboard/includes/sidebar.html" %}
       <div class="sidebar-footer">
         <div>{{ request.user.get_full_name|default:request.user.username }}</div>
         <a href="{% url 'dashboard:logout' %}">Cerrar sesión</a>
@@ -52,6 +34,13 @@
         </div>
       </header>
       <main class="content">
+        {% if messages %}
+        <div class="panel-messages">
+          {% for message in messages %}
+          <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">{{ message }}</p>
+          {% endfor %}
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}
       </main>
     </div>

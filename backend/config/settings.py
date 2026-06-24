@@ -7,7 +7,7 @@ from decouple import Csv, config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-me')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # En desarrollo, permitir conexiones desde Expo Go en la red local
@@ -53,13 +53,17 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'config' / 'templates',
+            BASE_DIR / 'dashboard' / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'dashboard.context_processors.panel_nav',
             ],
         },
     },
@@ -136,7 +140,7 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
-SERVE_MEDIA = config('SERVE_MEDIA', default=DEBUG, cast=bool)
+SERVE_MEDIA = config('SERVE_MEDIA', default=True, cast=bool)
 
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
 DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)

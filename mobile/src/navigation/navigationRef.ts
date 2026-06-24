@@ -4,6 +4,7 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 import type { RootStackParamList } from './types';
 import type { PendingDialog } from '../utils/appDialogStore';
 import { failOpenDialog } from '../utils/appDialogStore';
+import { setPendingNavigation } from './pendingNavigation';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -65,33 +66,33 @@ export function closeAppDialog(): void {
 }
 
 export function navigateToOrder(orderId: number) {
+  setPendingNavigation({ type: 'order', orderId });
   navigateWhenReady(() => {
     navigationRef.dispatch(
       CommonActions.navigate({
-        name: 'OrderDetail',
-        params: { orderId },
+        name: 'Main',
       }),
     );
   });
 }
 
 export function navigateToShipment(shipmentId: number) {
+  setPendingNavigation({ type: 'shipment', shipmentId });
   navigateWhenReady(() => {
     navigationRef.dispatch(
       CommonActions.navigate({
-        name: 'ShipmentDetail',
-        params: { shipmentId },
+        name: 'Main',
       }),
     );
   });
 }
 
 export function navigateToMenu(restaurantId: number, restaurantName = 'Restaurante') {
+  setPendingNavigation({ type: 'menu', restaurantId, restaurantName });
   navigateWhenReady(() => {
     navigationRef.dispatch(
       CommonActions.navigate({
-        name: 'Menu',
-        params: { restaurantId, restaurantName },
+        name: 'Main',
       }),
     );
   });

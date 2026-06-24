@@ -63,19 +63,6 @@ export type DriverStackParamList = {
   DriverMap: { orderId?: number; shipmentId?: number };
 };
 
-export type AdminTabParamList = {
-  Dashboard: undefined;
-  Pedidos: undefined;
-  Restaurantes: undefined;
-  Perfil: undefined;
-};
-
-export type AdminStackParamList = {
-  Main: undefined;
-  Menu: { restaurantId: number; restaurantName: string };
-  OrderDetail: { orderId: number };
-};
-
 export type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 export type RegisterScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 export type ForgotPasswordScreenProps = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
@@ -89,11 +76,6 @@ export type AvailableOrdersScreenProps = CompositeScreenProps<
   BottomTabScreenProps<DriverTabParamList, 'Disponibles'>,
   NativeStackScreenProps<DriverStackParamList>
 >;
-export type AdminOrdersScreenProps = CompositeScreenProps<
-  BottomTabScreenProps<AdminTabParamList, 'Pedidos'>,
-  NativeStackScreenProps<AdminStackParamList>
->;
-
 export type RestaurantsScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Comida'>;
 
 export type HomeScreenProps = CompositeScreenProps<

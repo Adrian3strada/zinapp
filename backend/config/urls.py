@@ -1,15 +1,27 @@
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.urls import include, path, re_path
+from django.views.generic import RedirectView
 from django.views.static import serve
+
+from dashboard.panel_admin import panel_admin
 
 from .cron_views import order_reminders_cron, restaurant_opens_cron, run_all_cron
 from .health import app_config, health
+from .legal_views import PrivacyPolicyView
+from .webapp_views import webapp_redirect, webapp_serve
+
+# Rutas que NO deben caer en la SPA (API, panel, legal, media, legacy /app/)
+_WEBAPP_EXCLUDE = r'api/|admin/|panel/|privacidad/|media/|app/'
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('panel/', include('dashboard.urls')),
+    path('admin/', RedirectView.as_view(url='/panel/gestion/', permanent=True)),
+    path('panel/', include([
+        path('gestion/sistema/', panel_admin.urls),
+        path('gestion/', include('dashboard.gestion_urls')),
+        path('', include('dashboard.urls')),
+    ])),
+    path('privacidad/', PrivacyPolicyView.as_view(), name='privacy-policy'),
     path('api/health/', health, name='health'),
     path('api/config/', app_config, name='app-config'),
     path('api/cron/restaurant-opens/', restaurant_opens_cron, name='cron-restaurant-opens'),
@@ -18,6 +30,12 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/', include('restaurants.urls')),
     path('api/', include('orders.urls')),
+    # App web en /app/ (ruta canónica)
+    path('app/', webapp_serve, name='webapp-root'),
+    re_path(r'^app/(?P<path>.*)$', webapp_serve, name='webapp'),
+    # Raíz → /app/ para que la URL siempre muestre /app/
+    path('', webapp_redirect, name='webapp-home'),
+    re_path(rf'^(?P<path>(?!{_WEBAPP_EXCLUDE}).+)$', webapp_serve, name='webapp-catch'),
 ]
 
 if settings.DEBUG:

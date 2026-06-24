@@ -4,7 +4,7 @@
 <p style="margin-bottom:20px;">
   <a href="{% url 'dashboard:orders' %}">← Volver a pedidos</a>
   &nbsp;·&nbsp;
-  <a href="/admin/orders/order/{{ order.pk }}/change/" target="_blank">Editar en Django Admin</a>
+  <a href="{% url 'gestion:order-edit' order.pk %}">Editar pedido</a>
 </p>
 
 <div class="detail-grid">

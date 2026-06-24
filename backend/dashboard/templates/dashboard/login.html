@@ -24,6 +24,9 @@
 
       <form method="post">
         {% csrf_token %}
+        {% if request.GET.next %}
+        <input type="hidden" name="next" value="{{ request.GET.next }}">
+        {% endif %}
         <div class="form-group">
           <label for="id_username">Usuario</label>
           <input type="text" name="username" id="id_username" class="form-control" autofocus required>
@@ -34,10 +37,6 @@
         </div>
         <button type="submit" class="btn btn-primary">Entrar al panel</button>
       </form>
-
-      <p style="text-align:center;margin-top:20px;font-size:13px;color:#636366;">
-        Cuenta de prueba: <strong>admin_zinapp</strong> / test1234
-      </p>
     </div>
   </div>
 </body>

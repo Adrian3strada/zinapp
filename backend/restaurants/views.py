@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Count, Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -117,6 +117,17 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             return queryset.filter(owner=user)
 
         return queryset.filter(is_active=True)
+
+    def filter_queryset(self, queryset):
+        qs = super().filter_queryset(queryset)
+        user = self.request.user
+        if user.is_customer and self.action == 'list':
+            qs = qs.filter(
+                products__is_available=True,
+            ).annotate(
+                available_products=Count('products', filter=Q(products__is_available=True)),
+            ).filter(available_products__gte=1).distinct()
+        return qs
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())

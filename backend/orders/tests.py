@@ -29,6 +29,8 @@ class OrderApiTests(TestCase):
             address='Centro, Zinapécuaro',
             latitude=Decimal('19.860273'),
             longitude=Decimal('-100.828562'),
+            is_active=True,
+            accepting_orders=True,
         )
         Coupon.objects.create(code='ZINA10', discount_percent=10, is_active=True)
 
@@ -44,7 +46,31 @@ class OrderApiTests(TestCase):
         }, format='json')
         self.assertEqual(response.status_code, 201)
         user = User.objects.get(username='newrest')
-        self.assertTrue(Restaurant.objects.filter(owner=user, name='Mi Fonda').exists())
+        rest = Restaurant.objects.get(owner=user, name='Mi Fonda')
+        self.assertFalse(rest.is_active)
+        self.assertFalse(rest.accepting_orders)
+
+    def test_order_rejected_when_restaurant_inactive(self):
+        from restaurants.models import Product
+
+        self.restaurant.is_active = False
+        self.restaurant.save(update_fields=['is_active'])
+        product = Product.objects.create(
+            restaurant=self.restaurant,
+            name='Taco',
+            price=Decimal('50.00'),
+        )
+        self.client.force_authenticate(self.customer)
+        response = self.client.post('/api/orders/', {
+            'restaurant_id': self.restaurant.id,
+            'delivery_address': 'Calle 1, Zinapécuaro',
+            'delivery_latitude': '19.860273',
+            'delivery_longitude': '-100.828562',
+            'payment_method': 'cash',
+            'items': [{'product_id': product.id, 'quantity': 1}],
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('restaurant_id', response.data)
 
     def test_coupon_validate(self):
         self.client.force_authenticate(self.customer)

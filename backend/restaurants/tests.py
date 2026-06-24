@@ -67,3 +67,13 @@ class RestaurantPaymentInfoTests(TestCase):
         )
         self.assertFalse(serializer.is_valid())
         self.assertIn('clabe', serializer.errors)
+
+    def test_setup_status_reflects_checklist(self):
+        factory = APIRequestFactory()
+        request = factory.get('/')
+        data = RestaurantSerializer(self.restaurant, context={'request': request}).data
+        status = data['setup_status']
+        self.assertFalse(status['complete'])
+        self.assertEqual(status['done_count'], 1)
+        self.assertTrue(any(s['key'] == 'bank' and s['done'] for s in status['steps']))
+        self.assertTrue(any(s['key'] == 'menu' and not s['done'] for s in status['steps']))

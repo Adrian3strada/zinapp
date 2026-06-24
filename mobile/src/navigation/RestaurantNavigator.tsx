@@ -5,6 +5,8 @@ import React, { Suspense } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RestaurantProvider } from '../context/RestaurantContext';
+import { useRestaurantPendingNavigation } from './useRestaurantPendingNavigation';
 import { useRestaurantPendingCount } from '../hooks/useRestaurantPendingCount';
 import RestaurantManageScreen from '../screens/restaurant/RestaurantManageScreen';
 import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen';
@@ -39,6 +41,20 @@ function RestaurantTabs() {
   const insets = useSafeAreaInsets();
   const pendingCount = useRestaurantPendingCount();
 
+  return (
+    <RestaurantProvider>
+      <RestaurantTabsInner insets={insets} pendingCount={pendingCount} />
+    </RestaurantProvider>
+  );
+}
+
+function RestaurantTabsInner({
+  insets,
+  pendingCount,
+}: {
+  insets: { top: number; bottom: number; left: number; right: number };
+  pendingCount: number;
+}) {
   return (
     <Tab.Navigator screenOptions={tabBarScreenOptions(insets)}>
       <Tab.Screen
@@ -80,6 +96,8 @@ function RestaurantTabs() {
 }
 
 export default function RestaurantNavigator() {
+  useRestaurantPendingNavigation();
+
   return (
     <Stack.Navigator screenOptions={stackScreenDefaults}>
       <Stack.Screen

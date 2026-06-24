@@ -28,6 +28,7 @@
             <th>Pago</th>
             <th class="text-right">Total</th>
             <th>Creado</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -41,10 +42,11 @@
             <td>{{ order.get_payment_method_display }}</td>
             <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
             <td class="text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+            <td><a href="{% url 'gestion:order-edit' order.pk %}">Editar</a></td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="text-muted" style="text-align:center;padding:40px;">No se encontraron pedidos.</td>
+            <td colspan="9" class="text-muted" style="text-align:center;padding:40px;">No se encontraron pedidos.</td>
           </tr>
           {% endfor %}
         </tbody>

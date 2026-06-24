@@ -11,6 +11,17 @@ urlpatterns = [
     path('pedidos/', views.OrderListView.as_view(), name='orders'),
     path('pedidos/<int:pk>/', views.OrderDetailView.as_view(), name='order-detail'),
     path('restaurantes/', views.RestaurantListView.as_view(), name='restaurants'),
+    path('restaurantes/<int:pk>/', views.RestaurantDetailView.as_view(), name='restaurant-detail'),
+    path(
+        'restaurantes/<int:pk>/toggle-active/',
+        views.RestaurantToggleActiveView.as_view(),
+        name='restaurant-toggle-active',
+    ),
+    path(
+        'restaurantes/<int:pk>/toggle-orders/',
+        views.RestaurantToggleOrdersView.as_view(),
+        name='restaurant-toggle-orders',
+    ),
     path('usuarios/', views.UserListView.as_view(), name='users'),
     path('repartidores/', views.DriverListView.as_view(), name='drivers'),
 ]

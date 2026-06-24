@@ -7,13 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerActiveDeliveriesProvider, useCustomerActiveDeliveries } from '../context/CustomerActiveDeliveriesContext';
 import AppErrorBoundary from '../components/AppErrorBoundary';
+import CustomerWebLayout from '../components/CustomerWebLayout';
 import { useCart } from '../context/CartContext';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import CartScreen from '../screens/customer/CartScreen';
 import MenuScreen from '../screens/customer/MenuScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
+import { useCustomerPendingNavigation } from './useCustomerPendingNavigation';
 import type {
   CartScreenProps,
   CustomerStackParamList,
@@ -113,13 +116,16 @@ function CustomerTabs() {
   const { itemCount } = useCart();
   const { activeOrderCount } = useCustomerActiveDeliveries();
   const insets = useSafeAreaInsets();
+  const { isDesktopWeb } = useResponsiveLayout();
 
   return (
     <Tab.Navigator
+      screenLayout={({ children }) => <CustomerWebLayout>{children}</CustomerWebLayout>}
       screenOptions={{
-        ...tabBarScreenOptions(insets),
+        ...tabBarScreenOptions(insets, isDesktopWeb),
         lazy: true,
       }}
+      tabBar={isDesktopWeb ? () => null : undefined}
     >
       <Tab.Screen
         name="Inicio"
@@ -177,6 +183,8 @@ function LazyShipmentDetailScreen(props: import('./types').ShipmentDetailScreenP
 }
 
 export default function CustomerNavigator() {
+  useCustomerPendingNavigation();
+
   return (
     <CustomerActiveDeliveriesProvider>
       <Stack.Navigator screenOptions={stackScreenDefaults}>

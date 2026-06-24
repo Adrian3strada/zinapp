@@ -1,6 +1,42 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
+{% if restaurants_pending > 0 %}
+<div class="panel-card pending-alert">
+  <div class="panel-card-header">
+    <h3>{{ restaurants_pending }} local{{ restaurants_pending|pluralize:"es" }} pendiente{{ restaurants_pending|pluralize:"s" }} de activar</h3>
+    <a href="{% url 'dashboard:restaurants' %}" class="btn btn-ghost btn-sm">Ver todos</a>
+  </div>
+  <div class="panel-card-body padded">
+    <p class="text-muted" style="margin:0 0 12px;">
+      Los negocios se registran en la app y quedan ocultos para clientes hasta que completes su checklist y los actives aquí.
+    </p>
+    <div class="table-wrap">
+      <table class="data-table compact">
+        <thead>
+          <tr>
+            <th>Negocio</th>
+            <th>Dueño</th>
+            <th>Registro</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for restaurant in pending_restaurants %}
+          <tr>
+            <td><strong>{{ restaurant.name }}</strong></td>
+            <td>{{ restaurant.owner.username }}</td>
+            <td class="text-muted">{{ restaurant.created_at|date:"d/m/Y H:i" }}</td>
+            <td><a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Revisar →</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="stats-grid">
   <div class="stat-card highlight">
     <div class="stat-label">Ingresos hoy</div>
@@ -25,7 +61,7 @@
   <div class="stat-card">
     <div class="stat-label">Restaurantes activos</div>
     <div class="stat-value">{{ restaurants_active }}</div>
-    <div class="stat-sub">{{ products_total }} productos en catálogo</div>
+    <div class="stat-sub">{{ restaurants_pending }} pendientes · {{ products_total }} productos</div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Ingresos del mes</div>
@@ -34,6 +70,12 @@
   </div>
 </div>
 
+{% if orders_total == 0 and users_total > 0 %}
+<p class="launch-hint">
+  Aún no hay pedidos — es normal al iniciar. Cuando actives locales y entren clientes, las estadísticas se actualizarán aquí.
+</p>
+{% endif %}
+
 <div class="grid-2">
   <div class="panel-card">
     <div class="panel-card-header">
@@ -41,19 +83,21 @@
     </div>
     <div class="panel-card-body padded">
       <div class="status-bars">
-        {% for item in status_breakdown %}
-          {% if item.count > 0 %}
-          <div class="status-row">
-            <span>{{ item.label }}</span>
-            <div class="status-bar-track">
-              <div class="status-bar-fill {{ item.status }}" style="width: {% widthratio item.count status_breakdown_max 100 %}%;"></div>
+        {% if has_order_status_data %}
+          {% for item in status_breakdown %}
+            {% if item.count > 0 %}
+            <div class="status-row">
+              <span>{{ item.label }}</span>
+              <div class="status-bar-track">
+                <div class="status-bar-fill {{ item.status }}" style="width: {% widthratio item.count status_breakdown_max 100 %}%;"></div>
+              </div>
+              <strong class="mono">{{ item.count }}</strong>
             </div>
-            <strong class="mono">{{ item.count }}</strong>
-          </div>
-          {% endif %}
-        {% empty %}
-          <p class="text-muted">Sin pedidos registrados.</p>
-        {% endfor %}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <p class="text-muted">Sin pedidos registrados todavía.</p>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -73,12 +117,16 @@
           <p>{{ users_customers }}</p>
         </div>
         <div class="info-item">
-          <label>Restaurantes</label>
+          <label>Dueños de negocio</label>
           <p>{{ users_restaurants }}</p>
         </div>
         <div class="info-item">
           <label>Repartidores</label>
           <p>{{ users_drivers }}</p>
+        </div>
+        <div class="info-item">
+          <label>Locales en catálogo</label>
+          <p>{{ restaurants_total }} ({{ restaurants_active }} activos)</p>
         </div>
       </div>
     </div>

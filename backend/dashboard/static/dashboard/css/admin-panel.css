@@ -1,0 +1,337 @@
+/* Gestión de datos — integrada al panel ZinApp */
+
+.panel-admin-body {
+  margin: 0;
+  background: var(--bg);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+}
+
+.panel-admin-body.popup {
+  background: #fff;
+  padding: 16px;
+}
+
+.panel-admin-content {
+  padding-top: 8px;
+}
+
+.panel-admin-inner {
+  width: 100%;
+}
+
+.panel-admin-inner #header {
+  display: none !important;
+}
+
+.panel-admin-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.panel-admin-breadcrumbs a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.panel-admin-breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.panel-admin-breadcrumbs .sep {
+  opacity: 0.45;
+}
+
+.panel-admin-workspace {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.panel-admin-main-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-admin-card,
+.panel-admin-card#content {
+  background: var(--surface);
+  border: 1px solid var(--border-light, var(--border));
+  border-radius: var(--radius, 14px);
+  padding: 20px 24px;
+  box-shadow: var(--shadow, 0 4px 24px rgba(15, 61, 122, 0.08));
+  margin: 0;
+  width: 100%;
+}
+
+.panel-admin-page-title {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.panel-admin-subtitle {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+}
+
+/* ——— Página inicio gestión ——— */
+.gestion-home {
+  display: grid;
+  gap: 20px;
+}
+
+.gestion-hero {
+  margin: 0;
+}
+
+.gestion-hero-title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+.gestion-hero-text {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.gestion-modules .module {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: none;
+}
+
+.gestion-modules .module h2,
+.gestion-modules .module caption,
+.gestion-modules caption {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.gestion-modules table {
+  width: 100%;
+}
+
+.gestion-modules th,
+.gestion-modules td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-light, var(--border));
+}
+
+.gestion-modules tr:last-child td {
+  border-bottom: none;
+}
+
+.gestion-modules a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+#content-related.gestion-recent {
+  width: 300px;
+  flex-shrink: 0;
+  margin: 0;
+  float: none;
+}
+
+.gestion-actionlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gestion-actionlist li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light, var(--border));
+}
+
+.gestion-actionlist li:last-child {
+  border-bottom: none;
+}
+
+.gestion-action-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ——— Listas y formularios ——— */
+.panel-admin-card .results,
+.panel-admin-card .change-list {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.panel-admin-card #changelist {
+  width: 100%;
+}
+
+.panel-admin-card #changelist-filter {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.panel-admin-card #changelist-filter h2 {
+  background: transparent;
+  color: var(--text);
+  padding: 0 0 8px;
+  font-size: 13px;
+}
+
+.panel-admin-card .paginator {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.panel-admin-card input[type='text'],
+.panel-admin-card input[type='number'],
+.panel-admin-card input[type='email'],
+.panel-admin-card input[type='url'],
+.panel-admin-card input[type='password'],
+.panel-admin-card select,
+.panel-admin-card textarea {
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.panel-admin-card input:focus,
+.panel-admin-card select:focus,
+.panel-admin-card textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.panel-admin-card .submit-row {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.panel-admin-card .button,
+.panel-admin-card input[type='submit'],
+.panel-admin-card input[type='button'],
+.panel-admin-card .submit-row input {
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.panel-admin-card .button.default,
+.panel-admin-card input[type='submit'].default,
+.panel-admin-card .submit-row input.default {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.panel-admin-card .button.default:hover,
+.panel-admin-card input[type='submit'].default:hover {
+  background: var(--primary-dark);
+}
+
+.panel-admin-card .object-tools a {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 700;
+}
+
+.panel-admin-card .inline-group {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.panel-admin-card .inline-group h2 {
+  background: var(--primary);
+  color: #fff;
+}
+
+.panel-admin-card fieldset.module {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.panel-admin-card fieldset.module h2 {
+  background: var(--bg);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.panel-admin-card .help,
+.panel-admin-card .quiet,
+.panel-admin-card p.help {
+  color: var(--text-secondary);
+}
+
+.panel-admin-card .messagelist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.panel-admin-card .messagelist li {
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.panel-admin-card .messagelist li.success {
+  background: #e8f9ed;
+  color: #1b7a36;
+}
+
+.panel-admin-card .messagelist li.error {
+  background: #fff0ef;
+  color: var(--error);
+}
+
+.panel-admin-card.colMS {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .panel-admin-card.colMS {
+    grid-template-columns: 1fr;
+  }
+
+  #content-related.gestion-recent {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .panel-admin-card {
+    padding: 16px;
+  }
+}

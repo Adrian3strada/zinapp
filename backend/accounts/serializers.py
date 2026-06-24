@@ -1,5 +1,3 @@
-from datetime import time
-
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.utils import timezone
@@ -157,8 +155,10 @@ class RegisterSerializer(serializers.ModelSerializer):
                 description=restaurant_description,
                 latitude=geo['latitude'] if geo else None,
                 longitude=geo['longitude'] if geo else None,
-                opening_time=time(9, 0),
-                closing_time=time(22, 0),
+                opening_time=None,
+                closing_time=None,
+                is_active=False,
+                accepting_orders=False,
             )
 
         return user

@@ -19,6 +19,7 @@
             <th>Disponible</th>
             <th>Ubicación GPS</th>
             <th>Actualizado</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -42,10 +43,11 @@
               {% endif %}
             </td>
             <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
+            <td><a href="{% url 'gestion:driver-edit' profile.pk %}">Editar</a></td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="text-muted" style="text-align:center;padding:40px;">No hay repartidores.</td>
+            <td colspan="7" class="text-muted" style="text-align:center;padding:40px;">No hay repartidores.</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -1,0 +1,111 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<p class="gestion-back"><a href="{% url 'gestion:home' %}">← Gestión de datos</a></p>
+
+<div class="gestion-hero panel-card">
+  <div class="panel-card-body padded">
+    <h1 class="gestion-hero-title">Gestión de datos</h1>
+    <p class="gestion-hero-text">
+      Administra catálogo, cupones, envíos y cuentas con el mismo diseño del panel.
+    </p>
+  </div>
+</div>
+
+<div class="gestion-grid">
+  <a href="{% url 'dashboard:users' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">👥</div>
+      <h3>Usuarios</h3>
+      <p>{{ stats.users }} registrados</p>
+      <span class="gestion-card-action">Ver lista →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'gestion:user-create' %}" class="gestion-card panel-card gestion-card-accent">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">➕</div>
+      <h3>Nuevo usuario</h3>
+      <p>Crear cuenta manualmente</p>
+      <span class="gestion-card-action">Crear →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'gestion:restaurants' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">🏪</div>
+      <h3>Restaurantes (CRUD)</h3>
+      <p>{{ stats.restaurants }} locales · crear/editar</p>
+      <span class="gestion-card-action">Gestionar →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'dashboard:restaurants' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">🍽️</div>
+      <h3>Restaurantes</h3>
+      <p>{{ stats.restaurants }} locales</p>
+      <span class="gestion-card-action">Gestionar →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'gestion:products' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">🍔</div>
+      <h3>Productos</h3>
+      <p>{{ stats.products }} en catálogo</p>
+      <span class="gestion-card-action">CRUD completo →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'dashboard:orders' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">📦</div>
+      <h3>Pedidos</h3>
+      <p>{{ stats.orders }} en total</p>
+      <span class="gestion-card-action">Ver pedidos →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'gestion:coupons' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">🎟️</div>
+      <h3>Cupones</h3>
+      <p>{{ stats.coupons }} activos</p>
+      <span class="gestion-card-action">CRUD completo →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'gestion:shipments' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">📮</div>
+      <h3>Envíos</h3>
+      <p>{{ stats.shipments }} en curso</p>
+      <span class="gestion-card-action">Ver envíos →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'gestion:reviews' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">⭐</div>
+      <h3>Reseñas</h3>
+      <p>{{ stats.reviews }} publicadas</p>
+      <span class="gestion-card-action">Ver reseñas →</span>
+    </div>
+  </a>
+
+  <a href="{% url 'dashboard:drivers' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">🛵</div>
+      <h3>Repartidores</h3>
+      <p>{{ stats.drivers }} disponibles</p>
+      <span class="gestion-card-action">Ver lista →</span>
+    </div>
+  </a>
+</div>
+
+<p class="gestion-advanced text-muted">
+  ¿Necesitas campos avanzados?
+  <a href="{% url 'admin:index' %}">Abrir consola técnica</a>
+</p>
+{% endblock %}
