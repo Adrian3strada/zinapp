@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../theme/colors';
 import { HIT_SLOP } from '../theme/spacing';
 import { elevatedShadow } from '../theme/shadows';
+import { webTextInputStyle } from '../utils/webPlatform';
 
 interface Props {
   value: string;
@@ -26,7 +27,7 @@ export default function SearchField({
     <View style={[styles.wrap, elevated && styles.wrapElevated]}>
       <Ionicons name="search" size={20} color={elevated ? colors.primary : colors.textMuted} />
       <TextInput
-        style={styles.input}
+        style={[styles.input, webTextInputStyle()]}
         placeholder={placeholder}
         placeholderTextColor={colors.textMuted}
         value={value}

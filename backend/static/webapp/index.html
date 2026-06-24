@@ -44,7 +44,25 @@
   body { overflow: hidden; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   #root { height: 100%; min-height: 100dvh; display: flex; flex: 1; flex-direction: column; width: 100%; min-height: 0; }
   #root > div { flex: 1; display: flex; flex-direction: column; min-height: 0; height: 100%; width: 100%; }
-  input, textarea, select { font-size: 16px !important; }
+  input, textarea, select {
+    font-size: 16px !important;
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input:focus, input:focus-visible, textarea:focus, textarea:focus-visible, select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+    box-shadow: 0 0 0 1000px transparent inset !important;
+  }
   [role="button"], button, a { cursor: pointer; }
   [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] { z-index: 1000 !important; }
   @media (max-width: 767px) {
@@ -70,6 +88,6 @@
     <noscript>Activa JavaScript para usar ZinApp.</noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/app/_expo/static/js/web/__expo-metro-runtime-37844bfe9405ed99797bdb43820a0459.js" defer></script><script src="/app/_expo/static/js/web/__common-1de112c48413046f140d6d3b7a225410.js" defer></script><script src="/app/_expo/static/js/web/AppEntry-31e0cefbacc5285e05e52920bb880555.js" defer></script>
+  <script src="/app/_expo/static/js/web/__expo-metro-runtime-37844bfe9405ed99797bdb43820a0459.js" defer></script><script src="/app/_expo/static/js/web/__common-c27a01f6589518311318b27cb843fd70.js" defer></script><script src="/app/_expo/static/js/web/AppEntry-8a0ee2e4f417f60d6b54c022a1b89177.js" defer></script>
 </body>
 </html>

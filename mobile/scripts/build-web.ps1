@@ -164,7 +164,25 @@ $inject = @"
   body { overflow: hidden; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   #root { height: 100%; min-height: 100dvh; display: flex; flex: 1; flex-direction: column; width: 100%; min-height: 0; }
   #root > div { flex: 1; display: flex; flex-direction: column; min-height: 0; height: 100%; width: 100%; }
-  input, textarea, select { font-size: 16px !important; }
+  input, textarea, select {
+    font-size: 16px !important;
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input:focus, input:focus-visible, textarea:focus, textarea:focus-visible, select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+    box-shadow: 0 0 0 1000px transparent inset !important;
+  }
   [role="button"], button, a { cursor: pointer; }
   [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] { z-index: 1000 !important; }
   @media (max-width: 767px) {

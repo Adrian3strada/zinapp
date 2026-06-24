@@ -1,8 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { webTextInputStyle } from '../utils/webPlatform';
 
 interface Props {
   label?: string;
@@ -20,6 +21,7 @@ interface Props {
   autoCorrect?: boolean;
   embedded?: boolean;
   rightElement?: React.ReactNode;
+  autoComplete?: string;
   style?: ViewStyle;
 }
 
@@ -39,6 +41,7 @@ export default function FormField({
   autoCorrect = true,
   embedded = false,
   rightElement,
+  autoComplete,
   style,
 }: Props) {
   return (
@@ -63,7 +66,7 @@ export default function FormField({
           style={multiline ? styles.iconTop : undefined}
         />
         <TextInput
-          style={[styles.input, multiline && styles.inputMultiline]}
+          style={[styles.input, webTextInputStyle(), multiline && styles.inputMultiline]}
           placeholder={placeholder ?? label ?? ''}
           placeholderTextColor={colors.textMuted}
           value={value}
@@ -73,8 +76,9 @@ export default function FormField({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
+          {...(Platform.OS === 'web' && autoComplete ? { autoComplete } : {})}
         />
-        {rightElement}
+        {rightElement ? <View style={styles.rightElement}>{rightElement}</View> : null}
       </View>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
@@ -101,11 +105,27 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    overflow: 'hidden',
   },
   inputWrapEmbedded: { backgroundColor: colors.background },
   inputWrapMultiline: { alignItems: 'flex-start', paddingVertical: 12 },
   iconTop: { marginTop: 2 },
-  input: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '500' },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: '500',
+    minWidth: 0,
+    paddingVertical: Platform.OS === 'web' ? 12 : 0,
+    lineHeight: Platform.OS === 'web' ? 20 : undefined,
+  },
+  rightElement: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    alignSelf: 'stretch',
+    paddingLeft: 2,
+  },
   inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
   hint: { fontSize: 11, color: colors.textMuted, marginBottom: 8, lineHeight: 16 },
 });

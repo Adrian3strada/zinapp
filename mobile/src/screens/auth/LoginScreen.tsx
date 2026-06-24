@@ -97,6 +97,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           required
           autoCapitalize="none"
           autoCorrect={false}
+          autoComplete="username"
         />
         <FormField
           hideLabel
@@ -108,8 +109,13 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           required
           secureTextEntry={!showPassword}
           autoCorrect={false}
+          autoComplete="current-password"
           rightElement={
-            <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+            <Pressable
+              onPress={() => setShowPassword(!showPassword)}
+              hitSlop={8}
+              style={styles.passwordToggle}
+            >
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
@@ -176,19 +182,21 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           style={styles.desktopHero}
           pointerEvents={webPassThroughPointerEvents()}
         >
-          <BrandLogo variant="light" width={320} showTagline={false} />
-          <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
-          <Text style={styles.desktopTagline}>
-            Pedidos, comida local y envíos en tu ciudad.
-          </Text>
-          <View style={styles.heroPills}>
-            <View style={styles.pill}>
-              <Ionicons name="restaurant" size={14} color="#FFF" />
-              <Text style={styles.pillText}>Restaurantes</Text>
-            </View>
-            <View style={styles.pill}>
-              <Ionicons name="bicycle" size={14} color="#FFF" />
-              <Text style={styles.pillText}>Reparto local</Text>
+          <View style={styles.desktopHeroContent}>
+            <BrandLogo variant="light" width={320} showTagline={false} />
+            <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
+            <Text style={styles.desktopTagline}>
+              Pedidos, comida local y envíos en tu ciudad.
+            </Text>
+            <View style={styles.heroPills}>
+              <View style={styles.pill}>
+                <Ionicons name="restaurant" size={14} color="#FFF" />
+                <Text style={styles.pillText}>Restaurantes</Text>
+              </View>
+              <View style={styles.pill}>
+                <Ionicons name="bicycle" size={14} color="#FFF" />
+                <Text style={styles.pillText}>Reparto local</Text>
+              </View>
             </View>
           </View>
         </LinearGradient>
@@ -255,10 +263,15 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     minWidth: 320,
   },
+  desktopHeroContent: {
+    alignItems: 'center',
+    gap: 14,
+    maxWidth: 400,
+    width: '100%',
+  },
   desktopTagline: {
     fontSize: 18,
     color: 'rgba(255,255,255,0.92)',
-    marginTop: 16,
     textAlign: 'center',
     fontWeight: '600',
     lineHeight: 26,
@@ -280,18 +293,26 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 10, fontWeight: '500' },
-  heroPills: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
+  heroPills: { flexDirection: 'row', gap: 10, marginTop: 4 },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
+    minHeight: 34,
   },
-  pillText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
+  pillText: { color: '#FFF', fontSize: 12, fontWeight: '600', lineHeight: 16 },
+  passwordToggle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+  },
   formWrap: {
     backgroundColor: colors.surface,
     marginHorizontal: 20,
