@@ -14,7 +14,7 @@ import { authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
-import { getApiErrorMessage } from '../../utils/apiErrors';
+import { clearWebResetTokenFromUrl } from '../../utils/webDeepLink';
 
 export default function ResetPasswordScreen({ navigation, route }: ResetPasswordScreenProps) {
   const insets = useSafeAreaInsets();
@@ -35,6 +35,7 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
     setLoading(true);
     try {
       await authApi.resetPassword(route.params.token, password);
+      clearWebResetTokenFromUrl();
       appAlert('Listo', 'Contraseña actualizada.', [
         { text: 'Iniciar sesión', onPress: () => navigation.navigate('Login') },
       ]);

@@ -9,5 +9,7 @@ npm-debug.*
 *.p12
 *.key
 *.mobileprovision
+google-play-key.json
 *.orig.*
 web-build/
+dist/

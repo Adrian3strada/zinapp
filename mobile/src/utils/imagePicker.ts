@@ -1,4 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
+
 import { appAlert } from './appAlert';
 
 function mimeFromUri(uri: string): string {
@@ -17,6 +19,17 @@ function filenameFromUri(uri: string, fallback: string): string {
 }
 
 export async function pickImageFromLibrary(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return null;
+    return result.assets[0].uri;
+  }
+
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
     appAlert('Permiso', 'Necesitamos acceso a tus fotos para subir la imagen.');
@@ -32,9 +45,22 @@ export async function pickImageFromLibrary(): Promise<string | null> {
   return result.assets[0].uri;
 }
 
-export function appendImage(formData: FormData, field: string, uri: string, filename = 'photo.jpg') {
-  const type = mimeFromUri(uri);
+export async function appendImage(
+  formData: FormData,
+  field: string,
+  uri: string,
+  filename = 'photo.jpg',
+): Promise<void> {
   const name = filenameFromUri(uri, filename);
+  const type = mimeFromUri(uri);
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    formData.append(field, blob, name);
+    return;
+  }
+
   formData.append(field, {
     uri,
     name,

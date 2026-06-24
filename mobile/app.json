@@ -15,26 +15,55 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon.png",
+      "name": "ZinApp",
+      "shortName": "ZinApp",
+      "description": "Pedidos y envíos locales en Zinapécuaro, Michoacán.",
+      "lang": "es",
+      "themeColor": "#1E5DB8",
+      "backgroundColor": "#FFFFFF",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "scope": "/"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zinapp.delivery",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido."
+        "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido.",
+        "NSPhotoLibraryUsageDescription": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
+        "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido."
       }
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 121,
+      "versionCode": 123,
       "permissions": [
         "POST_NOTIFICATIONS"
       ],
       "queries": [
-        { "scheme": "geo" },
-        { "scheme": "google.navigation" },
-        { "scheme": "comgooglemaps" },
-        { "scheme": "waze" },
-        { "package": "com.google.android.apps.maps" },
-        { "package": "com.waze" }
+        {
+          "scheme": "geo"
+        },
+        {
+          "scheme": "google.navigation"
+        },
+        {
+          "scheme": "comgooglemaps"
+        },
+        {
+          "scheme": "waze"
+        },
+        {
+          "package": "com.google.android.apps.maps"
+        },
+        {
+          "package": "com.waze"
+        }
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -46,6 +75,8 @@
         "projectId": "56ddb1bb-632f-4087-9a80-e839403c24fc"
       },
       "apiUrl": "https://zinapp-api-production.up.railway.app/api",
+      "privacyPolicyUrl": "https://zinapp-api-production.up.railway.app/privacidad/",
+      "supportEmail": "adrianestradachavez123@gmail.com",
       "deliveryFee": 25,
       "shipmentSizes": [
         {
@@ -88,10 +119,18 @@
         "expo-notifications",
         {
           "color": "#1E5DB8",
-          "sounds": ["./assets/sounds/bell.wav"]
+          "sounds": [
+            "./assets/sounds/bell.wav"
+          ]
         }
       ],
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
+          "cameraPermission": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido."
+        }
+      ],
       "expo-secure-store"
     ]
   }

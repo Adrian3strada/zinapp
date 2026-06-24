@@ -26,6 +26,7 @@ import { DELIVERY_FEE } from '../../config/delivery';
 import { resolveTransferInfo, restaurantHasTransferInfo } from '../../config/payments';
 import type { Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
@@ -391,7 +392,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     <ScreenContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={keyboardAvoidingBehavior()}
         keyboardVerticalOffset={keyboardWithHeader()}
       >
         <ScrollView

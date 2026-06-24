@@ -1,6 +1,9 @@
 .env
 __pycache__/
 node_modules/
+# Assets empaquetados de la app web (fuentes Ionicons, iconos navegación)
+!backend/static/webapp/
+!backend/static/webapp/**
 .expo/
 media/
 *.pyc

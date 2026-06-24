@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
 import { softShadow } from '../theme/shadows';
+import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
   title: string;
@@ -36,6 +37,7 @@ export default function ServiceSectionCard({
         colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
+        pointerEvents={webPassThroughPointerEvents()}
         style={styles.gradient}
       >
         <View style={styles.decor} />

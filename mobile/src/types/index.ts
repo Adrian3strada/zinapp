@@ -36,6 +36,20 @@ export interface DeliveryProfile {
   current_longitude?: string | null;
 }
 
+export interface RestaurantSetupStep {
+  key: 'menu' | 'profile' | 'bank' | 'hours' | 'location';
+  label: string;
+  done: boolean;
+}
+
+export interface RestaurantSetupStatus {
+  steps: RestaurantSetupStep[];
+  done_count: number;
+  total_count: number;
+  complete: boolean;
+  ready_for_orders: boolean;
+}
+
 export interface Restaurant {
   id: number;
   name: string;
@@ -61,6 +75,7 @@ export interface Restaurant {
   opening_time?: string | null;
   closing_time?: string | null;
   products_count: number;
+  setup_status?: RestaurantSetupStatus;
 }
 
 export interface Product {
@@ -195,6 +210,8 @@ export interface Shipment {
 export interface AdminStats {
   users: number;
   restaurants: number;
+  restaurants_active?: number;
+  restaurants_pending?: number;
   orders: number;
   orders_pending: number;
   orders_active: number;

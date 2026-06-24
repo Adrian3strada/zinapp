@@ -1,8 +1,8 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
-import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { notificationSuccess } from '../utils/haptics';
 
 /** Nombre del tono empaquetado en el APK (assets/sounds/bell.wav). */
 export const NOTIFICATION_SOUND = 'bell.wav';
@@ -23,6 +23,8 @@ export function resolveNotificationChannel(
 
 /** Configura handler y canales Android (sonido + vibración). */
 export async function configureNotifications(): Promise<void> {
+  if (Platform.OS === 'web') return;
+
   const Notifications = await import('expo-notifications');
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -89,8 +91,9 @@ async function playBellSound(): Promise<void> {
 }
 
 export async function onNotificationReceived(): Promise<void> {
+  if (Platform.OS === 'web') return;
   await Promise.allSettled([
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+    notificationSuccess(),
     playBellSound(),
   ]);
 }

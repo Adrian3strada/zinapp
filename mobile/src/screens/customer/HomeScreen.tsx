@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 
 import ActiveDeliveryStrip from '../../components/ActiveDeliveryStrip';
 import HomeHero from '../../components/HomeHero';
+import ResponsiveGrid from '../../components/ResponsiveGrid';
 import ServiceSectionCard from '../../components/ServiceSectionCard';
 import { useAuth } from '../../context/AuthContext';
 import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesContext';
@@ -14,7 +15,7 @@ import { spacing } from '../../theme/spacing';
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { user } = useAuth();
-  const { insets, scrollPaddingBottom } = useTabScreenInsets();
+  const { insets, scrollPaddingBottom, pagePadding } = useTabScreenInsets();
   const {
     activeOrderCount,
     activeShipmentCount,
@@ -45,6 +46,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     <ScrollView
       contentContainerStyle={[
         styles.container,
+        { paddingHorizontal: pagePadding },
         scrollPaddingBottom(),
       ]}
       showsVerticalScrollIndicator={false}
@@ -56,7 +58,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         firstName={user?.first_name}
         topInset={insets.top}
         onProfilePress={() => navigation.navigate('Perfil')}
-        style={styles.hero}
+        style={[styles.hero, { marginHorizontal: -pagePadding }]}
       >
         <Text style={styles.tagline}>¿Qué necesitas hoy?</Text>
       </HomeHero>
@@ -71,7 +73,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </Pressable>
       )}
 
-      <View style={styles.sections}>
+      <ResponsiveGrid style={styles.sections}>
         <ServiceSectionCard
           title="Ofertas"
           subtitle="Cupones y promos para ahorrar"
@@ -95,7 +97,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           badge={activeShipmentCount}
           onPress={() => navigation.navigate('Envios')}
         />
-      </View>
+      </ResponsiveGrid>
     </ScrollView>
   );
 }
@@ -104,19 +106,16 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: spacing.screen,
     gap: spacing.lg,
   },
-  hero: {
-    marginHorizontal: -spacing.screen,
-  },
+  hero: {},
   tagline: {
     fontSize: 16,
     color: 'rgba(255,255,255,0.9)',
     marginTop: spacing.lg,
     fontWeight: '600',
   },
-  sections: { gap: spacing.md, marginTop: spacing.xs },
+  sections: { marginTop: spacing.xs },
   refreshError: {
     backgroundColor: colors.primaryLight,
     borderRadius: 14,

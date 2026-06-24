@@ -15,9 +15,14 @@ if (
   );
 }
 
+const webBasePath = process.env.EXPO_PUBLIC_WEB_BASE_PATH || '/';
+
 /** @type {import('expo/config').ExpoConfig} */
 module.exports = () => ({
   ...appJson.expo,
+  experiments: {
+    baseUrl: webBasePath,
+  },
   android: {
     ...appJson.expo.android,
     config: {

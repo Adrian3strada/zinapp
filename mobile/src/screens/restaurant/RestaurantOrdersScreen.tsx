@@ -8,7 +8,9 @@ import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
+import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
+import { useRestaurantContext } from '../../context/RestaurantContext';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -34,6 +36,7 @@ const NEXT_STATUS: Record<string, { status: string; label: string }> = {
 
 export default function RestaurantOrdersScreen({ navigation }: Props) {
   const { insets, listPaddingBottom } = useTabScreenInsets();
+  const { restaurant, refresh: refreshRestaurant } = useRestaurantContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -137,11 +140,22 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
           { paddingTop: insets.top + spacing.sm },
           listPaddingBottom(),
         ]}
-        onRefresh={load}
+        onRefresh={() => {
+          void load();
+          void refreshRestaurant();
+        }}
         refreshing={refreshing}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <>
+            {restaurant?.setup_status ? (
+              <View style={{ paddingHorizontal: spacing.screen }}>
+                <RestaurantSetupBanner
+                  restaurant={restaurant}
+                  setupStatus={restaurant.setup_status}
+                />
+              </View>
+            ) : null}
             <View style={styles.headerRow}>
               <Text style={styles.headerTitle}>Pedidos activos</Text>
             </View>
@@ -276,6 +290,6 @@ const styles = StyleSheet.create({
   orderId: { fontSize: 18, fontWeight: '800', color: colors.text },
   total: { fontSize: 20, fontWeight: '800', color: colors.primary, marginTop: 8 },
   address: { fontSize: 13, color: colors.textSecondary, marginTop: 6 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  btn: { flex: 1 },
+  actions: { flexDirection: 'row', alignItems: 'stretch', gap: 10, marginTop: 14 },
+  btn: { flex: 1, minWidth: 0 },
 });

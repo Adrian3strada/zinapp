@@ -381,6 +381,7 @@ export interface AppConfig {
   online_payments_enabled: boolean;
   support_whatsapp: string;
   password_reset_via_whatsapp: boolean;
+  password_reset_email_enabled?: boolean;
   coverage_label: string;
 }
 

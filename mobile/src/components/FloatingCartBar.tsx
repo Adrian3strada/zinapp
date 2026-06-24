@@ -8,6 +8,7 @@ import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
 import { elevatedShadow } from '../theme/shadows';
 import { formatCurrency } from '../utils/format';
+import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
   itemCount: number;
@@ -30,6 +31,7 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
         colors={[colors.primary, colors.primaryDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
+        pointerEvents={webPassThroughPointerEvents()}
         style={styles.bar}
       >
         <View style={styles.left}>

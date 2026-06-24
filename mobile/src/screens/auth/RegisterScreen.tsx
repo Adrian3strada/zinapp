@@ -140,6 +140,15 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
           '¡Bienvenido repartidor!',
           'Tu cuenta está lista. Activa tu disponibilidad en la pestaña Disponibles cuando quieras recibir pedidos.',
         );
+      } else if (form.role === 'restaurant') {
+        appAlert(
+          '¡Negocio registrado!',
+          'Tu cuenta está lista. Sigue estos pasos:\n\n'
+          + '1. En Menú: agrega al menos un platillo\n'
+          + '2. En Mi perfil: logo, CLABE, horario y dirección\n'
+          + '3. Cuando completes todo, ZinApp activará tu local en la app\n\n'
+          + 'Mientras tanto, los clientes no verán tu negocio.',
+        );
       }
     } catch (err: unknown) {
       const error = err as Error & { message?: string };
@@ -323,7 +332,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
               multiline
             />
             <Text style={styles.fieldHint}>
-              Se crea tu restaurante automáticamente (horario inicial 9:00–22:00). Edita logo y datos en Perfil.
+              Tu negocio se crea al registrarte, pero no será visible para clientes hasta que completes menú y perfil y ZinApp lo active.
             </Text>
           </FormSection>
         )}

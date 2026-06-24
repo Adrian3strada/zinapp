@@ -1,8 +1,10 @@
+import Constants from 'expo-constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -18,18 +20,26 @@ import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
 import { useAuth } from '../../context/AuthContext';
+import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import type { LoginScreenProps } from '../../navigation/types';
 import { API_URL } from '../../config/api';
+import { getPanelLoginUrl } from '../../utils/panelUrl';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { wakeBackend } from '../../services/apiWake';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { contentWidth } from '../../utils/responsive';
 import { cardShadow } from '../../theme/shadows';
+import { keyboardAvoidingBehavior, webPassThroughPointerEvents } from '../../utils/webPlatform';
+
+const PRIVACY_URL =
+  (Constants.expoConfig?.extra as { privacyPolicyUrl?: string } | undefined)?.privacyPolicyUrl
+  ?? 'https://zinapp-api-production.up.railway.app/privacidad/';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { login } = useAuth();
   const insets = useSafeAreaInsets();
+  const { isDesktopWeb } = useResponsiveLayout();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,9 +73,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           'No se pudo entrar',
           demoBlocked
             ? 'Las cuentas demo ya no están disponibles. Regístrate o contacta soporte.'
-            : __DEV__
-              ? 'Usuario o contraseña incorrectos.\n\nPrueba demo:\nusuario: cliente1\ncontraseña: test1234'
-              : 'Usuario o contraseña incorrectos. Verifica tus datos o usa «Recuperar contraseña».',
+            : 'Usuario o contraseña incorrectos. Verifica tus datos o usa «Recuperar contraseña».',
         );
       } else {
         appAlert('Error', getApiErrorMessage(err, 'No se pudo iniciar sesión'));
@@ -76,10 +84,130 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     }
   };
 
+  const formCard = (
+    <View style={[styles.formWrap, isDesktopWeb && styles.formWrapDesktop, cardShadow]}>
+      <FormSection title="Iniciar sesión" variant="plain" align="center">
+        <FormField
+          hideLabel
+          label="Usuario"
+          value={username}
+          onChangeText={setUsername}
+          icon="person-outline"
+          placeholder="Usuario"
+          required
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <FormField
+          hideLabel
+          label="Contraseña"
+          value={password}
+          onChangeText={setPassword}
+          icon="lock-closed-outline"
+          placeholder="Contraseña"
+          required
+          secureTextEntry={!showPassword}
+          autoCorrect={false}
+          rightElement={
+            <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+              <Ionicons
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color={colors.textMuted}
+              />
+            </Pressable>
+          }
+        />
+        <Button
+          title="Entrar"
+          onPress={handleLogin}
+          disabled={loading}
+          loading={loading}
+          size="lg"
+          style={styles.btn}
+        />
+        {loading && statusHint ? (
+          <Text style={styles.statusHint}>{statusHint}</Text>
+        ) : null}
+      </FormSection>
+
+      <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgot}>
+        <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+      </Pressable>
+
+      <Pressable onPress={() => navigation.navigate('Register')} style={styles.link}>
+        <Text style={styles.linkText}>¿No tienes cuenta? </Text>
+        <Text style={styles.linkBold}>Regístrate</Text>
+      </Pressable>
+
+      {__DEV__ && <Text style={styles.apiHint}>Servidor: {API_URL}</Text>}
+      {Platform.OS === 'web' && (
+        <Pressable
+          onPress={() => {
+            if (typeof window !== 'undefined') {
+              window.location.assign(getPanelLoginUrl());
+            } else {
+              void Linking.openURL(getPanelLoginUrl());
+            }
+          }}
+          style={styles.panelLink}
+        >
+          <Text style={styles.panelText}>¿Administras ZinApp? Panel de operaciones →</Text>
+        </Pressable>
+      )}
+      {Platform.OS === 'web' && (
+        <Pressable
+          onPress={() => {
+            void Linking.openURL(PRIVACY_URL);
+          }}
+          style={styles.privacyLink}
+        >
+          <Text style={styles.privacyText}>Política de privacidad</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+
+  if (isDesktopWeb) {
+    return (
+      <View style={styles.desktopRoot}>
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientEnd]}
+          style={styles.desktopHero}
+          pointerEvents={webPassThroughPointerEvents()}
+        >
+          <BrandLogo variant="light" width={320} showTagline={false} />
+          <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
+          <Text style={styles.desktopTagline}>
+            Pedidos, comida local y envíos en tu ciudad.
+          </Text>
+          <View style={styles.heroPills}>
+            <View style={styles.pill}>
+              <Ionicons name="restaurant" size={14} color="#FFF" />
+              <Text style={styles.pillText}>Restaurantes</Text>
+            </View>
+            <View style={styles.pill}>
+              <Ionicons name="bicycle" size={14} color="#FFF" />
+              <Text style={styles.pillText}>Reparto local</Text>
+            </View>
+          </View>
+        </LinearGradient>
+        <ScrollView
+          style={styles.desktopFormPane}
+          contentContainerStyle={styles.desktopFormScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {formCard}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={keyboardAvoidingBehavior()}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
@@ -89,6 +217,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         <LinearGradient
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 32 }]}
+          pointerEvents={webPassThroughPointerEvents()}
         >
           <BrandLogo variant="light" width={Math.min(260, contentWidth() - 48)} showTagline={false} />
           <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
@@ -104,68 +233,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           </View>
         </LinearGradient>
 
-        <View style={[styles.formWrap, cardShadow]}>
-          <FormSection title="Iniciar sesión" variant="plain" align="center">
-            <FormField
-              hideLabel
-              label="Usuario"
-              value={username}
-              onChangeText={setUsername}
-              icon="person-outline"
-              placeholder="Usuario"
-              required
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <FormField
-              hideLabel
-              label="Contraseña"
-              value={password}
-              onChangeText={setPassword}
-              icon="lock-closed-outline"
-              placeholder="Contraseña"
-              required
-              secureTextEntry={!showPassword}
-              autoCorrect={false}
-              rightElement={
-                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={colors.textMuted}
-                  />
-                </Pressable>
-              }
-            />
-            <Button
-              title="Entrar"
-              onPress={handleLogin}
-              disabled={loading}
-              loading={loading}
-              size="lg"
-              style={styles.btn}
-            />
-            {loading && statusHint ? (
-              <Text style={styles.statusHint}>{statusHint}</Text>
-            ) : null}
-          </FormSection>
-
-          <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgot}>
-            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-          </Pressable>
-
-          <Pressable onPress={() => navigation.navigate('Register')} style={styles.link}>
-            <Text style={styles.linkText}>¿No tienes cuenta? </Text>
-            <Text style={styles.linkBold}>Regístrate</Text>
-          </Pressable>
-
-          {__DEV__ && <Text style={styles.apiHint}>Servidor: {API_URL}</Text>}
-          {__DEV__ && (
-            <Text style={styles.demoHint}>
-              Demo: cliente1 / test1234 · repartidor1 · rest_pizzas
-            </Text>
-          )}
-        </View>
+        {formCard}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -173,6 +241,39 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
+  desktopRoot: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+    minHeight: '100%',
+  },
+  desktopHero: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 48,
+    paddingVertical: 40,
+    minWidth: 320,
+  },
+  desktopTagline: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.92)',
+    marginTop: 16,
+    textAlign: 'center',
+    fontWeight: '600',
+    lineHeight: 26,
+    maxWidth: 360,
+  },
+  desktopFormPane: {
+    flex: 1,
+    maxWidth: 520,
+    backgroundColor: colors.background,
+  },
+  desktopFormScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 40,
+  },
   hero: {
     alignItems: 'center',
     paddingBottom: 48,
@@ -200,6 +301,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
+  formWrapDesktop: {
+    marginHorizontal: 0,
+    marginTop: 0,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+  },
   btn: { marginTop: 4 },
   statusHint: {
     textAlign: 'center',
@@ -220,11 +328,8 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 16,
   },
-  demoHint: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 8,
-    lineHeight: 18,
-  },
+  privacyLink: { alignItems: 'center', marginTop: 14 },
+  privacyText: { color: colors.textMuted, fontSize: 12, textDecorationLine: 'underline' },
+  panelLink: { alignItems: 'center', marginTop: 16 },
+  panelText: { color: colors.primary, fontSize: 13, fontWeight: '700', textAlign: 'center' },
 });

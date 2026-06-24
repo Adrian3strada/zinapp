@@ -1,0 +1,20 @@
+{
+  "name": "ZinApp — Delivery Zinapécuaro",
+  "short_name": "ZinApp",
+  "description": "Pedidos y envíos locales en Zinapécuaro, Michoacán.",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1E5DB8",
+  "background_color": "#FFFFFF",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "/app/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ]
+}

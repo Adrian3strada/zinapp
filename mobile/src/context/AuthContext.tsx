@@ -1,10 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 import { authApi, LoginPayload, RegisterPayload } from '../services/api';
 import { clearPushToken, registerPushNotifications } from '../services/pushRegistration';
 import { sessionEvents } from '../services/sessionEvents';
 import { tokenStorage } from '../services/tokenStorage';
 import { userCache } from '../services/userCache';
+import { redirectToPanelLogin } from '../utils/panelUrl';
 import type { User } from '../types';
 
 interface AuthContextValue {
@@ -37,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       const { data } = await authApi.me();
+      if (Platform.OS === 'web' && data.role === 'admin') {
+        await logout();
+        redirectToPanelLogin();
+        return;
+      }
       setUser(data);
       await userCache.set(data);
     } catch {
@@ -57,6 +64,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const cached = await userCache.get();
         if (cached && !cancelled) {
+          if (Platform.OS === 'web' && cached.role === 'admin') {
+            await tokenStorage.clear();
+            await userCache.clear();
+            redirectToPanelLogin();
+            return;
+          }
           setUser(cached);
           setIsLoading(false);
           refreshUser();
@@ -87,6 +100,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...data,
       username: data.username.trim().toLowerCase(),
     });
+
+    if (Platform.OS === 'web' && response.user.role === 'admin') {
+      await tokenStorage.clear();
+      await userCache.clear();
+      setUser(null);
+      redirectToPanelLogin();
+      return;
+    }
+
     await tokenStorage.setTokens(response.access, response.refresh);
     setUser(response.user);
     await userCache.set(response.user);

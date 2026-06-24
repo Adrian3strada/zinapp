@@ -55,15 +55,26 @@ export function appAlert(
   showNativeAlert(title, message, normalized);
 }
 
-/** Confirmaciones — diálogo nativo (estable al cancelar pedidos/envíos). */
+/** Confirmaciones (mismo modal que appAlert; Alert nativo no funciona en web). */
 export function appConfirm(
   title: string,
   message: string,
   onConfirm: () => void,
   confirmLabel = 'Confirmar',
 ): void {
-  Alert.alert(title, message, [
+  const buttons: AppDialogButton[] = [
     { text: 'No', style: 'cancel' },
     { text: confirmLabel, style: 'destructive', onPress: onConfirm },
-  ]);
+  ];
+
+  if (useNavigationDialog) {
+    try {
+      enqueueAppDialog(title, message, buttons, true);
+      return;
+    } catch {
+      useNavigationDialog = false;
+    }
+  }
+
+  showNativeAlert(title, message, buttons);
 }

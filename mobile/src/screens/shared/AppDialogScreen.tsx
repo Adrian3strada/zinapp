@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { closeAppDialog } from '../../navigation/navigationRef';
@@ -84,7 +84,7 @@ export default function AppDialogScreen({ route, navigation }: Props) {
   }, [isClosing, onBackdrop]);
 
   return (
-    <View style={styles.root} pointerEvents={isClosing ? 'none' : 'auto'}>
+    <View style={[styles.root, Platform.OS === 'web' && styles.rootWeb]} pointerEvents={isClosing ? 'none' : 'auto'}>
       <Pressable style={styles.backdrop} onPress={onBackdrop} accessibilityLabel="Cerrar diálogo" />
       <View style={styles.center} pointerEvents="box-none">
         <View style={[styles.card, elevatedShadow]}>
@@ -134,6 +134,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
   },
+  rootWeb: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10000,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.overlay,
@@ -170,6 +178,7 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
+    alignItems: 'stretch',
   },
   btn: {
     minHeight: 48,
@@ -181,6 +190,8 @@ const styles = StyleSheet.create({
   },
   btnCompact: {
     flex: 1,
+    minWidth: 0,
+    ...(Platform.OS === 'web' ? { alignSelf: 'stretch' as const } : {}),
   },
   btnPrimary: {
     backgroundColor: colors.primary,

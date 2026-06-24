@@ -21,6 +21,7 @@ import ScreenContainer from '../../components/ScreenContainer';
 import SearchField from '../../components/SearchField';
 import { useAuth } from '../../context/AuthContext';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
+import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { RestaurantsScreenProps } from '../../navigation/types';
 import { restaurantApi } from '../../services/api';
@@ -37,7 +38,8 @@ const AppMap = React.lazy(() => import('../../components/AppMap'));
 
 export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps) {
   const { user } = useAuth();
-  const { insets, listPaddingBottom } = useTabScreenInsets();
+  const { insets, listPaddingBottom, pagePadding } = useTabScreenInsets();
+  const { gridColumns } = useResponsiveLayout();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RestaurantCategoryKey>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -114,9 +116,11 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 
   const renderRestaurant = useCallback(
     ({ item }: { item: Restaurant }) => (
-      <RestaurantCard restaurant={item} onPress={() => openRestaurant(item)} />
+      <View style={gridColumns > 1 ? styles.gridItem : undefined}>
+        <RestaurantCard restaurant={item} onPress={() => openRestaurant(item)} />
+      </View>
     ),
-    [openRestaurant],
+    [openRestaurant, gridColumns],
   );
 
   const renderMapListItem = useCallback(
@@ -140,7 +144,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
           firstName={user?.first_name}
           topInset={insets.top}
           onProfilePress={() => navigation.navigate('Main', { screen: 'Perfil' })}
-          style={styles.hero}
+          style={[styles.hero, { marginHorizontal: -pagePadding }]}
         >
           <View style={styles.searchWrap}>
             <SearchField
@@ -190,7 +194,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
         </View>
       </>
     ),
-    [insets.top, user?.first_name, search, category, viewMode, navigation],
+    [insets.top, user?.first_name, search, category, viewMode, navigation, pagePadding],
   );
 
   const mapHeader = useMemo(
@@ -251,7 +255,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
         <FlatList
           data={filtered}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={[styles.list, listPaddingBottom()]}
+          contentContainerStyle={[styles.list, { paddingHorizontal: pagePadding }, listPaddingBottom()]}
           onRefresh={refresh}
           refreshing={refreshing}
           onEndReached={loadMore}
@@ -286,8 +290,11 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
     >
       <FlatList
         data={filtered}
+        key={`restaurants-${gridColumns}`}
+        numColumns={gridColumns}
+        columnWrapperStyle={gridColumns > 1 ? styles.gridRow : undefined}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[styles.list, listPaddingBottom()]}
+        contentContainerStyle={[styles.list, { paddingHorizontal: pagePadding }, listPaddingBottom()]}
         onRefresh={refresh}
         refreshing={refreshing}
         onEndReached={loadMore}
@@ -311,9 +318,11 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.screen, flexGrow: 1 },
+  list: { flexGrow: 1 },
+  gridRow: { gap: spacing.md, marginBottom: spacing.md },
+  gridItem: { flex: 1, minWidth: 0 },
   skeletonWrap: { flex: 1, paddingHorizontal: spacing.screen, paddingTop: spacing.lg },
-  hero: { marginHorizontal: -spacing.screen },
+  hero: {},
   searchWrap: { marginTop: spacing.lg },
   categories: { paddingVertical: spacing.lg, gap: spacing.sm, paddingRight: spacing.screen },
   chip: {

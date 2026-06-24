@@ -20,9 +20,10 @@ export function shouldRenderNativeMap(): boolean {
   return true;
 }
 
-/** OpenStreetMap en WebView cuando no hay mapa nativo (Android release sin key de Google). */
+/** OpenStreetMap en WebView (móvil) o iframe (web) cuando no hay mapa nativo. */
 export function shouldUseOsmWebMap(): boolean {
-  return Platform.OS !== 'web' && !shouldRenderNativeMap();
+  if (Platform.OS === 'web') return true;
+  return !shouldRenderNativeMap();
 }
 
 /** @deprecated Usa shouldRenderNativeMap */

@@ -72,14 +72,19 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       [shell.center.latitude, shell.center.longitude],
       shell.zoom
     );
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
 
     function postMessage(payload) {
+      var json = JSON.stringify(payload);
       if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+        window.ReactNativeWebView.postMessage(json);
+      }
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(json, '*');
       }
     }
 
@@ -209,6 +214,21 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       }
       map.panTo([lat, lng]);
     };
+
+    window.addEventListener('message', function(event) {
+      var data = event.data;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch (e) { return; }
+      }
+      if (!data || !data.type) return;
+      if (data.type === 'setMapData' && data.payload) {
+        var payload = typeof data.payload === 'string' ? data.payload : JSON.stringify(data.payload);
+        if (window.setMapData) window.setMapData(payload);
+      }
+      if (data.type === 'setPinPosition') {
+        if (window.setPinPosition) window.setPinPosition(data.latitude, data.longitude);
+      }
+    });
 
     window.setMapData(${initial});
     postMessage({ type: 'ready' });

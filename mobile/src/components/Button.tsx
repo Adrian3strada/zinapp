@@ -6,13 +6,13 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  View,
   ViewStyle,
 } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { HIT_SLOP } from '../theme/spacing';
 import { cardShadow, softShadow } from '../theme/shadows';
+import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
   title: string;
@@ -22,6 +22,15 @@ interface Props {
   loading?: boolean;
   style?: ViewStyle;
   size?: 'md' | 'lg';
+}
+
+/** Equal-width buttons in a row (RN Web needs minWidth + stretch). */
+function flexChildStyle(style?: ViewStyle): ViewStyle {
+  const flat = StyleSheet.flatten(style);
+  if (!flat || (flat.flex !== 1 && flat.flexGrow !== 1)) return {};
+  return Platform.OS === 'web'
+    ? { flex: 1, minWidth: 0, alignSelf: 'stretch' }
+    : { flex: 1, minWidth: 0 };
 }
 
 export default function Button({
@@ -34,6 +43,7 @@ export default function Button({
   size = 'md',
 }: Props) {
   const isDisabled = disabled || loading;
+  const rowChild = flexChildStyle(style);
 
   const inner = loading ? (
     <ActivityIndicator
@@ -62,6 +72,7 @@ export default function Button({
           styles.base,
           styles[size],
           styles.primaryWrap,
+          rowChild,
           softShadow,
           pressed && styles.pressed,
           isDisabled && styles.disabled,
@@ -72,7 +83,12 @@ export default function Button({
           colors={[colors.primary, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[styles.primaryGradient, size === 'lg' && styles.primaryGradientLg]}
+          pointerEvents={webPassThroughPointerEvents()}
+          style={[
+            styles.primaryGradient,
+            size === 'lg' && styles.primaryGradientLg,
+            rowChild.flex === 1 && styles.primaryGradientFlex,
+          ]}
         >
           {inner}
         </LinearGradient>
@@ -94,6 +110,7 @@ export default function Button({
         styles.base,
         styles[size],
         styles[variant],
+        rowChild,
         variant === 'primary' && softShadow,
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
@@ -123,6 +140,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 16,
+    minHeight: 48,
+  },
+  primaryGradientFlex: {
+    width: '100%',
+    flex: 1,
   },
   primaryGradientLg: { paddingVertical: 18, paddingHorizontal: 24 },
   primary: { backgroundColor: colors.primary },

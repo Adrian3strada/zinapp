@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
@@ -22,6 +21,7 @@ import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Product, Restaurant } from '../../types';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
+import { impactLight } from '../../utils/haptics';
 import { resolveMediaUrl } from '../../utils/media';
 import { buildMenuBannerMeta } from '../../utils/restaurantMeta';
 import { FLATLIST_TUNING } from '../../utils/responsive';
@@ -96,7 +96,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const handleAdd = useCallback((product: Product) => {
     try {
       addItem(product);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      void impactLight();
     } catch {
       // Evita cierre nativo si algo falla al agregar
     }

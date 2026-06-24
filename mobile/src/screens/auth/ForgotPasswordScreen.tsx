@@ -42,9 +42,10 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         return;
       }
       setSubmitted(true);
-      if (!showWhatsAppHelp) {
-        appAlert('Solicitud recibida', data.detail);
+      if (data.password_reset_via_whatsapp || showWhatsAppHelp) {
+        return;
       }
+      appAlert('Solicitud recibida', data.detail ?? data.hint ?? 'Revisa tu correo o contacta soporte.');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo procesar la solicitud.'));
     } finally {
@@ -108,7 +109,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
           )}
         </FormSection>
 
-        {submitted && showWhatsAppHelp && supportPhone && (
+        {submitted && (showWhatsAppHelp || config.password_reset_via_whatsapp) && supportPhone && (
           <View style={styles.whatsAppBlock}>
             <Text style={styles.whatsAppHint}>
               Toca el botón para escribirnos por WhatsApp con tu usuario. Te respondemos lo antes posible.

@@ -27,7 +27,7 @@ interface Props {
   onMarkerPress?: (markerId: string) => void;
 }
 
-/** Mapa OpenStreetMap en WebView — funciona en Android release sin Google Maps API key. */
+/** Mapa OpenStreetMap en WebView (móvil) o iframe (web). */
 export default function OsmWebMap({
   height = 220,
   style,
@@ -64,10 +64,12 @@ export default function OsmWebMap({
         pinCoordinate,
         followMarkerId,
       }),
-    [mapCenter, zoom, interactive, pinCoordinate],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mapCenter, zoom, interactive, pinCoordinate?.latitude, pinCoordinate?.longitude],
   );
 
   const webRef = useRef<WebView>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const livePayload = useMemo(
     () => buildOsmMapLivePayload({ markers, polylines, followMarkerId, fitAll: !followMarkerId }),
@@ -75,8 +77,28 @@ export default function OsmWebMap({
   );
 
   const pushLiveData = useCallback((payload: string) => {
+    if (Platform.OS === 'web') {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ type: 'setMapData', payload: JSON.parse(payload) }),
+        '*',
+      );
+      return;
+    }
     webRef.current?.injectJavaScript(
       `window.setMapData && window.setMapData(${payload}); true;`,
+    );
+  }, []);
+
+  const pushPinPosition = useCallback((latitude: number, longitude: number) => {
+    if (Platform.OS === 'web') {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ type: 'setPinPosition', latitude, longitude }),
+        '*',
+      );
+      return;
+    }
+    webRef.current?.injectJavaScript(
+      `window.setPinPosition && window.setPinPosition(${latitude}, ${longitude}); true;`,
     );
   }, []);
 
@@ -87,16 +109,13 @@ export default function OsmWebMap({
 
   useEffect(() => {
     if (!interactive || !isValidCoordinate(pinCoordinate) || !mapReady) return;
-    const { latitude, longitude } = pinCoordinate;
-    webRef.current?.injectJavaScript(
-      `window.setPinPosition && window.setPinPosition(${latitude}, ${longitude}); true;`,
-    );
-  }, [interactive, pinCoordinate?.latitude, pinCoordinate?.longitude, mapReady]);
+    pushPinPosition(pinCoordinate.latitude, pinCoordinate.longitude);
+  }, [interactive, pinCoordinate?.latitude, pinCoordinate?.longitude, mapReady, pushPinPosition]);
 
   const handleMessage = useCallback(
-    (event: { nativeEvent: { data: string } }) => {
+    (raw: string) => {
       try {
-        const data = JSON.parse(event.nativeEvent.data) as {
+        const data = JSON.parse(raw) as {
           type?: string;
           latitude?: number;
           longitude?: number;
@@ -124,6 +143,48 @@ export default function OsmWebMap({
     [onCoordinateChange, onMarkerPress],
   );
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const onWindowMessage = (event: MessageEvent) => {
+      if (typeof event.data !== 'string') return;
+      handleMessage(event.data);
+    };
+    window.addEventListener('message', onWindowMessage);
+    return () => window.removeEventListener('message', onWindowMessage);
+  }, [handleMessage]);
+
+  useEffect(() => {
+    setMapReady(false);
+  }, [html]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[
+          styles.wrapper,
+          { height },
+          !interactive ? { pointerEvents: 'box-none' as const } : null,
+          cardShadow,
+          style,
+        ]}
+      >
+        <iframe
+          ref={iframeRef}
+          title="Mapa ZinApp"
+          srcDoc={html}
+          style={{
+            border: 0,
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            pointerEvents: interactive ? 'auto' : 'none',
+          }}
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.wrapper, { height }, cardShadow, style]}>
       <WebView
@@ -139,7 +200,7 @@ export default function OsmWebMap({
         domStorageEnabled
         mixedContentMode="always"
         setSupportMultipleWindows={false}
-        onMessage={handleMessage}
+        onMessage={(event) => handleMessage(event.nativeEvent.data)}
         {...(Platform.OS === 'android' ? { androidLayerType: 'hardware' as const } : {})}
       />
     </View>

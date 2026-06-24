@@ -17,19 +17,23 @@ import {
   View,
 } from 'react-native';
 import { appAlert, appConfirm } from '../../utils/appAlert';
+import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 
 import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
+import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
+import { useRestaurantContext } from '../../context/RestaurantContext';
 import { productApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Product, Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { appendImage } from '../../utils/imagePicker';
@@ -99,7 +103,9 @@ const ProductManageRow = React.memo(function ProductManageRow({
 });
 
 export default function RestaurantManageScreen() {
+  const { isDesktopWeb } = useResponsiveLayout();
   const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
+  const { refresh: refreshRestaurant } = useRestaurantContext();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,7 +231,7 @@ export default function RestaurantManageScreen() {
       fd.append('price', editor.price.trim());
       fd.append('is_available', editor.is_available ? 'true' : 'false');
       if (editor.imageUri) {
-        appendImage(fd, 'image', editor.imageUri, 'product.jpg');
+        await appendImage(fd, 'image', editor.imageUri, 'product.jpg');
       }
       if (editor.id) {
         await productApi.update(editor.id, fd);
@@ -235,6 +241,7 @@ export default function RestaurantManageScreen() {
       }
       setEditor(null);
       await load();
+      await refreshRestaurant();
       appAlert('Listo', editor.id ? 'Producto actualizado' : 'Producto agregado');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el producto'));
@@ -254,6 +261,7 @@ export default function RestaurantManageScreen() {
           await productApi.delete(editor.id!);
           setEditor(null);
           await load();
+          await refreshRestaurant();
           appAlert('Listo', 'Producto eliminado');
         } catch (err) {
           appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
@@ -278,7 +286,7 @@ export default function RestaurantManageScreen() {
     <ScreenContainer error={error} onRetry={load}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={keyboardAvoidingBehavior()}
         keyboardVerticalOffset={keyboardHeaderless()}
       >
         <ScrollView
@@ -289,12 +297,18 @@ export default function RestaurantManageScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={load}
+              onRefresh={() => {
+                void load();
+                void refreshRestaurant();
+              }}
               colors={[colors.primary]}
               tintColor={colors.primary}
             />
           }
         >
+          {restaurant?.setup_status ? (
+            <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
+          ) : null}
           <LinearGradient
             colors={[colors.gradientStart, colors.gradientEnd]}
             style={[styles.hero, { paddingTop: insets.top + spacing.md }]}
@@ -362,11 +376,17 @@ export default function RestaurantManageScreen() {
       <Modal visible={!!editor} animationType="slide" transparent onRequestClose={closeEditor}>
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={keyboardAvoidingBehavior()}
         >
-          <View style={styles.modalOverlay}>
+          <View style={[styles.modalOverlay, isDesktopWeb && styles.modalOverlayDesktop]}>
             <Pressable style={styles.modalBackdrop} onPress={closeEditor} />
-            <View style={[styles.modal, { paddingBottom: insets.bottom + 12 }]}>
+            <View
+              style={[
+                styles.modal,
+                isDesktopWeb && styles.modalDesktop,
+                { paddingBottom: insets.bottom + 12 },
+              ]}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
                   {editor?.id ? 'Editar producto' : 'Nuevo producto'}
@@ -382,10 +402,11 @@ export default function RestaurantManageScreen() {
               </View>
 
               <ScrollView
+                style={styles.modalBody}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.modalScroll, { paddingBottom: insets.bottom + 16 }]}
+                contentContainerStyle={styles.modalScroll}
               >
                 <Pressable style={styles.photoBox} onPress={pickImage} hitSlop={HIT_SLOP}>
                   {editor?.imageUri || editor?.image_url ? (
@@ -443,7 +464,9 @@ export default function RestaurantManageScreen() {
                     trackColor={{ true: colors.primary, false: colors.border }}
                   />
                 </View>
+              </ScrollView>
 
+              <View style={styles.modalFooter}>
                 <View style={styles.modalActions}>
                   <Button
                     title="Cancelar"
@@ -467,7 +490,7 @@ export default function RestaurantManageScreen() {
                     style={styles.deleteBtn}
                   />
                 )}
-              </ScrollView>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -575,6 +598,10 @@ const styles = StyleSheet.create({
   productDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   productPrice: { color: colors.primary, fontWeight: '800', marginTop: 4 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  modalOverlayDesktop: {
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -587,6 +614,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     maxHeight: '92%',
   },
+  modalDesktop: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    borderRadius: 24,
+    marginBottom: 0,
+  },
+  modalBody: { flexGrow: 0, flexShrink: 1 },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -621,14 +656,16 @@ const styles = StyleSheet.create({
   availabilityInfo: { flex: 1, paddingRight: 12 },
   availabilityLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   availabilityHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: spacing.lg,
+  modalFooter: {
     paddingTop: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  modalActionBtn: { flex: 1 },
-  deleteBtn: { marginTop: 10 },
+  modalActions: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  modalActionBtn: { flex: 1, minWidth: 0 },
+  deleteBtn: { marginTop: 10, alignSelf: 'stretch' },
 });

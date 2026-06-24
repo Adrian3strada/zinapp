@@ -21,8 +21,10 @@ import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner'
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
 import ProfileAvatarPicker from '../../components/ProfileAvatarPicker';
+import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
 import VehicleTypePicker from '../../components/VehicleTypePicker';
+import { useOptionalRestaurantContext } from '../../context/RestaurantContext';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
 import { RESTAURANT_CATEGORIES, RESTAURANT_CATEGORY_LABELS } from '../../utils/restaurantCategories';
@@ -33,6 +35,7 @@ import { cardShadow } from '../../theme/shadows';
 import type { DeliveryProfile, Restaurant } from '../../types';
 import type { DriverTabParamList } from '../../navigation/types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
 import { restaurantHasTransferInfo } from '../../config/payments';
 import { appendImage, pickImageFromLibrary } from '../../utils/imagePicker';
@@ -62,6 +65,7 @@ function toApiTime(value: string): string | null {
 
 export default function ProfileScreen() {
   const { user, refreshUser, logout } = useAuth();
+  const restaurantCtx = useOptionalRestaurantContext();
   const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
   const driverTabNav = useNavigation<BottomTabNavigationProp<DriverTabParamList>>();
   const [form, setForm] = useState({
@@ -179,12 +183,20 @@ export default function ProfileScreen() {
 
   const handleToggleAcceptingOrders = async (value: boolean) => {
     if (!restaurant || togglingOrders) return;
+    if (!restaurant.is_active) {
+      appAlert(
+        'Local pendiente',
+        'Tu negocio aún no está activo en la app. Completa menú y perfil; cuando esté listo, el equipo ZinApp lo publicará.',
+      );
+      return;
+    }
     setAcceptingOrders(value);
     setTogglingOrders(true);
     try {
       const { data } = await restaurantApi.patch(restaurant.id, { accepting_orders: value });
       setRestaurant(data);
       setAcceptingOrders(data.accepting_orders !== false);
+      await restaurantCtx?.refresh();
     } catch (err) {
       setAcceptingOrders(!value);
       appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar el estado del local'));
@@ -202,7 +214,7 @@ export default function ProfileScreen() {
       fd.append('email', form.email.trim());
       fd.append('phone', form.phone.trim());
       fd.append('address', form.address.trim());
-      if (avatarUri) appendImage(fd, 'avatar', avatarUri, 'avatar.jpg');
+      if (avatarUri) await appendImage(fd, 'avatar', avatarUri, 'avatar.jpg');
       await authApi.updateMeForm(fd);
       await refreshUser();
       setAvatarUri(null);
@@ -273,11 +285,12 @@ export default function ProfileScreen() {
       if (openTime) fd.append('opening_time', openTime);
       if (closeTime) fd.append('closing_time', closeTime);
       if (restaurantImageUri) {
-        appendImage(fd, 'image', restaurantImageUri, 'restaurant.jpg');
+        await appendImage(fd, 'image', restaurantImageUri, 'restaurant.jpg');
       }
       const { data } = await restaurantApi.update(restaurant.id, fd);
       setRestaurant(data);
       setRestaurantImageUri(null);
+      await restaurantCtx?.refresh();
       appAlert('Negocio actualizado');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el negocio'));
@@ -315,7 +328,7 @@ export default function ProfileScreen() {
     <ScreenContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={keyboardAvoidingBehavior()}
         keyboardVerticalOffset={keyboardHeaderless()}
       >
         <ScrollView
@@ -419,6 +432,12 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          {user.role === 'restaurant' && restaurant?.setup_status && (
+            <View style={[styles.card, styles.cardOverlap]}>
+              <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
+            </View>
+          )}
+
           {user.role === 'restaurant' && !restaurant && (
             <View style={styles.card}>
               <EmptyState
@@ -516,15 +535,17 @@ export default function ProfileScreen() {
                 <View style={styles.ordersToggleInfo}>
                   <Text style={styles.ordersToggleLabel}>Recibiendo pedidos</Text>
                   <Text style={styles.ordersToggleHint}>
-                    {acceptingOrders
-                      ? 'Los clientes pueden pedir a tu local.'
-                      : 'Tu local aparece como cerrado en la app.'}
+                    {!restaurant.is_active
+                      ? 'Disponible cuando el equipo active tu local en la app.'
+                      : acceptingOrders
+                        ? 'Los clientes pueden pedir a tu local.'
+                        : 'Tu local aparece como cerrado en la app.'}
                   </Text>
                 </View>
                 <Switch
-                  value={acceptingOrders}
+                  value={acceptingOrders && restaurant.is_active}
                   onValueChange={handleToggleAcceptingOrders}
-                  disabled={togglingOrders}
+                  disabled={togglingOrders || !restaurant.is_active}
                   trackColor={{ true: colors.primary, false: colors.border }}
                 />
               </View>
