@@ -31,6 +31,7 @@ interface BuildOsmMapHtmlOptions {
   polylines?: OsmMapPolyline[];
   interactive?: boolean;
   pinCoordinate?: MapCoordinate | null;
+  pinType?: OsmPinType;
   followMarkerId?: string | null;
 }
 
@@ -51,10 +52,11 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     polylines = [],
     interactive = false,
     pinCoordinate = null,
+    pinType = 'delivery',
     followMarkerId = null,
   } = options;
 
-  const shell = JSON.stringify({ center, zoom, interactive, pinCoordinate });
+  const shell = JSON.stringify({ center, zoom, interactive, pinCoordinate, pinType });
   const initial = buildOsmMapLivePayload({ markers, polylines, followMarkerId, fitAll: true });
 
   return `<!DOCTYPE html>
@@ -148,9 +150,22 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       if (e.originalEvent) followPaused = true;
     });
 
+    function pinLayout(size) {
+      var totalHeight = size + 10;
+      return {
+        iconSize: [size, totalHeight],
+        iconAnchor: [size / 2, totalHeight],
+      };
+    }
+
+    function pickerPinIcon(pinType) {
+      return createPinIcon({ id: 'pin', pinType: pinType || 'delivery' });
+    }
+
     if (shell.pinCoordinate) {
       pinMarker = L.marker([shell.pinCoordinate.latitude, shell.pinCoordinate.longitude], {
-        draggable: shell.interactive
+        draggable: shell.interactive,
+        icon: pickerPinIcon(shell.pinType),
       }).addTo(map);
       if (shell.interactive) {
         pinMarker.on('dragend', function(e) {
@@ -190,6 +205,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
 
     function createPinIcon(m) {
       var style = pinStyleFor(m);
+      var layout = pinLayout(style.size);
       var pulseClass = m.pulse ? ' zin-pulse' : '';
       var html =
         '<div class="zin-pin' + pulseClass + '" style="--pin-color:' + style.color + ';--pin-size:' + style.size + 'px">' +
@@ -198,8 +214,8 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       return L.divIcon({
         className: 'zin-pin-wrap',
         html: html,
-        iconSize: [style.size, style.size + 10],
-        iconAnchor: [style.size / 2, style.size + 8],
+        iconSize: layout.iconSize,
+        iconAnchor: layout.iconAnchor,
       });
     }
 
@@ -277,7 +293,10 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         if (pinMarker) {
           pinMarker.setLatLng(e.latlng);
         } else {
-          pinMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+          pinMarker = L.marker(e.latlng, {
+            draggable: true,
+            icon: pickerPinIcon(shell.pinType),
+          }).addTo(map);
           pinMarker.on('dragend', function(ev) {
             var p = ev.target.getLatLng();
             postMove(p.lat, p.lng);
@@ -292,7 +311,10 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       if (pinMarker) {
         pinMarker.setLatLng([lat, lng]);
       } else {
-        pinMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        pinMarker = L.marker([lat, lng], {
+          draggable: true,
+          icon: pickerPinIcon(shell.pinType),
+        }).addTo(map);
         pinMarker.on('dragend', function(ev) {
           var p = ev.target.getLatLng();
           postMove(p.lat, p.lng);

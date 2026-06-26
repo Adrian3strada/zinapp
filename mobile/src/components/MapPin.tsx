@@ -23,7 +23,7 @@ export default function MapPin({ type }: Props) {
   const { color, emoji, size } = PIN_CONFIG[type];
 
   return (
-    <View style={[styles.wrap, { width: size, height: size + 6 }]}>
+    <View style={[styles.wrap, { width: size, height: size + 10 }]}>
       <View style={[styles.bubble, { backgroundColor: color, width: size, height: size }]}>
         <Text style={[styles.emoji, { fontSize: size * 0.42 }]}>{emoji}</Text>
       </View>

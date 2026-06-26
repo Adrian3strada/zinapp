@@ -6,6 +6,7 @@ import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
 import type { MapCoordinate } from '../utils/maps';
 import { isValidCoordinate, ZINAPECUARO_REGION } from '../utils/maps';
+import { roundCoordinate } from '../utils/coords';
 import { shouldRenderNativeMap, shouldUseOsmWebMap } from '../utils/mapProvider';
 import { mapHeight } from '../utils/responsive';
 import MapErrorBoundary from './MapErrorBoundary';
@@ -57,9 +58,11 @@ export default function AddressPinPicker({
   }, [safeCoordinate?.latitude, safeCoordinate?.longitude]);
 
   const applyCoordinate = (coord: MapCoordinate) => {
-    if (isValidCoordinate(coord)) {
-      onCoordinateChange(coord);
-    }
+    if (!isValidCoordinate(coord)) return;
+    onCoordinateChange({
+      latitude: parseFloat(roundCoordinate(coord.latitude)),
+      longitude: parseFloat(roundCoordinate(coord.longitude)),
+    });
   };
 
   if (!shouldRenderNativeMap()) {
@@ -71,6 +74,7 @@ export default function AddressPinPicker({
           <OsmWebMap
             height={mapHeightValue}
             pinCoordinate={safeCoordinate}
+            pinType={pinType}
             interactive
             onCoordinateChange={applyCoordinate}
           />

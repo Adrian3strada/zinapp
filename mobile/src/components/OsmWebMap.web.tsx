@@ -5,6 +5,7 @@ import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
 import type { MapCoordinate } from '../utils/maps';
 import { isValidCoordinate, ZINAPECUARO_REGION } from '../utils/maps';
+import type { OsmPinType } from '../utils/osmMapHtml';
 import {
   buildOsmMapHtml,
   buildOsmMapLivePayload,
@@ -21,6 +22,7 @@ interface Props {
   polylines?: OsmMapPolyline[];
   interactive?: boolean;
   pinCoordinate?: MapCoordinate | null;
+  pinType?: OsmPinType;
   followMarkerId?: string | null;
   onCoordinateChange?: (coord: MapCoordinate) => void;
   onMarkerPress?: (markerId: string) => void;
@@ -36,6 +38,7 @@ export default function OsmWebMap({
   polylines = [],
   interactive = false,
   pinCoordinate = null,
+  pinType = 'delivery',
   followMarkerId = null,
   onCoordinateChange,
   onMarkerPress,
@@ -61,10 +64,11 @@ export default function OsmWebMap({
         polylines,
         interactive,
         pinCoordinate,
+        pinType,
         followMarkerId,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mapCenter, zoom, interactive, pinCoordinate?.latitude, pinCoordinate?.longitude],
+    [mapCenter, zoom, interactive, pinType, pinCoordinate?.latitude, pinCoordinate?.longitude],
   );
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);

@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 import type { MapCoordinate } from '../utils/maps';
 import { isValidCoordinate } from '../utils/maps';
+import { roundCoordinate } from '../utils/coords';
 import { mapHeight } from '../utils/responsive';
 import MapErrorBoundary from './MapErrorBoundary';
 import type { MapPinType } from './MapPin';
@@ -22,6 +23,7 @@ interface Props {
 export default function AddressPinPicker({
   title,
   hint = 'Toca el mapa o arrastra el pin para ajustar',
+  pinType = 'delivery',
   coordinate,
   onCoordinateChange,
   height,
@@ -30,9 +32,11 @@ export default function AddressPinPicker({
   const safeCoordinate = isValidCoordinate(coordinate) ? coordinate : null;
 
   const applyCoordinate = (coord: MapCoordinate) => {
-    if (isValidCoordinate(coord)) {
-      onCoordinateChange(coord);
-    }
+    if (!isValidCoordinate(coord)) return;
+    onCoordinateChange({
+      latitude: parseFloat(roundCoordinate(coord.latitude)),
+      longitude: parseFloat(roundCoordinate(coord.longitude)),
+    });
   };
 
   return (
@@ -43,6 +47,7 @@ export default function AddressPinPicker({
         <OsmWebMap
           height={mapHeightValue}
           pinCoordinate={safeCoordinate}
+          pinType={pinType}
           interactive
           onCoordinateChange={applyCoordinate}
         />
