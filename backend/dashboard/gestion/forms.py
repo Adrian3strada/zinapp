@@ -179,6 +179,8 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
             user.set_password(password)
         user.role = self.cleaned_data['role']
         user.phone = self.cleaned_data.get('phone', '')
+        if user.role == UserRole.ADMIN:
+            user.is_staff = True
         email = self.cleaned_data.get('email') or ''
         if email:
             user.email = email

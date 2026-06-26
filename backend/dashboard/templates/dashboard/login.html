@@ -18,7 +18,13 @@
 
       {% if form.errors %}
         <div class="alert alert-error">
-          Usuario o contraseña incorrectos. Intenta de nuevo.
+          {% if form.non_field_errors %}
+            {% for error in form.non_field_errors %}
+              {{ error }}{% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+          {% else %}
+            Usuario o contraseña incorrectos. Intenta de nuevo.
+          {% endif %}
         </div>
       {% endif %}
 

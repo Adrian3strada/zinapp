@@ -13,6 +13,7 @@ from orders.models import Order, OrderStatus
 from restaurants.models import Restaurant
 from restaurants.setup import restaurant_setup_status
 
+from .access import can_access_panel
 from .mixins import PanelAccessMixin
 from .services import get_dashboard_stats, get_order_timeline
 
@@ -30,6 +31,27 @@ class PanelLoginView(LoginView):
         ):
             return next_url
         return reverse_lazy('dashboard:home')
+
+    def form_valid(self, form):
+        user = form.get_user()
+        if not can_access_panel(user):
+            form.add_error(
+                None,
+                'Esta cuenta no tiene acceso al panel. Usa un usuario administrador.',
+            )
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+    def dispatch(self, request, *args, **kwargs):
+        if (
+            request.user.is_authenticated
+            and can_access_panel(request.user)
+            and self.redirect_authenticated_user
+        ):
+            return redirect(self.get_success_url())
+        if request.user.is_authenticated and not can_access_panel(request.user):
+            logout(request)
+        return super().dispatch(request, *args, **kwargs)
 
 
 class PanelLogoutView(LogoutView):

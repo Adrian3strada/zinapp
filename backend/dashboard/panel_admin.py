@@ -6,6 +6,9 @@ from django.shortcuts import redirect
 from django.urls import reverse
 
 
+from dashboard.access import can_access_panel
+
+
 class PanelAdminSite(AdminSite):
     """Admin de Django integrado al panel de operaciones (sin /admin/ público)."""
 
@@ -15,10 +18,7 @@ class PanelAdminSite(AdminSite):
     enable_nav_sidebar = False
 
     def has_permission(self, request):
-        user = request.user
-        return user.is_active and user.is_authenticated and (
-            user.is_staff or user.is_superuser or getattr(user, 'is_admin_user', False)
-        )
+        return can_access_panel(request.user)
 
     def login(self, request, extra_context=None):
         login_url = reverse('dashboard:login')
