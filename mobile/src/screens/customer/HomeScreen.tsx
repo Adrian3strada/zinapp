@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <ServiceSectionCard
           title="Comida"
           subtitle="Locales de tu ciudad"
-          emoji="🍽️"
+          icon="restaurant"
           colors={[colors.gradientStart, colors.gradientEnd]}
           badge={activeOrderCount}
           onPress={() => navigation.navigate('Comida')}
@@ -99,7 +99,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <ServiceSectionCard
           title="Servicios"
           subtitle="Peluquerías, talleres y más"
-          emoji="💇"
+          icon="storefront-outline"
           colors={[colors.serviceStart, colors.serviceEnd]}
           onPress={() => navigation.navigate('Servicios')}
         />

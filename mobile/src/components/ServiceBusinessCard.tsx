@@ -7,10 +7,9 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { LocalService } from '../types';
-import { resolveMediaUrl } from '../utils/media';
 import { openSocialLink } from '../utils/socialLinks';
 import { openWhatsApp } from '../utils/whatsapp';
-import FoodImage from './FoodImage';
+import ServiceLogo from './ServiceLogo';
 
 interface Props {
   service: LocalService;
@@ -36,7 +35,6 @@ function MetaRow({
 }
 
 export default function ServiceBusinessCard({ service }: Props) {
-  const logoUri = resolveMediaUrl(service.logo_url ?? service.logo);
   const phone = service.phone?.trim();
   const whatsapp = (service.whatsapp?.trim() || phone) ?? '';
   const address = service.address?.trim();
@@ -83,11 +81,11 @@ export default function ServiceBusinessCard({ service }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <FoodImage
-          emoji="💼"
-          color={colors.secondary}
+        <ServiceLogo
+          category={service.category}
+          logoUrl={service.logo_url}
+          logo={service.logo}
           size="md"
-          imageUri={logoUri}
           style={styles.logo}
         />
         <View style={styles.info}>

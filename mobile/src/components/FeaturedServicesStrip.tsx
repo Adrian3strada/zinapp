@@ -2,12 +2,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import ServiceLogo from './ServiceLogo';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { LocalService } from '../types';
-import { resolveMediaUrl } from '../utils/media';
-import FoodImage from './FoodImage';
 
 interface Props {
   services: LocalService[];
@@ -22,15 +21,13 @@ function FeaturedServiceCard({
   service: LocalService;
   onPress: () => void;
 }) {
-  const logoUri = resolveMediaUrl(service.logo_url ?? service.logo);
-
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
-      <FoodImage
-        emoji="💼"
-        color={colors.serviceStart}
+      <ServiceLogo
+        category={service.category}
+        logoUrl={service.logo_url}
+        logo={service.logo}
         size="sm"
-        imageUri={logoUri}
         style={styles.logo}
       />
       <Text style={styles.name} numberOfLines={2}>

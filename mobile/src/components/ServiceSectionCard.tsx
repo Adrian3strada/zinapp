@@ -6,12 +6,13 @@ import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
 import { softShadow } from '../theme/shadows';
+import type { ServiceCategoryIcon } from '../utils/serviceCategories';
 import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
   title: string;
   subtitle: string;
-  emoji: string;
+  icon: ServiceCategoryIcon;
   colors: [string, string];
   onPress: () => void;
   style?: ViewStyle;
@@ -21,7 +22,7 @@ interface Props {
 export default function ServiceSectionCard({
   title,
   subtitle,
-  emoji,
+  icon,
   colors: gradientColors,
   onPress,
   style,
@@ -41,8 +42,8 @@ export default function ServiceSectionCard({
         style={styles.gradient}
       >
         <View style={styles.decor} />
-        <View style={styles.emojiCircle}>
-          <Text style={styles.emoji}>{emoji}</Text>
+        <View style={styles.iconCircle}>
+          <Ionicons name={icon} size={26} color="#FFF" />
           {badge != null && badge > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     right: -30,
     top: -30,
   },
-  emojiCircle: {
+  iconCircle: {
     width: 52,
     height: 52,
     borderRadius: 16,
@@ -112,7 +113,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
-  emoji: { fontSize: 26 },
   textBlock: { flex: 1 },
   title: { fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: -0.3 },
   subtitle: {

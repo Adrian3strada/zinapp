@@ -135,7 +135,11 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
               style={[styles.chip, category === cat.key && styles.chipActive]}
               onPress={() => setCategory(cat.key)}
             >
-              <Text style={styles.chipEmoji}>{cat.emoji}</Text>
+              <Ionicons
+                name={cat.icon}
+                size={16}
+                color={category === cat.key ? '#FFF' : colors.textSecondary}
+              />
               <Text style={[styles.chipText, category === cat.key && styles.chipTextActive]}>
                 {cat.label}
               </Text>
@@ -238,7 +242,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.serviceStart,
     borderColor: colors.serviceStart,
   },
-  chipEmoji: { fontSize: 15 },
   chipText: {
     fontSize: 14,
     fontWeight: '700',
