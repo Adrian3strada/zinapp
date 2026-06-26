@@ -8,6 +8,7 @@ import { spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { LocalService } from '../types';
 import { resolveMediaUrl } from '../utils/media';
+import { openSocialLink } from '../utils/socialLinks';
 import { openWhatsApp } from '../utils/whatsapp';
 import FoodImage from './FoodImage';
 
@@ -19,10 +20,29 @@ function contactDigits(phone?: string | null): string {
   return (phone ?? '').replace(/\D/g, '');
 }
 
+function MetaRow({
+  icon,
+  text,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+}) {
+  return (
+    <View style={styles.metaRow}>
+      <Ionicons name={icon} size={14} color={colors.textMuted} />
+      <Text style={styles.metaText}>{text}</Text>
+    </View>
+  );
+}
+
 export default function ServiceBusinessCard({ service }: Props) {
   const logoUri = resolveMediaUrl(service.logo_url ?? service.logo);
   const phone = service.phone?.trim();
   const whatsapp = (service.whatsapp?.trim() || phone) ?? '';
+  const address = service.address?.trim();
+  const schedule = service.schedule?.trim();
+  const instagram = service.instagram?.trim();
+  const facebook = service.facebook?.trim();
 
   const handleCall = async () => {
     if (!phone) {
@@ -52,6 +72,14 @@ export default function ServiceBusinessCard({ service }: Props) {
     }
   };
 
+  const handleSocial = async (platform: 'instagram' | 'facebook', value?: string) => {
+    try {
+      await openSocialLink(platform, value);
+    } catch (err) {
+      appAlert(platform === 'instagram' ? 'Instagram' : 'Facebook', err instanceof Error ? err.message : 'No se pudo abrir.');
+    }
+  };
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -63,12 +91,24 @@ export default function ServiceBusinessCard({ service }: Props) {
           style={styles.logo}
         />
         <View style={styles.info}>
+          {!!service.category_display && (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{service.category_display}</Text>
+            </View>
+          )}
           <Text style={styles.name}>{service.name}</Text>
           <Text style={styles.description} numberOfLines={4}>
             {service.description?.trim() || 'Servicio local en Zinapécuaro'}
           </Text>
         </View>
       </View>
+
+      {(schedule || address) && (
+        <View style={styles.metaBlock}>
+          {schedule ? <MetaRow icon="time-outline" text={schedule} /> : null}
+          {address ? <MetaRow icon="location-outline" text={address} /> : null}
+        </View>
+      )}
 
       <View style={styles.actions}>
         {phone ? (
@@ -83,7 +123,19 @@ export default function ServiceBusinessCard({ service }: Props) {
             <Text style={styles.actionText}>WhatsApp</Text>
           </Pressable>
         ) : null}
-        {!phone && !whatsapp ? (
+        {instagram ? (
+          <Pressable style={[styles.actionBtn, styles.socialBtn]} onPress={() => handleSocial('instagram', instagram)}>
+            <Ionicons name="logo-instagram" size={18} color="#E1306C" />
+            <Text style={styles.actionText}>Instagram</Text>
+          </Pressable>
+        ) : null}
+        {facebook ? (
+          <Pressable style={[styles.actionBtn, styles.socialBtn]} onPress={() => handleSocial('facebook', facebook)}>
+            <Ionicons name="logo-facebook" size={18} color="#1877F2" />
+            <Text style={styles.actionText}>Facebook</Text>
+          </Pressable>
+        ) : null}
+        {!phone && !whatsapp && !instagram && !facebook ? (
           <Text style={styles.noContact}>Sin datos de contacto por ahora</Text>
         ) : null}
       </View>
@@ -110,6 +162,20 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   info: { flex: 1, gap: 6 },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.serviceStart + '18',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.serviceEnd,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   name: {
     fontSize: 18,
     fontWeight: '800',
@@ -119,6 +185,22 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 20,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  metaBlock: {
+    gap: 6,
+    paddingTop: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  metaText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
     color: colors.textSecondary,
     fontWeight: '500',
   },
@@ -141,6 +223,9 @@ const styles = StyleSheet.create({
   whatsappBtn: {
     backgroundColor: '#25D36618',
     borderColor: '#25D36644',
+  },
+  socialBtn: {
+    backgroundColor: colors.background,
   },
   actionText: {
     fontSize: 14,

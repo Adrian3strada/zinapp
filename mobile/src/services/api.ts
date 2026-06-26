@@ -365,7 +365,10 @@ export const couponApi = {
 };
 
 export const localServiceApi = {
-  list: () => api.get<LocalService[]>('/local-services/'),
+  list: (category?: string) =>
+    api.get<LocalService[]>('/local-services/', {
+      params: category ? { category } : undefined,
+    }),
 };
 
 export const reviewApi = {

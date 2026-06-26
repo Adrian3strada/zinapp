@@ -251,11 +251,17 @@ export interface PublicCoupon {
 export interface LocalService {
   id: number;
   name: string;
+  category: string;
+  category_display: string;
   description: string;
   logo?: string | null;
   logo_url?: string | null;
+  address: string;
+  schedule: string;
   phone: string;
   whatsapp: string;
+  instagram: string;
+  facebook: string;
   is_active: boolean;
   sort_order: number;
   created_at: string;

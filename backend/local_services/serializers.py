@@ -13,17 +13,24 @@ def build_logo_url(obj, request):
 
 class LocalServiceSerializer(serializers.ModelSerializer):
     logo_url = serializers.SerializerMethodField()
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
 
     class Meta:
         model = LocalService
         fields = (
             'id',
             'name',
+            'category',
+            'category_display',
             'description',
             'logo',
             'logo_url',
+            'address',
+            'schedule',
             'phone',
             'whatsapp',
+            'instagram',
+            'facebook',
             'is_active',
             'sort_order',
             'created_at',

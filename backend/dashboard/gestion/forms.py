@@ -281,10 +281,12 @@ class LocalServiceForm(PanelFormMixin, forms.ModelForm):
     class Meta:
         model = LocalService
         fields = (
-            'name', 'description', 'logo', 'phone', 'whatsapp',
+            'name', 'category', 'description', 'logo', 'address', 'schedule',
+            'phone', 'whatsapp', 'instagram', 'facebook',
             'is_active', 'sort_order',
         )
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
+            'address': forms.Textarea(attrs={'rows': 2}),
         }
 
