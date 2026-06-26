@@ -76,17 +76,6 @@ export function navigateToOrder(orderId: number) {
   });
 }
 
-export function navigateToShipment(shipmentId: number) {
-  setPendingNavigation({ type: 'shipment', shipmentId });
-  navigateWhenReady(() => {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'Main',
-      }),
-    );
-  });
-}
-
 export function navigateToMenu(restaurantId: number, restaurantName = 'Restaurante') {
   setPendingNavigation({ type: 'menu', restaurantId, restaurantName });
   navigateWhenReady(() => {
@@ -111,14 +100,9 @@ export function handleNotificationNavigation(data: Record<string, unknown> | und
   }
 
   const orderId = parseId(data.orderId);
-  const shipmentId = parseId(data.shipmentId);
 
   if (orderId != null) {
     navigateToOrder(orderId);
-    return;
-  }
-  if (shipmentId != null) {
-    navigateToShipment(shipmentId);
   }
 }
 

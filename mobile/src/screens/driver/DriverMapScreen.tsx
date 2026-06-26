@@ -10,9 +10,9 @@ import RouteStatsBar from '../../components/RouteStatsBar';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { DriverMapScreenProps } from '../../navigation/types';
-import { orderApi, shipmentApi } from '../../services/api';
+import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import type { Order, Shipment } from '../../types';
+import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { regionForCoordinates, toCoordinate, type MapCoordinate } from '../../utils/maps';
 import type { StreetRouteSegment } from '../../utils/routing';
@@ -20,10 +20,8 @@ import { showNavigationPicker } from '../../utils/navigationLinks';
 import { mapHeight } from '../../utils/responsive';
 
 export default function DriverMapScreen({ route }: DriverMapScreenProps) {
-  const { orderId, shipmentId } = route.params;
-  const isShipment = shipmentId != null;
+  const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
-  const [shipment, setShipment] = useState<Shipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const hasDataRef = useRef(false);
@@ -56,63 +54,31 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
   useEffect(() => {
     hasDataRef.current = false;
 
-    if (isShipment && shipmentId) {
-      const load = (showLoading = false) => {
-        if (showLoading) setLoading(true);
-        return shipmentApi
-          .get(shipmentId)
-          .then(({ data }) => {
-            hasDataRef.current = true;
-            setShipment(data);
-            setLoadError(null);
-          })
-          .catch((err) => {
-            const msg = getApiErrorMessage(err, 'No se cargó el envío');
-            setLoadError(msg);
-            if (!hasDataRef.current) {
-              appAlert('Error', msg);
-            }
-          })
-          .finally(() => {
-            if (showLoading) setLoading(false);
-          });
-      };
+    const load = (showLoading = false) => {
+      if (showLoading) setLoading(true);
+      return orderApi
+        .get(orderId)
+        .then(({ data }) => {
+          hasDataRef.current = true;
+          setOrder(data);
+          setLoadError(null);
+        })
+        .catch((err) => {
+          const msg = getApiErrorMessage(err, 'No se cargó el pedido');
+          setLoadError(msg);
+          if (!hasDataRef.current) {
+            appAlert('Error', msg);
+          }
+        })
+        .finally(() => {
+          if (showLoading) setLoading(false);
+        });
+    };
 
-      load(true);
-      const interval = setInterval(() => load(false), 5000);
-      return () => clearInterval(interval);
-    }
-
-    if (orderId) {
-      const load = (showLoading = false) => {
-        if (showLoading) setLoading(true);
-        return orderApi
-          .get(orderId)
-          .then(({ data }) => {
-            hasDataRef.current = true;
-            setOrder(data);
-            setLoadError(null);
-          })
-          .catch((err) => {
-            const msg = getApiErrorMessage(err, 'No se cargó el pedido');
-            setLoadError(msg);
-            if (!hasDataRef.current) {
-              appAlert('Error', msg);
-            }
-          })
-          .finally(() => {
-            if (showLoading) setLoading(false);
-          });
-      };
-
-      load(true);
-      const interval = setInterval(() => load(false), 5000);
-      return () => clearInterval(interval);
-    }
-
-    setLoading(false);
-    return undefined;
-  }, [orderId, shipmentId, isShipment]);
+    load(true);
+    const interval = setInterval(() => load(false), 5000);
+    return () => clearInterval(interval);
+  }, [orderId]);
 
   const {
     markers,
@@ -123,64 +89,6 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     title,
     subtitle,
   } = useMemo(() => {
-    if (shipment) {
-      const list: MapMarker[] = [];
-      const segments: StreetRouteSegment[] = [];
-      const pickup = toCoordinate(shipment.pickup_latitude, shipment.pickup_longitude);
-      const delivery = toCoordinate(shipment.delivery_latitude, shipment.delivery_longitude);
-
-      if (pickup) {
-        list.push({
-          id: 'pickup',
-          coordinate: pickup,
-          title: 'Recoger',
-          pinType: 'pickup',
-        });
-      }
-      if (delivery) {
-        list.push({
-          id: 'delivery',
-          coordinate: delivery,
-          title: 'Entregar',
-          pinType: 'delivery',
-        });
-      }
-      if (pickup && delivery) {
-        segments.push({
-          id: 'pickup-delivery',
-          from: pickup,
-          to: delivery,
-          strokeColor: colors.border,
-          strokeWidth: 2,
-          lineDashPattern: [8, 6],
-        });
-      }
-
-      const onTheWay = shipment.status === 'on_the_way';
-      const goingToPickup = shipment.status === 'picked_up';
-      const nextStop = onTheWay ? delivery : pickup;
-      if (userLocation && nextStop) {
-        segments.push({
-          id: 'to-next-stop',
-          from: userLocation,
-          to: nextStop,
-          strokeColor: colors.primary,
-          strokeWidth: 4,
-          dynamic: true,
-        });
-      }
-
-      return {
-        markers: list,
-        routeSegments: segments,
-        primaryCoord: pickup,
-        secondaryCoord: delivery,
-        nextStopLabel: onTheWay ? 'Entregar paquete' : goingToPickup ? 'Recoger paquete' : 'Recoger paquete',
-        title: `Navegación · Envío #${shipment.id}`,
-        subtitle: onTheWay ? shipment.delivery_address : shipment.pickup_address,
-      };
-    }
-
     if (!order) {
       return {
         markers: [],
@@ -250,7 +158,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       title: `Navegación · ${formatOrderLabel(order)}`,
       subtitle: goToDelivery ? order.delivery_address : (order.restaurant_detail?.name ?? ''),
     };
-  }, [order, shipment, userLocation]);
+  }, [order, userLocation]);
 
   const { polylines, stats, loading: routesLoading } = useStreetRoutes(routeSegments);
 
@@ -271,6 +179,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     () => regionForCoordinates(mapMarkers.map((m) => m.coordinate)),
     [mapMarkers],
   );
+
   const routeStatItems = useMemo(() => {
     const items = [];
     if (stats['to-next-stop']) {
@@ -280,22 +189,21 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
         icon: 'navigate' as const,
       });
     }
-    const fullRouteId = isShipment ? 'pickup-delivery' : 'restaurant-delivery';
-    if (stats[fullRouteId]) {
+    if (stats['restaurant-delivery']) {
       items.push({
-        label: isShipment ? 'Ruta completa' : 'Ruta del pedido',
-        stats: stats[fullRouteId],
+        label: 'Ruta del pedido',
+        stats: stats['restaurant-delivery'],
         icon: 'map' as const,
       });
     }
     return items;
-  }, [stats, nextStopLabel, isShipment]);
+  }, [stats, nextStopLabel]);
 
-  if (loading && !order && !shipment) {
+  if (loading && !order) {
     return <ScreenContainer loading />;
   }
 
-  if (loadError && !order && !shipment) {
+  if (loadError && !order) {
     return <ScreenContainer error={loadError} />;
   }
 
@@ -318,15 +226,13 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
               onPress={() =>
                 showNavigationPicker(
                   primaryCoord,
-                  isShipment ? 'Ir a recoger' : 'Ir al restaurante',
-                  isShipment ? shipment?.pickup_address : order?.restaurant_detail?.name,
+                  'Ir al restaurante',
+                  order?.restaurant_detail?.name,
                 )
               }
             >
-              <Ionicons name={isShipment ? 'cube' : 'restaurant'} size={18} color={colors.primary} />
-              <Text style={styles.navTextSecondary}>
-                {isShipment ? 'Recoger' : 'Restaurante'}
-              </Text>
+              <Ionicons name="restaurant" size={18} color={colors.primary} />
+              <Text style={styles.navTextSecondary}>Restaurante</Text>
             </Pressable>
           )}
           {secondaryCoord && (
@@ -336,7 +242,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
                 showNavigationPicker(
                   secondaryCoord,
                   'Ir a entrega',
-                  isShipment ? shipment?.delivery_address : order?.delivery_address,
+                  order?.delivery_address,
                 )
               }
             >

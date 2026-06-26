@@ -9,24 +9,19 @@ import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
-import { orderApi, shipmentApi } from '../../services/api';
+import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import type { Order, Shipment } from '../../types';
+import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
-type DeliveryItem =
-  | { kind: 'order'; id: string; order: Order }
-  | { kind: 'shipment'; id: string; shipment: Shipment };
+type DeliveryItem = { kind: 'order'; id: string; order: Order };
 
 type DeliveryListRow =
   | { type: 'header'; id: string; label: string }
   | ({ type: 'item' } & DeliveryItem);
 
-function isActiveItem(item: DeliveryItem): boolean {
-  if (item.kind === 'order') {
-    return item.order.status === 'on_the_way' || item.order.status === 'ready';
-  }
-  return item.shipment.status === 'on_the_way' || item.shipment.status === 'picked_up';
+function isActiveOrder(order: Order): boolean {
+  return order.status === 'on_the_way' || order.status === 'ready';
 }
 
 export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenProps) {
@@ -40,26 +35,14 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const [ordersRes, shipmentsRes] = await Promise.all([
-        orderApi.myDeliveries(),
-        shipmentApi.myDeliveries(),
-      ]);
-      const merged: DeliveryItem[] = [
-        ...ordersRes.data.map((order) => ({
+      const { data } = await orderApi.myDeliveries();
+      const merged: DeliveryItem[] = data
+        .map((order) => ({
           kind: 'order' as const,
           id: `order-${order.id}`,
           order,
-        })),
-        ...shipmentsRes.data.map((shipment) => ({
-          kind: 'shipment' as const,
-          id: `shipment-${shipment.id}`,
-          shipment,
-        })),
-      ].sort((a, b) => {
-        const dateA = a.kind === 'order' ? a.order.updated_at : a.shipment.updated_at;
-        const dateB = b.kind === 'order' ? b.order.updated_at : b.shipment.updated_at;
-        return dateB.localeCompare(dateA);
-      });
+        }))
+        .sort((a, b) => b.order.updated_at.localeCompare(a.order.updated_at));
       setItems(merged);
       setError(null);
     } catch (err) {
@@ -74,7 +57,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     const active: DeliveryItem[] = [];
     const past: DeliveryItem[] = [];
     for (const item of items) {
-      if (isActiveItem(item)) active.push(item);
+      if (isActiveOrder(item.order)) active.push(item);
       else past.push(item);
     }
     return { activeItems: active, pastItems: past };
@@ -101,38 +84,15 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     [activeItems, pastItems],
   );
 
-  const handlePickedUp = (item: DeliveryItem) => {
-    if (item.kind !== 'shipment') return;
-    appConfirm(
-      'Confirmar recogida',
-      '¿Ya recogiste el paquete?',
-      async () => {
-        try {
-          await shipmentApi.markPickedUp(item.shipment.id);
-          load(true);
-        } catch (err) {
-          appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido'));
-        }
-      },
-      'Sí, recogido',
-    );
-  };
-
   const handleDelivered = (item: DeliveryItem) => {
     appConfirm(
       'Confirmar entrega',
       '¿Marcar como entregado?',
       async () => {
         try {
-          if (item.kind === 'order') {
-            await orderApi.markDelivered(item.order.id);
-            load(true);
-            navigation.navigate('OrderDetail', { orderId: item.order.id, promptReview: true });
-            return;
-          }
-          await shipmentApi.markDelivered(item.shipment.id);
+          await orderApi.markDelivered(item.order.id);
           load(true);
-          navigation.navigate('ShipmentDetail', { shipmentId: item.shipment.id });
+          navigation.navigate('OrderDetail', { orderId: item.order.id, promptReview: true });
         } catch (err) {
           appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
         }
@@ -141,80 +101,33 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     );
   };
 
-  const openMap = (item: DeliveryItem) => {
-    if (item.kind === 'order') {
-      navigation.navigate('DriverMap', { orderId: item.order.id });
-    } else {
-      navigation.navigate('DriverMap', { shipmentId: item.shipment.id });
-    }
-  };
-
-  const openDetail = (item: DeliveryItem) => {
-    if (item.kind === 'order') {
-      navigation.navigate('OrderDetail', { orderId: item.order.id });
-    } else {
-      navigation.navigate('ShipmentDetail', { shipmentId: item.shipment.id });
-    }
-  };
-
   const renderJob = (item: DeliveryItem) => {
-    if (item.kind === 'order') {
-      const order = item.order;
-      return (
-        <DriverJobCard
-          kind="order"
-          id={order.id}
-          title={formatOrderLabel(order)}
-          subtitle={order.restaurant_detail?.name}
-          restaurantName={order.restaurant_detail?.name}
-          status={order.status}
-          statusLabel={order.status_display}
-          lines={[
-            { icon: 'location', text: order.delivery_address },
-            ...(order.payment_method === 'transfer'
-              ? [{ icon: 'card-outline' as const, text: 'Cobrar: transferencia (ya pagado)' }]
-              : order.payment_method === 'cash'
-                ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo al entregar' }]
-                : []),
-            ...(order.delivery_notes
-              ? [{ icon: 'chatbubble-outline' as const, text: order.delivery_notes }]
-              : []),
-          ]}
-          total={order.total}
-          onPress={() => openDetail(item)}
-          showActions={order.status === 'on_the_way'}
-          onNavigate={() => openMap(item)}
-          onDelivered={() => handleDelivered(item)}
-        />
-      );
-    }
-    const shipment = item.shipment;
+    const order = item.order;
     return (
       <DriverJobCard
-        kind="shipment"
-        id={shipment.id}
-        title={`Envío #${shipment.id}`}
-        subtitle={`${shipment.size_display} · ${shipment.description}`}
-        status={shipment.status}
-        statusLabel={shipment.status_display}
+        kind="order"
+        id={order.id}
+        title={formatOrderLabel(order)}
+        subtitle={order.restaurant_detail?.name}
+        restaurantName={order.restaurant_detail?.name}
+        status={order.status}
+        statusLabel={order.status_display}
         lines={[
-          { icon: 'cube', iconColor: colors.accent, text: shipment.pickup_address },
-          { icon: 'location', iconColor: colors.success, text: shipment.delivery_address },
-          ...(shipment.payment_method === 'transfer'
+          { icon: 'location', text: order.delivery_address },
+          ...(order.payment_method === 'transfer'
             ? [{ icon: 'card-outline' as const, text: 'Cobrar: transferencia (ya pagado)' }]
-            : shipment.payment_method === 'cash'
+            : order.payment_method === 'cash'
               ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo al entregar' }]
               : []),
-          ...(shipment.delivery_notes
-            ? [{ icon: 'chatbubble-outline' as const, text: shipment.delivery_notes }]
+          ...(order.delivery_notes
+            ? [{ icon: 'chatbubble-outline' as const, text: order.delivery_notes }]
             : []),
         ]}
-        total={shipment.total}
-        onPress={() => openDetail(item)}
-        showActions={shipment.status === 'on_the_way' || shipment.status === 'picked_up'}
-        onNavigate={() => openMap(item)}
-        onPickedUp={shipment.status === 'picked_up' ? () => handlePickedUp(item) : undefined}
-        onDelivered={shipment.status === 'on_the_way' ? () => handleDelivered(item) : undefined}
+        total={order.total}
+        onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+        showActions={order.status === 'on_the_way'}
+        onNavigate={() => navigation.navigate('DriverMap', { orderId: order.id })}
+        onDelivered={() => handleDelivered(item)}
       />
     );
   };
@@ -248,7 +161,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
             <EmptyState
               emoji="🛵"
               title="Sin entregas asignadas"
-              subtitle="Acepta pedidos o envíos en la pestaña Disponibles."
+              subtitle="Acepta pedidos en la pestaña Disponibles."
               actionLabel="Ver disponibles"
               onAction={() => navigation.navigate('Disponibles')}
             />

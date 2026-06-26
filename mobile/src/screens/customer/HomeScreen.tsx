@@ -1,7 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ActiveDeliveryStrip from '../../components/ActiveDeliveryStrip';
+import FeaturedServicesStrip from '../../components/FeaturedServicesStrip';
 import HomeHero from '../../components/HomeHero';
 import ResponsiveGrid from '../../components/ResponsiveGrid';
 import ServiceSectionCard from '../../components/ServiceSectionCard';
@@ -10,8 +11,12 @@ import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesC
 import { useCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import type { HomeScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
+import { localServiceApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
+import type { LocalService } from '../../types';
+
+const FEATURED_COUNT = 3;
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { user } = useAuth();
@@ -24,12 +29,26 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     refresh,
   } = useCustomerActiveDeliveries();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [featuredServices, setFeaturedServices] = useState<LocalService[]>([]);
+
+  const loadFeatured = useCallback(async () => {
+    try {
+      const { data } = await localServiceApi.list();
+      setFeaturedServices(data.slice(0, FEATURED_COUNT));
+    } catch {
+      setFeaturedServices([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFeatured();
+  }, [loadFeatured]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refresh();
+    await Promise.all([refresh(), loadFeatured()]);
     setRefreshing(false);
-  }, [refresh]);
+  }, [refresh, loadFeatured]);
 
   const handleDeliveryPress = (item: ActiveDeliveryItem) => {
     navigation.navigate('OrderDetail', { orderId: item.id });
@@ -85,6 +104,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onPress={() => navigation.navigate('Servicios')}
         />
       </ResponsiveGrid>
+
+      <FeaturedServicesStrip
+        services={featuredServices}
+        onPressService={() => navigation.navigate('Servicios')}
+        onPressSeeAll={() => navigation.navigate('Servicios')}
+      />
     </ScrollView>
   );
 }

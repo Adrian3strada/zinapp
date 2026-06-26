@@ -57,8 +57,7 @@ export type DriverTabParamList = {
 export type DriverStackParamList = {
   Main: undefined;
   OrderDetail: { orderId: number; promptReview?: boolean };
-  ShipmentDetail: { shipmentId: number };
-  DriverMap: { orderId?: number; shipmentId?: number };
+  DriverMap: { orderId: number };
 };
 
 export type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -97,8 +96,6 @@ export type OrderDetailScreenProps =
   | NativeStackScreenProps<CustomerStackParamList, 'OrderDetail'>
   | NativeStackScreenProps<RestaurantStackParamList, 'OrderDetail'>
   | NativeStackScreenProps<DriverStackParamList, 'OrderDetail'>;
-
-export type ShipmentDetailScreenProps = NativeStackScreenProps<DriverStackParamList, 'ShipmentDetail'>;
 
 export type DriverOrderDetailScreenProps = NativeStackScreenProps<
   DriverStackParamList,

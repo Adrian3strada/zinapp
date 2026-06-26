@@ -14,10 +14,6 @@ export function useDriverPendingNavigation() {
     return subscribePendingNavigation((nav) => {
       if (nav.type === 'order') {
         navigation.navigate('OrderDetail', { orderId: nav.orderId });
-        return;
-      }
-      if (nav.type === 'shipment') {
-        navigation.navigate('ShipmentDetail', { shipmentId: nav.shipmentId });
       }
     });
   }, [navigation]);

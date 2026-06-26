@@ -13,7 +13,6 @@ import AvailableOrdersScreen from '../screens/driver/AvailableOrdersScreen';
 import DriverMapScreen from '../screens/driver/DriverMapScreen';
 import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
-import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
@@ -93,35 +92,26 @@ export default function DriverNavigator() {
     <DriverProfileProvider>
       <DriverLocationSync />
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-      <Stack.Screen name="Main" component={DriverTabs} />
-      <Stack.Screen
-        name="OrderDetail"
-        component={OrderDetailScreen}
-        options={{
-          ...modalPresentationOptions,
-          headerShown: true,
-          title: 'Entrega',
-        }}
-      />
-      <Stack.Screen
-        name="ShipmentDetail"
-        component={ShipmentDetailScreen}
-        options={{
-          ...modalPresentationOptions,
-          headerShown: true,
-          title: 'Envío',
-        }}
-      />
-      <Stack.Screen
-        name="DriverMap"
-        component={DriverMapScreen}
-        options={{
-          ...modalPresentationOptions,
-          headerShown: true,
-          title: 'Mapa de entrega',
-        }}
-      />
-    </Stack.Navigator>
+        <Stack.Screen name="Main" component={DriverTabs} />
+        <Stack.Screen
+          name="OrderDetail"
+          component={OrderDetailScreen}
+          options={{
+            ...modalPresentationOptions,
+            headerShown: true,
+            title: 'Entrega',
+          }}
+        />
+        <Stack.Screen
+          name="DriverMap"
+          component={DriverMapScreen}
+          options={{
+            ...modalPresentationOptions,
+            headerShown: true,
+            title: 'Mapa de entrega',
+          }}
+        />
+      </Stack.Navigator>
     </DriverProfileProvider>
   );
 }
