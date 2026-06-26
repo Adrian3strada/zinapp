@@ -13,6 +13,9 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import CartScreen from '../screens/customer/CartScreen';
 import MenuScreen from '../screens/customer/MenuScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
+import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
+import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
+import ProfileScreen from '../screens/shared/ProfileScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
@@ -32,9 +35,6 @@ import type {
 const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScreen'));
 const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
 const ServicesScreen = React.lazy(() => import('../screens/customer/ServicesScreen'));
-const OrderDetailScreen = React.lazy(() => import('../screens/shared/OrderDetailScreen'));
-const OrderParticipantProfileScreen = React.lazy(() => import('../screens/shared/OrderParticipantProfileScreen'));
-const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
@@ -65,14 +65,36 @@ function LazyMyOrdersScreen(props: MyOrdersScreenProps) {
   );
 }
 
-function LazyProfileScreen() {
+function ProfileScreenWithBoundary() {
   return (
-    <Suspense fallback={<TabFallback />}>
-      <AppErrorBoundary>
-        <ProfileScreen />
-      </AppErrorBoundary>
-    </Suspense>
+    <AppErrorBoundary>
+      <ProfileScreen />
+    </AppErrorBoundary>
   );
+}
+
+function OrderDetailScreenWithBoundary(props: OrderDetailScreenProps) {
+  return (
+    <AppErrorBoundary>
+      <OrderDetailScreen {...props} />
+    </AppErrorBoundary>
+  );
+}
+
+function OrderParticipantProfileScreenWithBoundary(props: OrderParticipantProfileScreenProps) {
+  return (
+    <AppErrorBoundary>
+      <OrderParticipantProfileScreen {...props} />
+    </AppErrorBoundary>
+  );
+}
+
+function LazyOrderDetailScreen(props: OrderDetailScreenProps) {
+  return <OrderDetailScreenWithBoundary {...props} />;
+}
+
+function LazyOrderParticipantProfileScreen(props: OrderParticipantProfileScreenProps) {
+  return <OrderParticipantProfileScreenWithBoundary {...props} />;
 }
 
 function MenuScreenWithBoundary(props: MenuScreenProps) {
@@ -80,24 +102,6 @@ function MenuScreenWithBoundary(props: MenuScreenProps) {
     <AppErrorBoundary>
       <MenuScreen {...props} />
     </AppErrorBoundary>
-  );
-}
-
-function LazyOrderParticipantProfileScreen(props: OrderParticipantProfileScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <AppErrorBoundary>
-        <OrderParticipantProfileScreen {...props} />
-      </AppErrorBoundary>
-    </Suspense>
-  );
-}
-
-function LazyOrderDetailScreen(props: OrderDetailScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <OrderDetailScreen {...props} />
-    </Suspense>
   );
 }
 
@@ -166,7 +170,7 @@ function CustomerTabs() {
       />
       <Tab.Screen
         name="Perfil"
-        component={LazyProfileScreen}
+        component={ProfileScreenWithBoundary}
         options={{
           title: 'Mi perfil',
           headerShown: false,

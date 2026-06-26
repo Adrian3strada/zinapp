@@ -10,16 +10,14 @@ import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
 import AppDialogScreen from '../screens/shared/AppDialogScreen';
 import AdminWebRedirectScreen from '../screens/admin/AdminWebRedirectScreen';
+import CustomerNavigator from './CustomerNavigator';
+import DriverNavigator from './DriverNavigator';
+import RestaurantNavigator from './RestaurantNavigator';
 import type { AuthStackParamList, RootStackParamList } from './types';
 import { openAppDialog } from './navigationRef';
 import { registerDialogNavigator } from '../utils/appDialogStore';
-import { isWebPlatform } from '../utils/webPlatform';
 import { getWebResetToken } from '../utils/webDeepLink';
-import { redirectToPanelLogin } from '../utils/panelUrl';
 
-const CustomerNavigator = React.lazy(() => import('./CustomerNavigator'));
-const DriverNavigator = React.lazy(() => import('./DriverNavigator'));
-const RestaurantNavigator = React.lazy(() => import('./RestaurantNavigator'));
 const RegisterScreen = React.lazy(() => import('../screens/auth/RegisterScreen'));
 const ForgotPasswordScreen = React.lazy(() => import('../screens/auth/ForgotPasswordScreen'));
 const ResetPasswordScreen = React.lazy(() => import('../screens/auth/ResetPasswordScreen'));
@@ -98,11 +96,7 @@ function MainRoutes() {
     );
   }
 
-  return (
-    <Suspense fallback={<LoadingScreen />}>
-      <RoleNavigator role={user.role} />
-    </Suspense>
-  );
+  return <RoleNavigator role={user.role} />;
 }
 
 export default function RootNavigator() {
