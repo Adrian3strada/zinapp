@@ -13,6 +13,7 @@ import DeliveryEtaBanner from '../../components/DeliveryEtaBanner';
 import DriverNearbyBanner from '../../components/DriverNearbyBanner';
 import LiveBadge from '../../components/LiveBadge';
 import OrderMap from '../../components/OrderMap';
+import OrderParticipantCard from '../../components/OrderParticipantCard';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import OrderTimeline from '../../components/OrderTimeline';
 import ReviewForm from '../../components/ReviewForm';
@@ -292,6 +293,41 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <Text style={styles.section}>Seguimiento</Text>
             <OrderTimeline currentStatus={order.status} />
           </View>
+
+          {user?.role === 'customer'
+            && order.driver_detail
+            && order.driver
+            && order.status !== 'cancelled' && (
+              <View style={styles.card}>
+                <Text style={styles.section}>Tu repartidor</Text>
+                <OrderParticipantCard
+                  label="Repartidor"
+                  user={order.driver_detail}
+                  subtitle={order.driver_delivery_profile?.vehicle_type_display ?? null}
+                  onPress={() => navigation.navigate('ParticipantProfile', {
+                    orderId: order.id,
+                    participant: 'driver',
+                  })}
+                />
+              </View>
+            )}
+
+          {user?.role === 'driver'
+            && order.customer_detail
+            && order.status !== 'cancelled' && (
+              <View style={styles.card}>
+                <Text style={styles.section}>Cliente</Text>
+                <OrderParticipantCard
+                  label="Cliente"
+                  user={order.customer_detail}
+                  subtitle={order.delivery_address}
+                  onPress={() => navigation.navigate('ParticipantProfile', {
+                    orderId: order.id,
+                    participant: 'customer',
+                  })}
+                />
+              </View>
+            )}
 
           {user?.role === 'customer' &&
             order.payment_method === 'transfer' &&

@@ -11,6 +11,7 @@ import { useRestaurantPendingCount } from '../hooks/useRestaurantPendingCount';
 import RestaurantManageScreen from '../screens/restaurant/RestaurantManageScreen';
 import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
+import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
@@ -99,6 +100,14 @@ export default function RestaurantNavigator() {
         name="OrderDetail"
         component={OrderDetailScreen}
         options={{ ...modalPresentationOptions, title: 'Detalle' }}
+      />
+      <Stack.Screen
+        name="ParticipantProfile"
+        component={OrderParticipantProfileScreen}
+        options={({ route }) => ({
+          ...modalPresentationOptions,
+          title: route.params.participant === 'driver' ? 'Repartidor' : 'Cliente',
+        })}
       />
     </Stack.Navigator>
   );

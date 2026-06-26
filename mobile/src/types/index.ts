@@ -36,6 +36,12 @@ export interface DeliveryProfile {
   current_longitude?: string | null;
 }
 
+export interface OrderDriverDeliveryProfile {
+  vehicle_type?: 'bicycle' | 'motorcycle' | 'car';
+  vehicle_type_display?: string;
+  license_plate?: string;
+}
+
 export interface RestaurantSetupStep {
   key: 'menu' | 'profile' | 'bank' | 'hours' | 'location';
   label: string;
@@ -147,6 +153,7 @@ export interface Order {
   restaurant_detail: Restaurant;
   driver: number | null;
   driver_detail?: User | null;
+  driver_delivery_profile?: OrderDriverDeliveryProfile | null;
   status: OrderStatus;
   status_display: string;
   payment_method: PaymentMethod;

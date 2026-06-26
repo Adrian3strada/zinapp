@@ -24,6 +24,7 @@ import type {
   MenuScreenProps,
   MyOrdersScreenProps,
   OrderDetailScreenProps,
+  OrderParticipantProfileScreenProps,
   RestaurantsScreenProps,
   ServicesScreenProps,
 } from './types';
@@ -32,6 +33,7 @@ const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScre
 const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
 const ServicesScreen = React.lazy(() => import('../screens/customer/ServicesScreen'));
 const OrderDetailScreen = React.lazy(() => import('../screens/shared/OrderDetailScreen'));
+const OrderParticipantProfileScreen = React.lazy(() => import('../screens/shared/OrderParticipantProfileScreen'));
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
@@ -78,6 +80,16 @@ function MenuScreenWithBoundary(props: MenuScreenProps) {
     <AppErrorBoundary>
       <MenuScreen {...props} />
     </AppErrorBoundary>
+  );
+}
+
+function LazyOrderParticipantProfileScreen(props: OrderParticipantProfileScreenProps) {
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <AppErrorBoundary>
+        <OrderParticipantProfileScreen {...props} />
+      </AppErrorBoundary>
+    </Suspense>
   );
 }
 
@@ -197,6 +209,14 @@ export default function CustomerNavigator() {
           name="OrderDetail"
           component={LazyOrderDetailScreen}
           options={{ ...modalPresentationOptions, title: 'Seguimiento' }}
+        />
+        <Stack.Screen
+          name="ParticipantProfile"
+          component={LazyOrderParticipantProfileScreen}
+          options={({ route }) => ({
+            ...modalPresentationOptions,
+            title: route.params.participant === 'driver' ? 'Repartidor' : 'Cliente',
+          })}
         />
       </Stack.Navigator>
     </CustomerActiveDeliveriesProvider>

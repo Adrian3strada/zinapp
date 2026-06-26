@@ -35,6 +35,7 @@ export type CustomerStackParamList = {
   Servicios: undefined;
   Menu: { restaurantId: number; restaurantName: string };
   OrderDetail: { orderId: number; promptReview?: boolean };
+  ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
 };
 
 export type RestaurantTabParamList = {
@@ -46,6 +47,7 @@ export type RestaurantTabParamList = {
 export type RestaurantStackParamList = {
   Main: undefined;
   OrderDetail: { orderId: number };
+  ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
 };
 
 export type DriverTabParamList = {
@@ -57,6 +59,7 @@ export type DriverTabParamList = {
 export type DriverStackParamList = {
   Main: undefined;
   OrderDetail: { orderId: number; promptReview?: boolean };
+  ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
   DriverMap: { orderId: number };
 };
 
@@ -96,6 +99,11 @@ export type OrderDetailScreenProps =
   | NativeStackScreenProps<CustomerStackParamList, 'OrderDetail'>
   | NativeStackScreenProps<RestaurantStackParamList, 'OrderDetail'>
   | NativeStackScreenProps<DriverStackParamList, 'OrderDetail'>;
+
+export type OrderParticipantProfileScreenProps =
+  | NativeStackScreenProps<CustomerStackParamList, 'ParticipantProfile'>
+  | NativeStackScreenProps<DriverStackParamList, 'ParticipantProfile'>
+  | NativeStackScreenProps<RestaurantStackParamList, 'ParticipantProfile'>;
 
 export type DriverOrderDetailScreenProps = NativeStackScreenProps<
   DriverStackParamList,

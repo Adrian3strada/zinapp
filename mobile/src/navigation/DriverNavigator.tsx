@@ -13,6 +13,7 @@ import AvailableOrdersScreen from '../screens/driver/AvailableOrdersScreen';
 import DriverMapScreen from '../screens/driver/DriverMapScreen';
 import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
+import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
@@ -101,6 +102,15 @@ export default function DriverNavigator() {
             headerShown: true,
             title: 'Entrega',
           }}
+        />
+        <Stack.Screen
+          name="ParticipantProfile"
+          component={OrderParticipantProfileScreen}
+          options={({ route }) => ({
+            ...modalPresentationOptions,
+            headerShown: true,
+            title: route.params.participant === 'driver' ? 'Repartidor' : 'Cliente',
+          })}
         />
         <Stack.Screen
           name="DriverMap"

@@ -34,6 +34,39 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.avatar.url
 
 
+class OrderParticipantUserSerializer(serializers.ModelSerializer):
+    """Datos de contacto visibles entre cliente y repartidor en un pedido."""
+
+    avatar_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id', 'username', 'first_name', 'last_name',
+            'role', 'phone', 'address', 'avatar_url',
+        )
+        read_only_fields = fields
+
+    def get_avatar_url(self, obj):
+        if not obj.avatar:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.avatar.url)
+        return obj.avatar.url
+
+
+class OrderDriverDeliverySerializer(serializers.ModelSerializer):
+    vehicle_type_display = serializers.CharField(
+        source='get_vehicle_type_display', read_only=True,
+    )
+
+    class Meta:
+        model = DeliveryProfile
+        fields = ('vehicle_type', 'vehicle_type_display', 'license_plate')
+        read_only_fields = fields
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)

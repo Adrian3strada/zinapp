@@ -3,7 +3,11 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
-from accounts.serializers import UserSerializer
+from accounts.serializers import (
+    OrderDriverDeliverySerializer,
+    OrderParticipantUserSerializer,
+    UserSerializer,
+)
 from restaurants.fields import CoordinateField
 from restaurants.geo import is_in_coverage, round_coordinate
 from restaurants.serializers import ProductSerializer, RestaurantSerializer
@@ -92,9 +96,10 @@ class CouponValidateSerializer(serializers.Serializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    customer_detail = UserSerializer(source='customer', read_only=True)
+    customer_detail = OrderParticipantUserSerializer(source='customer', read_only=True)
     restaurant_detail = RestaurantSerializer(source='restaurant', read_only=True)
-    driver_detail = UserSerializer(source='driver', read_only=True)
+    driver_detail = OrderParticipantUserSerializer(source='driver', read_only=True)
+    driver_delivery_profile = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
     review = ReviewSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -112,7 +117,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             'id', 'code', 'customer', 'customer_detail', 'restaurant', 'restaurant_detail',
-            'driver', 'driver_detail', 'status', 'status_display',
+            'driver', 'driver_detail', 'driver_delivery_profile', 'status', 'status_display',
             'payment_method', 'payment_method_display', 'payment_status',
             'payment_status_display', 'delivery_address',
             'delivery_latitude', 'delivery_longitude', 'delivery_notes',
@@ -135,6 +140,12 @@ class OrderSerializer(serializers.ModelSerializer):
         if not obj.driver:
             return None
         return getattr(obj.driver, 'delivery_profile', None)
+
+    def get_driver_delivery_profile(self, obj):
+        profile = self._driver_profile(obj)
+        if not profile:
+            return None
+        return OrderDriverDeliverySerializer(profile).data
 
     def get_driver_latitude(self, obj):
         profile = self._driver_profile(obj)

@@ -181,6 +181,59 @@ class OrderApiTests(TestCase):
         response = self.client.get(f'/api/orders/{order_id}/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['status'], OrderStatus.READY)
+        self.assertIn('customer_detail', response.data)
+        self.assertEqual(response.data['customer_detail']['username'], self.customer.username)
+        self.assertNotIn('email', response.data['customer_detail'])
+        self.assertNotIn('expo_push_token', response.data['customer_detail'])
+
+    def test_customer_sees_driver_profile_on_assigned_order(self):
+        from accounts.models import DeliveryProfile
+        from restaurants.models import Product
+
+        driver = User.objects.create_user(
+            username='driverprofile',
+            password='test1234',
+            role='driver',
+            first_name='Luis',
+            phone='4431234567',
+        )
+        DeliveryProfile.objects.create(
+            user=driver,
+            vehicle_type=DeliveryProfile.VehicleType.MOTORCYCLE,
+            license_plate='ABC-123',
+        )
+        product = Product.objects.create(
+            restaurant=self.restaurant,
+            name='Taco',
+            price=Decimal('50.00'),
+        )
+        self.client.force_authenticate(self.customer)
+        create_resp = self.client.post('/api/orders/', {
+            'restaurant_id': self.restaurant.id,
+            'delivery_address': 'Calle 1, Zinapécuaro',
+            'delivery_latitude': '19.860273',
+            'delivery_longitude': '-100.828562',
+            'payment_method': 'cash',
+            'items': [{'product_id': product.id, 'quantity': 1}],
+        }, format='json')
+        order_id = create_resp.data['id']
+
+        self.client.force_authenticate(self.owner)
+        self.client.post(f'/api/orders/{order_id}/accept/')
+        self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'preparing'})
+        self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'ready'})
+
+        self.client.force_authenticate(driver)
+        self.client.post(f'/api/orders/{order_id}/accept-delivery/')
+
+        self.client.force_authenticate(self.customer)
+        response = self.client.get(f'/api/orders/{order_id}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['driver_detail']['first_name'], 'Luis')
+        self.assertNotIn('email', response.data['driver_detail'])
+        profile = response.data['driver_delivery_profile']
+        self.assertEqual(profile['vehicle_type'], 'motorcycle')
+        self.assertEqual(profile['license_plate'], 'ABC-123')
 
     def test_invalid_coupon_does_not_create_order(self):
         from restaurants.models import Product
