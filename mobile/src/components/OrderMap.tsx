@@ -21,7 +21,7 @@ interface Props {
 
 const PRE_DRIVER_STATUSES: OrderStatus[] = ['pending', 'accepted', 'preparing'];
 
-const DRIVER_TRACKING_STATUSES: OrderStatus[] = ['ready', 'on_the_way'];
+const DRIVER_ACTIVE_STATUSES: OrderStatus[] = ['ready', 'on_the_way'];
 
 export default function OrderMap({
   order,
@@ -43,6 +43,7 @@ export default function OrderMap({
     );
     const delivery = toCoordinate(order.delivery_latitude, order.delivery_longitude);
     const driver = toCoordinate(order.driver_latitude, order.driver_longitude);
+    const driverOnRoute = !!order.driver && DRIVER_ACTIVE_STATUSES.includes(order.status);
 
     if (restaurant) {
       list.push({
@@ -79,10 +80,9 @@ export default function OrderMap({
       });
     }
 
-    const tracking =
-      trackDriver && !!order.driver && DRIVER_TRACKING_STATUSES.includes(order.status);
+    const tracking = trackDriver && driverOnRoute;
 
-    if (showDriver && order.driver) {
+    if (showDriver && driverOnRoute) {
       if (driver) {
         list.push({
           id: 'driver',
@@ -97,8 +97,8 @@ export default function OrderMap({
             id: 'driver-delivery',
             from: driver,
             to: delivery,
-            strokeColor: colors.primary,
-            strokeWidth: 4,
+            strokeColor: colors.secondary,
+            strokeWidth: 5,
             dynamic: true,
           });
         } else if (restaurant) {
@@ -106,19 +106,17 @@ export default function OrderMap({
             id: 'driver-restaurant',
             from: driver,
             to: restaurant,
-            strokeColor: colors.primary,
-            strokeWidth: 4,
+            strokeColor: colors.secondary,
+            strokeWidth: 5,
             dynamic: true,
           });
         }
 
-        if (tracking) {
-          note =
-            order.status === 'on_the_way'
-              ? 'Seguimiento en vivo del repartidor.'
-              : 'El repartidor va hacia el restaurante.';
-        }
-      } else if (DRIVER_TRACKING_STATUSES.includes(order.status)) {
+        note =
+          order.status === 'on_the_way'
+            ? 'Seguimiento en vivo del repartidor.'
+            : 'El repartidor va hacia el restaurante.';
+      } else {
         absent.push('ubicación del repartidor');
         note = 'Esperando ubicación GPS del repartidor…';
       }

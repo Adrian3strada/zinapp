@@ -313,7 +313,10 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <Text style={styles.section}>Mapa del pedido</Text>
             <OrderMap
               order={order}
-              trackDriver={user?.role === 'customer' || user?.role === 'admin'}
+              trackDriver={
+                !!order.driver
+                && (order.status === 'ready' || order.status === 'on_the_way')
+              }
             />
           </View>
 

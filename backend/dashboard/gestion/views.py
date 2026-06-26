@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import authenticate
 from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -6,6 +7,7 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from accounts.models import DeliveryProfile, User, UserRole
+from local_services.models import LocalService
 from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentStatus
 from restaurants.models import Product, Restaurant
 
@@ -13,6 +15,7 @@ from ..mixins import PanelAccessMixin
 from .forms import (
     CouponForm,
     DriverProfileForm,
+    LocalServiceForm,
     OrderAdminForm,
     ProductForm,
     RestaurantForm,
@@ -20,6 +23,15 @@ from .forms import (
     UserCreateForm,
     UserEditForm,
 )
+
+
+def _verify_app_login(user, password: str) -> bool:
+    if not password or not user:
+        return False
+    user.refresh_from_db()
+    if not user.is_active or not user.check_password(password):
+        return False
+    return authenticate(username=user.username, password=password) is not None
 
 
 class GestionHubView(PanelAccessMixin, TemplateView):
@@ -38,6 +50,7 @@ class GestionHubView(PanelAccessMixin, TemplateView):
             'shipments': Shipment.objects.exclude(status=ShipmentStatus.DELIVERED).count(),
             'reviews': Review.objects.count(),
             'drivers': DeliveryProfile.objects.filter(is_available=True).count(),
+            'local_services': LocalService.objects.filter(is_active=True).count(),
         }
         return ctx
 
@@ -318,8 +331,24 @@ class UserCreateView(PanelAccessMixin, CreateView):
         return ctx
 
     def form_valid(self, form):
-        messages.success(self.request, f'Usuario «{form.instance.username}» creado.')
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        password = form.cleaned_data.get('password1')
+        if password and self.object and not self.object.check_password(password):
+            self.object.set_password(password)
+            self.object.save(update_fields=['password'])
+        if password and not _verify_app_login(self.object, password):
+            messages.error(
+                self.request,
+                f'Usuario «{self.object.username}» creado, pero la verificación de acceso falló. '
+                'Edita el usuario y vuelve a guardar la contraseña.',
+            )
+        else:
+            messages.success(
+                self.request,
+                f'Usuario «{self.object.username}» creado. En la app entra con ese usuario '
+                'y la contraseña que definiste (sin correo).',
+            )
+        return response
 
 
 class UserEditView(PanelAccessMixin, UpdateView):
@@ -338,8 +367,26 @@ class UserEditView(PanelAccessMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
-        messages.success(self.request, 'Usuario actualizado.')
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        password = form.cleaned_data.get('new_password1')
+        if password and self.object and not self.object.check_password(password):
+            self.object.set_password(password)
+            self.object.save(update_fields=['password'])
+        if password:
+            if _verify_app_login(self.object, password):
+                messages.success(
+                    self.request,
+                    'Usuario actualizado. Ya puede entrar en la app con la nueva contraseña.',
+                )
+            else:
+                messages.error(
+                    self.request,
+                    'Usuario guardado, pero la verificación de acceso falló. '
+                    'Usa una contraseña de al menos 8 caracteres (no solo números).',
+                )
+        else:
+            messages.success(self.request, 'Usuario actualizado.')
+        return response
 
 
 class DriverEditView(PanelAccessMixin, UpdateView):
@@ -468,6 +515,82 @@ class RestaurantUpdateView(PanelAccessMixin, UpdateView):
 
     def form_valid(self, form):
         messages.success(self.request, 'Restaurante actualizado.')
+        return super().form_valid(form)
+
+
+class LocalServiceListView(PanelAccessMixin, ListView):
+    model = LocalService
+    template_name = 'dashboard/gestion/local_service_list.html'
+    context_object_name = 'services'
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = LocalService.objects.order_by('sort_order', 'name')
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(description__icontains=q))
+        if self.request.GET.get('active') == '1':
+            qs = qs.filter(is_active=True)
+        elif self.request.GET.get('active') == '0':
+            qs = qs.filter(is_active=False)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            page_title='Servicios locales',
+            nav='gestion',
+            search_query=self.request.GET.get('q', ''),
+            active_filter=self.request.GET.get('active', ''),
+        )
+        return ctx
+
+
+class LocalServiceCreateView(PanelAccessMixin, CreateView):
+    model = LocalService
+    form_class = LocalServiceForm
+    template_name = 'dashboard/gestion/local_service_form.html'
+    success_url = reverse_lazy('gestion:local-services')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            page_title='Nuevo servicio',
+            nav='gestion',
+            form_title='Publicar negocio de servicios',
+            back_url=reverse('gestion:local-services'),
+            back_label='Servicios',
+            cancel_url=reverse('gestion:local-services'),
+            form_is_multipart=True,
+        )
+        return ctx
+
+    def form_valid(self, form):
+        messages.success(self.request, f'Servicio «{form.instance.name}» publicado.')
+        return super().form_valid(form)
+
+
+class LocalServiceUpdateView(PanelAccessMixin, UpdateView):
+    model = LocalService
+    form_class = LocalServiceForm
+    template_name = 'dashboard/gestion/local_service_form.html'
+    success_url = reverse_lazy('gestion:local-services')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            page_title=self.object.name,
+            nav='gestion',
+            form_title='Editar servicio',
+            back_url=reverse('gestion:local-services'),
+            back_label='Servicios',
+            cancel_url=reverse('gestion:local-services'),
+            form_is_multipart=True,
+        )
+        return ctx
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Servicio actualizado.')
         return super().form_valid(form)
 
 

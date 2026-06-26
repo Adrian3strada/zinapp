@@ -261,7 +261,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
         id: 'me',
         coordinate: userLocation,
         title: 'Tú',
-        pinType: 'driver',
+        pinType: 'me',
       });
     }
     return list;

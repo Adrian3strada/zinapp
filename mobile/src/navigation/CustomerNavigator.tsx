@@ -24,17 +24,14 @@ import type {
   MenuScreenProps,
   MyOrdersScreenProps,
   OrderDetailScreenProps,
-  OffersScreenProps,
   RestaurantsScreenProps,
-  ShipmentsScreenProps,
+  ServicesScreenProps,
 } from './types';
 
 const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScreen'));
-const OffersScreen = React.lazy(() => import('../screens/customer/OffersScreen'));
 const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
-const ShipmentsScreen = React.lazy(() => import('../screens/customer/ShipmentsScreen'));
+const ServicesScreen = React.lazy(() => import('../screens/customer/ServicesScreen'));
 const OrderDetailScreen = React.lazy(() => import('../screens/shared/OrderDetailScreen'));
-const ShipmentDetailScreen = React.lazy(() => import('../screens/shared/ShipmentDetailScreen'));
 const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
@@ -59,7 +56,9 @@ function CartScreenWithBoundary(props: CartScreenProps) {
 function LazyMyOrdersScreen(props: MyOrdersScreenProps) {
   return (
     <Suspense fallback={<TabFallback />}>
-      <MyOrdersScreen {...props} />
+      <AppErrorBoundary>
+        <MyOrdersScreen {...props} />
+      </AppErrorBoundary>
     </Suspense>
   );
 }
@@ -67,7 +66,9 @@ function LazyMyOrdersScreen(props: MyOrdersScreenProps) {
 function LazyProfileScreen() {
   return (
     <Suspense fallback={<TabFallback />}>
-      <ProfileScreen />
+      <AppErrorBoundary>
+        <ProfileScreen />
+      </AppErrorBoundary>
     </Suspense>
   );
 }
@@ -88,14 +89,6 @@ function LazyOrderDetailScreen(props: OrderDetailScreenProps) {
   );
 }
 
-function LazyOffersScreen(props: OffersScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <OffersScreen {...props} />
-    </Suspense>
-  );
-}
-
 function LazyRestaurantsScreen(props: RestaurantsScreenProps) {
   return (
     <Suspense fallback={<TabFallback />}>
@@ -104,10 +97,10 @@ function LazyRestaurantsScreen(props: RestaurantsScreenProps) {
   );
 }
 
-function LazyShipmentsScreen(props: ShipmentsScreenProps) {
+function LazyServicesScreen(props: ServicesScreenProps) {
   return (
     <Suspense fallback={<TabFallback />}>
-      <ShipmentsScreen {...props} />
+      <ServicesScreen {...props} />
     </Suspense>
   );
 }
@@ -174,14 +167,6 @@ function CustomerTabs() {
   );
 }
 
-function LazyShipmentDetailScreen(props: import('./types').ShipmentDetailScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <ShipmentDetailScreen {...props} />
-    </Suspense>
-  );
-}
-
 export default function CustomerNavigator() {
   useCustomerPendingNavigation();
 
@@ -199,14 +184,9 @@ export default function CustomerNavigator() {
           options={{ ...modalPresentationOptions, title: 'Comida' }}
         />
         <Stack.Screen
-          name="Ofertas"
-          component={LazyOffersScreen}
-          options={{ ...modalPresentationOptions, title: 'Ofertas' }}
-        />
-        <Stack.Screen
-          name="Envios"
-          component={LazyShipmentsScreen}
-          options={{ ...modalPresentationOptions, title: 'Envíos' }}
+          name="Servicios"
+          component={LazyServicesScreen}
+          options={{ ...modalPresentationOptions, title: 'Servicios' }}
         />
         <Stack.Screen
           name="Menu"
@@ -217,11 +197,6 @@ export default function CustomerNavigator() {
           name="OrderDetail"
           component={LazyOrderDetailScreen}
           options={{ ...modalPresentationOptions, title: 'Seguimiento' }}
-        />
-        <Stack.Screen
-          name="ShipmentDetail"
-          component={LazyShipmentDetailScreen}
-          options={{ ...modalPresentationOptions, title: 'Seguimiento de envío' }}
         />
       </Stack.Navigator>
     </CustomerActiveDeliveriesProvider>

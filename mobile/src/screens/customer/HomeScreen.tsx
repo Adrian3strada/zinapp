@@ -18,7 +18,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { insets, scrollPaddingBottom, pagePadding } = useTabScreenInsets();
   const {
     activeOrderCount,
-    activeShipmentCount,
     liveItems,
     trackingItems,
     refreshError,
@@ -33,11 +32,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }, [refresh]);
 
   const handleDeliveryPress = (item: ActiveDeliveryItem) => {
-    if (item.kind === 'order') {
-      navigation.navigate('OrderDetail', { orderId: item.id });
-    } else {
-      navigation.navigate('ShipmentDetail', { shipmentId: item.id });
-    }
+    navigation.navigate('OrderDetail', { orderId: item.id });
   };
 
   const stripItems = liveItems.length > 0 ? liveItems : trackingItems.slice(0, 3);
@@ -75,13 +70,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
       <ResponsiveGrid style={styles.sections}>
         <ServiceSectionCard
-          title="Ofertas"
-          subtitle="Cupones y promos para ahorrar"
-          emoji="🏷️"
-          colors={[colors.accent, colors.primaryDark]}
-          onPress={() => navigation.navigate('Ofertas')}
-        />
-        <ServiceSectionCard
           title="Comida"
           subtitle="Locales de tu ciudad"
           emoji="🍽️"
@@ -90,12 +78,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onPress={() => navigation.navigate('Comida')}
         />
         <ServiceSectionCard
-          title="Envíos"
-          subtitle="Chico, mediano o grande · desde $25"
-          emoji="📦"
-          colors={[colors.shipmentStart, colors.shipmentEnd]}
-          badge={activeShipmentCount}
-          onPress={() => navigation.navigate('Envios')}
+          title="Servicios"
+          subtitle="Peluquerías, talleres y más"
+          emoji="💇"
+          colors={[colors.serviceStart, colors.serviceEnd]}
+          onPress={() => navigation.navigate('Servicios')}
         />
       </ResponsiveGrid>
     </ScrollView>

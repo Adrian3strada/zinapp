@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'restaurants.apps.RestaurantsConfig',
+    'local_services.apps.LocalServicesConfig',
     'orders',
     'dashboard',
 ]
@@ -110,6 +111,11 @@ else:
     }
 
 AUTH_USER_MODEL = 'accounts.User'
+
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.CaseInsensitiveUsernameBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 if DEBUG:
     # Desarrollo: contraseña mínima de 6 caracteres (sin bloquear "test1234", etc.)

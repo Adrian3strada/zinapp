@@ -118,9 +118,9 @@ if (Test-Path $navSrc) {
 $scope = if ($resolvedBase -eq '/') { '/' } else { "$resolvedBase/" }
 $manifestPath = Join-Path $target 'manifest.webmanifest'
 $manifest = @{
-    name = 'ZinApp — Delivery Zinapécuaro'
+    name = 'ZinApp — Zinapécuaro'
     short_name = 'ZinApp'
-    description = 'Pedidos y envíos locales en Zinapécuaro, Michoacán.'
+    description = 'Comida a domicilio y servicios locales en Zinapécuaro, Michoacán.'
     start_url = $scope
     scope = $scope
     display = 'standalone'
@@ -145,7 +145,7 @@ $manifestHref = "${assetPrefix}/manifest.webmanifest"
 $fontHref = "${assetPrefix}/fonts/ionicons.ttf"
 $inject = @"
 <meta charset="utf-8" />
-<meta name="description" content="Pedidos y envíos locales en Zinapécuaro. Comida, paquetes y reparto." />
+<meta name="description" content="Comida a domicilio y servicios locales en Zinapécuaro." />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="ZinApp" />

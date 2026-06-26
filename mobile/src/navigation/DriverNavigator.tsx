@@ -5,6 +5,7 @@ import React, { Suspense } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AppErrorBoundary from '../components/AppErrorBoundary';
 import { DriverProfileProvider, useDriverProfileContext } from '../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../hooks/useDriverHasActiveDelivery';
 import { useDriverLocationSharing } from '../hooks/useDriverLocationSharing';
@@ -32,7 +33,9 @@ function TabFallback() {
 function LazyProfileScreen() {
   return (
     <Suspense fallback={<TabFallback />}>
-      <ProfileScreen />
+      <AppErrorBoundary>
+        <ProfileScreen />
+      </AppErrorBoundary>
     </Suspense>
   );
 }
@@ -43,7 +46,7 @@ const Stack = createNativeStackNavigator<DriverStackParamList>();
 function DriverLocationSync() {
   const { hasActiveDelivery } = useDriverActiveDeliveries(2500);
   const { isAvailable } = useDriverProfileContext();
-  useDriverLocationSharing(true, hasActiveDelivery, isAvailable || hasActiveDelivery);
+  useDriverLocationSharing(true, hasActiveDelivery, true);
   return null;
 }
 

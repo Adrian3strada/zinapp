@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/cron/run/', run_all_cron, name='cron-run-all'),
     path('api/auth/', include('accounts.urls')),
     path('api/', include('restaurants.urls')),
+    path('api/', include('local_services.urls')),
     path('api/', include('orders.urls')),
     # App web en /app/ (ruta canónica)
     path('app/', webapp_serve, name='webapp-root'),

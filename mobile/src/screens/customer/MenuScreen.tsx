@@ -29,18 +29,29 @@ import FoodImage from '../../components/FoodImage';
 
 const MenuProductRow = React.memo(function MenuProductRow({
   product,
+  quantity,
   onAdd,
+  onDecrease,
 }: {
   product: Product;
+  quantity: number;
   onAdd: (product: Product) => void;
+  onDecrease: (product: Product) => void;
 }) {
-  return <ProductCard product={product} onAdd={() => onAdd(product)} />;
+  return (
+    <ProductCard
+      product={product}
+      quantity={quantity}
+      onAdd={() => onAdd(product)}
+      onDecrease={() => onDecrease(product)}
+    />
+  );
 });
 
 export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const { restaurantId, restaurantName } = route.params;
   const { user } = useAuth();
-  const { addItem, itemCount, total } = useCart();
+  const { addItem, updateQuantity, items, itemCount, total } = useCart();
   const insets = useSafeAreaInsets();
   const isCustomer = user?.role === 'customer';
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -93,6 +104,14 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     navigation.setOptions({ title: restaurant?.name ?? restaurantName });
   }, [navigation, restaurant?.name, restaurantName]);
 
+  const quantityByProduct = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const item of items) {
+      map.set(item.product.id, item.quantity);
+    }
+    return map;
+  }, [items]);
+
   const handleAdd = useCallback((product: Product) => {
     try {
       addItem(product);
@@ -102,9 +121,26 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     }
   }, [addItem]);
 
+  const handleDecrease = useCallback((product: Product) => {
+    const current = quantityByProduct.get(product.id) ?? 0;
+    if (current <= 1) {
+      updateQuantity(product.id, 0);
+    } else {
+      updateQuantity(product.id, current - 1);
+    }
+    void impactLight();
+  }, [quantityByProduct, updateQuantity]);
+
   const renderItem = useCallback(
-    ({ item }: { item: Product }) => <MenuProductRow product={item} onAdd={handleAdd} />,
-    [handleAdd],
+    ({ item }: { item: Product }) => (
+      <MenuProductRow
+        product={item}
+        quantity={quantityByProduct.get(item.id) ?? 0}
+        onAdd={handleAdd}
+        onDecrease={handleDecrease}
+      />
+    ),
+    [handleAdd, handleDecrease, quantityByProduct],
   );
 
   const listPaddingBottom = useMemo(

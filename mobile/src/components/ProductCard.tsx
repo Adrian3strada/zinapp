@@ -13,11 +13,14 @@ import FoodImage from './FoodImage';
 
 interface Props {
   product: Product;
+  quantity?: number;
   onAdd: () => void;
+  onDecrease?: () => void;
 }
 
-function ProductCard({ product, onAdd }: Props) {
+function ProductCard({ product, quantity = 0, onAdd, onDecrease }: Props) {
   const emoji = getProductEmoji(product.name);
+  const inCart = quantity > 0;
 
   return (
     <View style={styles.card}>
@@ -36,14 +39,36 @@ function ProductCard({ product, onAdd }: Props) {
         ) : null}
         <Text style={styles.price}>{formatCurrency(product.price)}</Text>
       </View>
-      <Pressable
-        style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
-        onPress={onAdd}
-        hitSlop={HIT_SLOP}
-        accessibilityLabel={`Agregar ${product.name}`}
-      >
-        <Ionicons name="add" size={22} color="#FFF" />
-      </Pressable>
+      {inCart ? (
+        <View style={styles.qtyRow}>
+          <Pressable
+            style={styles.qtyBtn}
+            onPress={onDecrease}
+            hitSlop={HIT_SLOP}
+            accessibilityLabel={`Quitar ${product.name}`}
+          >
+            <Ionicons name="remove" size={20} color={colors.primary} />
+          </Pressable>
+          <Text style={styles.qty}>{quantity}</Text>
+          <Pressable
+            style={[styles.qtyBtn, styles.qtyBtnAdd]}
+            onPress={onAdd}
+            hitSlop={HIT_SLOP}
+            accessibilityLabel={`Agregar ${product.name}`}
+          >
+            <Ionicons name="add" size={20} color="#FFF" />
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+          onPress={onAdd}
+          hitSlop={HIT_SLOP}
+          accessibilityLabel={`Agregar ${product.name}`}
+        >
+          <Ionicons name="add" size={22} color="#FFF" />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -77,4 +102,15 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   addBtnPressed: { opacity: 0.88 },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  qtyBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyBtnAdd: { backgroundColor: colors.primary },
+  qty: { fontSize: 16, fontWeight: '800', minWidth: 22, textAlign: 'center', color: colors.text },
 });

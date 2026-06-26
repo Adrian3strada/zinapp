@@ -16,10 +16,6 @@ export function useCustomerPendingNavigation() {
         navigation.navigate('OrderDetail', { orderId: nav.orderId });
         return;
       }
-      if (nav.type === 'shipment') {
-        navigation.navigate('ShipmentDetail', { shipmentId: nav.shipmentId });
-        return;
-      }
       if (nav.type === 'menu') {
         navigation.navigate('Menu', {
           restaurantId: nav.restaurantId,

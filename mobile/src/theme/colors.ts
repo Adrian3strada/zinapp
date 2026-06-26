@@ -25,6 +25,8 @@ export const colors = {
   gradientEnd: '#0F2D6B',
   shipmentStart: '#6366F1',
   shipmentEnd: '#4338CA',
+  serviceStart: '#8B5CF6',
+  serviceEnd: '#6D28D9',
   tabInactive: '#9CA3AF',
   shadow: '#0F172A',
   overlay: 'rgba(15, 23, 42, 0.45)',

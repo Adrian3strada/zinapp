@@ -53,16 +53,43 @@ railway variable set USE_SQLITE=False --service $serviceName
 railway variable set ALLOWED_HOSTS=.railway.app --service $serviceName
 railway variable set SERVE_MEDIA=True --service $serviceName
 railway variable set DEMO_ACCOUNTS_ENABLED=False --service $serviceName
+railway variable set SEED_DATA=false --service $serviceName
+railway variable set RESET_APP_DATA=false --service $serviceName
+railway variable set MEDIA_ROOT=/app/media --service $serviceName
+
+if ($Seed) {
+    railway variable set SEED_DATA=true --service $serviceName
+    Write-Host 'SEED_DATA=true solo para esta corrida. Vuelve a false tras verificar.' -ForegroundColor Yellow
+}
 
 if (-not $vars.DATABASE_URL) {
     Write-Host 'Vinculando DATABASE_URL desde Postgres...' -ForegroundColor Cyan
     railway variable set 'DATABASE_URL=${{Postgres.DATABASE_URL}}' --service $serviceName
 }
 
-if ($Seed) {
-    railway variable set SEED_DATA=true --service $serviceName
-} else {
-    railway variable set SEED_DATA=false --service $serviceName
+Write-Host 'Volumen persistente para fotos (/app/media)...' -ForegroundColor Cyan
+try {
+    $volumes = railway volume list --json 2>$null | ConvertFrom-Json
+    $hasMediaVolume = $false
+    if ($volumes) {
+        foreach ($vol in @($volumes)) {
+            $mount = if ($vol.mountPath) { $vol.mountPath } else { $vol.mount_path }
+            if ($mount -eq '/app/media') { $hasMediaVolume = $true }
+        }
+    }
+    if (-not $hasMediaVolume) {
+        Write-Host 'Creando volumen /app/media...' -ForegroundColor Cyan
+        railway volume add --mount-path /app/media 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host '[OK] Volumen /app/media creado.' -ForegroundColor Green
+        } else {
+            Write-Host 'Crea el volumen manualmente: Railway > zinapp-api > Volumes > Add > /app/media' -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host '[OK] Volumen /app/media ya existe.' -ForegroundColor Green
+    }
+} catch {
+    Write-Host 'Verifica en Railway que exista un volumen montado en /app/media para las fotos.' -ForegroundColor Yellow
 }
 
 Write-Host 'Desplegando API (migrate corre en el entrypoint)...' -ForegroundColor Cyan

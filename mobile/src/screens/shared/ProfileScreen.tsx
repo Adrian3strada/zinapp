@@ -16,6 +16,7 @@ import { appAlert } from '../../utils/appAlert';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
+import AddressPinPicker from '../../components/AddressPinPicker';
 import Button from '../../components/Button';
 import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
 import EmptyState from '../../components/EmptyState';
@@ -40,6 +41,8 @@ import { formatCurrency } from '../../utils/format';
 import { restaurantHasTransferInfo } from '../../config/payments';
 import { appendImage, pickImageFromLibrary } from '../../utils/imagePicker';
 import { formatRestaurantHours } from '../../utils/restaurantMeta';
+import type { MapCoordinate } from '../../utils/maps';
+import { toCoordinate } from '../../utils/maps';
 
 const ROLE_LABELS: Record<string, string> = {
   customer: 'Cliente',
@@ -110,6 +113,7 @@ export default function ProfileScreen() {
   const [driverUpdating, setDriverUpdating] = useState(false);
   const [restaurantLoadError, setRestaurantLoadError] = useState<string | null>(null);
   const [restaurantCategory, setRestaurantCategory] = useState('general');
+  const [restaurantCoords, setRestaurantCoords] = useState<MapCoordinate | null>(null);
 
   const loadRoleData = useCallback(async () => {
     if (!user) return;
@@ -148,6 +152,7 @@ export default function ProfileScreen() {
         });
         setAcceptingOrders(data.accepting_orders !== false);
         setRestaurantCategory(data.category ?? 'general');
+        setRestaurantCoords(toCoordinate(data.latitude, data.longitude));
       } catch (err) {
         setRestaurant(null);
         setRestaurantLoadError(getApiErrorMessage(err, 'No se pudo cargar tu restaurante'));
@@ -267,6 +272,13 @@ export default function ProfileScreen() {
       appAlert('Completa nombre y dirección del negocio');
       return;
     }
+    if (!restaurantCoords) {
+      appAlert(
+        'Ubicación en el mapa',
+        'Marca en el mapa dónde está tu local. Eso es lo que verán repartidores y clientes.',
+      );
+      return;
+    }
     setSaving(true);
     try {
       const fd = new FormData();
@@ -275,6 +287,8 @@ export default function ProfileScreen() {
       fd.append('phone', restaurantForm.phone.trim());
       fd.append('whatsapp', restaurantForm.whatsapp.trim());
       fd.append('address', restaurantForm.address.trim());
+      fd.append('latitude', String(restaurantCoords.latitude));
+      fd.append('longitude', String(restaurantCoords.longitude));
       fd.append('bank_name', restaurantForm.bank_name.trim());
       fd.append('account_holder', restaurantForm.account_holder.trim());
       fd.append('clabe', restaurantForm.clabe.replace(/\D/g, ''));
@@ -482,6 +496,13 @@ export default function ProfileScreen() {
               <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" hint="Lo ven clientes y repartidores al coordinar pedidos." />
               <FormField label="WhatsApp (comprobantes)" value={restaurantForm.whatsapp} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, whatsapp: v }))} icon="logo-whatsapp" embedded keyboardType="phone-pad" hint="Opcional. Si lo dejas vacío, se usa el teléfono del negocio." />
               <FormField label="Dirección del local" value={restaurantForm.address} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, address: v }))} icon="location-outline" embedded multiline required />
+              <AddressPinPicker
+                title="Ubicación exacta del local"
+                hint="Arrastra el pin al lugar real de tu negocio (la dirección escrita puede no coincidir en el mapa)."
+                pinType="restaurant"
+                coordinate={restaurantCoords}
+                onCoordinateChange={setRestaurantCoords}
+              />
               <Text style={styles.section}>Datos bancarios</Text>
               <Text style={styles.hint}>Los clientes los ven al pagar por transferencia. Solo tú puedes editarlos.</Text>
               <FormField label="Banco" value={restaurantForm.bank_name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, bank_name: v }))} icon="business-outline" embedded placeholder="Ej. BBVA, Banorte" />

@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
@@ -15,7 +16,7 @@ import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
-import { orderApi, shipmentApi } from '../../services/api';
+import { orderApi, shipmentApi, deliveryApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import type { Order, Shipment } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
@@ -98,6 +99,20 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
         await orderApi.acceptDelivery(item.order.id);
       } else {
         await shipmentApi.acceptDelivery(item.shipment.id);
+      }
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+          await deliveryApi.updateLocation(
+            position.coords.latitude,
+            position.coords.longitude,
+          );
+        }
+      } catch {
+        // El GPS se sincronizará en segundo plano
       }
       appAlert('¡Listo!', 'Entrega aceptada');
       load(true);

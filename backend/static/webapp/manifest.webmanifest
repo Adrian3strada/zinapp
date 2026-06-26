@@ -1,5 +1,5 @@
 {
-    "description":  "Pedidos y envÃ­os locales en ZinapÃ©cuaro, MichoacÃ¡n.",
+    "description":  "Comida a domicilio y servicios locales en ZinapÃ©cuaro, MichoacÃ¡n.",
     "short_name":  "ZinApp",
     "background_color":  "#FFFFFF",
     "icons":  [
@@ -14,7 +14,7 @@
     "orientation":  "portrait",
     "theme_color":  "#1E5DB8",
     "display":  "standalone",
-    "name":  "ZinApp â€” Delivery ZinapÃ©cuaro",
+    "name":  "ZinApp â€” ZinapÃ©cuaro",
     "scope":  "/app/",
     "start_url":  "/app/"
 }

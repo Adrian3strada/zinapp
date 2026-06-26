@@ -7,6 +7,7 @@ import type {
   CouponValidation,
   DeliveryProfile,
   GeocodeResult,
+  LocalService,
   Order,
   OrderActiveSummary,
   PaginatedResponse,
@@ -361,6 +362,10 @@ export const couponApi = {
   listActive: () => api.get<PublicCoupon[]>('/coupons/active/'),
   validate: (code: string, subtotal: number) =>
     api.post<CouponValidation>('/coupons/validate/', { code, subtotal: subtotal.toFixed(2) }),
+};
+
+export const localServiceApi = {
+  list: () => api.get<LocalService[]>('/local-services/'),
 };
 
 export const reviewApi = {

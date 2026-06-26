@@ -11,52 +11,14 @@ import MapErrorBoundary from './MapErrorBoundary';
 import MapPin, { MAP_PIN_ANCHOR, MapPinType } from './MapPin';
 import OsmWebMap from './OsmWebMap';
 
-export interface MapMarker {
-  id: string;
-  coordinate: MapCoordinate;
-  title: string;
-  description?: string;
-  pinType?: MapPinType;
-}
+import { osmMarkerColor, toOsmMapMarkers } from './appMapShared';
+import type { AppMapProps, MapMarker, MapPolyline } from './AppMap.types';
 
-export interface MapPolyline {
-  coordinates: MapCoordinate[];
-  strokeColor?: string;
-  strokeWidth?: number;
-  lineDashPattern?: number[];
-}
-
-interface Props {
-  markers?: MapMarker[];
-  polylines?: MapPolyline[];
-  region?: Region;
-  height?: number;
-  style?: ViewStyle;
-  showsUserLocation?: boolean;
-  followsUserLocation?: boolean;
-  emptyMessage?: string;
-  onMarkerPress?: (marker: MapMarker) => void;
-  followMarkerId?: string | null;
-}
+export type { MapMarker, MapPolyline } from './AppMap.types';
 
 const EDGE_PADDING = { top: 56, right: 48, bottom: 56, left: 48 };
 const TRACK_EDGE_PADDING = { top: 72, right: 52, bottom: 88, left: 52 };
 const FOLLOW_REGION_DELTA = { latitudeDelta: 0.014, longitudeDelta: 0.014 };
-
-function osmMarkerColor(pinType?: MapPinType, id?: string): string {
-  if (id === 'me') return '#2563EB';
-  switch (pinType) {
-    case 'delivery':
-      return '#E53935';
-    case 'driver':
-      return colors.secondary;
-    case 'pickup':
-      return colors.accent;
-    case 'restaurant':
-    default:
-      return colors.primary;
-  }
-}
 
 function coordsMoved(a: MapCoordinate, b: MapCoordinate, threshold = 0.00004): boolean {
   if (!isValidCoordinate(a) || !isValidCoordinate(b)) return false;
@@ -111,11 +73,12 @@ export default function AppMap({
   emptyMessage,
   onMarkerPress,
   followMarkerId = null,
-}: Props) {
+}: AppMapProps) {
   const mapRef = useRef<MapView>(null);
   const initialRegion = region ?? ZINAPECUARO_REGION;
   const lastFollowCoordRef = useRef<MapCoordinate | null>(null);
   const hasInitialFitRef = useRef(false);
+  const followPausedRef = useRef(false);
 
   const safeMarkers = useMemo(
     () => markers.filter((m) => isValidCoordinate(m.coordinate)),
@@ -161,6 +124,10 @@ export default function AppMap({
 
     const timer = setTimeout(() => {
       if (followMarkerId && followCoord) {
+        if (followPausedRef.current) {
+          lastFollowCoordRef.current = followCoord;
+          return;
+        }
         if (!hasInitialFitRef.current && markerCoords.length > 1) {
           hasInitialFitRef.current = true;
           mapRef.current?.fitToCoordinates(markerCoords, {
@@ -199,6 +166,7 @@ export default function AppMap({
   }, [markerCoords, followMarkerId, followMarker?.coordinate.latitude, followMarker?.coordinate.longitude]);
 
   useEffect(() => {
+    followPausedRef.current = false;
     if (!followMarkerId) {
       lastFollowCoordRef.current = null;
       hasInitialFitRef.current = false;
@@ -220,12 +188,7 @@ export default function AppMap({
           height={height}
           style={style}
           center={initialRegion}
-          markers={safeMarkers.map((m) => ({
-            id: m.id,
-            coordinate: m.coordinate,
-            color: osmMarkerColor(m.pinType, m.id),
-            label: m.title,
-          }))}
+          markers={toOsmMapMarkers(safeMarkers, followMarkerId)}
           polylines={safePolylines.map((line) => ({
             coordinates: line.coordinates,
             color: line.strokeColor,
@@ -277,6 +240,9 @@ export default function AppMap({
           rotateEnabled={false}
           pitchEnabled={false}
           liteMode={false}
+          onPanDrag={() => {
+            followPausedRef.current = true;
+          }}
         >
           {safePolylines.map((line, index) => (
             <Polyline

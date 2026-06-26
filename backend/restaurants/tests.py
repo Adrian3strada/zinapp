@@ -77,3 +77,46 @@ class RestaurantPaymentInfoTests(TestCase):
         self.assertEqual(status['done_count'], 1)
         self.assertTrue(any(s['key'] == 'bank' and s['done'] for s in status['steps']))
         self.assertTrue(any(s['key'] == 'menu' and not s['done'] for s in status['steps']))
+
+
+class RestaurantLocationTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username='owner_loc',
+            password='test1234',
+            role='restaurant',
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Deli',
+            address='Salazar, Centro',
+            phone='4431112233',
+            latitude='19.859500',
+            longitude='-100.826500',
+        )
+        self.factory = APIRequestFactory()
+        self.request = self.factory.patch('/')
+
+    def test_address_change_keeps_manual_coordinates(self):
+        serializer = RestaurantSerializer(
+            self.restaurant,
+            data={'address': 'Salazar 120, Centro, Zinapécuaro'},
+            partial=True,
+            context={'request': self.request},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        updated = serializer.save()
+        self.assertEqual(str(updated.latitude), '19.859500')
+        self.assertEqual(str(updated.longitude), '-100.826500')
+
+    def test_explicit_coordinates_update(self):
+        serializer = RestaurantSerializer(
+            self.restaurant,
+            data={'latitude': '19.860100', 'longitude': '-100.825100'},
+            partial=True,
+            context={'request': self.request},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        updated = serializer.save()
+        self.assertEqual(str(updated.latitude), '19.860100')
+        self.assertEqual(str(updated.longitude), '-100.825100')

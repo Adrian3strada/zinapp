@@ -1,10 +1,15 @@
 import type { MapCoordinate } from './maps';
 
+export type OsmPinType = 'restaurant' | 'delivery' | 'driver' | 'pickup' | 'me';
+
 export interface OsmMapMarker {
   id: string;
   coordinate: MapCoordinate;
   color?: string;
   label?: string;
+  pinType?: OsmPinType;
+  /** Pulso animado (repartidor en vivo). */
+  pulse?: boolean;
 }
 
 export interface OsmMapPolyline {
@@ -62,6 +67,45 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
   <style>
     html, body, #map { margin: 0; height: 100%; width: 100%; background: #e8eef5; }
     .leaflet-control-attribution { font-size: 9px; }
+    .zin-pin-wrap { background: transparent; border: none; }
+    .zin-pin {
+      position: relative;
+      width: var(--pin-size, 40px);
+      height: calc(var(--pin-size, 40px) + 10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.28));
+    }
+    .zin-pin-bubble {
+      width: var(--pin-size, 40px);
+      height: var(--pin-size, 40px);
+      border-radius: 999px;
+      background: var(--pin-color, #1A56DB);
+      border: 2.5px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: calc(var(--pin-size, 40px) * 0.42);
+      line-height: 1;
+    }
+    .zin-pin-tail {
+      width: 12px;
+      height: 12px;
+      margin-top: -6px;
+      background: var(--pin-color, #1A56DB);
+      border: 2px solid #fff;
+      transform: rotate(45deg);
+    }
+    .zin-pin.zin-pulse .zin-pin-bubble {
+      animation: zin-pulse 1.6s ease-out infinite;
+    }
+    @keyframes zin-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.55); }
+      70% { box-shadow: 0 0 0 14px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
   </style>
 </head>
 <body>
@@ -97,6 +141,12 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     var polylineLayers = [];
     var hasInitialFit = false;
     var lastFollowId = null;
+    var followPaused = false;
+
+    map.on('dragstart', function() { followPaused = true; });
+    map.on('zoomstart', function(e) {
+      if (e.originalEvent) followPaused = true;
+    });
 
     if (shell.pinCoordinate) {
       pinMarker = L.marker([shell.pinCoordinate.latitude, shell.pinCoordinate.longitude], {
@@ -119,6 +169,40 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       polylineLayers = [];
     }
 
+    function pinStyleFor(m) {
+      if (m.pinType === 'driver' || m.id === 'driver') {
+        return { emoji: '🛵', color: m.color || '#3B82F6', size: 46 };
+      }
+      if (m.pinType === 'restaurant' || m.id === 'restaurant') {
+        return { emoji: '🍽️', color: m.color || '#1A56DB', size: 38 };
+      }
+      if (m.pinType === 'pickup' || m.id === 'pickup') {
+        return { emoji: '📦', color: m.color || '#C2410C', size: 38 };
+      }
+      if (m.pinType === 'delivery' || m.id === 'delivery') {
+        return { emoji: '📍', color: m.color || '#22C55E', size: 38 };
+      }
+      if (m.pinType === 'me' || m.id === 'me') {
+        return { emoji: '📍', color: m.color || '#2563EB', size: 40 };
+      }
+      return { emoji: '●', color: m.color || '#1A56DB', size: 32 };
+    }
+
+    function createPinIcon(m) {
+      var style = pinStyleFor(m);
+      var pulseClass = m.pulse ? ' zin-pulse' : '';
+      var html =
+        '<div class="zin-pin' + pulseClass + '" style="--pin-color:' + style.color + ';--pin-size:' + style.size + 'px">' +
+        '<div class="zin-pin-bubble">' + style.emoji + '</div>' +
+        '<div class="zin-pin-tail"></div></div>';
+      return L.divIcon({
+        className: 'zin-pin-wrap',
+        html: html,
+        iconSize: [style.size, style.size + 10],
+        iconAnchor: [style.size / 2, style.size + 8],
+      });
+    }
+
     window.setMapData = function(raw) {
       var data = typeof raw === 'string' ? JSON.parse(raw) : raw;
       clearDynamicLayers();
@@ -126,13 +210,10 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       (data.markers || []).forEach(function(m) {
         if (!m || !m.id || !m.coordinate) return;
         if (shell.pinCoordinate && m.id === 'pin') return;
-        var layer = L.circleMarker([m.coordinate.latitude, m.coordinate.longitude], {
-          radius: m.id === 'me' || m.id === 'driver' ? 10 : 8,
-          color: m.color || '#1A56DB',
-          fillColor: m.color || '#1A56DB',
-          fillOpacity: 0.92,
-          weight: 2
-        }).addTo(map);
+        var layer = L.marker(
+          [m.coordinate.latitude, m.coordinate.longitude],
+          { icon: createPinIcon(m), zIndexOffset: m.id === 'driver' || m.id === 'me' ? 500 : 100 }
+        ).addTo(map);
         if (m.label) layer.bindPopup(m.label);
         layer.on('click', function() {
           postMessage({ type: 'markerPress', id: m.id });
@@ -150,7 +231,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       });
 
       var followId = data.followMarkerId || null;
-      if (followId && markerLayers[followId]) {
+      if (followId && markerLayers[followId] && !followPaused) {
         var ll = markerLayers[followId].getLatLng();
         if (!hasInitialFit || followId !== lastFollowId) {
           map.setView(ll, Math.max(map.getZoom(), 15));
@@ -158,6 +239,11 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         } else {
           map.panTo(ll, { animate: true, duration: 0.45 });
         }
+        lastFollowId = followId;
+        return;
+      }
+
+      if (followId && markerLayers[followId]) {
         lastFollowId = followId;
         return;
       }

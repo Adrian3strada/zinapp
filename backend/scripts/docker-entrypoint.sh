@@ -8,6 +8,8 @@ mkdir -p /app/media
 
 echo "ZinApp API - migrate + collectstatic"
 python manage.py migrate --noinput
+python manage.py normalize_usernames
+python manage.py fix_password_hashes
 python manage.py collectstatic --noinput
 
 if [ "$SEED_DATA" = "true" ] || [ "$SEED_DATA" = "True" ] || [ "$SEED_DATA" = "1" ]; then
@@ -22,6 +24,8 @@ if [ "$RESET_APP_DATA" = "true" ] || [ "$RESET_APP_DATA" = "True" ] || [ "$RESET
   else
     python manage.py reset_app_data --confirm
   fi
+else
+  echo "RESET_APP_DATA desactivado - se conservan pedidos, usuarios e imágenes"
 fi
 
 echo "Gunicorn en 0.0.0.0:${PORT:-8000}"

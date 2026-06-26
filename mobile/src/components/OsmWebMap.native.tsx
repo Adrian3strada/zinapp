@@ -27,7 +27,7 @@ interface Props {
   onMarkerPress?: (markerId: string) => void;
 }
 
-/** Mapa OpenStreetMap en WebView (móvil) o iframe (web). */
+/** Mapa OpenStreetMap en WebView (iOS/Android). */
 export default function OsmWebMap({
   height = 220,
   style,
@@ -69,7 +69,6 @@ export default function OsmWebMap({
   );
 
   const webRef = useRef<WebView>(null);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const livePayload = useMemo(
     () => buildOsmMapLivePayload({ markers, polylines, followMarkerId, fitAll: !followMarkerId }),
@@ -77,26 +76,12 @@ export default function OsmWebMap({
   );
 
   const pushLiveData = useCallback((payload: string) => {
-    if (Platform.OS === 'web') {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ type: 'setMapData', payload: JSON.parse(payload) }),
-        '*',
-      );
-      return;
-    }
     webRef.current?.injectJavaScript(
       `window.setMapData && window.setMapData(${payload}); true;`,
     );
   }, []);
 
   const pushPinPosition = useCallback((latitude: number, longitude: number) => {
-    if (Platform.OS === 'web') {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ type: 'setPinPosition', latitude, longitude }),
-        '*',
-      );
-      return;
-    }
     webRef.current?.injectJavaScript(
       `window.setPinPosition && window.setPinPosition(${latitude}, ${longitude}); true;`,
     );
@@ -144,46 +129,8 @@ export default function OsmWebMap({
   );
 
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const onWindowMessage = (event: MessageEvent) => {
-      if (typeof event.data !== 'string') return;
-      handleMessage(event.data);
-    };
-    window.addEventListener('message', onWindowMessage);
-    return () => window.removeEventListener('message', onWindowMessage);
-  }, [handleMessage]);
-
-  useEffect(() => {
     setMapReady(false);
   }, [html]);
-
-  if (Platform.OS === 'web') {
-    return (
-      <View
-        style={[
-          styles.wrapper,
-          { height },
-          !interactive ? { pointerEvents: 'box-none' as const } : null,
-          cardShadow,
-          style,
-        ]}
-      >
-        <iframe
-          ref={iframeRef}
-          title="Mapa ZinApp"
-          srcDoc={html}
-          style={{
-            border: 0,
-            width: '100%',
-            height: '100%',
-            display: 'block',
-            pointerEvents: interactive ? 'auto' : 'none',
-          }}
-          sandbox="allow-scripts allow-same-origin"
-        />
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.wrapper, { height }, cardShadow, style]}>

@@ -40,6 +40,15 @@
     </div>
   </a>
 
+  <a href="{% url 'gestion:local-services' %}" class="gestion-card panel-card">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">💇</div>
+      <h3>Servicios locales</h3>
+      <p>{{ stats.local_services }} negocios visibles</p>
+      <span class="gestion-card-action">Gestionar →</span>
+    </div>
+  </a>
+
   <a href="{% url 'dashboard:restaurants' %}" class="gestion-card panel-card">
     <div class="panel-card-body padded">
       <div class="gestion-card-icon">🍽️</div>

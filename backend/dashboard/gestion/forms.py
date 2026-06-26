@@ -2,9 +2,13 @@ from decimal import Decimal
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.core.exceptions import ValidationError
 
 from accounts.models import DeliveryProfile, User, UserRole
+from accounts.username import normalize_username
 from orders.models import Coupon, Order, OrderStatus, Shipment, ShipmentStatus
+from restaurants.geo import geocode_address
+from local_services.models import LocalService
 from restaurants.models import Product, Restaurant
 
 
@@ -62,6 +66,7 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
         fields = (
             'owner', 'name', 'category', 'description', 'address', 'phone',
             'whatsapp', 'bank_name', 'account_holder', 'clabe',
+            'latitude', 'longitude',
             'opening_time', 'closing_time', 'is_active', 'accepting_orders',
         )
         widgets = {
@@ -109,6 +114,18 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
         initial=DeliveryProfile.VehicleType.MOTORCYCLE,
     )
     license_plate = forms.CharField(required=False, max_length=20)
+    restaurant_name = forms.CharField(
+        required=False,
+        max_length=120,
+        label='Nombre del restaurante',
+        help_text='Obligatorio si el rol es Restaurante.',
+    )
+    restaurant_address = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 2}),
+        label='Dirección del restaurante',
+        help_text='Obligatorio si el rol es Restaurante.',
+    )
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -117,10 +134,50 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
             'password1', 'password2',
         )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['username'].help_text = (
+            'Se guarda en minúsculas. En la app se inicia sesión con este usuario.'
+        )
+        self.fields['password1'].help_text = (
+            'Mínimo 8 caracteres; evita que sea igual al usuario o solo números.'
+        )
+
+    def clean_username(self):
+        username = normalize_username(self.cleaned_data['username'])
+        if not username:
+            raise ValidationError('El usuario no puede estar vacío.')
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError('Ya existe un usuario con ese nombre.')
+        return username
+
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        role = cleaned.get('role')
+        if role == UserRole.RESTAURANT:
+            name = (cleaned.get('restaurant_name') or '').strip()
+            address = (cleaned.get('restaurant_address') or '').strip()
+            if not name:
+                self.add_error('restaurant_name', 'Indica el nombre del restaurante.')
+            if not address:
+                self.add_error('restaurant_address', 'Indica la dirección del restaurante.')
+        return cleaned
+
     def save(self, commit=True):
         user = super().save(commit=False)
+        password = self.cleaned_data.get('password1')
+        if password:
+            user.set_password(password)
         user.role = self.cleaned_data['role']
         user.phone = self.cleaned_data.get('phone', '')
+        email = self.cleaned_data.get('email') or ''
+        if email:
+            user.email = email
+        user.is_active = True
         if commit:
             user.save()
             if user.role == UserRole.DRIVER:
@@ -133,10 +190,37 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
                         'is_available': False,
                     },
                 )
+            if user.role == UserRole.RESTAURANT:
+                name = self.cleaned_data.get('restaurant_name', '').strip()
+                address = self.cleaned_data.get('restaurant_address', '').strip()
+                if name and address and not Restaurant.objects.filter(owner=user).exists():
+                    geo = geocode_address(address)
+                    Restaurant.objects.create(
+                        owner=user,
+                        name=name,
+                        address=address,
+                        phone=user.phone,
+                        latitude=geo['latitude'] if geo else None,
+                        longitude=geo['longitude'] if geo else None,
+                        is_active=False,
+                        accepting_orders=False,
+                    )
         return user
 
 
 class UserEditForm(PanelFormMixin, forms.ModelForm):
+    new_password1 = forms.CharField(
+        required=False,
+        label='Nueva contraseña',
+        widget=forms.PasswordInput,
+        help_text='Déjalo vacío para no cambiar la contraseña.',
+    )
+    new_password2 = forms.CharField(
+        required=False,
+        label='Confirmar contraseña',
+        widget=forms.PasswordInput,
+    )
+
     class Meta:
         model = User
         fields = (
@@ -144,8 +228,36 @@ class UserEditForm(PanelFormMixin, forms.ModelForm):
             'role', 'phone', 'address', 'is_active', 'is_staff',
         )
 
+    def clean_username(self):
+        username = normalize_username(self.cleaned_data['username'])
+        if not username:
+            raise ValidationError('El usuario no puede estar vacío.')
+        qs = User.objects.filter(username__iexact=username)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError('Ya existe un usuario con ese nombre.')
+        return username
+
+    def clean_email(self):
+        return (self.cleaned_data.get('email') or '').strip().lower()
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('new_password1') or ''
+        p2 = cleaned.get('new_password2') or ''
+        if p1 or p2:
+            if p1 != p2:
+                self.add_error('new_password2', 'Las contraseñas no coinciden.')
+            elif len(p1) < 8:
+                self.add_error('new_password1', 'Mínimo 8 caracteres.')
+        return cleaned
+
     def save(self, commit=True):
         user = super().save(commit=False)
+        password = self.cleaned_data.get('new_password1')
+        if password:
+            user.set_password(password)
         if commit:
             user.save()
             if user.role == UserRole.DRIVER:
@@ -163,3 +275,16 @@ class DriverProfileForm(PanelFormMixin, forms.ModelForm):
     class Meta:
         model = DeliveryProfile
         fields = ('vehicle_type', 'license_plate', 'is_available')
+
+
+class LocalServiceForm(PanelFormMixin, forms.ModelForm):
+    class Meta:
+        model = LocalService
+        fields = (
+            'name', 'description', 'logo', 'phone', 'whatsapp',
+            'is_active', 'sort_order',
+        )
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+        }
+

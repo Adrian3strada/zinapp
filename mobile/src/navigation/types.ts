@@ -32,11 +32,9 @@ export type CustomerTabParamList = {
 export type CustomerStackParamList = {
   Main: NavigatorScreenParams<CustomerTabParamList> | undefined;
   Comida: undefined;
-  Ofertas: undefined;
-  Envios: undefined;
+  Servicios: undefined;
   Menu: { restaurantId: number; restaurantName: string };
   OrderDetail: { orderId: number; promptReview?: boolean };
-  ShipmentDetail: { shipmentId: number };
 };
 
 export type RestaurantTabParamList = {
@@ -83,13 +81,7 @@ export type HomeScreenProps = CompositeScreenProps<
   NativeStackScreenProps<CustomerStackParamList>
 >;
 
-export type OffersScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Ofertas'>;
-
-export type ShipmentsScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Envios'>;
-
-export type ShipmentDetailScreenProps =
-  | NativeStackScreenProps<CustomerStackParamList, 'ShipmentDetail'>
-  | NativeStackScreenProps<DriverStackParamList, 'ShipmentDetail'>;
+export type ServicesScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Servicios'>;
 
 export type MenuScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Menu'>;
 export type CartScreenProps = CompositeScreenProps<
@@ -105,6 +97,8 @@ export type OrderDetailScreenProps =
   | NativeStackScreenProps<CustomerStackParamList, 'OrderDetail'>
   | NativeStackScreenProps<RestaurantStackParamList, 'OrderDetail'>
   | NativeStackScreenProps<DriverStackParamList, 'OrderDetail'>;
+
+export type ShipmentDetailScreenProps = NativeStackScreenProps<DriverStackParamList, 'ShipmentDetail'>;
 
 export type DriverOrderDetailScreenProps = NativeStackScreenProps<
   DriverStackParamList,

@@ -29,8 +29,25 @@ function WebBootScreen() {
   );
 }
 
+function navStateKey(state: unknown): string {
+  if (!state || typeof state !== 'object') return 'root';
+  const parts: string[] = [];
+  let current = state as {
+    index?: number;
+    routes: { name?: string; state?: unknown }[];
+  };
+  while (current?.routes?.length) {
+    const idx = current.index ?? 0;
+    const route = current.routes[idx];
+    parts.push(`${route?.name ?? '?'}:${idx}`);
+    current = route?.state as typeof current;
+  }
+  return parts.join('>') || 'root';
+}
+
 export default function App() {
   const [webFontsReady, setWebFontsReady] = React.useState(Platform.OS !== 'web');
+  const [navResetKey, setNavResetKey] = React.useState('root');
 
   React.useEffect(() => {
     void prefetchAppConfig();
@@ -43,11 +60,13 @@ export default function App() {
 
   if (!webFontsReady) {
     return (
-      <SafeAreaProvider>
-        <WebShell>
-          <WebBootScreen />
-        </WebShell>
-      </SafeAreaProvider>
+      <AppErrorBoundary>
+        <SafeAreaProvider>
+          <WebShell>
+            <WebBootScreen />
+          </WebShell>
+        </SafeAreaProvider>
+      </AppErrorBoundary>
     );
   }
 
@@ -59,9 +78,14 @@ export default function App() {
             <BackendWake />
             <CartProvider>
               <View style={webNavigationRootStyle()}>
-                <NavigationContainer ref={navigationRef}>
-                  <StatusBar style="light" />
-                  <RootNavigator />
+                <NavigationContainer
+                  ref={navigationRef}
+                  onStateChange={(state) => setNavResetKey(navStateKey(state))}
+                >
+                  <AppErrorBoundary resetKey={navResetKey}>
+                    <StatusBar style="light" />
+                    <RootNavigator />
+                  </AppErrorBoundary>
                 </NavigationContainer>
               </View>
             </CartProvider>

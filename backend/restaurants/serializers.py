@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
 
+from .fields import CoordinateField
 from .geo import geocode_address, is_in_coverage
 from .models import Product, Restaurant
 from .setup import restaurant_setup_status
@@ -54,6 +55,13 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         )
         read_only_fields = ('id', 'created_at', 'updated_at', 'setup_status')
+        extra_kwargs = {
+            'latitude': {'required': False, 'allow_null': True},
+            'longitude': {'required': False, 'allow_null': True},
+        }
+
+    latitude = CoordinateField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    longitude = CoordinateField(max_digits=9, decimal_places=6, required=False, allow_null=True)
 
     def validate_clabe(self, value):
         clabe = (value or '').strip()
@@ -116,13 +124,21 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'address' in validated_data
             and validated_data['address'].strip() != (instance.address or '').strip()
         )
+        coords_provided = 'latitude' in validated_data and 'longitude' in validated_data
+        had_coords = instance.latitude is not None and instance.longitude is not None
+
         restaurant = super().update(instance, validated_data)
-        if address_changed:
+
+        if coords_provided:
+            return restaurant
+
+        if address_changed and not had_coords:
             geo = geocode_address(restaurant.address)
             if geo:
                 restaurant.latitude = geo['latitude']
                 restaurant.longitude = geo['longitude']
                 restaurant.save(update_fields=['latitude', 'longitude', 'updated_at'])
+
         return restaurant
 
 

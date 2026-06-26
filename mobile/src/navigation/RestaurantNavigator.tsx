@@ -1,36 +1,26 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { Suspense } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import AppErrorBoundary from '../components/AppErrorBoundary';
 import { RestaurantProvider } from '../context/RestaurantContext';
 import { useRestaurantPendingNavigation } from './useRestaurantPendingNavigation';
 import { useRestaurantPendingCount } from '../hooks/useRestaurantPendingCount';
 import RestaurantManageScreen from '../screens/restaurant/RestaurantManageScreen';
 import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
-import { colors } from '../theme/colors';
+import ProfileScreen from '../screens/shared/ProfileScreen';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
 import type { RestaurantStackParamList, RestaurantTabParamList } from './types';
 
-const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
-
-function TabFallback() {
+function ProfileScreenWithBoundary() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <ActivityIndicator color={colors.primary} />
-    </View>
-  );
-}
-
-function LazyProfileScreen() {
-  return (
-    <Suspense fallback={<TabFallback />}>
+    <AppErrorBoundary>
       <ProfileScreen />
-    </Suspense>
+    </AppErrorBoundary>
   );
 }
 
@@ -82,7 +72,7 @@ function RestaurantTabsInner({
       />
       <Tab.Screen
         name="Perfil"
-        component={LazyProfileScreen}
+        component={ProfileScreenWithBoundary}
         options={{
           title: 'Mi perfil',
           headerShown: false,

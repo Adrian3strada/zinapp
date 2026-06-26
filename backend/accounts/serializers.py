@@ -10,6 +10,7 @@ from restaurants.geo import geocode_address
 from restaurants.models import Restaurant
 
 from .models import DeliveryProfile, PasswordResetToken, User, UserRole
+from .username import normalize_username
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -180,7 +181,7 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         username = value.strip().lower()
-        if not User.objects.filter(username=username).exists():
+        if not User.objects.filter(username__iexact=username).exists():
             raise serializers.ValidationError('No existe una cuenta con ese usuario.')
         return username
 
@@ -219,7 +220,19 @@ DEMO_USERNAMES = frozenset({
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        username = (attrs.get(self.username_field) or '').strip().lower()
+        username = normalize_username(attrs.get(self.username_field) or '')
+        if not username:
+            raise AuthenticationFailed(
+                'Usuario o contraseña incorrectos.',
+                code='authorization',
+            )
+
+        existing = User.objects.filter(username__iexact=username).first()
+        if existing:
+            attrs[self.username_field] = existing.username
+        else:
+            attrs[self.username_field] = username
+
         if not getattr(settings, 'DEMO_ACCOUNTS_ENABLED', True) and username in DEMO_USERNAMES:
             raise AuthenticationFailed(
                 'Las cuentas de demostración están desactivadas. Crea una cuenta nueva o contacta soporte.',

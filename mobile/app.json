@@ -21,7 +21,7 @@
       "favicon": "./assets/icon.png",
       "name": "ZinApp",
       "shortName": "ZinApp",
-      "description": "Pedidos y envíos locales en Zinapécuaro, Michoacán.",
+      "description": "Comida a domicilio y servicios locales en Zinapécuaro, Michoacán.",
       "lang": "es",
       "themeColor": "#1E5DB8",
       "backgroundColor": "#FFFFFF",
@@ -78,26 +78,6 @@
       "privacyPolicyUrl": "https://zinapp-api-production.up.railway.app/privacidad/",
       "supportEmail": "adrianestradachavez123@gmail.com",
       "deliveryFee": 25,
-      "shipmentSizes": [
-        {
-          "key": "small",
-          "label": "Chico",
-          "fee": 25,
-          "hint": "Sobre, documentos o bolsa pequeña"
-        },
-        {
-          "key": "medium",
-          "label": "Mediano",
-          "fee": 45,
-          "hint": "Caja mediana o varios artículos"
-        },
-        {
-          "key": "large",
-          "label": "Grande",
-          "fee": 70,
-          "hint": "Caja grande o paquete pesado"
-        }
-      ],
       "transferInfo": {
         "bank": "BBVA",
         "clabe": "012180015217582489",

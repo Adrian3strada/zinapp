@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { InteractionManager } from 'react-native';
 
-import { orderApi, shipmentApi } from '../services/api';
-import type { OrderActiveSummary, ShipmentActiveSummary } from '../types';
+import { orderApi } from '../services/api';
+import type { OrderActiveSummary } from '../types';
 import { formatOrderLabel } from '../utils/orderDisplay';
 
 const ACTIVE_ORDER_STATUSES = ['pending', 'accepted', 'preparing', 'ready', 'on_the_way'] as const;
-const ACTIVE_SHIPMENT_STATUSES = ['pending', 'picked_up', 'on_the_way'] as const;
 
 export interface ActiveDeliveryItem {
-  kind: 'order' | 'shipment';
+  kind: 'order';
   id: number;
   title: string;
   subtitle: string;
@@ -34,33 +33,15 @@ function mapOrderToItem(order: OrderActiveSummary): ActiveDeliveryItem {
   };
 }
 
-function mapShipmentToItem(shipment: ShipmentActiveSummary): ActiveDeliveryItem {
-  return {
-    kind: 'shipment',
-    id: shipment.id,
-    title: `Envío #${shipment.id}`,
-    subtitle: shipment.description,
-    status: shipment.status,
-    statusDisplay: shipment.status_display,
-    isLive: shipment.status === 'on_the_way' || shipment.status === 'picked_up',
-    emoji: '📦',
-  };
-}
-
 /** Una sola instancia por app — usar vía CustomerActiveDeliveriesProvider. */
 export function useCustomerActiveDeliveriesState() {
   const [orders, setOrders] = useState<OrderActiveSummary[]>([]);
-  const [shipments, setShipments] = useState<ShipmentActiveSummary[]>([]);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [ordersRes, shipmentsRes] = await Promise.all([
-        orderApi.active(),
-        shipmentApi.active(),
-      ]);
+      const ordersRes = await orderApi.active();
       setOrders(ordersRes.data);
-      setShipments(shipmentsRes.data);
       setRefreshError(null);
     } catch {
       setRefreshError('No se pudo actualizar el estado de tus pedidos');
@@ -70,11 +51,6 @@ export function useCustomerActiveDeliveriesState() {
   const activeOrders = useMemo(
     () => orders.filter((o) => ACTIVE_ORDER_STATUSES.includes(o.status as typeof ACTIVE_ORDER_STATUSES[number])),
     [orders],
-  );
-
-  const activeShipments = useMemo(
-    () => shipments.filter((s) => ACTIVE_SHIPMENT_STATUSES.includes(s.status as typeof ACTIVE_SHIPMENT_STATUSES[number])),
-    [shipments],
   );
 
   const liveItems = useMemo<ActiveDeliveryItem[]>(() => {
@@ -91,32 +67,21 @@ export function useCustomerActiveDeliveriesState() {
         isLive: true,
       });
     }
-    for (const shipment of activeShipments) {
-      if (shipment.status !== 'on_the_way' && shipment.status !== 'picked_up') continue;
-      items.push({ ...mapShipmentToItem(shipment), isLive: true });
-    }
     return items;
-  }, [activeOrders, activeShipments]);
+  }, [activeOrders]);
 
-  const trackingItems = useMemo<ActiveDeliveryItem[]>(() => {
-    const items = [
-      ...activeOrders.map(mapOrderToItem),
-      ...activeShipments.map(mapShipmentToItem),
-    ];
-    return items.sort((a, b) => Number(b.isLive) - Number(a.isLive));
-  }, [activeOrders, activeShipments]);
+  const trackingItems = useMemo<ActiveDeliveryItem[]>(
+    () => activeOrders.map(mapOrderToItem).sort((a, b) => Number(b.isLive) - Number(a.isLive)),
+    [activeOrders],
+  );
 
   const hasLiveTracking = useMemo(() => {
-    const orderLive = activeOrders.some(
+    return activeOrders.some(
       (o) =>
         o.status === 'on_the_way'
         || (o.status === 'ready' && o.driver_latitude && o.driver_longitude),
     );
-    const shipmentLive = activeShipments.some(
-      (s) => s.status === 'on_the_way' || s.status === 'picked_up',
-    );
-    return orderLive || shipmentLive;
-  }, [activeOrders, activeShipments]);
+  }, [activeOrders]);
 
   const pollMs = hasLiveTracking ? 3000 : 45000;
 
@@ -139,7 +104,6 @@ export function useCustomerActiveDeliveriesState() {
 
   return {
     activeOrderCount: activeOrders.length,
-    activeShipmentCount: activeShipments.length,
     liveItems,
     trackingItems,
     refreshError,
