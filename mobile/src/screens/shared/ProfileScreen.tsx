@@ -303,6 +303,7 @@ export default function ProfileScreen() {
       }
       const { data } = await restaurantApi.update(restaurant.id, fd);
       setRestaurant(data);
+      setRestaurantCoords(toCoordinate(data.latitude, data.longitude));
       setRestaurantImageUri(null);
       await restaurantCtx?.refresh();
       appAlert('Negocio actualizado');

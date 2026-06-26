@@ -36,6 +36,10 @@ class Restaurant(models.Model):
     image = models.ImageField(upload_to='restaurants/', blank=True, null=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    location_pinned = models.BooleanField(
+        default=False,
+        help_text='True cuando el dueño confirmó la ubicación exacta en el mapa.',
+    )
     is_active = models.BooleanField(default=False)
     accepting_orders = models.BooleanField(default=False)
     opening_time = models.TimeField(null=True, blank=True)

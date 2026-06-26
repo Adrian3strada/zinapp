@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 
-from restaurants.geo import geocode_address, is_in_coverage
+from restaurants.geo import geocode_address, is_in_coverage, looks_like_street_address
 from restaurants.models import Restaurant
 from restaurants.serializers import RestaurantSerializer
 
@@ -14,7 +14,6 @@ class GeocodeTests(TestCase):
         result = geocode_address('Sirani 11 Felix Ireta')
         self.assertIsNotNone(result)
         self.assertTrue(result['in_coverage'])
-        self.assertTrue(result.get('approximate'))
 
     def test_felix_ireta_street(self):
         result = geocode_address('Calle Felix Ireta 11')
@@ -33,6 +32,12 @@ class GeocodeTests(TestCase):
         result = geocode_address('Félix Ireta')
         self.assertIsNotNone(result)
         self.assertTrue(result['in_coverage'])
+
+    def test_street_address_skips_colonia_centroid(self):
+        self.assertTrue(looks_like_street_address('Av. Hidalgo 25, Centro'))
+        result = geocode_address('Av. Hidalgo 25, Centro')
+        self.assertIsNotNone(result)
+        self.assertNotEqual(result['latitude'], 19.859939)
 
 
 class RestaurantPaymentInfoTests(TestCase):
@@ -120,3 +125,4 @@ class RestaurantLocationTests(TestCase):
         updated = serializer.save()
         self.assertEqual(str(updated.latitude), '19.860100')
         self.assertEqual(str(updated.longitude), '-100.825100')
+        self.assertTrue(updated.location_pinned)

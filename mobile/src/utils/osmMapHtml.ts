@@ -73,7 +73,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     .zin-pin {
       position: relative;
       width: var(--pin-size, 40px);
-      height: calc(var(--pin-size, 40px) + 10px);
+      height: calc(var(--pin-size, 40px) + 13px);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -151,7 +151,8 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     });
 
     function pinLayout(size) {
-      var totalHeight = size + 10;
+      var tailTip = 3;
+      var totalHeight = size + 10 + tailTip;
       return {
         iconSize: [size, totalHeight],
         iconAnchor: [size / 2, totalHeight],

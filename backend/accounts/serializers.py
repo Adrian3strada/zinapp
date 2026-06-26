@@ -6,7 +6,6 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from restaurants.fields import CoordinateField
-from restaurants.geo import geocode_address
 from restaurants.models import Restaurant
 
 from .models import DeliveryProfile, PasswordResetToken, User, UserRole
@@ -180,15 +179,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
 
         if user.role == UserRole.RESTAURANT:
-            geo = geocode_address(restaurant_address)
             Restaurant.objects.create(
                 owner=user,
                 name=restaurant_name,
                 address=restaurant_address,
                 phone=restaurant_phone or user.phone,
                 description=restaurant_description,
-                latitude=geo['latitude'] if geo else None,
-                longitude=geo['longitude'] if geo else None,
                 opening_time=None,
                 closing_time=None,
                 is_active=False,

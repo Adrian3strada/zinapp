@@ -48,13 +48,13 @@ class RestaurantSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'owner', 'owner_detail', 'name', 'category', 'description', 'address',
             'phone', 'whatsapp', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
-            'image', 'image_url', 'latitude', 'longitude', 'is_active',
+            'image', 'image_url', 'latitude', 'longitude', 'location_pinned', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'is_open', 'is_favorited',
             'rating_average',
             'reviews_count', 'products_count', 'setup_status',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'created_at', 'updated_at', 'setup_status')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'setup_status', 'location_pinned')
         extra_kwargs = {
             'latitude': {'required': False, 'allow_null': True},
             'longitude': {'required': False, 'allow_null': True},
@@ -130,6 +130,13 @@ class RestaurantSerializer(serializers.ModelSerializer):
         restaurant = super().update(instance, validated_data)
 
         if coords_provided:
+            if (
+                restaurant.latitude is not None
+                and restaurant.longitude is not None
+                and not restaurant.location_pinned
+            ):
+                restaurant.location_pinned = True
+                restaurant.save(update_fields=['location_pinned', 'updated_at'])
             return restaurant
 
         if address_changed and not had_coords:

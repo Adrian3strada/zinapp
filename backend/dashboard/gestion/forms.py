@@ -7,7 +7,6 @@ from django.core.exceptions import ValidationError
 from accounts.models import DeliveryProfile, User, UserRole
 from accounts.username import normalize_username
 from orders.models import Coupon, Order, OrderStatus, Shipment, ShipmentStatus
-from restaurants.geo import geocode_address
 from local_services.models import LocalService
 from restaurants.models import Product, Restaurant
 
@@ -66,7 +65,7 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
         fields = (
             'owner', 'name', 'category', 'description', 'address', 'phone',
             'whatsapp', 'bank_name', 'account_holder', 'clabe',
-            'latitude', 'longitude',
+            'latitude', 'longitude', 'location_pinned',
             'opening_time', 'closing_time', 'is_active', 'accepting_orders',
         )
         widgets = {
@@ -85,6 +84,12 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
         if not instance.pk:
             instance.is_active = False
             instance.accepting_orders = False
+        if (
+            instance.latitude is not None
+            and instance.longitude is not None
+            and ('latitude' in self.changed_data or 'longitude' in self.changed_data)
+        ):
+            instance.location_pinned = True
         if commit:
             instance.save()
         return instance
@@ -194,14 +199,11 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
                 name = self.cleaned_data.get('restaurant_name', '').strip()
                 address = self.cleaned_data.get('restaurant_address', '').strip()
                 if name and address and not Restaurant.objects.filter(owner=user).exists():
-                    geo = geocode_address(address)
                     Restaurant.objects.create(
                         owner=user,
                         name=name,
                         address=address,
                         phone=user.phone,
-                        latitude=geo['latitude'] if geo else None,
-                        longitude=geo['longitude'] if geo else None,
                         is_active=False,
                         accepting_orders=False,
                     )

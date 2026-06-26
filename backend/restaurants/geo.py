@@ -41,6 +41,16 @@ def is_in_coverage(latitude: float, longitude: float) -> bool:
     )
 
 
+_STREET_ADDRESS_HINT = re.compile(
+    r'\b(av\.?|avenida|calle|blvd\.?|boulevard|#|n[oú]m\.?|\d+)\b',
+    re.I,
+)
+
+
+def looks_like_street_address(address: str) -> bool:
+    return bool(_STREET_ADDRESS_HINT.search(address or ''))
+
+
 def _normalize_address(address: str) -> str:
     cleaned = ' '.join(address.split()).strip()
     cleaned = re.sub(r',?\s*(zinap[eé]cuaro|michoac[aá]n|m[eé]xico)\s*$', '', cleaned, flags=re.I)
@@ -217,18 +227,19 @@ def _score_result(result: dict, query: str) -> float:
 
 def geocode_address(address: str) -> dict | None:
     """Geocodifica direcciones en Zinapécuaro (gazetteer local + Nominatim + Photon)."""
-    local = lookup_local_place(address)
-    if local:
-        lat = float(round_coordinate(local[0]))
-        lon = float(round_coordinate(local[1]))
-        if is_in_coverage(lat, lon):
-            return {
-                'latitude': lat,
-                'longitude': lon,
-                'display_name': local[2],
-                'in_coverage': True,
-                'approximate': True,
-            }
+    if not looks_like_street_address(address):
+        local = lookup_local_place(address)
+        if local:
+            lat = float(round_coordinate(local[0]))
+            lon = float(round_coordinate(local[1]))
+            if is_in_coverage(lat, lon):
+                return {
+                    'latitude': lat,
+                    'longitude': lon,
+                    'display_name': local[2],
+                    'in_coverage': True,
+                    'approximate': True,
+                }
 
     queries = _address_queries(address)
     if not queries:

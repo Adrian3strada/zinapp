@@ -96,7 +96,7 @@ def lookup_local_place(address: str) -> tuple[float, float, str] | None:
             return ZINAPECUARO_PLACES[key]
 
     norm = normalize_place_key(raw)
-    if len(norm) >= 4:
+    if len(norm) >= 4 and not looks_like_street_address(raw):
         for place_key, coords in ZINAPECUARO_PLACES.items():
             if norm in place_key or place_key in norm:
                 return coords

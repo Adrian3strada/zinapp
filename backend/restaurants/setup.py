@@ -6,7 +6,11 @@ def restaurant_setup_status(restaurant) -> dict:
     has_logo = bool(restaurant.image)
     has_clabe = bool((restaurant.clabe or '').strip())
     has_hours = bool(restaurant.opening_time and restaurant.closing_time)
-    has_coords = restaurant.latitude is not None and restaurant.longitude is not None
+    has_location = (
+        restaurant.latitude is not None
+        and restaurant.longitude is not None
+        and restaurant.location_pinned
+    )
 
     steps = [
         {
@@ -31,8 +35,8 @@ def restaurant_setup_status(restaurant) -> dict:
         },
         {
             'key': 'location',
-            'label': 'Ubicación en mapa',
-            'done': has_coords,
+            'label': 'Ubicación exacta en mapa',
+            'done': has_location,
         },
     ]
     done_count = sum(1 for s in steps if s['done'])
