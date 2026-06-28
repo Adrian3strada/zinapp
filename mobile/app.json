@@ -41,12 +41,13 @@
           "location"
         ],
         "NSPhotoLibraryUsageDescription": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
-        "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido."
+        "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 123,
+      "versionCode": 124,
       "permissions": [
         "POST_NOTIFICATIONS",
         "ACCESS_COARSE_LOCATION",
