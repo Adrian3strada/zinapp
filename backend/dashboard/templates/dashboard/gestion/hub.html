@@ -85,6 +85,15 @@
     </div>
   </a>
 
+  <a href="{% url 'gestion:disputes' %}" class="gestion-card panel-card {% if stats.disputes_pending %}gestion-card-accent{% endif %}">
+    <div class="panel-card-body padded">
+      <div class="gestion-card-icon">⚖️</div>
+      <h3>Disputas</h3>
+      <p>{{ stats.disputes_pending }} pendiente{{ stats.disputes_pending|pluralize:"s" }}</p>
+      <span class="gestion-card-action">Revisar →</span>
+    </div>
+  </a>
+
   <a href="{% url 'gestion:shipments' %}" class="gestion-card panel-card">
     <div class="panel-card-body padded">
       <div class="gestion-card-icon">📮</div>
@@ -112,6 +121,17 @@
     </div>
   </a>
 </div>
+
+{% if not mercadopago_enabled %}
+<div class="panel-card" style="margin-top:20px;">
+  <div class="panel-card-body padded">
+    <p class="text-muted" style="margin:0;">
+      <strong>Pago en línea (Mercado Pago):</strong> no configurado.
+      Agrega <code>MERCADOPAGO_ACCESS_TOKEN</code> en las variables de Railway para habilitarlo.
+    </p>
+  </div>
+</div>
+{% endif %}
 
 <p class="gestion-advanced text-muted">
   ¿Necesitas campos avanzados?

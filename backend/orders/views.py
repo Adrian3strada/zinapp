@@ -922,4 +922,5 @@ class AdminStatsView(APIView):
                 status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED]
             ).count(),
             'coupons': Coupon.objects.filter(is_active=True).count(),
+            'disputes_pending': OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
         })

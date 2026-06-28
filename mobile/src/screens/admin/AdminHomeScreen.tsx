@@ -72,6 +72,7 @@ export default function AdminHomeScreen() {
             <StatCard label="En curso" value={stats.orders_active} icon="bicycle-outline" />
             <StatCard label="Pendientes" value={stats.orders_pending} icon="hourglass-outline" />
             <StatCard label="Cupones" value={stats.coupons} icon="pricetag-outline" />
+            <StatCard label="Disputas" value={stats.disputes_pending ?? 0} icon="alert-circle-outline" />
           </View>
         )}
 

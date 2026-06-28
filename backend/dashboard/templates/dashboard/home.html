@@ -37,6 +37,20 @@
 </div>
 {% endif %}
 
+{% if disputes_pending > 0 %}
+<div class="panel-card pending-alert">
+  <div class="panel-card-header">
+    <h3>{{ disputes_pending }} disputa{{ disputes_pending|pluralize:"s" }} pendiente{{ disputes_pending|pluralize:"s" }} de revisar</h3>
+    <a href="{% url 'gestion:disputes' %}?status=pending" class="btn btn-ghost btn-sm">Ver disputas</a>
+  </div>
+  <div class="panel-card-body padded">
+    <p class="text-muted" style="margin:0;">
+      Los clientes pueden solicitar reembolso desde la app en pedidos entregados o cancelados.
+    </p>
+  </div>
+</div>
+{% endif %}
+
 <div class="stats-grid">
   <div class="stat-card highlight">
     <div class="stat-label">Ingresos hoy</div>

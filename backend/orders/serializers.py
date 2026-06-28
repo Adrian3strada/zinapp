@@ -102,6 +102,7 @@ class OrderSerializer(serializers.ModelSerializer):
     driver_delivery_profile = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)
     review = ReviewSerializer(read_only=True)
+    dispute = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     payment_method_display = serializers.CharField(
         source='get_payment_method_display', read_only=True
@@ -124,7 +125,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'driver_latitude', 'driver_longitude', 'driver_location_updated_at',
             'coupon', 'discount_amount', 'subtotal', 'delivery_fee', 'tip_amount',
             'scheduled_for', 'total',
-            'items', 'review',
+            'items', 'review', 'dispute',
             'created_at', 'updated_at', 'accepted_at', 'ready_at', 'delivered_at',
         )
         read_only_fields = (
@@ -161,6 +162,12 @@ class OrderSerializer(serializers.ModelSerializer):
         if not profile or not profile.current_latitude or not profile.current_longitude:
             return None
         return profile.updated_at
+
+    def get_dispute(self, obj):
+        dispute = obj.disputes.order_by('-created_at').first()
+        if not dispute:
+            return None
+        return OrderDisputeSerializer(dispute).data
 
     def to_representation(self, instance):
         if not instance.code:

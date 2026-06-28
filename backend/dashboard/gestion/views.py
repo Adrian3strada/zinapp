@@ -9,11 +9,13 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, T
 from accounts.models import DeliveryProfile, User, UserRole
 from local_services.models import LocalService
 from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentStatus
+from orders.models import DisputeStatus, OrderDispute
 from restaurants.models import Product, Restaurant
 
 from ..mixins import PanelAccessMixin
 from .forms import (
     CouponForm,
+    DisputeResolveForm,
     DriverProfileForm,
     LocalServiceForm,
     OrderAdminForm,
@@ -51,7 +53,10 @@ class GestionHubView(PanelAccessMixin, TemplateView):
             'reviews': Review.objects.count(),
             'drivers': DeliveryProfile.objects.filter(is_available=True).count(),
             'local_services': LocalService.objects.filter(is_active=True).count(),
+            'disputes_pending': OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
         }
+        from orders.mercadopago import mercadopago_enabled
+        ctx['mercadopago_enabled'] = mercadopago_enabled()
         return ctx
 
 
@@ -290,6 +295,71 @@ class ShipmentDetailView(PanelAccessMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, 'Envío actualizado.')
         return super().form_valid(form)
+
+
+class DisputeListView(PanelAccessMixin, ListView):
+    model = OrderDispute
+    template_name = 'dashboard/gestion/dispute_list.html'
+    context_object_name = 'disputes'
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = OrderDispute.objects.select_related(
+            'order', 'order__customer', 'order__restaurant', 'customer',
+        ).order_by('-created_at')
+        status = self.request.GET.get('status', '').strip()
+        if status and status in DisputeStatus.values:
+            qs = qs.filter(status=status)
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(
+            page_title='Disputas',
+            nav='gestion',
+            status_filter=self.request.GET.get('status', ''),
+            status_choices=DisputeStatus.choices,
+            pending_count=OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
+        )
+        return ctx
+
+
+class DisputeDetailView(PanelAccessMixin, UpdateView):
+    model = OrderDispute
+    form_class = DisputeResolveForm
+    template_name = 'dashboard/gestion/dispute_detail.html'
+    context_object_name = 'dispute'
+
+    def get_queryset(self):
+        return OrderDispute.objects.select_related(
+            'order', 'order__customer', 'order__restaurant', 'customer',
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(page_title=f'Disputa #{self.object.pk}', nav='gestion')
+        return ctx
+
+    def get_success_url(self):
+        return reverse('gestion:dispute-detail', kwargs={'pk': self.object.pk})
+
+    def form_valid(self, form):
+        dispute = self.get_object()
+        was_pending = dispute.status == DisputeStatus.PENDING
+        response = super().form_valid(form)
+        dispute.refresh_from_db()
+        if was_pending and dispute.status != DisputeStatus.PENDING and not dispute.resolved_at:
+            from django.utils import timezone
+            from orders.models import PaymentStatus
+
+            dispute.resolved_at = timezone.now()
+            dispute.save(update_fields=['resolved_at', 'updated_at'])
+            if dispute.status == DisputeStatus.REFUNDED:
+                order = dispute.order
+                order.payment_status = PaymentStatus.PAID
+                order.save(update_fields=['payment_status', 'updated_at'])
+        messages.success(self.request, 'Disputa actualizada.')
+        return response
 
 
 class ReviewListView(PanelAccessMixin, ListView):

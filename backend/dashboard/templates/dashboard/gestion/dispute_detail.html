@@ -1,0 +1,56 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<p class="gestion-back"><a href="{% url 'gestion:disputes' %}">← Disputas</a></p>
+
+<div class="detail-grid">
+  <div>
+    <div class="panel-card" style="margin-bottom:20px;">
+      <div class="panel-card-header">
+        <h3>Disputa #{{ dispute.id }}</h3>
+        <span class="badge badge-role">{{ dispute.get_status_display }}</span>
+      </div>
+      <div class="panel-card-body padded">
+        <div class="table-wrap">
+          <table class="data-table">
+            <tbody>
+              <tr><td class="text-muted">Pedido</td><td><a href="{% url 'dashboard:order-detail' dispute.order_id %}">#{{ dispute.order_id }} · {{ dispute.order.code }}</a></td></tr>
+              <tr><td class="text-muted">Cliente</td><td>{{ dispute.customer.username }}</td></tr>
+              <tr><td class="text-muted">Restaurante</td><td>{{ dispute.order.restaurant.name }}</td></tr>
+              <tr><td class="text-muted">Total pedido</td><td class="mono">${{ dispute.order.total|floatformat:2 }}</td></tr>
+              <tr><td class="text-muted">Monto solicitado</td><td class="mono">${{ dispute.requested_amount|floatformat:2 }}</td></tr>
+              <tr><td class="text-muted">Motivo</td><td>{{ dispute.reason|linebreaksbr }}</td></tr>
+              <tr><td class="text-muted">Creada</td><td>{{ dispute.created_at|date:"d/m/Y H:i" }}</td></tr>
+              {% if dispute.resolved_at %}
+              <tr><td class="text-muted">Resuelta</td><td>{{ dispute.resolved_at|date:"d/m/Y H:i" }}</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel-card">
+      <div class="panel-card-header"><h3>Resolver disputa</h3></div>
+      <div class="panel-card-body padded">
+        <form method="post" class="gestion-form">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="form-group">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <p class="text-muted" style="font-size:13px;margin:0 0 12px;">
+            Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: marcas el reembolso como procesado.
+          </p>
+          <button type="submit" class="btn btn-primary" style="width:auto;">Guardar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

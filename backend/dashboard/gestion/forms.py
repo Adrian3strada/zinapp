@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from accounts.models import DeliveryProfile, User, UserRole
 from accounts.username import normalize_username
 from orders.models import Coupon, Order, OrderStatus, Shipment, ShipmentStatus
+from orders.models import DisputeStatus, OrderDispute
 from local_services.models import LocalService
 from restaurants.models import Product, Restaurant
 
@@ -107,6 +108,24 @@ class ShipmentStatusForm(PanelFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['driver'].queryset = User.objects.filter(role=UserRole.DRIVER).order_by('username')
         self.fields['driver'].required = False
+
+
+class DisputeResolveForm(PanelFormMixin, forms.ModelForm):
+    class Meta:
+        model = OrderDispute
+        fields = ('status', 'admin_notes')
+        widgets = {
+            'admin_notes': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['status'].choices = [
+            (DisputeStatus.PENDING, DisputeStatus.PENDING.label),
+            (DisputeStatus.APPROVED, DisputeStatus.APPROVED.label),
+            (DisputeStatus.REJECTED, DisputeStatus.REJECTED.label),
+            (DisputeStatus.REFUNDED, DisputeStatus.REFUNDED.label),
+        ]
 
 
 class UserCreateForm(PanelFormMixin, UserCreationForm):

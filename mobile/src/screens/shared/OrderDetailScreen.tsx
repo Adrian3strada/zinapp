@@ -72,7 +72,6 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
-  const [disputeSubmitted, setDisputeSubmitted] = useState(false);
 
   const load = useCallback(async (isMounted: () => boolean) => {
     try {
@@ -509,10 +508,14 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
           )}
 
           {user?.role === 'customer'
-            && (order.status === 'delivered' || order.status === 'cancelled')
-            && !disputeSubmitted && (
+            && (order.status === 'delivered' || order.status === 'cancelled') && (
             <View style={styles.card}>
-              <OrderDisputePanel order={order} onCreated={() => setDisputeSubmitted(true)} />
+              <OrderDisputePanel
+                order={order}
+                onCreated={() => {
+                  void load(() => true);
+                }}
+              />
             </View>
           )}
 

@@ -23,7 +23,7 @@ Copia y pega en Play Console y App Store Connect.
 
 ## Descripción corta (Google Play, máx. 80 caracteres)
 
-Pedidos y envíos locales en Zinapécuaro. Comida, paquetes y más.
+Pedidos a domicilio en Zinapécuaro. Comida local, seguimiento en vivo.
 
 ---
 
@@ -31,13 +31,13 @@ Pedidos y envíos locales en Zinapécuaro. Comida, paquetes y más.
 
 ZinApp es la app de delivery local para Zinapécuaro, Michoacán.
 
-Pide comida de restaurantes de tu ciudad, envía paquetes entre puntos de la zona o trabaja como repartidor. Sigue tu pedido en tiempo real, paga en efectivo o por transferencia y recibe notificaciones en cada paso.
+Pide comida de restaurantes de tu ciudad o trabaja como repartidor. Sigue tu pedido en tiempo real, paga en efectivo o por transferencia y recibe notificaciones en cada paso.
 
 **Para clientes**
 - Explora restaurantes y menús
 - Arma tu carrito y pide a domicilio
-- Envía paquetes con tarifas por tamaño
-- Sigue el estado de tu pedido o envío
+- Propinas, cupones y pedidos programados
+- Sigue el estado de tu pedido en vivo
 
 **Para restaurantes**
 - Recibe y gestiona pedidos
@@ -53,7 +53,7 @@ ZinApp está pensada para la comunidad de Zinapécuaro. Descarga la app y pide e
 
 ## Palabras clave (App Store, separadas por coma)
 
-delivery,comida,zinapécuaro,pedidos,envíos,restaurantes,repartidor,michoacán
+delivery,comida,zinapécuaro,pedidos,restaurantes,repartidor,michoacán
 
 ---
 

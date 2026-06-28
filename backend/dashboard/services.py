@@ -4,7 +4,7 @@ from django.db.models import Count, Sum
 from django.utils import timezone
 
 from accounts.models import DeliveryProfile, User, UserRole
-from orders.models import Order, OrderStatus
+from orders.models import DisputeStatus, Order, OrderDispute, OrderStatus
 from restaurants.models import Product, Restaurant
 
 ORDER_TIMELINE = [
@@ -108,4 +108,5 @@ def get_dashboard_stats():
         'recent_orders': orders_qs.select_related(
             'customer', 'restaurant', 'driver',
         )[:12],
+        'disputes_pending': OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
     }

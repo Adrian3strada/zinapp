@@ -16,9 +16,9 @@ App móvil tipo Didi Food / Uber Eats enfocada en Zinapécuaro, Michoacán.
 
 ## Roles
 
-- **Cliente** — Restaurantes, carrito, pedidos, envíos, seguimiento en vivo.
+- **Cliente** — Restaurantes, carrito, pedidos, seguimiento en vivo, ofertas y reseñas.
 - **Restaurante** — Aceptar/rechazar pedidos, menú, categoría del local.
-- **Repartidor** — Disponibilidad, GPS, entregas de comida y envíos.
+- **Repartidor** — Disponibilidad, GPS y entregas de comida.
 - **Administrador** — Panel web en `/panel/` (operaciones + gestión de datos).
 
 ## URLs de producción

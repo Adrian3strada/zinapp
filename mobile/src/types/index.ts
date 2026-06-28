@@ -212,6 +212,7 @@ export interface Order {
   total: string;
   items: OrderItem[];
   review?: Review | null;
+  dispute?: OrderDispute | null;
   created_at: string;
   updated_at: string;
 }
@@ -262,6 +263,7 @@ export interface AdminStats {
   orders_pending: number;
   orders_active: number;
   coupons: number;
+  disputes_pending?: number;
 }
 
 export interface GeocodeResult {
