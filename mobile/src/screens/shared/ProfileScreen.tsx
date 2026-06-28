@@ -24,6 +24,7 @@ import FormField from '../../components/FormField';
 import ProfileAvatarPicker from '../../components/ProfileAvatarPicker';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
+import SettlementSummary from '../../components/SettlementSummary';
 import VehicleTypePicker from '../../components/VehicleTypePicker';
 import { useOptionalRestaurantContext } from '../../context/RestaurantContext';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
@@ -381,6 +382,12 @@ export default function ProfileScreen() {
 
           {user.role === 'driver' && (
             <View style={styles.card}>
+              <SettlementSummary role="driver" />
+            </View>
+          )}
+
+          {user.role === 'driver' && (
+            <View style={styles.card}>
               <Text style={styles.section}>Ganancias (7 días)</Text>
               {driverEarnings ? (
                 <>
@@ -464,6 +471,12 @@ export default function ProfileScreen() {
                 }
               />
               <Button title="Reintentar" variant="secondary" onPress={loadRoleData} style={{ marginTop: 12 }} />
+            </View>
+          )}
+
+          {user.role === 'restaurant' && restaurant && (
+            <View style={styles.card}>
+              <SettlementSummary role="restaurant" />
             </View>
           )}
 

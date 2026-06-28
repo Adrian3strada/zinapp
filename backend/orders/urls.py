@@ -5,6 +5,7 @@ from .views import (
     AdminStatsView,
     CouponViewSet,
     MercadoPagoWebhookView,
+    OrderDisputeViewSet,
     OrderViewSet,
     ReviewViewSet,
     ShipmentViewSet,
@@ -15,6 +16,7 @@ router.register('orders', OrderViewSet, basename='order')
 router.register('shipments', ShipmentViewSet, basename='shipment')
 router.register('coupons', CouponViewSet, basename='coupon')
 router.register('reviews', ReviewViewSet, basename='review')
+router.register('disputes', OrderDisputeViewSet, basename='dispute')
 
 urlpatterns = [
     path('admin/stats/', AdminStatsView.as_view(), name='admin-stats'),

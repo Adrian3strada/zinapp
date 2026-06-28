@@ -35,6 +35,7 @@ import type {
 const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScreen'));
 const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
 const ServicesScreen = React.lazy(() => import('../screens/customer/ServicesScreen'));
+const OffersScreen = React.lazy(() => import('../screens/customer/OffersScreen'));
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
@@ -183,6 +184,24 @@ function CustomerTabs() {
   );
 }
 
+function LazyOffersScreen(props: import('./types').OffersScreenProps) {
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <OffersScreen {...props} />
+    </Suspense>
+  );
+}
+
+const RestaurantReviewsScreen = React.lazy(() => import('../screens/customer/RestaurantReviewsScreen'));
+
+function LazyRestaurantReviewsScreen(props: import('./types').RestaurantReviewsScreenProps) {
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <RestaurantReviewsScreen {...props} />
+    </Suspense>
+  );
+}
+
 export default function CustomerNavigator() {
   useCustomerPendingNavigation();
 
@@ -203,6 +222,16 @@ export default function CustomerNavigator() {
           name="Servicios"
           component={LazyServicesScreen}
           options={{ ...modalPresentationOptions, title: 'Servicios' }}
+        />
+        <Stack.Screen
+          name="Ofertas"
+          component={LazyOffersScreen}
+          options={{ ...modalPresentationOptions, title: 'Ofertas y cupones' }}
+        />
+        <Stack.Screen
+          name="RestaurantReviews"
+          component={LazyRestaurantReviewsScreen}
+          options={{ ...modalPresentationOptions, title: 'Reseñas' }}
         />
         <Stack.Screen
           name="Menu"

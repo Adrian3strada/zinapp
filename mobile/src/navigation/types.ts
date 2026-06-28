@@ -36,6 +36,8 @@ export type CustomerStackParamList = {
   Menu: { restaurantId: number; restaurantName: string };
   OrderDetail: { orderId: number; promptReview?: boolean };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
+  Ofertas: undefined;
+  RestaurantReviews: { restaurantId: number; restaurantName: string };
 };
 
 export type RestaurantTabParamList = {
@@ -84,6 +86,11 @@ export type HomeScreenProps = CompositeScreenProps<
 >;
 
 export type ServicesScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Servicios'>;
+export type OffersScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Ofertas'>;
+export type RestaurantReviewsScreenProps = NativeStackScreenProps<
+  CustomerStackParamList,
+  'RestaurantReviews'
+>;
 
 export type MenuScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Menu'>;
 export type CartScreenProps = CompositeScreenProps<

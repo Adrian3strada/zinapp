@@ -114,10 +114,47 @@ export interface OrderItem {
 export interface Review {
   id: number;
   order: number;
+  customer_detail?: User;
   restaurant_rating: number;
   driver_rating?: number | null;
   comment: string;
   created_at: string;
+}
+
+export interface OrderMessage {
+  id: number;
+  order: number;
+  sender: number;
+  sender_name: string;
+  sender_role: string;
+  body: string;
+  created_at: string;
+}
+
+export interface OrderDispute {
+  id: number;
+  order: number;
+  order_code?: string;
+  reason: string;
+  requested_amount: string;
+  status: 'pending' | 'approved' | 'rejected' | 'refunded';
+  status_display: string;
+  admin_notes?: string;
+  created_at: string;
+}
+
+export interface SettlementSummary {
+  period_days: number;
+  status: string;
+  note?: string;
+  deliveries_count?: number;
+  delivery_fees?: string;
+  tips?: string;
+  total_payout?: string;
+  orders_count?: number;
+  food_sales?: string;
+  discounts?: string;
+  net_sales?: string;
 }
 
 export interface OrderActiveSummary {
@@ -170,6 +207,8 @@ export interface Order {
   discount_amount?: string;
   subtotal: string;
   delivery_fee: string;
+  tip_amount?: string;
+  scheduled_for?: string | null;
   total: string;
   items: OrderItem[];
   review?: Review | null;

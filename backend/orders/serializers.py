@@ -12,7 +12,7 @@ from restaurants.fields import CoordinateField
 from restaurants.geo import is_in_coverage, round_coordinate
 from restaurants.serializers import ProductSerializer, RestaurantSerializer
 
-from .models import Coupon, Order, OrderItem, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentSize, ShipmentStatus, get_shipment_fee
+from .models import Coupon, Order, OrderDispute, OrderItem, OrderMessage, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentSize, ShipmentStatus, get_shipment_fee
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -122,7 +122,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'payment_status_display', 'delivery_address',
             'delivery_latitude', 'delivery_longitude', 'delivery_notes',
             'driver_latitude', 'driver_longitude', 'driver_location_updated_at',
-            'coupon', 'discount_amount', 'subtotal', 'delivery_fee', 'total',
+            'coupon', 'discount_amount', 'subtotal', 'delivery_fee', 'tip_amount',
+            'scheduled_for', 'total',
             'items', 'review',
             'created_at', 'updated_at', 'accepted_at', 'ready_at', 'delivered_at',
         )
@@ -179,6 +180,10 @@ class OrderCreateSerializer(serializers.Serializer):
     delivery_notes = serializers.CharField(required=False, allow_blank=True, default='')
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices)
     coupon_code = serializers.CharField(required=False, allow_blank=True, default='')
+    tip_amount = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, default=Decimal('0.00'),
+    )
+    scheduled_for = serializers.DateTimeField(required=False, allow_null=True)
     items = OrderItemCreateSerializer(many=True)
 
     def validate_items(self, value):
@@ -240,6 +245,25 @@ class OrderCreateSerializer(serializers.Serializer):
                     'payment_method': 'El pago en línea no está disponible. Usa efectivo o transferencia.',
                 })
 
+        tip = attrs.get('tip_amount') or Decimal('0.00')
+        if tip < 0:
+            raise serializers.ValidationError({'tip_amount': 'La propina no puede ser negativa.'})
+        if tip > Decimal('500.00'):
+            raise serializers.ValidationError({'tip_amount': 'Propina máxima: $500.'})
+        attrs['tip_amount'] = tip
+
+        scheduled = attrs.get('scheduled_for')
+        if scheduled:
+            now = timezone.now()
+            if scheduled <= now + timezone.timedelta(minutes=30):
+                raise serializers.ValidationError({
+                    'scheduled_for': 'Programa la entrega al menos 30 minutos adelante.',
+                })
+            if scheduled > now + timezone.timedelta(days=7):
+                raise serializers.ValidationError({
+                    'scheduled_for': 'Solo puedes programar hasta 7 días.',
+                })
+
         return attrs
 
     def create(self, validated_data):
@@ -248,6 +272,8 @@ class OrderCreateSerializer(serializers.Serializer):
 
         customer = self.context['request'].user
         coupon_code = (validated_data.pop('coupon_code', '') or '').strip()
+        tip_amount = validated_data.pop('tip_amount', Decimal('0.00'))
+        scheduled_for = validated_data.pop('scheduled_for', None)
         payment_method = validated_data['payment_method']
         payment_status = (
             PaymentStatus.PENDING
@@ -313,6 +339,8 @@ class OrderCreateSerializer(serializers.Serializer):
                 delivery_notes=validated_data.get('delivery_notes', ''),
                 payment_method=payment_method,
                 payment_status=payment_status,
+                tip_amount=tip_amount,
+                scheduled_for=scheduled_for,
             )
 
             for product, item_data in line_items:
@@ -640,4 +668,89 @@ class ShipmentActiveSerializer(_DriverLocationMixin, serializers.ModelSerializer
             'delivery_latitude', 'delivery_longitude',
             'driver_latitude', 'driver_longitude', 'driver_location_updated_at',
         )
+
+
+class OrderMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField()
+    sender_role = serializers.CharField(source='sender.role', read_only=True)
+
+    class Meta:
+        model = OrderMessage
+        fields = ('id', 'order', 'sender', 'sender_name', 'sender_role', 'body', 'created_at')
+        read_only_fields = ('id', 'order', 'sender', 'sender_name', 'sender_role', 'created_at')
+
+    def get_sender_name(self, obj):
+        name = f'{obj.sender.first_name} {obj.sender.last_name}'.strip()
+        return name or obj.sender.username
+
+
+class OrderMessageCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderMessage
+        fields = ('body',)
+
+    def validate_body(self, value):
+        body = (value or '').strip()
+        if not body:
+            raise serializers.ValidationError('Escribe un mensaje.')
+        if len(body) > 1000:
+            raise serializers.ValidationError('Máximo 1000 caracteres.')
+        return body
+
+
+class OrderDisputeSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    order_code = serializers.CharField(source='order.code', read_only=True)
+
+    class Meta:
+        model = OrderDispute
+        fields = (
+            'id', 'order', 'order_code', 'customer', 'reason', 'requested_amount',
+            'status', 'status_display', 'admin_notes', 'resolved_at',
+            'created_at', 'updated_at',
+        )
+        read_only_fields = (
+            'id', 'order', 'order_code', 'customer', 'status', 'status_display',
+            'admin_notes', 'resolved_at', 'created_at', 'updated_at',
+        )
+
+
+class OrderDisputeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderDispute
+        fields = ('order', 'reason', 'requested_amount')
+
+    def validate_order(self, order):
+        user = self.context['request'].user
+        if order.customer_id != user.id:
+            raise serializers.ValidationError('No es tu pedido.')
+        if order.status not in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
+            raise serializers.ValidationError('Solo puedes disputar pedidos entregados o cancelados.')
+        if order.disputes.filter(status__in=['pending', 'approved']).exists():
+            raise serializers.ValidationError('Ya hay una disputa abierta para este pedido.')
+        return order
+
+    def validate_requested_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('Indica un monto mayor a cero.')
+        return value
+
+    def validate(self, attrs):
+        order = attrs['order']
+        if attrs['requested_amount'] > order.total:
+            raise serializers.ValidationError({
+                'requested_amount': f'No puede superar el total del pedido (${order.total}).',
+            })
+        return attrs
+
+    def create(self, validated_data):
+        return OrderDispute.objects.create(
+            customer=self.context['request'].user,
+            **validated_data,
+        )
+
+
+class OrderDisputeResolveSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=['approved', 'rejected', 'refunded'])
+    admin_notes = serializers.CharField(required=False, allow_blank=True, default='')
 

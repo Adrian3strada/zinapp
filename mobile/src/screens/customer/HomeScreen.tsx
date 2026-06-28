@@ -97,6 +97,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           onPress={() => navigation.navigate('Comida')}
         />
         <ServiceSectionCard
+          title="Ofertas"
+          subtitle="Cupones y promociones"
+          icon="pricetag-outline"
+          colors={['#F59E0B', '#D97706']}
+          onPress={() => navigation.navigate('Ofertas')}
+        />
+        <ServiceSectionCard
           title="Servicios"
           subtitle="Peluquerías, talleres y más"
           icon="storefront-outline"

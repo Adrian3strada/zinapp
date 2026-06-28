@@ -10,7 +10,10 @@ import {
 } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 
-import CartCheckoutSection from '../../components/CartCheckoutSection';
+import CartCheckoutSection, {
+  scheduleKeyToIso,
+  type ScheduleKey,
+} from '../../components/CartCheckoutSection';
 import CartLineItem from '../../components/CartLineItem';
 import EmptyState from '../../components/EmptyState';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -46,6 +49,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const [couponValidating, setCouponValidating] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [scheduleKey, setScheduleKey] = useState<ScheduleKey>('asap');
   const [coverageOk, setCoverageOk] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
@@ -291,6 +296,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       checkoutIdempotencyKey.current = createIdempotencyKey();
     }
     try {
+      const scheduledFor = scheduleKeyToIso(scheduleKey);
       const { data } = await orderApi.create({
         restaurant_id: restaurantId,
         delivery_address: address,
@@ -299,6 +305,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
         delivery_notes: notes,
         payment_method: paymentMethod,
         coupon_code: couponApplied && couponCode.trim() ? couponCode.trim() : undefined,
+        tip_amount: tipAmount > 0 ? tipAmount : undefined,
+        scheduled_for: scheduledFor,
         items: items.map((i) => ({
           product_id: i.product.id,
           quantity: i.quantity,
@@ -341,6 +349,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     paymentMethod,
     couponApplied,
     couponCode,
+    tipAmount,
+    scheduleKey,
     loading,
     clearCart,
     navigation,
@@ -358,8 +368,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   );
 
   const grandTotal = useMemo(
-    () => Math.max(total + DELIVERY_FEE - discount, 0),
-    [total, discount],
+    () => Math.max(total + DELIVERY_FEE + tipAmount - discount, 0),
+    [total, discount, tipAmount],
   );
 
   const routePreview = useMemo(() => {
@@ -440,6 +450,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             couponValidating={couponValidating}
             total={total}
             grandTotal={grandTotal}
+            tipAmount={tipAmount}
+            scheduleKey={scheduleKey}
             transferInfo={transferInfo}
             transferFromRestaurant={transferFromRestaurant}
             onlinePaymentsEnabled={appConfig.online_payments_enabled}
@@ -452,6 +464,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             onGeocode={handleGeocodeAddress}
             onPinChange={handlePinChange}
             onCheckout={handleCheckout}
+            onTipChange={setTipAmount}
+            onScheduleChange={setScheduleKey}
           />
         </ScrollView>
       </KeyboardAvoidingView>

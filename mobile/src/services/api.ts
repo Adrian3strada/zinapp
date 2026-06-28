@@ -10,6 +10,7 @@ import type {
   LocalService,
   Order,
   OrderActiveSummary,
+  OrderDispute,
   PaginatedResponse,
   Product,
   PublicCoupon,
@@ -17,6 +18,7 @@ import type {
   Review,
   Shipment,
   ShipmentActiveSummary,
+  SettlementSummary,
   User,
 } from '../types';
 import { roundCoordinate } from '../utils/coords';
@@ -169,6 +171,8 @@ export interface CreateOrderPayload {
   delivery_notes?: string;
   payment_method: 'cash' | 'transfer' | 'online';
   coupon_code?: string;
+  tip_amount?: number | string;
+  scheduled_for?: string;
   items: { product_id: number; quantity: number; notes?: string }[];
 }
 
@@ -314,6 +318,9 @@ export const orderApi = {
       }[];
     }>('/orders/driver-earnings/'),
   active: () => api.get<OrderActiveSummary[]>('/orders/active/'),
+  messages: (id: number) => api.get<import('../types').OrderMessage[]>(`/orders/${id}/messages/`),
+  sendMessage: (id: number, body: string) =>
+    api.post<import('../types').OrderMessage>(`/orders/${id}/messages/`, { body }),
   initiatePayment: (id: number) =>
     api.post<{
       payment_status: string;
@@ -358,6 +365,22 @@ export const shipmentApi = {
     api.get<{ key: string; label: string; fee: string; hint: string }[]>('/shipments/sizes/'),
 };
 
+export const chatApi = {
+  list: (orderId: number) => orderApi.messages(orderId),
+  send: (orderId: number, body: string) => orderApi.sendMessage(orderId, body),
+};
+
+export const disputeApi = {
+  create: (data: { order: number; reason: string; requested_amount: string }) =>
+    api.post<OrderDispute>('/disputes/', data),
+  list: () => api.get<OrderDispute[]>('/disputes/'),
+};
+
+export const settlementApi = {
+  driver: () => api.get<SettlementSummary>('/orders/settlements/driver/'),
+  restaurant: () => api.get<SettlementSummary>('/orders/settlements/restaurant/'),
+};
+
 export const couponApi = {
   listActive: () => api.get<PublicCoupon[]>('/coupons/active/'),
   validate: (code: string, subtotal: number) =>
@@ -378,6 +401,8 @@ export const reviewApi = {
     driver_rating?: number;
     comment?: string;
   }) => api.post<Review>('/reviews/', data),
+  listByRestaurant: (restaurantId: number) =>
+    api.get<Review[]>('/reviews/', { params: { restaurant: restaurantId } }),
 };
 
 export const adminApi = {

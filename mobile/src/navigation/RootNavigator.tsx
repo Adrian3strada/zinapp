@@ -9,7 +9,7 @@ import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
 import AppDialogScreen from '../screens/shared/AppDialogScreen';
-import AdminWebRedirectScreen from '../screens/admin/AdminWebRedirectScreen';
+import AdminNavigator from './AdminNavigator';
 import CustomerNavigator from './CustomerNavigator';
 import DriverNavigator from './DriverNavigator';
 import RestaurantNavigator from './RestaurantNavigator';
@@ -36,7 +36,7 @@ function LoadingScreen() {
 
 function RoleNavigator({ role }: { role: string }) {
   if (role === 'admin') {
-    return <AdminWebRedirectScreen />;
+    return <AdminNavigator />;
   }
   switch (role) {
     case 'restaurant':

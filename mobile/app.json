@@ -35,6 +35,11 @@
       "bundleIdentifier": "com.zinapp.delivery",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
+        "NSLocationAlwaysUsageDescription": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
+        "UIBackgroundModes": [
+          "location"
+        ],
         "NSPhotoLibraryUsageDescription": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
         "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido."
       }
@@ -43,7 +48,12 @@
       "package": "com.zinapp.delivery",
       "versionCode": 123,
       "permissions": [
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
       ],
       "queries": [
         {
@@ -92,7 +102,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "ZinApp usa tu ubicación para el delivery en Zinapécuaro."
+          "locationWhenInUsePermission": "ZinApp usa tu ubicación para el delivery en Zinapécuaro.",
+          "locationAlwaysAndWhenInUsePermission": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [

@@ -170,6 +170,17 @@ class Order(models.Model):
     delivery_notes = models.TextField(blank=True)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('25.00'))
+    tip_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Propina para el repartidor.',
+    )
+    scheduled_for = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Entrega programada (opcional).',
+    )
     total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -194,7 +205,11 @@ class Order(models.Model):
     def recalculate_totals(self):
         self.subtotal = sum(item.subtotal for item in self.items.all())
         discount = self.discount_amount or Decimal('0.00')
-        self.total = max(self.subtotal + self.delivery_fee - discount, Decimal('0.00'))
+        tip = self.tip_amount or Decimal('0.00')
+        self.total = max(
+            self.subtotal + self.delivery_fee + tip - discount,
+            Decimal('0.00'),
+        )
         self.save(update_fields=['subtotal', 'total', 'updated_at'])
 
     def ensure_code(self) -> str:
@@ -209,6 +224,68 @@ class Order(models.Model):
             if not updated:
                 self.refresh_from_db(fields=['code'])
         return self.code
+
+
+class OrderMessage(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='messages',
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='order_messages',
+    )
+    body = models.TextField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Mensaje de pedido'
+        verbose_name_plural = 'Mensajes de pedido'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'Mensaje pedido #{self.order_id} — {self.sender_id}'
+
+
+class DisputeStatus(models.TextChoices):
+    PENDING = 'pending', 'Pendiente'
+    APPROVED = 'approved', 'Aprobada'
+    REJECTED = 'rejected', 'Rechazada'
+    REFUNDED = 'refunded', 'Reembolsada'
+
+
+class OrderDispute(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='disputes',
+    )
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='order_disputes',
+    )
+    reason = models.TextField(max_length=2000)
+    requested_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(
+        max_length=20,
+        choices=DisputeStatus.choices,
+        default=DisputeStatus.PENDING,
+    )
+    admin_notes = models.TextField(blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Disputa / reembolso'
+        verbose_name_plural = 'Disputas / reembolsos'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Disputa pedido #{self.order_id} — {self.get_status_display()}'
 
 
 class ShipmentStatus(models.TextChoices):

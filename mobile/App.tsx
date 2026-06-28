@@ -1,3 +1,5 @@
+import './src/tasks/driverLocationTask';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';

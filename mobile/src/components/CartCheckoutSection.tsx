@@ -37,6 +37,8 @@ interface Props {
   couponValidating: boolean;
   total: number;
   grandTotal: number;
+  tipAmount: number;
+  scheduleKey: ScheduleKey;
   transferInfo: TransferInfo;
   transferFromRestaurant?: boolean;
   onAddressChange: (text: string) => void;
@@ -49,6 +51,33 @@ interface Props {
   onGeocode: () => void;
   onPinChange: (coord: { latitude: number; longitude: number }) => void;
   onCheckout: () => void;
+  onTipChange: (amount: number) => void;
+  onScheduleChange: (key: ScheduleKey) => void;
+}
+
+export type ScheduleKey = 'asap' | '30m' | '1h' | '2h' | 'tomorrow_noon';
+
+export const TIP_PRESETS = [0, 10, 15, 20, 30] as const;
+
+export const SCHEDULE_OPTIONS: { key: ScheduleKey; label: string }[] = [
+  { key: 'asap', label: 'Lo antes posible' },
+  { key: '30m', label: 'En ~30 min' },
+  { key: '1h', label: 'En 1 hora' },
+  { key: '2h', label: 'En 2 horas' },
+  { key: 'tomorrow_noon', label: 'Mañana mediodía' },
+];
+
+export function scheduleKeyToIso(key: ScheduleKey): string | undefined {
+  if (key === 'asap') return undefined;
+  const d = new Date();
+  if (key === '30m') d.setMinutes(d.getMinutes() + 35);
+  else if (key === '1h') d.setMinutes(d.getMinutes() + 60);
+  else if (key === '2h') d.setMinutes(d.getMinutes() + 120);
+  else if (key === 'tomorrow_noon') {
+    d.setDate(d.getDate() + 1);
+    d.setHours(12, 0, 0, 0);
+  }
+  return d.toISOString();
 }
 
 function CartCheckoutSection({
@@ -69,6 +98,8 @@ function CartCheckoutSection({
   couponValidating,
   total,
   grandTotal,
+  tipAmount,
+  scheduleKey,
   transferInfo,
   transferFromRestaurant = false,
   onlinePaymentsEnabled = false,
@@ -81,6 +112,8 @@ function CartCheckoutSection({
   onGeocode,
   onPinChange,
   onCheckout,
+  onTipChange,
+  onScheduleChange,
 }: Props) {
   return (
     <View style={styles.footer}>
@@ -225,6 +258,48 @@ function CartCheckoutSection({
         )}
       </View>
 
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="time-outline" size={20} color={colors.primary} />
+          <Text style={styles.cardTitle}>¿Cuándo lo quieres?</Text>
+        </View>
+        <View style={styles.chipRow}>
+          {SCHEDULE_OPTIONS.map((opt) => (
+            <Pressable
+              key={opt.key}
+              style={[styles.chip, scheduleKey === opt.key && styles.chipActive]}
+              onPress={() => onScheduleChange(opt.key)}
+              hitSlop={HIT_SLOP}
+            >
+              <Text style={[styles.chipText, scheduleKey === opt.key && styles.chipTextActive]}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="heart-outline" size={20} color={colors.primary} />
+          <Text style={styles.cardTitle}>Propina al repartidor</Text>
+        </View>
+        <View style={styles.chipRow}>
+          {TIP_PRESETS.map((preset) => (
+            <Pressable
+              key={preset}
+              style={[styles.chip, tipAmount === preset && styles.chipActive]}
+              onPress={() => onTipChange(preset)}
+              hitSlop={HIT_SLOP}
+            >
+              <Text style={[styles.chipText, tipAmount === preset && styles.chipTextActive]}>
+                {preset === 0 ? 'Sin propina' : `$${preset}`}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
       <View style={[styles.card, styles.summary]}>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Subtotal</Text>
@@ -240,6 +315,12 @@ function CartCheckoutSection({
             <Text style={[styles.rowValue, { color: colors.success }]}>
               -{formatCurrency(discount)}
             </Text>
+          </View>
+        )}
+        {tipAmount > 0 && (
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Propina</Text>
+            <Text style={styles.rowValue}>{formatCurrency(tipAmount)}</Text>
           </View>
         )}
         <View style={[styles.row, styles.totalRow]}>
@@ -313,6 +394,21 @@ const styles = StyleSheet.create({
   couponBtnText: { color: colors.primary, fontWeight: '700' },
   couponOk: { color: colors.success, fontSize: 12, marginTop: 8, fontWeight: '500' },
   couponErr: { color: colors.error, fontSize: 12, marginTop: 8 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  chipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  chipTextActive: { color: colors.primary },
   transferBox: {
     marginTop: 12,
     backgroundColor: colors.primaryLight,

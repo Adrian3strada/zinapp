@@ -23,7 +23,10 @@ from .idempotency import idempotent_create
 from .models import (
     CancellationSource,
     Coupon,
+    DisputeStatus,
     Order,
+    OrderDispute,
+    OrderMessage,
     OrderStatus,
     PaymentMethod,
     PaymentStatus,
@@ -31,12 +34,18 @@ from .models import (
     Shipment,
     ShipmentStatus,
 )
+from .order_access import user_can_access_order
 from .serializers import (
     CouponPublicSerializer,
     CouponSerializer,
     CouponValidateSerializer,
     OrderActiveSerializer,
     OrderCreateSerializer,
+    OrderDisputeCreateSerializer,
+    OrderDisputeResolveSerializer,
+    OrderDisputeSerializer,
+    OrderMessageCreateSerializer,
+    OrderMessageSerializer,
     OrderSerializer,
     OrderStatusUpdateSerializer,
     ReviewCreateSerializer,
@@ -110,9 +119,13 @@ class OrderViewSet(viewsets.ModelViewSet):
             return [IsRestaurantOwner()]
         if self.action in (
             'available', 'accept_delivery', 'mark_delivered',
-            'my_deliveries', 'driver_earnings',
+            'my_deliveries', 'driver_earnings', 'driver_settlement',
         ):
             return [IsDriver()]
+        if self.action == 'restaurant_settlement':
+            return [IsRestaurantOwner()]
+        if self.action in ('messages',):
+            return [IsAuthenticated()]
         if self.action == 'active':
             return [IsCustomer()]
         if self.action == 'cancel':
@@ -338,8 +351,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             delivered_at__gte=week_start,
         )
         order_fees = delivered_orders.aggregate(total=Sum('delivery_fee'))['total'] or Decimal('0')
+        tip_total = delivered_orders.aggregate(total=Sum('tip_amount'))['total'] or Decimal('0')
         shipment_fees = delivered_shipments.aggregate(total=Sum('delivery_fee'))['total'] or Decimal('0')
-        total = order_fees + shipment_fees
+        total = order_fees + shipment_fees + tip_total
 
         order_days = (
             delivered_orders.annotate(day=TruncDate('delivered_at'))
@@ -398,10 +412,94 @@ class OrderViewSet(viewsets.ModelViewSet):
             'week_orders': delivered_orders.count(),
             'week_shipments': delivered_shipments.count(),
             'week_earnings': str(total),
+            'week_delivery_fees': str(order_fees + shipment_fees),
+            'week_tips': str(tip_total),
             'daily_breakdown': daily_breakdown,
             'cash_deliveries': cash_orders + cash_shipments,
             'transfer_deliveries': transfer_orders + transfer_shipments,
         })
+
+    @action(detail=False, methods=['get'], url_path='settlements/driver')
+    def driver_settlement(self, request):
+        from datetime import timedelta
+        from django.db.models import Count, Sum
+
+        week_start = timezone.now() - timedelta(days=7)
+        delivered = Order.objects.filter(
+            driver=request.user,
+            status=OrderStatus.DELIVERED,
+            delivered_at__gte=week_start,
+        )
+        fees = delivered.aggregate(total=Sum('delivery_fee'))['total'] or Decimal('0')
+        tips = delivered.aggregate(total=Sum('tip_amount'))['total'] or Decimal('0')
+        pending_payout = fees + tips
+        return Response({
+            'period_days': 7,
+            'deliveries_count': delivered.count(),
+            'delivery_fees': str(fees),
+            'tips': str(tips),
+            'total_payout': str(pending_payout),
+            'status': 'pending_transfer',
+            'note': 'Liquidación semanal estimada. Contacta a soporte para confirmar depósito.',
+        })
+
+    @action(detail=False, methods=['get'], url_path='settlements/restaurant')
+    def restaurant_settlement(self, request):
+        from datetime import timedelta
+        from django.db.models import Sum
+
+        week_start = timezone.now() - timedelta(days=7)
+        from restaurants.models import Restaurant
+
+        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        if not restaurant:
+            return Response({'detail': 'No tienes restaurante.'}, status=status.HTTP_404_NOT_FOUND)
+
+        delivered = Order.objects.filter(
+            restaurant=restaurant,
+            status=OrderStatus.DELIVERED,
+            delivered_at__gte=week_start,
+        )
+        food_sales = delivered.aggregate(total=Sum('subtotal'))['total'] or Decimal('0')
+        discounts = delivered.aggregate(total=Sum('discount_amount'))['total'] or Decimal('0')
+        net_sales = food_sales - discounts
+        return Response({
+            'period_days': 7,
+            'orders_count': delivered.count(),
+            'food_sales': str(food_sales),
+            'discounts': str(discounts),
+            'net_sales': str(net_sales),
+            'status': 'pending_transfer',
+            'note': 'Ventas de platillos sin envío. Contacta a soporte para liquidación.',
+        })
+
+    @action(detail=True, methods=['get', 'post'], url_path='messages')
+    def messages(self, request, pk=None):
+        order = self.get_object()
+        if not user_can_access_order(order, request.user):
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
+            if request.method == 'POST':
+                return Response(
+                    {'detail': 'El pedido ya finalizó; no se pueden enviar más mensajes.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if request.method == 'GET':
+            msgs = order.messages.select_related('sender').order_by('created_at')
+            return Response(OrderMessageSerializer(msgs, many=True).data)
+
+        serializer = OrderMessageCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        msg = OrderMessage.objects.create(
+            order=order,
+            sender=request.user,
+            body=serializer.validated_data['body'],
+        )
+        return Response(
+            OrderMessageSerializer(msg).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=False, methods=['get'], url_path='restaurant-pending')
     def restaurant_pending(self, request):
@@ -702,6 +800,53 @@ class MercadoPagoWebhookView(APIView):
         return Response({'detail': 'OK', 'order_id': order.id})
 
 
+class OrderDisputeViewSet(viewsets.ModelViewSet):
+    queryset = OrderDispute.objects.select_related('order', 'customer')
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return OrderDisputeCreateSerializer
+        if self.action == 'resolve':
+            return OrderDisputeResolveSerializer
+        return OrderDisputeSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_admin_user:
+            return self.queryset
+        if user.is_customer:
+            return self.queryset.filter(customer=user)
+        return OrderDispute.objects.none()
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [IsCustomer()]
+        if self.action == 'resolve':
+            return [IsAdmin()]
+        return super().get_permissions()
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        dispute = self.get_object()
+        if dispute.status != DisputeStatus.PENDING:
+            return Response(
+                {'detail': 'Esta disputa ya fue resuelta.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = OrderDisputeResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        dispute.status = serializer.validated_data['status']
+        dispute.admin_notes = serializer.validated_data.get('admin_notes', '')
+        dispute.resolved_at = timezone.now()
+        dispute.save(update_fields=['status', 'admin_notes', 'resolved_at', 'updated_at'])
+        if dispute.status == DisputeStatus.REFUNDED:
+            dispute.order.payment_status = PaymentStatus.PAID
+            dispute.order.save(update_fields=['payment_status', 'updated_at'])
+        return Response(OrderDisputeSerializer(dispute).data)
+
+
 class CouponViewSet(viewsets.ModelViewSet):
     queryset = Coupon.objects.all()
     serializer_class = CouponSerializer
@@ -746,7 +891,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         qs = self.queryset
         restaurant_id = self.request.query_params.get('restaurant')
         if restaurant_id:
-            qs = qs.filter(restaurant_id=restaurant_id)
+            return qs.filter(restaurant_id=restaurant_id)
         if self.request.user.is_customer:
             return qs.filter(customer=self.request.user)
         if self.request.user.is_admin_user:

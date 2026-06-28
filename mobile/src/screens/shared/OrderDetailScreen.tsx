@@ -16,6 +16,8 @@ import OrderMap from '../../components/OrderMap';
 import OrderParticipantCard from '../../components/OrderParticipantCard';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import OrderTimeline from '../../components/OrderTimeline';
+import OrderChatPanel from '../../components/OrderChatPanel';
+import OrderDisputePanel from '../../components/OrderDisputePanel';
 import ReviewForm from '../../components/ReviewForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import OnlinePaymentBanner from '../../components/OnlinePaymentBanner';
@@ -70,6 +72,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [disputeSubmitted, setDisputeSubmitted] = useState(false);
 
   const load = useCallback(async (isMounted: () => boolean) => {
     try {
@@ -413,6 +416,23 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                 <Text style={{ color: colors.success }}>-{formatCurrency(order.discount_amount)}</Text>
               </View>
             )}
+            {order.tip_amount && parseFloat(order.tip_amount) > 0 && (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Propina</Text>
+                <Text>{formatCurrency(order.tip_amount)}</Text>
+              </View>
+            )}
+            {order.scheduled_for && (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Programado para</Text>
+                <Text>
+                  {new Date(order.scheduled_for).toLocaleString('es-MX', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </Text>
+              </View>
+            )}
             <View style={[styles.row, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>{formatCurrency(order.total)}</Text>
@@ -476,6 +496,23 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                 message={driverContactMessage(orderRef(order), order.restaurant_detail?.name ?? 'restaurante')}
                 label="WhatsApp al repartidor"
               />
+            </View>
+          )}
+
+          {order.status !== 'cancelled' && (
+            <View style={styles.card}>
+              <OrderChatPanel
+                orderId={order.id}
+                closed={order.status === 'delivered'}
+              />
+            </View>
+          )}
+
+          {user?.role === 'customer'
+            && (order.status === 'delivered' || order.status === 'cancelled')
+            && !disputeSubmitted && (
+            <View style={styles.card}>
+              <OrderDisputePanel order={order} onCreated={() => setDisputeSubmitted(true)} />
             </View>
           )}
 

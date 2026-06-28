@@ -171,6 +171,21 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
         </View>
         <View style={styles.bannerBody}>
           <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
+          {restaurant?.rating_average != null && (
+            <Pressable
+              style={styles.reviewsRow}
+              onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
+              hitSlop={8}
+            >
+              <Ionicons name="star" size={16} color="#F59E0B" />
+              <Text style={styles.reviewsText}>
+                {restaurant.rating_average}
+                {restaurant.reviews_count != null ? ` (${restaurant.reviews_count} reseñas)` : ''}
+              </Text>
+              <Text style={styles.reviewsLink}>Ver reseñas</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </Pressable>
+          )}
           {bannerMeta ? (
             <View style={styles.bannerMeta}>
               <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
@@ -201,7 +216,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
         </View>
       </View>
     ),
-    [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta, isCustomer, favorited, togglingFavorite, handleToggleFavorite],
+    [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta, isCustomer, favorited, togglingFavorite, handleToggleFavorite, restaurantId, navigation],
   );
 
   const listFooter = useMemo(
@@ -289,6 +304,15 @@ const styles = StyleSheet.create({
   bannerEmoji: { fontSize: 24 },
   bannerBody: { padding: spacing.lg, paddingTop: spacing.md },
   bannerName: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  reviewsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    flexWrap: 'wrap',
+  },
+  reviewsText: { fontSize: 14, fontWeight: '700', color: colors.text },
+  reviewsLink: { fontSize: 13, fontWeight: '600', color: colors.primary, marginLeft: 4 },
   bannerMeta: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
   bannerMetaText: { flex: 1, fontSize: 13, color: colors.textSecondary, fontWeight: '500', lineHeight: 18 },
   closedBanner: {
