@@ -114,20 +114,13 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
   );
 
   const header = useMemo(
-    () => (
-      <View style={styles.headerWrap}>
-        <Pressable style={styles.shipmentsLink} onPress={() => navigation.navigate('Shipments')}>
-          <Text style={styles.shipmentsLinkText}>📦 Ver envíos de paquetes</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </Pressable>
-        {activeCount > 0 ? (
-          <SectionHeader
-            subtitle={`${activeCount} pedido${activeCount > 1 ? 's' : ''} en curso`}
-          />
-        ) : null}
-      </View>
-    ),
-    [activeCount, navigation],
+    () =>
+      activeCount > 0 ? (
+        <SectionHeader
+          subtitle={`${activeCount} pedido${activeCount > 1 ? 's' : ''} en curso`}
+        />
+      ) : null,
+    [activeCount],
   );
 
   return (
@@ -174,17 +167,6 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
 const styles = StyleSheet.create({
   list: { padding: spacing.screen, flexGrow: 1 },
   skeletonWrap: { flex: 1, padding: spacing.screen },
-  headerWrap: { gap: 10, marginBottom: 8 },
-  shipmentsLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  shipmentsLinkText: { fontSize: 14, fontWeight: '700', color: colors.primary },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -9,14 +9,12 @@ import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
-import { orderApi, shipmentApi } from '../../services/api';
+import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import type { Order, Shipment } from '../../types';
+import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
-type DeliveryItem =
-  | { kind: 'order'; id: string; order: Order }
-  | { kind: 'shipment'; id: string; shipment: Shipment };
+type DeliveryItem = { kind: 'order'; id: string; order: Order };
 
 type DeliveryListRow =
   | { type: 'header'; id: string; label: string }
@@ -24,10 +22,6 @@ type DeliveryListRow =
 
 function isActiveOrder(order: Order): boolean {
   return order.status === 'on_the_way' || order.status === 'ready';
-}
-
-function isActiveShipment(shipment: Shipment): boolean {
-  return shipment.status === 'picked_up' || shipment.status === 'on_the_way';
 }
 
 export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenProps) {
@@ -41,26 +35,14 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const [ordersRes, shipmentsRes] = await Promise.all([
-        orderApi.myDeliveries(),
-        shipmentApi.myDeliveries(),
-      ]);
-      const merged: DeliveryItem[] = [
-        ...ordersRes.data.map((order) => ({
+      const { data } = await orderApi.myDeliveries();
+      const merged: DeliveryItem[] = data
+        .map((order) => ({
           kind: 'order' as const,
           id: `order-${order.id}`,
           order,
-        })),
-        ...shipmentsRes.data.map((shipment) => ({
-          kind: 'shipment' as const,
-          id: `shipment-${shipment.id}`,
-          shipment,
-        })),
-      ].sort((a, b) => {
-        const aTime = a.kind === 'order' ? a.order.updated_at : a.shipment.updated_at;
-        const bTime = b.kind === 'order' ? b.order.updated_at : b.shipment.updated_at;
-        return bTime.localeCompare(aTime);
-      });
+        }))
+        .sort((a, b) => b.order.updated_at.localeCompare(a.order.updated_at));
       setItems(merged);
       setError(null);
     } catch (err) {
@@ -75,10 +57,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     const active: DeliveryItem[] = [];
     const past: DeliveryItem[] = [];
     for (const item of items) {
-      const activeNow = item.kind === 'order'
-        ? isActiveOrder(item.order)
-        : isActiveShipment(item.shipment);
-      if (activeNow) active.push(item);
+      if (isActiveOrder(item.order)) active.push(item);
       else past.push(item);
     }
     return { activeItems: active, pastItems: past };
@@ -105,7 +84,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     [activeItems, pastItems],
   );
 
-  const handleOrderDelivered = (item: Extract<DeliveryItem, { kind: 'order' }>) => {
+  const handleDelivered = (item: DeliveryItem) => {
     appConfirm(
       'Confirmar entrega',
       '¿Marcar como entregado?',
@@ -122,83 +101,33 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     );
   };
 
-  const handleShipmentPickedUp = async (shipment: Shipment) => {
-    try {
-      await shipmentApi.markPickedUp(shipment.id);
-      load(true);
-    } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido'));
-    }
-  };
-
-  const handleShipmentDelivered = (shipment: Shipment) => {
-    appConfirm(
-      'Confirmar entrega',
-      '¿Marcar el envío como entregado?',
-      async () => {
-        try {
-          await shipmentApi.markDelivered(shipment.id);
-          load(true);
-          navigation.navigate('ShipmentDetail', { shipmentId: shipment.id });
-        } catch (err) {
-          appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
-        }
-      },
-      'Sí, entregado',
-    );
-  };
-
   const renderJob = (item: DeliveryItem) => {
-    if (item.kind === 'order') {
-      const order = item.order;
-      return (
-        <DriverJobCard
-          kind="order"
-          id={order.id}
-          title={formatOrderLabel(order)}
-          subtitle={order.restaurant_detail?.name}
-          restaurantName={order.restaurant_detail?.name}
-          status={order.status}
-          statusLabel={order.status_display}
-          lines={[
-            { icon: 'location', text: order.delivery_address },
-            ...(order.payment_method === 'transfer'
-              ? [{ icon: 'card-outline' as const, text: 'Cobrar: transferencia (ya pagado)' }]
-              : order.payment_method === 'cash'
-                ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo al entregar' }]
-                : []),
-            ...(order.delivery_notes
-              ? [{ icon: 'chatbubble-outline' as const, text: order.delivery_notes }]
-              : []),
-          ]}
-          total={order.total}
-          onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
-          showActions={order.status === 'on_the_way'}
-          onNavigate={() => navigation.navigate('DriverMap', { orderId: order.id })}
-          onDelivered={() => handleOrderDelivered(item)}
-        />
-      );
-    }
-
-    const shipment = item.shipment;
+    const order = item.order;
     return (
       <DriverJobCard
-        kind="shipment"
-        id={shipment.id}
-        title={`Envío #${shipment.id}`}
-        subtitle={shipment.description}
-        status={shipment.status}
-        statusLabel={shipment.status_display}
+        kind="order"
+        id={order.id}
+        title={formatOrderLabel(order)}
+        subtitle={order.restaurant_detail?.name}
+        restaurantName={order.restaurant_detail?.name}
+        status={order.status}
+        statusLabel={order.status_display}
         lines={[
-          { icon: 'cube-outline', text: shipment.pickup_address },
-          { icon: 'location', text: shipment.delivery_address },
+          { icon: 'location', text: order.delivery_address },
+          ...(order.payment_method === 'transfer'
+            ? [{ icon: 'card-outline' as const, text: 'Cobrar: transferencia (ya pagado)' }]
+            : order.payment_method === 'cash'
+              ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo al entregar' }]
+              : []),
+          ...(order.delivery_notes
+            ? [{ icon: 'chatbubble-outline' as const, text: order.delivery_notes }]
+            : []),
         ]}
-        total={shipment.total}
-        onPress={() => navigation.navigate('ShipmentDetail', { shipmentId: shipment.id })}
-        showActions={shipment.status === 'picked_up' || shipment.status === 'on_the_way'}
-        onNavigate={() => navigation.navigate('DriverMap', { shipmentId: shipment.id })}
-        onPickedUp={shipment.status === 'picked_up' ? () => handleShipmentPickedUp(shipment) : undefined}
-        onDelivered={shipment.status === 'on_the_way' ? () => handleShipmentDelivered(shipment) : undefined}
+        total={order.total}
+        onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+        showActions={order.status === 'on_the_way'}
+        onNavigate={() => navigation.navigate('DriverMap', { orderId: order.id })}
+        onDelivered={() => handleDelivered(item)}
       />
     );
   };
@@ -231,8 +160,8 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
           !loading ? (
             <EmptyState
               emoji="🛵"
-              title="Sin entregas aún"
-              subtitle="Acepta pedidos o envíos en Disponibles"
+              title="Sin entregas asignadas"
+              subtitle="Acepta pedidos en la pestaña Disponibles."
               actionLabel="Ver disponibles"
               onAction={() => navigation.navigate('Disponibles')}
             />
@@ -249,10 +178,10 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.textSecondary,
+    color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 8,
+    letterSpacing: 0.6,
     marginBottom: 10,
+    marginTop: 4,
   },
 });

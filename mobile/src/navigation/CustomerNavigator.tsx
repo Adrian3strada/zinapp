@@ -36,9 +36,6 @@ const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScre
 const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
 const ServicesScreen = React.lazy(() => import('../screens/customer/ServicesScreen'));
 const OffersScreen = React.lazy(() => import('../screens/customer/OffersScreen'));
-const ShipmentsScreen = React.lazy(() => import('../screens/customer/ShipmentsScreen'));
-const CreateShipmentScreen = React.lazy(() => import('../screens/customer/CreateShipmentScreen'));
-const ShipmentDetailScreen = React.lazy(() => import('../screens/shared/ShipmentDetailScreen'));
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
@@ -205,36 +202,6 @@ function LazyRestaurantReviewsScreen(props: import('./types').RestaurantReviewsS
   );
 }
 
-function LazyShipmentsScreen(props: import('./types').ShipmentsScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <AppErrorBoundary>
-        <ShipmentsScreen {...props} />
-      </AppErrorBoundary>
-    </Suspense>
-  );
-}
-
-function LazyCreateShipmentScreen(props: import('./types').CreateShipmentScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <AppErrorBoundary>
-        <CreateShipmentScreen {...props} />
-      </AppErrorBoundary>
-    </Suspense>
-  );
-}
-
-function LazyShipmentDetailScreen(props: import('./types').ShipmentDetailScreenProps) {
-  return (
-    <Suspense fallback={<TabFallback />}>
-      <AppErrorBoundary>
-        <ShipmentDetailScreen {...props} />
-      </AppErrorBoundary>
-    </Suspense>
-  );
-}
-
 export default function CustomerNavigator() {
   useCustomerPendingNavigation();
 
@@ -265,21 +232,6 @@ export default function CustomerNavigator() {
           name="RestaurantReviews"
           component={LazyRestaurantReviewsScreen}
           options={{ ...modalPresentationOptions, title: 'Reseñas' }}
-        />
-        <Stack.Screen
-          name="Shipments"
-          component={LazyShipmentsScreen}
-          options={{ ...modalPresentationOptions, title: 'Mis envíos' }}
-        />
-        <Stack.Screen
-          name="CreateShipment"
-          component={LazyCreateShipmentScreen}
-          options={{ ...modalPresentationOptions, title: 'Nuevo envío' }}
-        />
-        <Stack.Screen
-          name="ShipmentDetail"
-          component={LazyShipmentDetailScreen}
-          options={{ ...modalPresentationOptions, title: 'Seguimiento de envío' }}
         />
         <Stack.Screen
           name="Menu"
