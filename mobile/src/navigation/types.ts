@@ -38,6 +38,9 @@ export type CustomerStackParamList = {
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
   Ofertas: undefined;
   RestaurantReviews: { restaurantId: number; restaurantName: string };
+  Shipments: undefined;
+  CreateShipment: undefined;
+  ShipmentDetail: { shipmentId: number };
 };
 
 export type RestaurantTabParamList = {
@@ -62,7 +65,8 @@ export type DriverStackParamList = {
   Main: undefined;
   OrderDetail: { orderId: number; promptReview?: boolean };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
-  DriverMap: { orderId: number };
+  DriverMap: { orderId?: number; shipmentId?: number };
+  ShipmentDetail: { shipmentId: number };
 };
 
 export type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -91,6 +95,11 @@ export type RestaurantReviewsScreenProps = NativeStackScreenProps<
   CustomerStackParamList,
   'RestaurantReviews'
 >;
+export type ShipmentsScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Shipments'>;
+export type CreateShipmentScreenProps = NativeStackScreenProps<CustomerStackParamList, 'CreateShipment'>;
+export type ShipmentDetailScreenProps =
+  | NativeStackScreenProps<CustomerStackParamList, 'ShipmentDetail'>
+  | NativeStackScreenProps<DriverStackParamList, 'ShipmentDetail'>;
 
 export type MenuScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Menu'>;
 export type CartScreenProps = CompositeScreenProps<

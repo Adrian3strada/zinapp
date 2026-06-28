@@ -51,6 +51,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }, [refresh, loadFeatured]);
 
   const handleDeliveryPress = (item: ActiveDeliveryItem) => {
+    if (item.kind === 'shipment') {
+      navigation.navigate('ShipmentDetail', { shipmentId: item.id });
+      return;
+    }
     navigation.navigate('OrderDetail', { orderId: item.id });
   };
 
@@ -102,6 +106,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           icon="pricetag-outline"
           colors={['#F59E0B', '#D97706']}
           onPress={() => navigation.navigate('Ofertas')}
+        />
+        <ServiceSectionCard
+          title="Envíos"
+          subtitle="Manda paquetes locales"
+          icon="cube-outline"
+          colors={['#2A9D8F', '#264653']}
+          onPress={() => navigation.navigate('Shipments')}
         />
         <ServiceSectionCard
           title="Servicios"

@@ -13,6 +13,7 @@ import AvailableOrdersScreen from '../screens/driver/AvailableOrdersScreen';
 import DriverMapScreen from '../screens/driver/DriverMapScreen';
 import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
+import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions } from './modalOptions';
@@ -94,6 +95,15 @@ export default function DriverNavigator() {
       <DriverLocationSync />
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="Main" component={DriverTabs} />
+        <Stack.Screen
+          name="ShipmentDetail"
+          component={ShipmentDetailScreen}
+          options={{
+            ...modalPresentationOptions,
+            headerShown: true,
+            title: 'Envío',
+          }}
+        />
         <Stack.Screen
           name="OrderDetail"
           component={OrderDetailScreen}

@@ -16,12 +16,14 @@ import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
-import { deliveryApi, orderApi } from '../../services/api';
+import { deliveryApi, orderApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import type { Order } from '../../types';
+import type { Order, Shipment } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
-type AvailableItem = { kind: 'order'; id: string; order: Order };
+type AvailableItem =
+  | { kind: 'order'; id: string; order: Order }
+  | { kind: 'shipment'; id: string; shipment: Shipment };
 
 export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
@@ -39,14 +41,23 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
     else setRefreshing(true);
     setError(null);
     try {
-      const { data } = await orderApi.available();
-      setItems(
-        data.map((order) => ({
+      const [ordersRes, shipmentsRes] = await Promise.all([
+        orderApi.available(),
+        shipmentApi.available(),
+      ]);
+      const merged: AvailableItem[] = [
+        ...ordersRes.data.map((order) => ({
           kind: 'order' as const,
           id: `order-${order.id}`,
           order,
         })),
-      );
+        ...shipmentsRes.data.map((shipment) => ({
+          kind: 'shipment' as const,
+          id: `shipment-${shipment.id}`,
+          shipment,
+        })),
+      ];
+      setItems(merged);
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudieron cargar pedidos'));
     } finally {
@@ -69,7 +80,12 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
   const countLabel = useMemo(() => {
     const count = items.length;
     if (!count) return 'Nada por ahora';
-    return `${count} pedido${count === 1 ? '' : 's'}`;
+    const orders = items.filter((i) => i.kind === 'order').length;
+    const shipments = items.filter((i) => i.kind === 'shipment').length;
+    const parts: string[] = [];
+    if (orders) parts.push(`${orders} pedido${orders === 1 ? '' : 's'}`);
+    if (shipments) parts.push(`${shipments} envío${shipments === 1 ? '' : 's'}`);
+    return parts.join(' · ');
   }, [items]);
 
   const handleAccept = async (item: AvailableItem) => {
@@ -82,7 +98,11 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
     }
     setAcceptingId(item.id);
     try {
-      await orderApi.acceptDelivery(item.order.id);
+      if (item.kind === 'order') {
+        await orderApi.acceptDelivery(item.order.id);
+      } else {
+        await shipmentApi.acceptDelivery(item.shipment.id);
+      }
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
@@ -97,7 +117,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
       } catch {
         // El GPS se sincronizará en segundo plano
       }
-      appAlert('¡Listo!', 'Pedido aceptado');
+      appAlert('¡Listo!', item.kind === 'order' ? 'Pedido aceptado' : 'Envío aceptado');
       load(true);
       navigation.navigate('Entregas');
     } catch (err) {
@@ -156,31 +176,53 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               <View style={styles.tipBox}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
                 <Text style={styles.tipText}>
-                  Activa el interruptor para recibir pedidos de comida.
+                  Activa el interruptor para recibir pedidos de comida y envíos.
                 </Text>
               </View>
             )}
           </>
         }
         renderItem={({ item }) => {
-          const order = item.order;
+          if (item.kind === 'order') {
+            const order = item.order;
+            return (
+              <DriverJobCard
+                kind="order"
+                id={order.id}
+                title={formatOrderLabel(order)}
+                subtitle={order.restaurant_detail?.name}
+                restaurantName={order.restaurant_detail?.name}
+                lines={[
+                  { icon: 'location', text: order.delivery_address },
+                  ...(order.payment_method === 'cash'
+                    ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo' }]
+                    : []),
+                ]}
+                total={order.total}
+                onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+                onAccept={() => handleAccept(item)}
+                acceptLabel={hasActiveDelivery ? 'Entrega en curso' : 'Aceptar pedido'}
+                acceptDisabled={!isAvailable || hasActiveDelivery}
+                acceptLoading={acceptingId === item.id}
+              />
+            );
+          }
+
+          const shipment = item.shipment;
           return (
             <DriverJobCard
-              kind="order"
-              id={order.id}
-              title={formatOrderLabel(order)}
-              subtitle={order.restaurant_detail?.name}
-              restaurantName={order.restaurant_detail?.name}
+              kind="shipment"
+              id={shipment.id}
+              title={`Envío #${shipment.id}`}
+              subtitle={shipment.description}
               lines={[
-                { icon: 'location', text: order.delivery_address },
-                ...(order.payment_method === 'cash'
-                  ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo' }]
-                  : []),
+                { icon: 'cube-outline', text: shipment.pickup_address, iconColor: colors.accent },
+                { icon: 'location', text: shipment.delivery_address },
               ]}
-              total={order.total}
-              onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+              total={shipment.total}
+              onPress={() => navigation.navigate('ShipmentDetail', { shipmentId: shipment.id })}
               onAccept={() => handleAccept(item)}
-              acceptLabel={hasActiveDelivery ? 'Entrega en curso' : 'Aceptar pedido'}
+              acceptLabel={hasActiveDelivery ? 'Entrega en curso' : 'Aceptar envío'}
               acceptDisabled={!isAvailable || hasActiveDelivery}
               acceptLoading={acceptingId === item.id}
             />
@@ -190,11 +232,11 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
           !loading ? (
             <EmptyState
               emoji={isAvailable ? '📭' : '⏸️'}
-              title={isAvailable ? 'No hay pedidos disponibles' : 'Estás fuera de línea'}
+              title={isAvailable ? 'No hay entregas disponibles' : 'Estás fuera de línea'}
               subtitle={
                 isAvailable
-                  ? 'Los pedidos listos aparecerán aquí automáticamente.'
-                  : 'Activa tu disponibilidad para ver pedidos cerca de ti.'
+                  ? 'Pedidos listos y envíos pendientes aparecerán aquí.'
+                  : 'Activa tu disponibilidad para ver trabajo cerca de ti.'
               }
             />
           ) : null
