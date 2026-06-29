@@ -19,8 +19,14 @@ const CustomerActiveDeliveriesContext = createContext<CustomerActiveDeliveriesVa
   null,
 );
 
-export function CustomerActiveDeliveriesProvider({ children }: { children: React.ReactNode }) {
-  const value = useCustomerActiveDeliveriesState();
+export function CustomerActiveDeliveriesProvider({
+  children,
+  enabled = true,
+}: {
+  children: React.ReactNode;
+  enabled?: boolean;
+}) {
+  const value = useCustomerActiveDeliveriesState(enabled);
   return (
     <CustomerActiveDeliveriesContext.Provider value={value}>
       {children}

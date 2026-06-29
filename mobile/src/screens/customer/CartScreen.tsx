@@ -37,7 +37,7 @@ import { toCoordinate } from '../../utils/maps';
 import { runWithRetry } from '../../utils/runWithRetry';
 
 export default function CartScreen({ navigation }: CartScreenProps) {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, requestLogin } = useAuth();
   const { keyboardWithHeader, tabBottomPadding } = useTabScreenInsets();
   const { config: appConfig } = useAppConfig();
   const { items, total, updateQuantity, clearCart, restaurantId } = useCart();
@@ -262,6 +262,17 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
   const handleCheckout = useCallback(async () => {
     if (checkoutInFlight.current || loading) return;
+    if (!user) {
+      appAlert(
+        'Inicia sesión',
+        'Necesitas una cuenta para confirmar tu pedido.',
+        [
+          { text: 'Ahora no', style: 'cancel' },
+          { text: 'Entrar', onPress: requestLogin },
+        ],
+      );
+      return;
+    }
     if (!restaurantId || items.length === 0) {
       appAlert('Carrito vacío');
       return;
@@ -355,6 +366,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     clearCart,
     navigation,
     offerSaveAddress,
+    user,
+    requestLogin,
   ]);
 
   const handleDecrease = useCallback(

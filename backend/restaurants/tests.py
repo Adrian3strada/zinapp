@@ -126,3 +126,44 @@ class RestaurantLocationTests(TestCase):
         self.assertEqual(str(updated.latitude), '19.860100')
         self.assertEqual(str(updated.longitude), '-100.825100')
         self.assertTrue(updated.location_pinned)
+
+
+class PublicCatalogTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username='pub_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Public Tacos',
+            address='Centro',
+            phone='4511111111',
+            is_active=True,
+            accepting_orders=True,
+        )
+        from restaurants.models import Product
+        Product.objects.create(
+            restaurant=self.restaurant,
+            name='Taco',
+            price='15.00',
+            is_available=True,
+        )
+
+    def test_anonymous_can_list_restaurants(self):
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        response = client.get('/api/restaurants/')
+        self.assertEqual(response.status_code, 200)
+        names = [r['name'] for r in response.data['results']]
+        self.assertIn('Public Tacos', names)
+
+    def test_anonymous_can_list_products(self):
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        response = client.get(f'/api/products/?restaurant={self.restaurant.id}')
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(len(response.data['results']), 1)

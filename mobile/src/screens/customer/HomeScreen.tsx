@@ -19,7 +19,7 @@ import type { LocalService } from '../../types';
 const FEATURED_COUNT = 3;
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const { insets, scrollPaddingBottom, pagePadding } = useTabScreenInsets();
   const {
     activeOrderCount,
@@ -74,7 +74,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onProfilePress={() => navigation.navigate('Perfil')}
         style={[styles.hero, { marginHorizontal: -pagePadding }]}
       >
-        <Text style={styles.tagline}>¿Qué necesitas hoy?</Text>
+        <Text style={styles.tagline}>
+          {isGuest ? 'Explorando como invitado · ¿Qué necesitas hoy?' : '¿Qué necesitas hoy?'}
+        </Text>
       </HomeHero>
 
       {stripItems.length > 0 && (

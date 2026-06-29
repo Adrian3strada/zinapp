@@ -11,24 +11,37 @@ import type { User } from '../types';
 
 interface AuthContextValue {
   user: User | null;
+  isGuest: boolean;
   isLoading: boolean;
   login: (data: LoginPayload) => Promise<void>;
   register: (data: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  enterGuestMode: () => void;
+  requestLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const enterGuestMode = useCallback(() => {
+    setIsGuest(true);
+  }, []);
+
+  const requestLogin = useCallback(() => {
+    setIsGuest(false);
+  }, []);
 
   const logout = useCallback(async () => {
     await clearPushToken();
     await tokenStorage.clear();
     await userCache.clear();
     setUser(null);
+    setIsGuest(false);
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -110,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     await tokenStorage.setTokens(response.access, response.refresh);
+    setIsGuest(false);
     setUser(response.user);
     await userCache.set(response.user);
     void registerPushNotifications();
@@ -131,7 +145,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isGuest,
+        isLoading,
+        login,
+        register,
+        logout,
+        refreshUser,
+        enterGuestMode,
+        requestLogin,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

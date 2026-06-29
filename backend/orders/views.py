@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -865,7 +865,7 @@ class CouponViewSet(viewsets.ModelViewSet):
             'description': coupon.description,
         })
 
-    @action(detail=False, methods=['get'], url_path='active', permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get'], url_path='active', permission_classes=[AllowAny])
     def active_coupons(self, request):
         now = timezone.now()
         coupons = Coupon.objects.filter(is_active=True).filter(
@@ -882,6 +882,11 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'post', 'head', 'options']
 
+    def get_permissions(self):
+        if self.action == 'list' and self.request.query_params.get('restaurant'):
+            return [AllowAny()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action == 'create':
             return ReviewCreateSerializer
@@ -892,6 +897,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
         restaurant_id = self.request.query_params.get('restaurant')
         if restaurant_id:
             return qs.filter(restaurant_id=restaurant_id)
+        if not self.request.user.is_authenticated:
+            return qs.none()
         if self.request.user.is_customer:
             return qs.filter(customer=self.request.user)
         if self.request.user.is_admin_user:

@@ -2,7 +2,7 @@ from django.db.models import Count, Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -53,7 +53,7 @@ class CoverageCheckView(APIView):
 
 
 class CoverageBoundsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         return Response({
@@ -97,7 +97,7 @@ class RestaurantViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
-            return [IsAuthenticated()]
+            return [AllowAny()]
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
             if self.request.user.is_admin_user:
                 return [IsAdmin()]
@@ -107,6 +107,9 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = self.queryset
+
+        if not user.is_authenticated:
+            return queryset.filter(is_active=True)
 
         if user.is_admin_user:
             return queryset
@@ -121,7 +124,7 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     def filter_queryset(self, queryset):
         qs = super().filter_queryset(queryset)
         user = self.request.user
-        if user.is_customer and self.action == 'list':
+        if (not user.is_authenticated or user.is_customer) and self.action == 'list':
             qs = qs.filter(
                 products__is_available=True,
             ).annotate(
@@ -189,7 +192,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
-            return [IsAuthenticated()]
+            return [AllowAny()]
         if self.request.user.is_admin_user:
             return [IsAdmin()]
         return [IsRestaurantOwner()]
@@ -201,6 +204,9 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         if restaurant_id:
             queryset = queryset.filter(restaurant_id=restaurant_id)
+
+        if not user.is_authenticated:
+            return queryset.filter(is_available=True, restaurant__is_active=True)
 
         if user.is_admin_user:
             return queryset

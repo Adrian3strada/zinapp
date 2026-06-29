@@ -439,11 +439,15 @@ class UserEditView(PanelAccessMixin, UpdateView):
     def form_valid(self, form):
         response = super().form_valid(form)
         password = form.cleaned_data.get('new_password1')
-        if password and self.object and not self.object.check_password(password):
-            self.object.set_password(password)
-            self.object.save(update_fields=['password'])
         if password:
-            if _verify_app_login(self.object, password):
+            self.object.refresh_from_db()
+            if not self.object.is_active:
+                messages.error(
+                    self.request,
+                    'Contraseña guardada, pero el usuario quedó INACTIVO y no podrá entrar a la app. '
+                    'Marca «Activo» y guarda de nuevo.',
+                )
+            elif _verify_app_login(self.object, password):
                 messages.success(
                     self.request,
                     'Usuario actualizado. Ya puede entrar en la app con la nueva contraseña.',
@@ -693,4 +697,16 @@ class UserDeactivateView(PanelAccessMixin, View):
         user.is_active = False
         user.save(update_fields=['is_active'])
         messages.success(request, f'Usuario «{user.username}» desactivado.')
+        return redirect('dashboard:users')
+
+
+class UserActivateView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk)
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        messages.success(
+            request,
+            f'Usuario «{user.username}» activado. Ya puede entrar en la app.',
+        )
         return redirect('dashboard:users')

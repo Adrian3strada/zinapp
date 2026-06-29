@@ -50,7 +50,7 @@ function RoleNavigator({ role }: { role: string }) {
 }
 
 function MainRoutes() {
-  const { user, isLoading } = useAuth();
+  const { user, isGuest, isLoading, requestLogin } = useAuth();
   const [deferPush, setDeferPush] = React.useState(false);
 
   React.useEffect(() => {
@@ -66,7 +66,7 @@ function MainRoutes() {
     return <LoadingScreen />;
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     const resetToken = Platform.OS === 'web' ? getWebResetToken() : null;
     return (
       <Suspense fallback={<LoadingScreen />}>
@@ -94,6 +94,10 @@ function MainRoutes() {
         </AuthStack.Navigator>
       </Suspense>
     );
+  }
+
+  if (isGuest) {
+    return <CustomerNavigator guestMode onRequestLogin={requestLogin} />;
   }
 
   return <RoleNavigator role={user.role} />;

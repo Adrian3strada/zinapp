@@ -37,7 +37,7 @@ const PRIVACY_URL =
   ?? 'https://zinapp-api-production.up.railway.app/privacidad/';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
-  const { login } = useAuth();
+  const { login, enterGuestMode } = useAuth();
   const insets = useSafeAreaInsets();
   const { isDesktopWeb } = useResponsiveLayout();
   const [username, setUsername] = useState('');
@@ -132,6 +132,13 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           size="lg"
           style={styles.btn}
         />
+        <Button
+          title="Explorar sin cuenta"
+          variant="ghost"
+          onPress={enterGuestMode}
+          disabled={loading}
+          size="lg"
+        />
         {loading && statusHint ? (
           <Text style={styles.statusHint}>{statusHint}</Text>
         ) : null}
@@ -186,7 +193,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             <BrandLogo variant="light" width={320} showTagline={false} />
             <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
             <Text style={styles.desktopTagline}>
-              Pedidos, comida local y envíos en tu ciudad.
+              Pedidos y comida local en tu ciudad.
             </Text>
             <View style={styles.heroPills}>
               <View style={styles.pill}>

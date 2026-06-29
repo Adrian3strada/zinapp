@@ -258,6 +258,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         existing = User.objects.filter(username__iexact=username).first()
         if existing:
+            if not existing.is_active:
+                raise AuthenticationFailed(
+                    'Tu cuenta está desactivada. Contacta soporte o al administrador de ZinApp.',
+                    code='account_inactive',
+                )
             attrs[self.username_field] = existing.username
         else:
             attrs[self.username_field] = username

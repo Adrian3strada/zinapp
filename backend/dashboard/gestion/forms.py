@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django import forms
+from django.contrib.auth import password_validation
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
@@ -265,6 +266,16 @@ class UserEditForm(PanelFormMixin, forms.ModelForm):
     def clean_email(self):
         return (self.cleaned_data.get('email') or '').strip().lower()
 
+    def clean_is_active(self):
+        if self.instance.pk and 'is_active' not in self.data:
+            return self.instance.is_active
+        return self.cleaned_data.get('is_active', True)
+
+    def clean_is_staff(self):
+        if self.instance.pk and 'is_staff' not in self.data:
+            return self.instance.is_staff
+        return self.cleaned_data.get('is_staff', False)
+
     def clean(self):
         cleaned = super().clean()
         p1 = cleaned.get('new_password1') or ''
@@ -274,6 +285,11 @@ class UserEditForm(PanelFormMixin, forms.ModelForm):
                 self.add_error('new_password2', 'Las contraseñas no coinciden.')
             elif len(p1) < 8:
                 self.add_error('new_password1', 'Mínimo 8 caracteres.')
+            elif self.instance.pk:
+                try:
+                    password_validation.validate_password(p1, self.instance)
+                except ValidationError as exc:
+                    self.add_error('new_password1', exc)
         return cleaned
 
     def save(self, commit=True):

@@ -59,6 +59,11 @@
                 {% csrf_token %}
                 <button type="submit" class="link-btn text-danger" onclick="return confirm('¿Desactivar {{ u.username }}?')">Desactivar</button>
               </form>
+              {% elif not u.is_active %}
+              <form method="post" action="{% url 'gestion:user-activate' u.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="link-btn">Activar</button>
+              </form>
               {% endif %}
             </td>
           </tr>

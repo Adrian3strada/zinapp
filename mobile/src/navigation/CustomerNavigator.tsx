@@ -1,21 +1,25 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React, { Suspense } from 'react';
+import React, { Suspense, useMemo } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerActiveDeliveriesProvider, useCustomerActiveDeliveries } from '../context/CustomerActiveDeliveriesContext';
 import AppErrorBoundary from '../components/AppErrorBoundary';
 import CustomerWebLayout from '../components/CustomerWebLayout';
+import EmptyState from '../components/EmptyState';
 import { useCart } from '../context/CartContext';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { useTabScreenInsets } from '../hooks/useTabScreenInsets';
 import CartScreen from '../screens/customer/CartScreen';
 import MenuScreen from '../screens/customer/MenuScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import GuestAccountScreen from '../screens/customer/GuestAccountScreen';
+import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
@@ -67,9 +71,10 @@ function LazyMyOrdersScreen(props: MyOrdersScreenProps) {
 }
 
 function ProfileScreenWithBoundary() {
+  const { user } = useAuth();
   return (
     <AppErrorBoundary>
-      <ProfileScreen />
+      {user ? <ProfileScreen /> : <GuestAccountScreen />}
     </AppErrorBoundary>
   );
 }
@@ -122,7 +127,7 @@ function LazyServicesScreen(props: ServicesScreenProps) {
   );
 }
 
-function CustomerTabs() {
+function CustomerTabs({ guestMode }: { guestMode?: boolean }) {
   const { itemCount } = useCart();
   const { activeOrderCount } = useCustomerActiveDeliveries();
   const insets = useSafeAreaInsets();
@@ -149,10 +154,10 @@ function CustomerTabs() {
       />
       <Tab.Screen
         name="Pedidos"
-        component={LazyMyOrdersScreen}
+        component={guestMode ? GuestOrdersTab : LazyMyOrdersScreen}
         options={{
-          title: 'Mis pedidos',
-          tabBarBadge: activeOrderCount > 0 ? activeOrderCount : undefined,
+          title: guestMode ? 'Pedidos' : 'Mis pedidos',
+          tabBarBadge: !guestMode && activeOrderCount > 0 ? activeOrderCount : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
           ),
@@ -202,15 +207,44 @@ function LazyRestaurantReviewsScreen(props: import('./types').RestaurantReviewsS
   );
 }
 
-export default function CustomerNavigator() {
-  useCustomerPendingNavigation();
+function GuestOrdersTab() {
+  const { requestLogin } = useAuth();
+  const { scrollPaddingBottom, pagePadding } = useTabScreenInsets();
 
   return (
-    <CustomerActiveDeliveriesProvider>
+    <View style={{ flex: 1, paddingHorizontal: pagePadding, paddingBottom: scrollPaddingBottom().paddingBottom }}>
+      <EmptyState
+        emoji="🧾"
+        title="Tus pedidos aparecerán aquí"
+        subtitle="Inicia sesión para ver el historial y seguir entregas en vivo."
+        actionLabel="Iniciar sesión"
+        onAction={requestLogin}
+      />
+    </View>
+  );
+}
+
+export default function CustomerNavigator({
+  guestMode = false,
+}: {
+  guestMode?: boolean;
+  onRequestLogin?: () => void;
+}) {
+  useCustomerPendingNavigation();
+
+  const MainTabs = useMemo(
+    () => function CustomerMainTabs() {
+      return <CustomerTabs guestMode={guestMode} />;
+    },
+    [guestMode],
+  );
+
+  return (
+    <CustomerActiveDeliveriesProvider enabled={!guestMode}>
       <Stack.Navigator screenOptions={stackScreenDefaults}>
         <Stack.Screen
           name="Main"
-          component={CustomerTabs}
+          component={MainTabs}
           options={{ headerShown: false }}
         />
         <Stack.Screen

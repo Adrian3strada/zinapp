@@ -1,9 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import Client, TestCase
 from rest_framework.test import APIClient
 
-from accounts.models import DeliveryProfile
+from accounts.models import DeliveryProfile, UserRole
 from dashboard.gestion.forms import UserCreateForm
 
 User = get_user_model()
@@ -114,3 +114,48 @@ class DeliveryProfileApiTests(TestCase):
         response = self.client.get('/api/auth/delivery-profiles/me/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['user']['id'], self.driver.id)
+
+
+class UserEditPasswordTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = User.objects.create_user(
+            username='pwd_edit_admin',
+            password='adminpass123',
+            role=UserRole.ADMIN,
+            is_staff=True,
+        )
+        self.user = User.objects.create_user(
+            username='gael11',
+            password='oldpass12345',
+            role=UserRole.CUSTOMER,
+        )
+
+    def test_password_change_keeps_user_active_without_checkbox(self):
+        self.client.login(username='pwd_edit_admin', password='adminpass123')
+        response = self.client.post(
+            f'/panel/gestion/usuarios/{self.user.pk}/',
+            {
+                'username': 'gael11',
+                'email': '',
+                'first_name': '',
+                'last_name': '',
+                'role': 'customer',
+                'phone': '',
+                'address': '',
+                'new_password1': 'newpass12345',
+                'new_password2': 'newpass12345',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        self.assertTrue(self.user.check_password('newpass12345'))
+
+        api = APIClient()
+        login = api.post(
+            '/api/auth/login/',
+            {'username': 'Gael11', 'password': 'newpass12345'},
+            format='json',
+        )
+        self.assertEqual(login.status_code, 200, login.data)

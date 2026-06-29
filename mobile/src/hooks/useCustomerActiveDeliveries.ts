@@ -34,11 +34,12 @@ function mapOrderToItem(order: OrderActiveSummary): ActiveDeliveryItem {
 }
 
 /** Una sola instancia por app — usar vía CustomerActiveDeliveriesProvider. */
-export function useCustomerActiveDeliveriesState() {
+export function useCustomerActiveDeliveriesState(enabled = true) {
   const [orders, setOrders] = useState<OrderActiveSummary[]>([]);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!enabled) return;
     try {
       const ordersRes = await orderApi.active();
       setOrders(ordersRes.data);
@@ -46,7 +47,7 @@ export function useCustomerActiveDeliveriesState() {
     } catch {
       setRefreshError('No se pudo actualizar el estado de tus pedidos');
     }
-  }, []);
+  }, [enabled]);
 
   const activeOrders = useMemo(
     () => orders.filter((o) => ACTIVE_ORDER_STATUSES.includes(o.status as typeof ACTIVE_ORDER_STATUSES[number])),
@@ -86,6 +87,11 @@ export function useCustomerActiveDeliveriesState() {
   const pollMs = hasLiveTracking ? 3000 : 45000;
 
   useEffect(() => {
+    if (!enabled) {
+      setOrders([]);
+      setRefreshError(null);
+      return;
+    }
     let cancelled = false;
     let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -100,7 +106,17 @@ export function useCustomerActiveDeliveriesState() {
       task.cancel();
       if (interval) clearInterval(interval);
     };
-  }, [load, pollMs]);
+  }, [load, pollMs, enabled]);
+
+  if (!enabled) {
+    return {
+      activeOrderCount: 0,
+      liveItems: [],
+      trackingItems: [],
+      refreshError: null,
+      refresh: async () => {},
+    };
+  }
 
   return {
     activeOrderCount: activeOrders.length,
