@@ -115,3 +115,48 @@ class Product(models.Model):
 
     def __str__(self):
         return f'{self.name} - {self.restaurant.name}'
+
+
+class PromoType(models.TextChoices):
+    TWO_FOR_ONE = 'two_for_one', '2x1'
+    PERCENT_OFF = 'percent_off', 'Porcentaje de descuento'
+    SPECIAL_PRICE = 'special_price', 'Precio especial'
+
+
+class ProductPromotion(models.Model):
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name='promotions',
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='promotions',
+    )
+    promo_type = models.CharField(max_length=20, choices=PromoType.choices)
+    percent_off = models.PositiveSmallIntegerField(null=True, blank=True)
+    special_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    label = models.CharField(max_length=40, blank=True)
+    valid_until = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Promoción'
+        verbose_name_plural = 'Promociones'
+        ordering = ['-valid_until', '-id']
+
+    def __str__(self):
+        return f'{self.product.name} — {self.get_promo_type_display()}'
+
+    def is_currently_active(self) -> bool:
+        from .promotions import promo_is_active
+
+        return promo_is_active(self)

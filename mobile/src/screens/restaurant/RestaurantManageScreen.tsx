@@ -1,7 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   Keyboard,
@@ -24,6 +22,8 @@ import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
+import RestaurantHeroHeader from '../../components/restaurant/RestaurantHeroHeader';
+import RestaurantPromotionsSection from '../../components/restaurant/RestaurantPromotionsSection';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRestaurantContext } from '../../context/RestaurantContext';
@@ -34,10 +34,11 @@ import { cardShadow } from '../../theme/shadows';
 import type { Product, Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, parsePriceInput } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { appendImage } from '../../utils/imagePicker';
 import { resolveMediaUrl } from '../../utils/media';
+import * as ImagePicker from 'expo-image-picker';
 
 interface ProductDraft {
   id?: number;
@@ -61,14 +62,38 @@ const ProductManageRow = React.memo(function ProductManageRow({
   toggling: boolean;
 }) {
   const unavailable = !product.is_available;
+  const skipEditRef = useRef(false);
+
+  const handleToggle = (value: boolean) => {
+    skipEditRef.current = true;
+    setTimeout(() => {
+      skipEditRef.current = false;
+    }, 400);
+    onToggle(product, value);
+  };
+
+  const handleEdit = () => {
+    if (skipEditRef.current || toggling) return;
+    onEdit(product);
+  };
+
+  const stopSwitchPointer = Platform.OS === 'web'
+    ? {
+        onClick: (event: { stopPropagation: () => void }) => event.stopPropagation(),
+        onMouseDown: (event: { stopPropagation: () => void }) => event.stopPropagation(),
+      }
+    : {};
 
   return (
-    <View style={[styles.productRow, unavailable && styles.productRowUnavailable]}>
-      <Pressable style={styles.productMain} onPress={() => onEdit(product)} hitSlop={HIT_SLOP}>
+    <View style={[styles.productCard, unavailable && styles.productCardUnavailable]}>
+      <Pressable
+        style={({ pressed }) => [styles.productMain, pressed && styles.productCardPressed]}
+        onPress={handleEdit}
+      >
         <FoodImage
           emoji={getProductEmoji(product.name)}
           color={colors.primary}
-          size="sm"
+          size="md"
           imageUri={resolveMediaUrl(product.image_url ?? product.image)}
         />
         <View style={styles.productInfo}>
@@ -76,28 +101,47 @@ const ProductManageRow = React.memo(function ProductManageRow({
             <Text style={[styles.productName, unavailable && styles.unavailableText]} numberOfLines={1}>
               {product.name}
             </Text>
-            {unavailable && (
+            {unavailable ? (
               <View style={styles.soldOutBadge}>
                 <Text style={styles.soldOutText}>Agotado</Text>
+              </View>
+            ) : (
+              <View style={styles.availableBadge}>
+                <Text style={styles.availableText}>Visible</Text>
               </View>
             )}
           </View>
           {!!product.description && (
-            <Text style={styles.productDesc} numberOfLines={1}>
+            <Text style={styles.productDesc} numberOfLines={2}>
               {product.description}
             </Text>
           )}
           <Text style={styles.productPrice}>{formatCurrency(product.price)}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
-      <Switch
-        value={product.is_available}
-        onValueChange={(v) => onToggle(product, v)}
-        disabled={toggling}
-        trackColor={{ true: colors.primary, false: colors.border }}
-        accessibilityLabel={`Disponibilidad de ${product.name}`}
-      />
+      <Pressable
+        onPress={handleEdit}
+        hitSlop={HIT_SLOP}
+        style={styles.editIconBtn}
+        accessibilityLabel={`Editar ${product.name}`}
+      >
+        <Ionicons name="create-outline" size={20} color={colors.textMuted} />
+      </Pressable>
+      <View
+        style={styles.productActions}
+        pointerEvents="box-none"
+        {...stopSwitchPointer}
+      >
+        <View pointerEvents="auto" {...stopSwitchPointer}>
+          <Switch
+            value={product.is_available}
+            onValueChange={handleToggle}
+            disabled={toggling}
+            trackColor={{ true: colors.primary, false: colors.border }}
+            accessibilityLabel={`Disponibilidad de ${product.name}`}
+          />
+        </View>
+      </View>
     </View>
   );
 });
@@ -115,11 +159,12 @@ export default function RestaurantManageScreen() {
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<ProductDraft | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const availableCount = products.filter((p) => p.is_available).length;
 
   const load = useCallback(async () => {
-    const isRefresh = products.length > 0;
+    const isRefresh = hasLoadedRef.current;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -130,10 +175,11 @@ export default function RestaurantManageScreen() {
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudo cargar tu menú'));
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
       setRefreshing(false);
     }
-  }, [products.length]);
+  }, []);
 
   React.useEffect(() => {
     load();
@@ -147,6 +193,7 @@ export default function RestaurantManageScreen() {
     );
     try {
       await productApi.patch(product.id, { is_available: available });
+      await refreshRestaurant();
     } catch (err) {
       setProducts((prev) =>
         prev.map((p) => (p.id === product.id ? { ...p, is_available: !available } : p)),
@@ -223,26 +270,33 @@ export default function RestaurantManageScreen() {
       appAlert('Producto', 'Nombre y precio son obligatorios.');
       return;
     }
+    const parsedPrice = parsePriceInput(editor.price);
+    if (parsedPrice === null) {
+      appAlert('Producto', 'Indica un precio válido (ej. 85.00).');
+      return;
+    }
+    const wasEdit = !!editor.id;
     setSaving(true);
     try {
       const fd = new FormData();
       fd.append('name', editor.name.trim());
       fd.append('description', editor.description.trim());
-      fd.append('price', editor.price.trim());
+      fd.append('price', parsedPrice.toFixed(2));
       fd.append('is_available', editor.is_available ? 'true' : 'false');
       if (editor.imageUri) {
         await appendImage(fd, 'image', editor.imageUri, 'product.jpg');
       }
       if (editor.id) {
-        await productApi.update(editor.id, fd);
+        const { data } = await productApi.update(editor.id, fd);
+        setProducts((prev) => prev.map((p) => (p.id === data.id ? data : p)));
       } else {
         fd.append('restaurant', String(restaurant.id));
-        await productApi.create(fd);
+        const { data } = await productApi.create(fd);
+        setProducts((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
       }
       setEditor(null);
-      await load();
       await refreshRestaurant();
-      appAlert('Listo', editor.id ? 'Producto actualizado' : 'Producto agregado');
+      appAlert('Listo', wasEdit ? 'Producto actualizado' : 'Producto agregado');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el producto'));
     } finally {
@@ -259,8 +313,8 @@ export default function RestaurantManageScreen() {
         setDeleting(true);
         try {
           await productApi.delete(editor.id!);
+          setProducts((prev) => prev.filter((p) => p.id !== editor.id));
           setEditor(null);
-          await load();
           await refreshRestaurant();
           appAlert('Listo', 'Producto eliminado');
         } catch (err) {
@@ -306,41 +360,36 @@ export default function RestaurantManageScreen() {
             />
           }
         >
+          <RestaurantHeroHeader
+            restaurant={restaurant}
+            topInset={insets.top}
+            eyebrow="Menú"
+            title={restaurant?.name}
+            subtitle="Administra platillos, precios y disponibilidad"
+            stats={[
+              { label: 'Platillos', value: products.length, icon: 'fast-food-outline' },
+              { label: 'Disponibles', value: availableCount, icon: 'checkmark-circle-outline' },
+              {
+                label: 'Ocultos',
+                value: products.length - availableCount,
+                icon: 'eye-off-outline',
+              },
+            ]}
+            actionIcon="add"
+            onActionPress={openNewProduct}
+          />
+
           {restaurant?.setup_status ? (
             <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
           ) : null}
-          <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            style={[styles.hero, { paddingTop: insets.top + spacing.md }]}
-          >
-            <View style={styles.heroRow}>
-              <View style={styles.heroIcon}>
-                <Ionicons name="restaurant" size={26} color="#FFF" />
-              </View>
-              <View style={styles.heroText}>
-                <Text style={styles.heroTitle}>Tu menú</Text>
-                <Text style={styles.heroSub} numberOfLines={1}>
-                  {restaurant?.name ?? 'Restaurante'}
-                </Text>
-              </View>
-              <Pressable style={styles.heroAddBtn} onPress={openNewProduct} hitSlop={HIT_SLOP}>
-                <Ionicons name="add" size={22} color={colors.primary} />
-              </Pressable>
-            </View>
-            <View style={styles.stats}>
-              <View style={styles.statBox}>
-                <Text style={styles.statNum}>{products.length}</Text>
-                <Text style={styles.statLabel}>Platillos</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statNum}>{availableCount}</Text>
-                <Text style={styles.statLabel}>Disponibles</Text>
-              </View>
-            </View>
-            <Text style={styles.heroHint}>
-              Datos del local (foto, dirección) en la pestaña Perfil
+
+          <View style={styles.tipCard}>
+            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+            <Text style={styles.tipText}>
+              Logo, horario, CLABE y ubicación del local se configuran en la pestaña{' '}
+              <Text style={styles.tipBold}>Perfil</Text>.
             </Text>
-          </LinearGradient>
+          </View>
 
           {products.length === 0 ? (
             <EmptyState
@@ -351,12 +400,17 @@ export default function RestaurantManageScreen() {
               onAction={openNewProduct}
             />
           ) : (
-            <View style={styles.card}>
+            <View style={styles.menuSection}>
               <View style={styles.sectionRow}>
-                <Text style={styles.section}>Platillos</Text>
+                <View>
+                  <Text style={styles.sectionTitle}>Catálogo</Text>
+                  <Text style={styles.sectionSub}>
+                    Toca un platillo para editarlo · usa el switch para ocultarlo
+                  </Text>
+                </View>
                 <Pressable style={styles.addBtn} onPress={openNewProduct} hitSlop={HIT_SLOP}>
                   <Ionicons name="add" size={20} color="#FFF" />
-                  <Text style={styles.addText}>Agregar</Text>
+                  <Text style={styles.addText}>Nuevo</Text>
                 </Pressable>
               </View>
               {products.map((item) => (
@@ -370,6 +424,14 @@ export default function RestaurantManageScreen() {
               ))}
             </View>
           )}
+
+          <RestaurantPromotionsSection
+            products={products}
+            onChanged={() => {
+              void load();
+              void refreshRestaurant();
+            }}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -388,9 +450,14 @@ export default function RestaurantManageScreen() {
               ]}
             >
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {editor?.id ? 'Editar producto' : 'Nuevo producto'}
-                </Text>
+                <View>
+                  <Text style={styles.modalEyebrow}>
+                    {editor?.id ? 'Editar platillo' : 'Nuevo platillo'}
+                  </Text>
+                  <Text style={styles.modalTitle}>
+                    {editor?.id ? editor.name || 'Producto' : 'Agregar al menú'}
+                  </Text>
+                </View>
                 <Pressable
                   onPress={closeEditor}
                   hitSlop={HIT_SLOP}
@@ -418,6 +485,7 @@ export default function RestaurantManageScreen() {
                     <View style={styles.photoPlaceholder}>
                       <Ionicons name="camera" size={36} color={colors.primary} />
                       <Text style={styles.photoPlaceholderText}>Foto del platillo</Text>
+                      <Text style={styles.photoHint}>Mejora las ventas con una buena foto</Text>
                     </View>
                   )}
                 </Pressable>
@@ -501,67 +569,36 @@ export default function RestaurantManageScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  hero: {
-    marginHorizontal: -spacing.screen,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
+  tipCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 14,
+    padding: spacing.md,
     marginBottom: spacing.lg,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.primary + '22',
   },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  heroIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroText: { flex: 1 },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 2, fontWeight: '500' },
-  heroAddBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stats: { flexDirection: 'row', gap: 12, marginTop: spacing.lg },
-  statBox: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 14,
-    padding: 14,
-    alignItems: 'center',
-  },
-  statNum: { fontSize: 26, fontWeight: '800', color: '#FFF' },
-  statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginTop: 2 },
-  heroHint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  card: {
+  tipText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+  tipBold: { fontWeight: '800', color: colors.primary },
+  menuSection: {
     backgroundColor: colors.surface,
     borderRadius: 22,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
     ...cardShadow,
   },
-  section: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: spacing.md,
   },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  sectionSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,34 +606,55 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     minHeight: 44,
   },
   addText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
-  productRow: {
+  productCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    minHeight: 72,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     gap: 8,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
-  productRowUnavailable: { opacity: 0.72 },
-  productMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  productCardUnavailable: { opacity: 0.75 },
+  productCardPressed: { opacity: 0.92 },
+  productMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 0,
+  },
   productInfo: { flex: 1, minWidth: 0 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  productName: { fontWeight: '700', color: colors.text, flexShrink: 1 },
+  editIconBtn: { padding: 4 },
+  productActions: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingLeft: 8,
+    minWidth: 56,
+    zIndex: 2,
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  productName: { fontWeight: '800', fontSize: 15, color: colors.text, flexShrink: 1 },
   unavailableText: { color: colors.textSecondary },
   soldOutBadge: {
     backgroundColor: colors.error + '18',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   soldOutText: { fontSize: 10, fontWeight: '700', color: colors.error },
-  productDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  productPrice: { color: colors.primary, fontWeight: '800', marginTop: 4 },
+  availableBadge: {
+    backgroundColor: colors.success + '18',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  availableText: { fontSize: 10, fontWeight: '700', color: colors.success },
+  productDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
+  productPrice: { color: colors.primary, fontWeight: '800', fontSize: 16, marginTop: 6 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalOverlayDesktop: {
     justifyContent: 'center',
@@ -624,25 +682,34 @@ const styles = StyleSheet.create({
   modalBody: { flexGrow: 0, flexShrink: 1 },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text, flex: 1 },
+  modalEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 2 },
   modalClose: { padding: 4 },
   modalScroll: { paddingBottom: 8 },
   photoBox: {
-    height: 160,
-    borderRadius: 14,
+    height: 180,
+    borderRadius: 16,
     overflow: 'hidden',
     marginBottom: spacing.md,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
+    borderStyle: 'dashed',
   },
   photoImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  photoPlaceholderText: { color: colors.primary, fontWeight: '600' },
+  photoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  photoPlaceholderText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+  photoHint: { color: colors.textMuted, fontSize: 12 },
   availabilityRow: {
     flexDirection: 'row',
     alignItems: 'center',

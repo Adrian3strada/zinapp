@@ -4,6 +4,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Button from '../../components/Button';
+import HomeHero from '../../components/HomeHero';
 import { useAuth } from '../../context/AuthContext';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { colors } from '../../theme/colors';
@@ -11,9 +12,9 @@ import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 
 const BENEFITS = [
-  { icon: 'cart-outline' as const, text: 'Pedir comida a domicilio' },
-  { icon: 'receipt-outline' as const, text: 'Ver y seguir tus pedidos' },
-  { icon: 'pricetag-outline' as const, text: 'Usar cupones y propinas' },
+  { icon: 'cart-outline' as const, text: 'Pedir comida a domicilio', color: colors.primary },
+  { icon: 'receipt-outline' as const, text: 'Ver y seguir tus pedidos en vivo', color: colors.shipmentStart },
+  { icon: 'pricetag-outline' as const, text: 'Usar cupones y promociones', color: colors.accent },
 ];
 
 export default function GuestAccountScreen() {
@@ -24,62 +25,83 @@ export default function GuestAccountScreen() {
     <ScrollView
       contentContainerStyle={[
         styles.container,
-        { paddingHorizontal: pagePadding, paddingTop: insets.top + spacing.lg },
+        { paddingHorizontal: pagePadding },
         scrollPaddingBottom(),
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <LinearGradient
-        colors={[colors.gradientStart, colors.gradientEnd]}
-        style={styles.hero}
+      <HomeHero
+        topInset={insets.top}
+        subtitle="Explora Zinapécuaro sin cuenta"
+        style={[styles.hero, { marginHorizontal: -pagePadding }]}
       >
-        <Ionicons name="person-circle-outline" size={56} color="#FFF" />
         <Text style={styles.heroTitle}>Modo invitado</Text>
         <Text style={styles.heroText}>
-          Explora restaurantes, menús y servicios. Crea una cuenta cuando quieras pedir.
+          Mira restaurantes, menús y servicios. Crea tu cuenta cuando quieras pedir.
         </Text>
-      </LinearGradient>
+      </HomeHero>
 
-      <View style={[styles.card, cardShadow]}>
-        <Text style={styles.cardTitle}>Con una cuenta puedes</Text>
-        {BENEFITS.map((item) => (
-          <View key={item.text} style={styles.benefitRow}>
-            <Ionicons name={item.icon} size={20} color={colors.primary} />
-            <Text style={styles.benefitText}>{item.text}</Text>
-          </View>
-        ))}
-        <Button title="Iniciar sesión" onPress={requestLogin} size="lg" style={styles.btn} />
-        <Button title="Crear cuenta" variant="secondary" onPress={requestLogin} size="lg" />
+      <View style={[styles.card, cardShadow, styles.cardOverlap]}>
+        <View style={styles.cardHeader}>
+          <LinearGradient colors={[colors.primaryLight, '#FFF']} style={styles.cardHeaderBg}>
+            <Ionicons name="sparkles-outline" size={22} color={colors.primary} />
+            <Text style={styles.cardTitle}>Con una cuenta puedes</Text>
+          </LinearGradient>
+        </View>
+        <View style={styles.cardBody}>
+          {BENEFITS.map((item) => (
+            <View key={item.text} style={styles.benefitRow}>
+              <View style={[styles.benefitIcon, { backgroundColor: item.color + '18' }]}>
+                <Ionicons name={item.icon} size={18} color={item.color} />
+              </View>
+              <Text style={styles.benefitText}>{item.text}</Text>
+            </View>
+          ))}
+          <Button title="Iniciar sesión" onPress={requestLogin} size="lg" style={styles.btn} />
+          <Button title="Crear cuenta gratis" variant="secondary" onPress={requestLogin} size="lg" />
+        </View>
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 16 },
-  hero: {
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    gap: 10,
-  },
-  heroTitle: { fontSize: 22, fontWeight: '900', color: '#FFF' },
+  container: { flexGrow: 1, backgroundColor: colors.background },
+  hero: { marginBottom: 0 },
+  heroTitle: { fontSize: 24, fontWeight: '900', color: '#FFF', marginTop: spacing.lg },
   heroText: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
+    marginTop: 8,
     lineHeight: 20,
+    fontWeight: '500',
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 22,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.borderLight,
-    gap: 12,
   },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 4 },
-  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  benefitText: { flex: 1, fontSize: 14, color: colors.textSecondary },
-  btn: { marginTop: 8 },
+  cardOverlap: { marginTop: -28, zIndex: 2 },
+  cardHeader: { overflow: 'hidden' },
+  cardHeaderBg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  cardTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  cardBody: { padding: 20, gap: 14 },
+  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  benefitIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benefitText: { flex: 1, fontSize: 14, color: colors.textSecondary, fontWeight: '600', lineHeight: 19 },
+  btn: { marginTop: 4 },
 });

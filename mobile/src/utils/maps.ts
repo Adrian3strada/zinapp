@@ -3,6 +3,11 @@ export interface MapCoordinate {
   longitude: number;
 }
 
+export interface MapRegion extends MapCoordinate {
+  latitudeDelta: number;
+  longitudeDelta: number;
+}
+
 /** Centro de Zinapécuaro de Figueroa, Michoacán (Nominatim/OSM) */
 export const ZINAPECUARO_REGION = {
   latitude: 19.8581,

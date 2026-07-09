@@ -1,9 +1,9 @@
-import './src/tasks/driverLocationTask';
-
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, Platform, StatusBar as RNStatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { enableScreens } from 'react-native-screens';
 
@@ -17,13 +17,22 @@ import { navigationRef } from './src/navigation/navigationRef';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme/colors';
 import { loadWebFonts } from './src/utils/loadWebFonts';
+import { configureNativeChrome } from './src/utils/nativeChrome';
 import { isWebPlatform, webNavigationRootStyle } from './src/utils/webPlatform';
 
 if (isWebPlatform()) {
   enableScreens(false);
 }
 
-function WebBootScreen() {
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.background,
+  },
+};
+
+function BootScreen() {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
       <ActivityIndicator size="large" color={colors.primary} />
@@ -48,11 +57,20 @@ function navStateKey(state: unknown): string {
 }
 
 export default function App() {
+  const [nativeFontsLoaded] = useFonts(Ionicons.font);
   const [webFontsReady, setWebFontsReady] = React.useState(Platform.OS !== 'web');
   const [navResetKey, setNavResetKey] = React.useState('root');
 
+  const fontsReady = Platform.OS === 'web' ? webFontsReady : nativeFontsLoaded;
+
   React.useEffect(() => {
+    void configureNativeChrome();
     void prefetchAppConfig();
+  }, []);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    require('./src/tasks/driverLocationTask');
   }, []);
 
   React.useEffect(() => {
@@ -60,12 +78,12 @@ export default function App() {
     void loadWebFonts().finally(() => setWebFontsReady(true));
   }, []);
 
-  if (!webFontsReady) {
+  if (!fontsReady) {
     return (
       <AppErrorBoundary>
         <SafeAreaProvider>
           <WebShell>
-            <WebBootScreen />
+            <BootScreen />
           </WebShell>
         </SafeAreaProvider>
       </AppErrorBoundary>
@@ -79,13 +97,17 @@ export default function App() {
           <AuthProvider>
             <BackendWake />
             <CartProvider>
-              <View style={webNavigationRootStyle()}>
-                <NavigationContainer
-                  ref={navigationRef}
-                  onStateChange={(state) => setNavResetKey(navStateKey(state))}
-                >
+              <View style={webNavigationRootStyle() ?? { flex: 1, backgroundColor: colors.background }}>
+                <NavigationContainer ref={navigationRef} theme={navTheme} onStateChange={(state) => setNavResetKey(navStateKey(state))}>
                   <AppErrorBoundary resetKey={navResetKey}>
-                    <StatusBar style="light" />
+                    {Platform.OS === 'android' ? (
+                      <RNStatusBar
+                        barStyle="dark-content"
+                        backgroundColor={colors.background}
+                        translucent={false}
+                      />
+                    ) : null}
+                    <StatusBar style="dark" />
                     <RootNavigator />
                   </AppErrorBoundary>
                 </NavigationContainer>

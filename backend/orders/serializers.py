@@ -326,7 +326,10 @@ class OrderCreateSerializer(serializers.Serializer):
                     'items': f'Producto {item_data["product_id"]} no disponible.',
                 })
             line_items.append((product, item_data))
-            subtotal += product.price * item_data['quantity']
+            from restaurants.promotions import calculate_promo_line_total
+
+            line_total, _promo = calculate_promo_line_total(product, item_data['quantity'])
+            subtotal += line_total
 
         coupon_data = None
         if coupon_code:
@@ -351,11 +354,16 @@ class OrderCreateSerializer(serializers.Serializer):
             )
 
             for product, item_data in line_items:
+                from restaurants.promotions import calculate_promo_line_total
+
+                line_total, _promo = calculate_promo_line_total(product, item_data['quantity'])
+                qty = item_data['quantity']
+                effective_unit = (line_total / qty).quantize(Decimal('0.01')) if qty else product.price
                 OrderItem.objects.create(
                     order=order,
                     product=product,
-                    quantity=item_data['quantity'],
-                    unit_price=product.price,
+                    quantity=qty,
+                    unit_price=effective_unit,
                     notes=item_data.get('notes', ''),
                 )
 

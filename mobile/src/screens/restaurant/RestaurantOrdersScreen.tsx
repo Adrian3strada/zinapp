@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert, appConfirm } from '../../utils/appAlert';
-import { formatOrderLabel, orderRef } from '../../utils/orderDisplay';
+import { formatOrderLabel } from '../../utils/orderDisplay';
 
-import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
-import OrderStatusBadge from '../../components/OrderStatusBadge';
+import RestaurantFilterChips, {
+  type RestaurantOrderFilter,
+} from '../../components/restaurant/RestaurantFilterChips';
+import RestaurantHeroHeader from '../../components/restaurant/RestaurantHeroHeader';
+import RestaurantOrderCard from '../../components/restaurant/RestaurantOrderCard';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRestaurantContext } from '../../context/RestaurantContext';
@@ -19,10 +22,8 @@ import type { RestaurantStackParamList, RestaurantTabParamList } from '../../nav
 import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { cardShadow } from '../../theme/shadows';
 import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { formatCurrency } from '../../utils/format';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<RestaurantTabParamList, 'Pedidos'>,
@@ -34,6 +35,23 @@ const NEXT_STATUS: Record<string, { status: string; label: string }> = {
   preparing: { status: 'ready', label: 'Listo para recoger' },
 };
 
+const KITCHEN_STATUSES = ['accepted', 'preparing'];
+
+function matchesFilter(order: Order, filter: RestaurantOrderFilter): boolean {
+  switch (filter) {
+    case 'pending':
+      return order.status === 'pending';
+    case 'kitchen':
+      return KITCHEN_STATUSES.includes(order.status);
+    case 'ready':
+      return order.status === 'ready';
+    case 'delivery':
+      return order.status === 'on_the_way';
+    default:
+      return true;
+  }
+}
+
 export default function RestaurantOrdersScreen({ navigation }: Props) {
   const { insets, listPaddingBottom } = useTabScreenInsets();
   const { restaurant, refresh: refreshRestaurant } = useRestaurantContext();
@@ -42,8 +60,9 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null);
+  const [filter, setFilter] = useState<RestaurantOrderFilter>('all');
 
-  const load = useCallback(async () => {
+  const load = React.useCallback(async () => {
     const isRefresh = orders.length > 0;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
@@ -59,11 +78,38 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     }
   }, [orders.length]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     load();
     const interval = setInterval(load, 15000);
     return () => clearInterval(interval);
   }, [load]);
+
+  const counts = useMemo(
+    () => ({
+      all: orders.length,
+      pending: orders.filter((o) => o.status === 'pending').length,
+      kitchen: orders.filter((o) => KITCHEN_STATUSES.includes(o.status)).length,
+      ready: orders.filter((o) => o.status === 'ready').length,
+      delivery: orders.filter((o) => o.status === 'on_the_way').length,
+    }),
+    [orders],
+  );
+
+  const filteredOrders = useMemo(
+    () => orders.filter((o) => matchesFilter(o, filter)),
+    [orders, filter],
+  );
+
+  const filterOptions = useMemo(
+    () => [
+      { key: 'all' as const, label: 'Todos', count: counts.all },
+      { key: 'pending' as const, label: 'Nuevos', count: counts.pending },
+      { key: 'kitchen' as const, label: 'Cocina', count: counts.kitchen },
+      { key: 'ready' as const, label: 'Listos', count: counts.ready },
+      { key: 'delivery' as const, label: 'En camino', count: counts.delivery },
+    ],
+    [counts],
+  );
 
   const handleAccept = async (order: Order) => {
     if (busyOrderId != null) return;
@@ -119,13 +165,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
       loading={initialLoading}
       loadingSkeleton={
         <View style={[styles.skeletonWrap, { paddingTop: insets.top + spacing.sm }, listPaddingBottom()]}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerTitleBone} />
-          </View>
-          <View style={styles.stats}>
-            <View style={styles.statBoxSkeleton} />
-            <View style={styles.statBoxSkeleton} />
-          </View>
+          <View style={styles.skeletonHero} />
           <ListSkeleton count={3} variant="order" />
         </View>
       }
@@ -133,13 +173,9 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
       onRetry={load}
     >
       <FlatList
-        data={orders}
+        data={filteredOrders}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={[
-          styles.list,
-          { paddingTop: insets.top + spacing.sm },
-          listPaddingBottom(),
-        ]}
+        contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={() => {
           void load();
           void refreshRestaurant();
@@ -148,86 +184,72 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <>
+            <RestaurantHeroHeader
+              restaurant={restaurant}
+              topInset={insets.top}
+              eyebrow="Pedidos"
+              title={restaurant?.name}
+              subtitle={
+                counts.pending > 0
+                  ? `${counts.pending} pedido${counts.pending === 1 ? '' : 's'} esperando respuesta`
+                  : 'Gestiona pedidos en tiempo real'
+              }
+              stats={[
+                { label: 'Activos', value: counts.all, icon: 'receipt-outline' },
+                { label: 'Nuevos', value: counts.pending, icon: 'notifications-outline' },
+                { label: 'Cocina', value: counts.kitchen, icon: 'flame-outline' },
+              ]}
+            />
+
             {restaurant?.setup_status ? (
-              <View style={{ paddingHorizontal: spacing.screen }}>
-                <RestaurantSetupBanner
-                  restaurant={restaurant}
-                  setupStatus={restaurant.setup_status}
-                />
-              </View>
+              <RestaurantSetupBanner
+                restaurant={restaurant}
+                setupStatus={restaurant.setup_status}
+              />
             ) : null}
-            <View style={styles.headerRow}>
-              <Text style={styles.headerTitle}>Pedidos activos</Text>
+
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Bandeja de pedidos</Text>
+              <Text style={styles.sectionSub}>
+                {filteredOrders.length} de {orders.length} pedido{orders.length === 1 ? '' : 's'}
+              </Text>
             </View>
-            <View style={styles.stats}>
-              <View style={styles.statBox}>
-                <Text style={styles.statNum}>{orders.length}</Text>
-                <Text style={styles.statLabel}>Activos</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statNum}>
-                  {orders.filter((o) => o.status === 'pending').length}
-                </Text>
-                <Text style={styles.statLabel}>Pendientes</Text>
-              </View>
-            </View>
+
+            <RestaurantFilterChips
+              options={filterOptions}
+              selected={filter}
+              onChange={setFilter}
+            />
           </>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-            onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
-          >
-            <View style={styles.cardTop}>
-              <Text style={styles.orderId}>{orderRef(item)}</Text>
-              <View style={styles.badgeRow}>
-                {item.payment_method === 'online' && item.payment_status !== 'paid' && (
-                  <View style={styles.paymentBadge}>
-                    <Text style={styles.paymentBadgeText}>Pago pendiente</Text>
-                  </View>
-                )}
-                <OrderStatusBadge status={item.status} label={item.status_display} />
-              </View>
-            </View>
-            <Text style={styles.total}>{formatCurrency(item.total)}</Text>
-            <Text style={styles.address} numberOfLines={1}>
-              <Ionicons name="location-outline" size={12} color={colors.textMuted} />{' '}
-              {item.delivery_address}
-            </Text>
-
-            {item.status === 'pending' && (
-              <View style={styles.actions}>
-                <Button
-                  title="Aceptar"
-                  onPress={() => handleAccept(item)}
-                  loading={busyOrderId === item.id}
-                  style={styles.btn}
-                />
-                <Button
-                  title="Rechazar"
-                  variant="danger"
-                  onPress={() => handleReject(item)}
-                  loading={busyOrderId === item.id}
-                  style={styles.btn}
-                />
-              </View>
-            )}
-            {NEXT_STATUS[item.status] && (
-              <Button
-                title={NEXT_STATUS[item.status].label}
-                onPress={() => handleAdvance(item)}
-                loading={busyOrderId === item.id}
-                style={{ marginTop: 12 }}
-              />
-            )}
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const next = NEXT_STATUS[item.status];
+          return (
+            <RestaurantOrderCard
+              order={item}
+              onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
+              onAccept={item.status === 'pending' ? () => handleAccept(item) : undefined}
+              onReject={item.status === 'pending' ? () => handleReject(item) : undefined}
+              onAdvance={next ? () => handleAdvance(item) : undefined}
+              advanceLabel={next?.label}
+              busy={busyOrderId === item.id}
+            />
+          );
+        }}
         ListEmptyComponent={
           !loading ? (
             <EmptyState
-              emoji="✨"
-              title="Sin pedidos activos"
-              subtitle="Cuando llegue un pedido nuevo, aparecerá aquí al instante."
+              emoji={filter === 'pending' ? '🔔' : '✨'}
+              title={
+                filter === 'all'
+                  ? 'Sin pedidos activos'
+                  : 'Nada en esta bandeja'
+              }
+              subtitle={
+                filter === 'all'
+                  ? 'Cuando llegue un pedido nuevo, aparecerá aquí al instante.'
+                  : 'Prueba otro filtro o espera nuevos pedidos.'
+              }
             />
           ) : null
         }
@@ -237,59 +259,33 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.screen, flexGrow: 1 },
-  skeletonWrap: { flex: 1, paddingHorizontal: spacing.screen },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+  list: {
+    paddingHorizontal: spacing.screen,
+    flexGrow: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: colors.text, flex: 1 },
-  headerTitleBone: {
-    width: 180,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: colors.borderLight,
-  },
-  stats: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  statBox: {
+  skeletonWrap: {
     flex: 1,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
+    paddingHorizontal: spacing.screen,
   },
-  statBoxSkeleton: {
-    flex: 1,
-    height: 80,
-    borderRadius: 14,
+  skeletonHero: {
+    height: 200,
+    borderRadius: 28,
     backgroundColor: colors.borderLight,
+    marginBottom: spacing.lg,
   },
-  statNum: { fontSize: 28, fontWeight: '800', color: colors.primary },
-  statLabel: { fontSize: 12, color: colors.textSecondary, fontWeight: '600', marginTop: 2 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...cardShadow,
+  sectionHeader: {
+    marginBottom: spacing.sm,
   },
-  cardPressed: { opacity: 0.94 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-  paymentBadge: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.2,
   },
-  paymentBadgeText: { fontSize: 10, fontWeight: '700', color: '#E65100' },
-  orderId: { fontSize: 18, fontWeight: '800', color: colors.text },
-  total: { fontSize: 20, fontWeight: '800', color: colors.primary, marginTop: 8 },
-  address: { fontSize: 13, color: colors.textSecondary, marginTop: 6 },
-  actions: { flexDirection: 'row', alignItems: 'stretch', gap: 10, marginTop: 14 },
-  btn: { flex: 1, minWidth: 0 },
+  sectionSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+    fontWeight: '500',
+  },
 });

@@ -1,9 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { BrandMark } from './BrandLogo';
+import HeroBackground from './HeroBackground';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
@@ -14,6 +14,7 @@ interface Props {
   topInset: number;
   style?: ViewStyle;
   children?: React.ReactNode;
+  stats?: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap }[];
 }
 
 function initials(name?: string | null): string {
@@ -28,14 +29,13 @@ export default function HomeHero({
   topInset,
   style,
   children,
+  stats,
 }: Props) {
   const greeting = firstName?.trim() ? `Hola, ${firstName}` : 'Hola';
 
   return (
-    <LinearGradient
+    <HeroBackground
       colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
       style={[styles.hero, { paddingTop: topInset + spacing.lg }, style]}
     >
       <View style={styles.decorA} />
@@ -66,8 +66,20 @@ export default function HomeHero({
         ) : null}
       </View>
 
+      {stats && stats.length > 0 ? (
+        <View style={styles.statsRow}>
+          {stats.map((stat) => (
+            <View key={stat.label} style={styles.statBox}>
+              <Ionicons name={stat.icon} size={16} color="rgba(255,255,255,0.92)" />
+              <Text style={styles.statValue}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {children}
-    </LinearGradient>
+    </HeroBackground>
   );
 }
 
@@ -145,4 +157,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { color: '#FFF', fontSize: 20, fontWeight: '800' },
+  statsRow: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
+  statBox: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    gap: 2,
+  },
+  statValue: { fontSize: 18, fontWeight: '800', color: '#FFF', marginTop: 2 },
+  statLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.82)',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 });

@@ -18,9 +18,18 @@ export default function ActiveDeliveryStrip({ items, onPress }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.heading}>
-        {items.some((i) => i.isLive) ? 'En camino ahora' : 'Activos'}
-      </Text>
+      <View style={styles.headingRow}>
+        <View style={styles.headingIcon}>
+          <Ionicons
+            name={items.some((i) => i.isLive) ? 'navigate-circle' : 'time-outline'}
+            size={18}
+            color={colors.primary}
+          />
+        </View>
+        <Text style={styles.heading}>
+          {items.some((i) => i.isLive) ? 'En camino ahora' : 'Pedidos activos'}
+        </Text>
+      </View>
       {items.map((item) => (
         <Pressable
           key={`${item.kind}-${item.id}`}
@@ -57,12 +66,21 @@ export default function ActiveDeliveryStrip({ items, onPress }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.sm },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 2 },
+  headingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heading: {
     fontSize: 18,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.3,
-    marginBottom: 2,
+    flex: 1,
   },
   card: {
     flexDirection: 'row',

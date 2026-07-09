@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -11,6 +10,7 @@ import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import DeliveryEtaBanner from '../../components/DeliveryEtaBanner';
 import DriverNearbyBanner from '../../components/DriverNearbyBanner';
+import HeroBackground from '../../components/HeroBackground';
 import LiveBadge from '../../components/LiveBadge';
 import OrderMap from '../../components/OrderMap';
 import OrderParticipantCard from '../../components/OrderParticipantCard';
@@ -230,11 +230,12 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
       }}
     >
       {order && (
-        <ScrollView contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}>
-          <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            style={styles.hero}
-          >
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <HeroBackground colors={[colors.gradientStart, colors.gradientEnd]} style={styles.hero}>
             <Text style={styles.heroRestaurant}>{order.restaurant_detail?.name}</Text>
             <View style={styles.heroOrderRef}>
               <Text style={styles.heroLabel}>Pedido</Text>
@@ -258,7 +259,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                 Esperando pago en línea del cliente antes de confirmar
               </Text>
             )}
-          </LinearGradient>
+          </HeroBackground>
 
           {user?.role === 'customer' && order.payment_method === 'online' && (
             <OnlinePaymentBanner
@@ -463,6 +464,23 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             </View>
           )}
 
+          {user?.role === 'customer'
+            && !CUSTOMER_CANCELLABLE.includes(order.status)
+            && ACTIVE_STATUSES.includes(order.status) && (
+            <View style={styles.card}>
+              <Text style={styles.cancelHint}>
+                Este pedido ya no se puede cancelar desde la app. Si necesitas ayuda, contacta al restaurante.
+              </Text>
+              {order.restaurant_detail?.phone ? (
+                <ContactWhatsAppButton
+                  phone={order.restaurant_detail.phone}
+                  message={`Hola, tengo una consulta sobre mi pedido ${orderRef(order)}.`}
+                  label="WhatsApp al restaurante"
+                />
+              ) : null}
+            </View>
+          )}
+
           {user?.role === 'driver' && order.status === 'on_the_way' && (
             <View style={styles.card}>
               <Button
@@ -584,4 +602,5 @@ const styles = StyleSheet.create({
   restaurantActions: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   restaurantBtn: { flex: 1 },
   reviewPrompt: { fontSize: 14, color: colors.textSecondary, marginBottom: 12, lineHeight: 20 },
+  cancelHint: { fontSize: 14, color: colors.textSecondary, lineHeight: 21, marginBottom: 12 },
 });

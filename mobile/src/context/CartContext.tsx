@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { appAlert } from '../utils/appAlert';
 
 import type { CartItem, Product } from '../types';
+import { calculatePromoLineTotal } from '../utils/promo';
 
 function resolveRestaurantId(product: Product): number {
   const value = product.restaurant as number | { id?: number };
@@ -94,8 +95,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const total = useMemo(
     () =>
       items.reduce((sum, i) => {
-        const price = parseFloat(i.product.price);
-        return sum + (Number.isFinite(price) ? price : 0) * i.quantity;
+        const { total: lineTotal } = calculatePromoLineTotal(i.product, i.quantity);
+        return sum + lineTotal;
       }, 0),
     [items],
   );

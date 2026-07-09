@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { RestaurantTabParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
+import { HIT_SLOP, spacing } from '../theme/spacing';
 import type { Restaurant, RestaurantSetupStatus } from '../types';
 
 interface Props {
@@ -21,6 +22,14 @@ const STEP_TAB: Record<string, keyof RestaurantTabParamList> = {
   location: 'Perfil',
 };
 
+const STEP_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  menu: 'restaurant-outline',
+  profile: 'image-outline',
+  bank: 'card-outline',
+  hours: 'time-outline',
+  location: 'location-outline',
+};
+
 export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props) {
   const navigation = useNavigation<BottomTabNavigationProp<RestaurantTabParamList>>();
 
@@ -31,18 +40,21 @@ export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props
   const pendingSteps = setupStatus.steps.filter((step) => !step.done);
   const firstPending = pendingSteps[0];
   const waitingActivation = setupStatus.complete && !restaurant.is_active;
+  const progress = setupStatus.total_count
+    ? setupStatus.done_count / setupStatus.total_count
+    : 0;
 
   const title = waitingActivation
     ? 'Esperando activación'
-    : `Configura tu local (${setupStatus.done_count}/${setupStatus.total_count})`;
+    : `Configura tu local`;
 
   const subtitle = waitingActivation
-    ? 'Tu perfil está listo. El equipo ZinApp revisará tu local y lo activará en la app. Te avisamos cuando esté publicado.'
+    ? 'Tu perfil está listo. El equipo ZinApp revisará tu local y lo activará en la app.'
     : !restaurant.is_active
-      ? 'Tu negocio aún no es visible para clientes. Completa los pasos pendientes en Menú y Mi perfil.'
+      ? 'Completa los pasos para que podamos publicar tu negocio.'
       : pendingSteps.length > 0
-      ? `Pendiente: ${pendingSteps.map((s) => s.label.replace(/^Al menos un platillo en el menú$/, 'Menú').replace(/^Logo o foto del local$/, 'Logo')).join(' · ')}`
-      : 'Completa tu perfil y menú para empezar a recibir pedidos.';
+        ? `${pendingSteps.length} paso${pendingSteps.length === 1 ? '' : 's'} pendiente${pendingSteps.length === 1 ? '' : 's'}`
+        : 'Completa menú y perfil para recibir pedidos.';
 
   const ctaLabel = waitingActivation
     ? undefined
@@ -57,31 +69,59 @@ export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props
 
   return (
     <View style={[styles.banner, waitingActivation && styles.bannerWaiting]}>
-      <View style={styles.iconWrap}>
-        <Ionicons
-          name={waitingActivation ? 'hourglass-outline' : 'construct-outline'}
-          size={24}
-          color={waitingActivation ? colors.warning : colors.primary}
-        />
+      <View style={styles.topRow}>
+        <View style={[styles.iconWrap, waitingActivation && styles.iconWrapWaiting]}>
+          <Ionicons
+            name={waitingActivation ? 'hourglass-outline' : 'construct-outline'}
+            size={22}
+            color={waitingActivation ? colors.warning : colors.primary}
+          />
+        </View>
+        <View style={styles.textWrap}>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.sub}>{subtitle}</Text>
+        </View>
+        {!waitingActivation ? (
+          <Text style={styles.progressLabel}>
+            {setupStatus.done_count}/{setupStatus.total_count}
+          </Text>
+        ) : null}
       </View>
-      <View style={styles.textWrap}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.sub}>{subtitle}</Text>
-        {!waitingActivation && pendingSteps.length > 0 && (
+
+      {!waitingActivation ? (
+        <>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+          </View>
           <View style={styles.steps}>
             {setupStatus.steps.map((step) => (
-              <View key={step.key} style={[styles.stepDot, step.done && styles.stepDone]}>
-                <Text style={[styles.stepText, step.done && styles.stepTextDone]}>
-                  {step.done ? '✓' : '○'}
+              <Pressable
+                key={step.key}
+                style={[styles.stepChip, step.done && styles.stepChipDone]}
+                onPress={() => navigation.navigate(STEP_TAB[step.key] ?? 'Perfil')}
+                hitSlop={HIT_SLOP}
+              >
+                <Ionicons
+                  name={step.done ? 'checkmark-circle' : STEP_ICONS[step.key] ?? 'ellipse-outline'}
+                  size={14}
+                  color={step.done ? colors.success : colors.textMuted}
+                />
+                <Text
+                  style={[styles.stepLabel, step.done && styles.stepLabelDone]}
+                  numberOfLines={1}
+                >
+                  {step.label.replace(/^Al menos un platillo en el menú$/, 'Menú').replace(/^Logo o foto del local$/, 'Logo')}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
-        )}
-      </View>
+        </>
+      ) : null}
+
       {ctaLabel ? (
         <Pressable style={styles.cta} onPress={goToStep} accessibilityRole="button">
           <Text style={styles.ctaText}>{ctaLabel}</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFF" />
         </Pressable>
       ) : null}
     </View>
@@ -90,44 +130,88 @@ export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props
 
 const styles = StyleSheet.create({
   banner: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+    gap: spacing.sm,
+  },
+  bannerWaiting: {
+    borderColor: colors.warning + '55',
+    backgroundColor: '#FFFBEB',
+  },
+  topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  bannerWaiting: {
-    backgroundColor: '#fff8ed',
-    borderColor: colors.warning,
-  },
-  iconWrap: { width: 28, alignItems: 'center', paddingTop: 2 },
-  textWrap: { flex: 1, gap: 4 },
-  title: { fontSize: 15, fontWeight: '800', color: colors.text },
-  sub: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
-  steps: { flexDirection: 'row', gap: 6, marginTop: 4 },
-  stepDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconWrapWaiting: { backgroundColor: '#FFF3CD' },
+  textWrap: { flex: 1, gap: 4 },
+  title: { fontSize: 16, fontWeight: '800', color: colors.text },
+  sub: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+  progressLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.borderLight,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+  },
+  steps: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  stepChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
+    maxWidth: '48%',
   },
-  stepDone: { backgroundColor: colors.success, borderColor: colors.success },
-  stepText: { fontSize: 10, color: colors.textMuted, fontWeight: '700' },
-  stepTextDone: { color: '#FFF' },
+  stepChipDone: {
+    backgroundColor: colors.success + '12',
+    borderColor: colors.success + '44',
+  },
+  stepLabel: {
+    flex: 1,
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  stepLabelDone: { color: colors.success },
   cta: {
-    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 4,
   },
-  ctaText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  ctaText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
 });

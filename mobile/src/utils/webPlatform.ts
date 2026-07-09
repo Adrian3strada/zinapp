@@ -25,9 +25,10 @@ export function webNavigationRootStyle(): ViewStyle | undefined {
   };
 }
 
-/** Tab bar fija solo en móvil web; en desktop usa sidebar. */
+/** Tab bar fija solo en móvil web; en desktop usa sidebar. En Android/iOS no aplica estilos web. */
 export function webTabBarStyle(isDesktopWeb = false): ViewStyle {
-  if (!isWebPlatform() || isDesktopWeb) return { display: 'none' };
+  if (!isWebPlatform()) return {};
+  if (isDesktopWeb) return { display: 'none' };
   return {
     position: 'fixed',
     bottom: 0,

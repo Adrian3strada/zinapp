@@ -13,6 +13,7 @@ import type {
   OrderDispute,
   PaginatedResponse,
   Product,
+  ProductPromotion,
   PublicCoupon,
   Restaurant,
   Review,
@@ -254,6 +255,23 @@ export const productApi = {
   update: (id: number, data: FormData) => api.patch<Product>(`/products/${id}/`, data),
   create: (data: FormData) => api.post<Product>('/products/', data),
   delete: (id: number) => api.delete(`/products/${id}/`),
+};
+
+export interface CreatePromotionPayload {
+  product: number;
+  promo_type: ProductPromotion['promo_type'];
+  percent_off?: number;
+  special_price?: string;
+  label?: string;
+  valid_until: string;
+}
+
+export const promotionApi = {
+  mine: () => api.get<ProductPromotion[]>('/promotions/mine/'),
+  create: (data: CreatePromotionPayload) => api.post<ProductPromotion>('/promotions/', data),
+  patch: (id: number, data: Partial<CreatePromotionPayload & { is_active: boolean }>) =>
+    api.patch<ProductPromotion>(`/promotions/${id}/`, data),
+  delete: (id: number) => api.delete(`/promotions/${id}/`),
 };
 
 export const deliveryApi = {

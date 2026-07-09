@@ -1,6 +1,5 @@
 import Constants from 'expo-constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,6 +15,7 @@ import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BrandLogo from '../../components/BrandLogo';
+import HeroBackground from '../../components/HeroBackground';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
@@ -30,7 +30,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { contentWidth } from '../../utils/responsive';
 import { cardShadow } from '../../theme/shadows';
-import { keyboardAvoidingBehavior, webPassThroughPointerEvents } from '../../utils/webPlatform';
+import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 
 const PRIVACY_URL =
   (Constants.expoConfig?.extra as { privacyPolicyUrl?: string } | undefined)?.privacyPolicyUrl
@@ -184,10 +184,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   if (isDesktopWeb) {
     return (
       <View style={styles.desktopRoot}>
-        <LinearGradient
+        <HeroBackground
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={styles.desktopHero}
-          pointerEvents={webPassThroughPointerEvents()}
         >
           <View style={styles.desktopHeroContent}>
             <BrandLogo variant="light" width={320} showTagline={false} />
@@ -206,7 +205,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
               </View>
             </View>
           </View>
-        </LinearGradient>
+        </HeroBackground>
         <ScrollView
           style={styles.desktopFormPane}
           contentContainerStyle={styles.desktopFormScroll}
@@ -229,10 +228,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
+        <HeroBackground
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 32 }]}
-          pointerEvents={webPassThroughPointerEvents()}
         >
           <BrandLogo variant="light" width={Math.min(260, contentWidth() - 48)} showTagline={false} />
           <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
@@ -246,7 +244,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
               <Text style={styles.pillText}>Reparto local</Text>
             </View>
           </View>
-        </LinearGradient>
+        </HeroBackground>
 
         {formCard}
       </ScrollView>

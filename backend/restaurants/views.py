@@ -1,4 +1,5 @@
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -9,8 +10,13 @@ from rest_framework.views import APIView
 from accounts.permissions import IsAdmin, IsRestaurantOwner
 
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
-from .models import Product, Restaurant
-from .serializers import ProductSerializer, RestaurantDetailSerializer, RestaurantSerializer
+from .models import Product, ProductPromotion, Restaurant
+from .serializers import (
+    ProductPromotionSerializer,
+    ProductSerializer,
+    RestaurantDetailSerializer,
+    RestaurantSerializer,
+)
 
 
 class GeocodeView(APIView):
@@ -157,7 +163,26 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                 {'detail': 'Solo para dueños de restaurante.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        now = timezone.now()
+        restaurant = (
+            Restaurant.objects.filter(owner=request.user)
+            .prefetch_related(
+                Prefetch(
+                    'products',
+                    queryset=Product.objects.order_by('name').prefetch_related(
+                        Prefetch(
+                            'promotions',
+                            queryset=ProductPromotion.objects.filter(
+                                is_active=True,
+                                valid_until__gte=now,
+                            ).order_by('-valid_until', '-id'),
+                            to_attr='active_promotions',
+                        ),
+                    ),
+                ),
+            )
+            .first()
+        )
         if not restaurant:
             return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
@@ -230,3 +255,63 @@ class ProductViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('No puedes agregar productos a este restaurante.')
         serializer.save()
+
+
+class ProductPromotionViewSet(viewsets.ModelViewSet):
+    queryset = ProductPromotion.objects.select_related('product', 'restaurant', 'restaurant__owner')
+    serializer_class = ProductPromotionSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve'):
+            return [AllowAny()]
+        if self.request.user.is_admin_user:
+            return [IsAdmin()]
+        return [IsRestaurantOwner()]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = self.queryset
+        restaurant_id = self.request.query_params.get('restaurant')
+        product_id = self.request.query_params.get('product')
+
+        if restaurant_id:
+            queryset = queryset.filter(restaurant_id=restaurant_id)
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+
+        if not user.is_authenticated:
+            from django.utils import timezone
+            return queryset.filter(
+                is_active=True,
+                valid_until__gte=timezone.now(),
+                restaurant__is_active=True,
+            )
+
+        if user.is_admin_user:
+            return queryset
+
+        if user.is_restaurant_owner:
+            return queryset.filter(restaurant__owner=user)
+
+        from django.utils import timezone
+        return queryset.filter(
+            is_active=True,
+            valid_until__gte=timezone.now(),
+            restaurant__is_active=True,
+        )
+
+    @action(detail=False, methods=['get'], url_path='mine')
+    def mine(self, request):
+        if not request.user.is_restaurant_owner:
+            return Response(
+                {'detail': 'Solo para dueños de restaurante.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        if not restaurant:
+            return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
+        promos = self.get_queryset().filter(restaurant=restaurant)
+        serializer = self.get_serializer(promos, many=True)
+        return Response(serializer.data)

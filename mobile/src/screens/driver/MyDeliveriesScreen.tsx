@@ -1,23 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { appAlert, appConfirm } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
+import DriverHeroHeader from '../../components/driver/DriverHeroHeader';
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
+import SectionHeader from '../../components/SectionHeader';
+import { useAuth } from '../../context/AuthContext';
+import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { orderApi } from '../../services/api';
-import { colors } from '../../theme/colors';
 import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { formatCurrency } from '../../utils/format';
 
 type DeliveryItem = { kind: 'order'; id: string; order: Order };
 
 type DeliveryListRow =
-  | { type: 'header'; id: string; label: string }
+  | { type: 'header'; id: string; label: string; subtitle?: string }
   | ({ type: 'item' } & DeliveryItem);
 
 function isActiveOrder(order: Order): boolean {
@@ -25,7 +29,9 @@ function isActiveOrder(order: Order): boolean {
 }
 
 export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenProps) {
-  const { listPaddingBottom } = useTabScreenInsets();
+  const { user } = useAuth();
+  const { insets, listPaddingBottom } = useTabScreenInsets();
+  const { isAvailable } = useDriverProfileContext();
   const [items, setItems] = useState<DeliveryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,6 +69,11 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     return { activeItems: active, pastItems: past };
   }, [items]);
 
+  const activeEarnings = useMemo(
+    () => activeItems.reduce((sum, item) => sum + parseFloat(item.order.total || '0'), 0),
+    [activeItems],
+  );
+
   useEffect(() => {
     load();
     const interval = setInterval(() => load(true), activeItems.length > 0 ? 8000 : 20000);
@@ -76,9 +87,13 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 
   const listData = useMemo<DeliveryListRow[]>(
     () => [
-      ...(activeItems.length ? [{ type: 'header' as const, id: 'h-active', label: 'En curso' }] : []),
+      ...(activeItems.length
+        ? [{ type: 'header' as const, id: 'h-active', label: 'En curso', subtitle: 'Entregas activas ahora' }]
+        : []),
       ...activeItems.map((item) => ({ type: 'item' as const, ...item })),
-      ...(pastItems.length ? [{ type: 'header' as const, id: 'h-past', label: 'Anteriores' }] : []),
+      ...(pastItems.length
+        ? [{ type: 'header' as const, id: 'h-past', label: 'Anteriores', subtitle: 'Historial reciente' }]
+        : []),
       ...pastItems.map((item) => ({ type: 'item' as const, ...item })),
     ],
     [activeItems, pastItems],
@@ -149,9 +164,27 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
         contentContainerStyle={[styles.list, listPaddingBottom()]}
         onRefresh={() => load(true)}
         refreshing={refreshing}
+        ListHeaderComponent={
+          <DriverHeroHeader
+            topInset={insets.top}
+            firstName={user?.first_name}
+            eyebrow="Mis entregas"
+            subtitle={
+              activeItems.length
+                ? `${activeItems.length} entrega${activeItems.length === 1 ? '' : 's'} en curso`
+                : 'Acepta pedidos en Disponibles'
+            }
+            isAvailable={isAvailable}
+            stats={[
+              { label: 'Activas', value: activeItems.length, icon: 'bicycle-outline' },
+              { label: 'En curso', value: formatCurrency(String(activeEarnings)), icon: 'cash-outline' },
+              { label: 'Historial', value: pastItems.length, icon: 'time-outline' },
+            ]}
+          />
+        }
         renderItem={({ item: row }) => {
           if (row.type === 'header') {
-            return <Text style={styles.sectionHeader}>{row.label}</Text>;
+            return <SectionHeader title={row.label} subtitle={row.subtitle} />;
           }
           const { type: _t, ...item } = row;
           return renderJob(item as DeliveryItem);
@@ -175,13 +208,4 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 const styles = StyleSheet.create({
   list: { padding: 16, flexGrow: 1 },
   skeletonWrap: { flex: 1, padding: 16 },
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-    marginTop: 4,
-  },
 });

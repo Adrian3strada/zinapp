@@ -93,6 +93,27 @@ export interface Product {
   image: string | null;
   image_url?: string | null;
   is_available: boolean;
+  active_promotion?: ProductPromotion | null;
+}
+
+export type PromoType = 'two_for_one' | 'percent_off' | 'special_price';
+
+export interface ProductPromotion {
+  id: number;
+  restaurant?: number;
+  product?: number;
+  product_name?: string;
+  promo_type: PromoType;
+  promo_type_display?: string;
+  percent_off?: number | null;
+  special_price?: string | null;
+  label?: string;
+  display_label?: string;
+  valid_until: string;
+  is_active?: boolean;
+  is_currently_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CartItem {

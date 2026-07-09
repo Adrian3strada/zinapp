@@ -9,14 +9,15 @@ import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
 import AppDialogScreen from '../screens/shared/AppDialogScreen';
-import AdminNavigator from './AdminNavigator';
-import CustomerNavigator from './CustomerNavigator';
-import DriverNavigator from './DriverNavigator';
-import RestaurantNavigator from './RestaurantNavigator';
 import type { AuthStackParamList, RootStackParamList } from './types';
 import { openAppDialog } from './navigationRef';
 import { registerDialogNavigator } from '../utils/appDialogStore';
 import { getWebResetToken } from '../utils/webDeepLink';
+
+const AdminNavigator = React.lazy(() => import('./AdminNavigator'));
+const CustomerNavigator = React.lazy(() => import('./CustomerNavigator'));
+const DriverNavigator = React.lazy(() => import('./DriverNavigator'));
+const RestaurantNavigator = React.lazy(() => import('./RestaurantNavigator'));
 
 const RegisterScreen = React.lazy(() => import('../screens/auth/RegisterScreen'));
 const ForgotPasswordScreen = React.lazy(() => import('../screens/auth/ForgotPasswordScreen'));
@@ -35,18 +36,21 @@ function LoadingScreen() {
 }
 
 function RoleNavigator({ role }: { role: string }) {
+  let Navigator: React.LazyExoticComponent<React.ComponentType<object>>;
   if (role === 'admin') {
-    return <AdminNavigator />;
+    Navigator = AdminNavigator;
+  } else if (role === 'restaurant') {
+    Navigator = RestaurantNavigator;
+  } else if (role === 'driver') {
+    Navigator = DriverNavigator;
+  } else {
+    Navigator = CustomerNavigator;
   }
-  switch (role) {
-    case 'restaurant':
-      return <RestaurantNavigator />;
-    case 'driver':
-      return <DriverNavigator />;
-    case 'customer':
-    default:
-      return <CustomerNavigator />;
-  }
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <Navigator />
+    </Suspense>
+  );
 }
 
 function MainRoutes() {
@@ -97,7 +101,11 @@ function MainRoutes() {
   }
 
   if (isGuest) {
-    return <CustomerNavigator guestMode onRequestLogin={requestLogin} />;
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <CustomerNavigator guestMode onRequestLogin={requestLogin} />
+      </Suspense>
+    );
   }
 
   return <RoleNavigator role={user.role} />;

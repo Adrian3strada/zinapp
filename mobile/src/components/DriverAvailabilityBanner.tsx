@@ -3,6 +3,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { cardShadow } from '../theme/shadows';
 
 interface Props {
   isAvailable: boolean;
@@ -12,16 +13,16 @@ interface Props {
 
 export default function DriverAvailabilityBanner({ isAvailable, updating, onToggle }: Props) {
   return (
-    <View style={[styles.banner, !isAvailable && styles.bannerOff]}>
-      <View style={styles.iconWrap}>
+    <View style={[styles.banner, !isAvailable && styles.bannerOff, isAvailable && styles.bannerOn]}>
+      <View style={[styles.iconWrap, isAvailable && styles.iconWrapOn]}>
         <Ionicons
-          name={isAvailable ? 'radio-button-on' : 'radio-button-off'}
-          size={28}
+          name={isAvailable ? 'radio-button-on' : 'moon-outline'}
+          size={24}
           color={isAvailable ? colors.success : colors.textMuted}
         />
       </View>
       <View style={styles.textWrap}>
-        <Text style={styles.title}>{isAvailable ? 'Estás disponible' : 'No disponible'}</Text>
+        <Text style={styles.title}>{isAvailable ? 'Estás en línea' : 'Fuera de línea'}</Text>
         <Text style={styles.sub}>
           {isAvailable
             ? 'Recibes pedidos y compartes ubicación con la app'
@@ -29,13 +30,13 @@ export default function DriverAvailabilityBanner({ isAvailable, updating, onTogg
         </Text>
       </View>
       {updating ? (
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color={colors.shipmentStart} />
       ) : (
         <Switch
           value={isAvailable}
           onValueChange={onToggle}
-          trackColor={{ false: colors.border, true: colors.primaryLight }}
-          thumbColor={isAvailable ? colors.primary : colors.textMuted}
+          trackColor={{ false: colors.border, true: colors.shipmentStart + '55' }}
+          thumbColor={isAvailable ? colors.shipmentStart : colors.textMuted}
           accessibilityLabel="Disponible para entregas"
         />
       )}
@@ -49,15 +50,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 18,
+    padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: colors.success,
+    borderColor: colors.borderLight,
+    ...cardShadow,
   },
+  bannerOn: { borderColor: colors.success + '55', backgroundColor: '#F0FDF488' },
   bannerOff: { borderColor: colors.border },
-  iconWrap: { width: 32, alignItems: 'center' },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapOn: { backgroundColor: colors.success + '18' },
   textWrap: { flex: 1, gap: 2 },
   title: { fontSize: 15, fontWeight: '800', color: colors.text },
-  sub: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
+  sub: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, fontWeight: '500' },
 });

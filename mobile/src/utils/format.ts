@@ -4,6 +4,18 @@ export function formatCurrency(amount: string | number): string {
   return `$${safe.toFixed(2)}`;
 }
 
+export function normalizePriceInput(value: string): string {
+  return value.trim().replace(',', '.');
+}
+
+export function parsePriceInput(value: string): number | null {
+  const normalized = normalizePriceInput(value);
+  if (!normalized) return null;
+  const num = parseFloat(normalized);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return num;
+}
+
 export function formatTimeAgo(isoDate: string | null | undefined): string | null {
   if (!isoDate) return null;
   const diffMs = Date.now() - new Date(isoDate).getTime();

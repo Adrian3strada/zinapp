@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import CustomerOrdersHero from '../../components/customer/CustomerOrdersHero';
 import EmptyState from '../../components/EmptyState';
 import ListFooter from '../../components/ListFooter';
 import ListSkeleton from '../../components/ListSkeleton';
@@ -41,13 +42,16 @@ function OrderCard({
     <Pressable
       style={({ pressed }) => [
         styles.card,
+        isActive && styles.cardActive,
         isActive && { borderLeftColor: accent },
         isLive && styles.cardLive,
         pressed && styles.cardPressed,
       ]}
       onPress={onPress}
     >
-      <FoodImage emoji={visual.emoji} color={visual.color} size="sm" />
+      <View style={[styles.imageWrap, isLive && styles.imageWrapLive]}>
+        <FoodImage emoji={visual.emoji} color={visual.color} size="sm" />
+      </View>
       <View style={styles.content}>
         <Text style={styles.restaurant}>{item.restaurant_detail?.name}</Text>
         <Text style={styles.orderId}>{formatOrderLabel(item)}</Text>
@@ -69,14 +73,16 @@ function OrderCard({
       </View>
       <View style={styles.right}>
         <Text style={styles.total}>{formatCurrency(item.total)}</Text>
-        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        <View style={styles.chevron}>
+          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+        </View>
       </View>
     </Pressable>
   );
 }
 
 export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
-  const { listPaddingBottom } = useTabScreenInsets();
+  const { insets, listPaddingBottom } = useTabScreenInsets();
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await orderApi.list(page);
     return data;
@@ -114,13 +120,22 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
   );
 
   const header = useMemo(
-    () =>
-      activeCount > 0 ? (
-        <SectionHeader
-          subtitle={`${activeCount} pedido${activeCount > 1 ? 's' : ''} en curso`}
+    () => (
+      <>
+        <CustomerOrdersHero
+          topInset={insets.top}
+          activeCount={activeCount}
+          totalLoaded={orders.length}
         />
-      ) : null,
-    [activeCount],
+        {activeCount > 0 ? (
+          <SectionHeader
+            title="Seguimiento en vivo"
+            subtitle={`${activeCount} pedido${activeCount > 1 ? 's' : ''} en curso · Toca para ver el mapa`}
+          />
+        ) : null}
+      </>
+    ),
+    [activeCount, insets.top, orders.length],
   );
 
   return (
@@ -181,17 +196,34 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     ...cardShadow,
   },
+  cardActive: { backgroundColor: '#FAFBFF' },
   cardLive: {
-    backgroundColor: colors.primaryLight + '66',
+    backgroundColor: colors.primaryLight + '88',
     borderColor: colors.primary + '44',
   },
-  cardPressed: { opacity: 0.94 },
+  cardPressed: { opacity: 0.94, transform: [{ scale: 0.996 }] },
+  imageWrap: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  imageWrapLive: {
+    borderWidth: 2,
+    borderColor: colors.primary + '55',
+  },
   content: { flex: 1, gap: 5 },
   restaurant: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
-  orderId: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
+  orderId: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  date: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-  trackHint: { fontSize: 11, color: colors.primary, fontWeight: '600', marginTop: 2 },
+  date: { fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
+  trackHint: { fontSize: 11, color: colors.primary, fontWeight: '700', marginTop: 2 },
   right: { alignItems: 'flex-end', gap: 8 },
   total: { fontSize: 16, fontWeight: '800', color: colors.primary },
+  chevron: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -209,15 +210,18 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
 
   return (
     <ScreenContainer>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+      <LinearGradient colors={[colors.shipmentStart, colors.shipmentEnd]} style={styles.hero}>
+        <Text style={styles.heroEyebrow}>Navegación</Text>
+        <Text style={styles.title} numberOfLines={1}>{title.replace('Navegación · ', '')}</Text>
         <Text style={styles.address} numberOfLines={2}>{subtitle}</Text>
         {nextStopLabel ? (
           <View style={styles.nextStopBanner}>
-            <Ionicons name="flag" size={16} color={colors.primary} />
+            <Ionicons name="flag" size={16} color="#FFF" />
             <Text style={styles.nextStopText}>Siguiente parada: {nextStopLabel}</Text>
           </View>
         ) : null}
+      </LinearGradient>
+      <View style={styles.panel}>
         <RouteStatsBar items={routeStatItems} loading={routesLoading} />
         <View style={styles.navRow}>
           {primaryCoord && (
@@ -231,7 +235,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
                 )
               }
             >
-              <Ionicons name="restaurant" size={18} color={colors.primary} />
+              <Ionicons name="restaurant" size={18} color={colors.shipmentStart} />
               <Text style={styles.navTextSecondary}>Restaurante</Text>
             </Pressable>
           )}
@@ -256,7 +260,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
         markers={mapMarkers}
         polylines={polylines}
         region={region}
-        height={mapHeight(0.45)}
+        height={mapHeight(0.52)}
         followMarkerId={userLocation ? 'me' : null}
         emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
       />
@@ -268,37 +272,59 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 16, gap: 10 },
-  title: { fontSize: 18, fontWeight: '800', color: colors.text },
-  address: { fontSize: 14, color: colors.textSecondary },
+  hero: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 18,
+    gap: 6,
+  },
+  heroEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  panel: { padding: 16, gap: 10, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  title: { fontSize: 20, fontWeight: '800', color: '#FFF' },
+  address: { fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 20 },
   nextStopBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 12,
+    marginTop: 4,
   },
-  nextStopText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  nextStopText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
   navRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   navBtn: {
+    flex: 1,
+    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.shipmentStart,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   navBtnSecondary: {
+    flex: 1,
+    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#EEF2FF',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
   },
-  navText: { color: '#FFF', fontWeight: '700' },
-  navTextSecondary: { color: colors.primary, fontWeight: '700' },
-  hint: { padding: 16, color: colors.textMuted, fontSize: 12, textAlign: 'center' },
+  navText: { color: '#FFF', fontWeight: '800' },
+  navTextSecondary: { color: colors.shipmentStart, fontWeight: '800' },
+  hint: { padding: 16, color: colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
 });

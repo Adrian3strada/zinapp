@@ -8,6 +8,7 @@ import { cardShadow } from '../theme/shadows';
 import type { Product } from '../types';
 import { formatCurrency } from '../utils/format';
 import { getProductEmoji } from '../utils/foodVisuals';
+import { promoDisplayLabel, promoPriceHint } from '../utils/promo';
 import { resolveMediaUrl } from '../utils/media';
 import FoodImage from './FoodImage';
 
@@ -21,9 +22,11 @@ interface Props {
 function ProductCard({ product, quantity = 0, onAdd, onDecrease }: Props) {
   const emoji = getProductEmoji(product.name);
   const inCart = quantity > 0;
+  const promoHint = promoPriceHint(product);
+  const promoLabel = product.active_promotion ? promoDisplayLabel(product.active_promotion) : null;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, promoLabel && styles.cardPromo]}>
       <FoodImage
         emoji={emoji}
         color={colors.primary}
@@ -31,13 +34,20 @@ function ProductCard({ product, quantity = 0, onAdd, onDecrease }: Props) {
         imageUri={resolveMediaUrl(product.image_url ?? product.image)}
       />
       <View style={styles.info}>
-        <Text style={styles.name}>{product.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{product.name}</Text>
+          {promoLabel ? (
+            <View style={styles.promoBadge}>
+              <Text style={styles.promoBadgeText}>{promoLabel}</Text>
+            </View>
+          ) : null}
+        </View>
         {product.description ? (
           <Text style={styles.desc} numberOfLines={2}>
             {product.description}
           </Text>
         ) : null}
-        <Text style={styles.price}>{formatCurrency(product.price)}</Text>
+        <Text style={styles.price}>{promoHint ?? formatCurrency(product.price)}</Text>
       </View>
       {inCart ? (
         <View style={styles.qtyRow}>
@@ -88,8 +98,19 @@ const styles = StyleSheet.create({
     borderColor: colors.borderLight,
     ...cardShadow,
   },
+  cardPromo: {
+    borderColor: colors.accent + '55',
+  },
   info: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  name: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2, flexShrink: 1 },
+  promoBadge: {
+    backgroundColor: colors.accentLight,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  promoBadgeText: { fontSize: 10, fontWeight: '800', color: colors.accentDark },
   desc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
   price: { fontSize: 17, fontWeight: '800', color: colors.primary, marginTop: 8 },
   addBtn: {

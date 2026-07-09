@@ -73,6 +73,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         topInset={insets.top}
         onProfilePress={() => navigation.navigate('Perfil')}
         style={[styles.hero, { marginHorizontal: -pagePadding }]}
+        stats={
+          isGuest
+            ? undefined
+            : [
+                { label: 'Activos', value: activeOrderCount, icon: 'pulse-outline' },
+                { label: 'Servicios', value: featuredServices.length, icon: 'storefront-outline' },
+                { label: 'Zona', value: 'Local', icon: 'location-outline' },
+              ]
+        }
       >
         <Text style={styles.tagline}>
           {isGuest ? 'Explorando como invitado · ¿Qué necesitas hoy?' : '¿Qué necesitas hoy?'}

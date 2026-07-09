@@ -1,16 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
+import DriverHeroHeader from '../../components/driver/DriverHeroHeader';
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
+import SectionHeader from '../../components/SectionHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
@@ -20,12 +20,13 @@ import { deliveryApi, orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import * as Location from 'expo-location';
 
 type AvailableItem = { kind: 'order'; id: string; order: Order };
 
 export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
-  const { listPaddingBottom } = useTabScreenInsets();
+  const { insets, listPaddingBottom } = useTabScreenInsets();
   const { isAvailable, updating, toggleAvailability } = useDriverProfileContext();
   const { hasActiveDelivery } = useDriverActiveDeliveries();
   const [items, setItems] = useState<AvailableItem[]>([]);
@@ -68,8 +69,8 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
 
   const countLabel = useMemo(() => {
     const count = items.length;
-    if (!count) return 'Nada por ahora';
-    return `${count} pedido${count === 1 ? '' : 's'}`;
+    if (!count) return 'Sin pedidos listos por ahora';
+    return `${count} pedido${count === 1 ? '' : 's'} listo${count === 1 ? '' : 's'} para entregar`;
   }, [items]);
 
   const handleAccept = async (item: AvailableItem) => {
@@ -128,38 +129,43 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
         refreshing={refreshing}
         ListHeaderComponent={
           <>
-            <LinearGradient colors={[colors.gradientStart, colors.gradientEnd]} style={styles.banner}>
-              <View style={styles.bannerIcon}>
-                <Ionicons name="bicycle" size={28} color="#FFF" />
-              </View>
-              <View style={styles.bannerText}>
-                <Text style={styles.bannerTitle}>Hola, {user?.first_name || 'Repartidor'}</Text>
-                <Text style={styles.bannerSub}>
-                  {isAvailable ? countLabel : 'Activa disponibilidad para recibir pedidos'}
-                </Text>
-              </View>
-            </LinearGradient>
+            <DriverHeroHeader
+              topInset={insets.top}
+              firstName={user?.first_name}
+              eyebrow="Pedidos disponibles"
+              subtitle={isAvailable ? countLabel : 'Activa tu disponibilidad para ver pedidos'}
+              isAvailable={isAvailable}
+              stats={[
+                { label: 'Listos', value: items.length, icon: 'fast-food-outline' },
+                { label: 'Estado', value: isAvailable ? 'ON' : 'OFF', icon: 'radio-button-on' },
+                { label: 'Activa', value: hasActiveDelivery ? 1 : 0, icon: 'bicycle-outline' },
+              ]}
+            />
             <DriverAvailabilityBanner
               isAvailable={isAvailable}
               updating={updating}
               onToggle={toggleAvailability}
             />
-            {hasActiveDelivery && (
+            {hasActiveDelivery ? (
               <View style={styles.activeBanner}>
-                <Ionicons name="navigate-circle" size={20} color={colors.primary} />
-                <Text style={styles.activeBannerText}>
-                  Tienes una entrega activa. Termínala en Mis entregas.
-                </Text>
+                <Ionicons name="navigate-circle" size={22} color={colors.shipmentStart} />
+                <View style={styles.activeBannerTextWrap}>
+                  <Text style={styles.activeBannerTitle}>Tienes una entrega activa</Text>
+                  <Text style={styles.activeBannerText}>Continúala en Mis entregas antes de aceptar otra.</Text>
+                </View>
               </View>
-            )}
-            {!isAvailable && (
+            ) : null}
+            {!isAvailable ? (
               <View style={styles.tipBox}>
-                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+                <Ionicons name="information-circle-outline" size={20} color={colors.shipmentStart} />
                 <Text style={styles.tipText}>
-                  Activa el interruptor para recibir pedidos de comida.
+                  Pon el interruptor en verde para recibir pedidos y compartir tu ubicación.
                 </Text>
               </View>
-            )}
+            ) : null}
+            {items.length > 0 ? (
+              <SectionHeader title="Cerca de ti" subtitle="Toca una tarjeta para ver detalles" />
+            ) : null}
           </>
         }
         renderItem={({ item }) => {
@@ -174,7 +180,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               lines={[
                 { icon: 'location', text: order.delivery_address },
                 ...(order.payment_method === 'cash'
-                  ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo' }]
+                  ? [{ icon: 'cash-outline' as const, text: 'Cobrar: efectivo al entregar' }]
                   : []),
               ]}
               total={order.total}
@@ -207,45 +213,30 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
 const styles = StyleSheet.create({
   list: { padding: 16, flexGrow: 1 },
   skeletonWrap: { flex: 1, padding: 16, paddingTop: 16 },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 18,
-    borderRadius: 22,
-    marginBottom: 16,
-  },
-  bannerIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bannerText: { flex: 1 },
-  bannerTitle: { fontSize: 18, fontWeight: '800', color: '#FFF' },
-  bannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 2 },
   activeBanner: {
     flexDirection: 'row',
-    gap: 10,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    padding: 12,
+    gap: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
   },
-  activeBannerText: { flex: 1, fontSize: 13, color: colors.primary, fontWeight: '600', lineHeight: 18 },
+  activeBannerTextWrap: { flex: 1, gap: 2 },
+  activeBannerTitle: { fontSize: 14, fontWeight: '800', color: colors.shipmentStart },
+  activeBannerText: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
   tipBox: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 12,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
   },
   tipText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
 });

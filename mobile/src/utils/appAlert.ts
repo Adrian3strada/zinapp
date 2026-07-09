@@ -1,6 +1,10 @@
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 import { enqueueAppDialog } from './appDialogStore';
+
+function preferNativeDialog(): boolean {
+  return Platform.OS !== 'web';
+}
 
 export type AppDialogButtonStyle = 'default' | 'cancel' | 'destructive';
 
@@ -43,6 +47,11 @@ export function appAlert(
     ? buttons
     : [{ text: 'OK', style: 'default' }];
 
+  if (preferNativeDialog()) {
+    showNativeAlert(title, message, normalized);
+    return;
+  }
+
   if (useNavigationDialog) {
     try {
       enqueueAppDialog(title, message, normalized, true);
@@ -66,6 +75,11 @@ export function appConfirm(
     { text: 'No', style: 'cancel' },
     { text: confirmLabel, style: 'destructive', onPress: onConfirm },
   ];
+
+  if (preferNativeDialog()) {
+    showNativeAlert(title, message, buttons);
+    return;
+  }
 
   if (useNavigationDialog) {
     try {

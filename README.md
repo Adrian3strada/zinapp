@@ -174,11 +174,37 @@ Perfiles en `mobile/eas.json`: `development`, `preview` (APK), `production` (AAB
 | GET | `/api/coverage/bounds/` | Zona de cobertura |
 | POST | `/api/payments/mercadopago/webhook/` | Webhook Mercado Pago |
 
+## Seguridad (producción)
+
+En Railway / VPS configura al menos:
+
+```env
+DEBUG=False
+SECRET_KEY=<50+ caracteres aleatorios>
+DEMO_ACCOUNTS_ENABLED=false
+CRON_SECRET=<token largo para cron interno>
+CORS_ALLOWED_ORIGINS=https://tu-dominio.com
+```
+
+Medidas activas en el backend:
+
+- JWT: access **30 min**, refresh 7 días con rotación
+- Rate limiting: login, registro, reset de contraseña y refresh token
+- Headers HTTPS (HSTS, cookies seguras, `X-Frame-Options: DENY`)
+- Validación de `SECRET_KEY` inseguro si `DEBUG=False`
+- Permisos por rol en cada endpoint sensible
+
+Generar `SECRET_KEY`:
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
 ## Tests
 
 ```bash
 cd backend
-python manage.py test accounts orders restaurants
+python manage.py test accounts accounts.test_security orders restaurants
 ```
 
 ## Licencia

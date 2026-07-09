@@ -1,6 +1,5 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     ChangePasswordView,
@@ -11,6 +10,7 @@ from .views import (
     PushTokenView,
     RegisterView,
     ResetPasswordView,
+    ThrottledTokenRefreshView,
     UserViewSet,
 )
 
@@ -21,7 +21,7 @@ router.register('delivery-profiles', DeliveryProfileViewSet, basename='delivery-
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('token/refresh/', ThrottledTokenRefreshView.as_view(), name='token-refresh'),
     path('me/', MeView.as_view(), name='me'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),

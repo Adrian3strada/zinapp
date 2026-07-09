@@ -8,20 +8,19 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
-import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import AddressPinPicker from '../../components/AddressPinPicker';
 import Button from '../../components/Button';
-import DriverAvailabilityBanner from '../../components/DriverAvailabilityBanner';
+import CustomerProfileDashboard from '../../components/customer/CustomerProfileDashboard';
+import DriverProfileDashboard from '../../components/driver/DriverProfileDashboard';
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
 import ProfileAvatarPicker from '../../components/ProfileAvatarPicker';
+import RestaurantProfileDashboard from '../../components/restaurant/RestaurantProfileDashboard';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
 import SettlementSummary from '../../components/SettlementSummary';
@@ -29,13 +28,13 @@ import VehicleTypePicker from '../../components/VehicleTypePicker';
 import { useOptionalRestaurantContext } from '../../context/RestaurantContext';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
+import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import { RESTAURANT_CATEGORIES, RESTAURANT_CATEGORY_LABELS } from '../../utils/restaurantCategories';
 import { authApi, deliveryApi, orderApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { DeliveryProfile, Restaurant } from '../../types';
-import type { DriverTabParamList } from '../../navigation/types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
@@ -69,9 +68,10 @@ function toApiTime(value: string): string | null {
 
 export default function ProfileScreen() {
   const { user, refreshUser, logout } = useAuth();
+  const customerDeliveries = useOptionalCustomerActiveDeliveries();
+  const activeOrderCount = customerDeliveries?.activeOrderCount ?? 0;
   const restaurantCtx = useOptionalRestaurantContext();
   const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
-  const driverTabNav = useNavigation<BottomTabNavigationProp<DriverTabParamList>>();
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -340,6 +340,25 @@ export default function ProfileScreen() {
     paddingBottom: tabBottomPadding(spacing.xxl),
   };
 
+  const isRestaurant = user.role === 'restaurant';
+  const isDriver = user.role === 'driver';
+  const isCustomer = user.role === 'customer';
+
+  const personalDataCard = (
+    <View style={[styles.card, (isCustomer || isDriver) && styles.cardAfterDashboard]}>
+      <Text style={styles.section}>{isRestaurant ? 'Tu cuenta' : 'Datos personales'}</Text>
+      {isRestaurant ? (
+        <Text style={styles.hint}>Información de acceso a ZinApp, distinta a la del local.</Text>
+      ) : null}
+      <FormField label="Nombre" value={form.first_name} onChangeText={(v) => update('first_name', v)} icon="text-outline" embedded required autoCapitalize="words" />
+      <FormField label="Apellido" value={form.last_name} onChangeText={(v) => update('last_name', v)} icon="text-outline" embedded required autoCapitalize="words" />
+      <FormField label="Correo" value={form.email} onChangeText={(v) => update('email', v)} icon="mail-outline" embedded keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+      <FormField label="Teléfono" value={form.phone} onChangeText={(v) => update('phone', v)} icon="call-outline" embedded keyboardType="phone-pad" required={user.role !== 'customer'} hint={user.role === 'customer' ? 'Opcional, útil para el repartidor.' : 'Para contactarte durante pedidos.'} />
+      <FormField label={addressLabel} value={form.address} onChangeText={(v) => update('address', v)} icon="location-outline" embedded multiline placeholder="Calle, número, colonia, Zinapécuaro" />
+      <Button title="Guardar perfil" onPress={handleSavePersonal} loading={saving} />
+    </View>
+  );
+
   return (
     <ScreenContainer>
       <KeyboardAvoidingView
@@ -354,8 +373,17 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
-            style={[styles.header, { paddingTop: insets.top + spacing.md }]}
+            colors={
+              isDriver
+                ? [colors.shipmentStart, colors.shipmentEnd, '#312E81']
+                : [colors.gradientStart, colors.gradientEnd]
+            }
+            style={[
+              styles.header,
+              isRestaurant && styles.headerRestaurant,
+              (isDriver || isCustomer) && styles.headerWithDashboard,
+              { paddingTop: insets.top + spacing.md },
+            ]}
           >
             <ProfileAvatarPicker
               imageUri={avatarUri}
@@ -365,103 +393,52 @@ export default function ProfileScreen() {
             />
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.username}>@{user.username}</Text>
+            {isRestaurant && restaurant ? (
+              <Text style={styles.restaurantSubtitle} numberOfLines={1}>
+                {restaurant.name}
+              </Text>
+            ) : null}
             <View style={styles.roleBadge}>
               <Text style={styles.role}>{ROLE_LABELS[user.role] ?? user.role}</Text>
             </View>
           </LinearGradient>
 
-          <View style={[styles.card, styles.cardOverlap]}>
-            <Text style={styles.section}>Datos personales</Text>
-            <FormField label="Nombre" value={form.first_name} onChangeText={(v) => update('first_name', v)} icon="text-outline" embedded required autoCapitalize="words" />
-            <FormField label="Apellido" value={form.last_name} onChangeText={(v) => update('last_name', v)} icon="text-outline" embedded required autoCapitalize="words" />
-            <FormField label="Correo" value={form.email} onChangeText={(v) => update('email', v)} icon="mail-outline" embedded keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-            <FormField label="Teléfono" value={form.phone} onChangeText={(v) => update('phone', v)} icon="call-outline" embedded keyboardType="phone-pad" required={user.role !== 'customer'} hint={user.role === 'customer' ? 'Opcional, útil para el repartidor.' : 'Para contactarte durante pedidos.'} />
-            <FormField label={addressLabel} value={form.address} onChangeText={(v) => update('address', v)} icon="location-outline" embedded multiline placeholder="Calle, número, colonia, Zinapécuaro" />
-            <Button title="Guardar perfil" onPress={handleSavePersonal} loading={saving} />
-          </View>
+          {isRestaurant && restaurant ? (
+            <RestaurantProfileDashboard
+              restaurant={restaurant}
+              acceptingOrders={acceptingOrders}
+              togglingOrders={togglingOrders}
+              onToggleAcceptingOrders={handleToggleAcceptingOrders}
+              overlap
+            />
+          ) : null}
 
-          {user.role === 'driver' && (
-            <View style={styles.card}>
-              <SettlementSummary role="driver" />
-            </View>
-          )}
+          {isDriver ? (
+            <DriverProfileDashboard
+              profile={driverProfile}
+              earnings={driverEarnings}
+              updating={driverUpdating}
+              onToggleAvailability={handleToggleDriverAvailability}
+              overlap
+            />
+          ) : null}
 
-          {user.role === 'driver' && (
-            <View style={styles.card}>
-              <Text style={styles.section}>Ganancias (7 días)</Text>
-              {driverEarnings ? (
-                <>
-                  <Text style={styles.earningsValue}>
-                    {formatCurrency(driverEarnings.week_earnings)}
-                  </Text>
-                  <Text style={styles.hint}>
-                    {driverEarnings.week_deliveries} entrega
-                    {driverEarnings.week_deliveries === 1 ? '' : 's'} · Efectivo: {driverEarnings.cash_deliveries} · Transferencia: {driverEarnings.transfer_deliveries}
-                  </Text>
-                  {driverEarnings.daily_breakdown.slice(0, 5).map((day) => (
-                    <Text key={day.date} style={styles.dailyRow}>
-                      {day.date}: {day.deliveries} entrega{day.deliveries === 1 ? '' : 's'} · {formatCurrency(day.earnings)}
-                    </Text>
-                  ))}
-                </>
-              ) : (
-                <Text style={styles.hint}>Sin entregas completadas esta semana.</Text>
-              )}
-            </View>
-          )}
+          {isCustomer ? (
+            <CustomerProfileDashboard
+              activeOrderCount={activeOrderCount}
+              address={user.address}
+              overlap
+            />
+          ) : null}
 
-          {user.role === 'driver' && (
-            <View style={styles.card}>
-              <Text style={styles.section}>Disponibilidad</Text>
-              <DriverAvailabilityBanner
-                isAvailable={driverProfile?.is_available ?? false}
-                updating={driverUpdating}
-                onToggle={handleToggleDriverAvailability}
-              />
-            </View>
-          )}
-
-          {user.role === 'driver' && (
-            <View style={styles.card}>
-              <Text style={styles.section}>Datos de repartidor</Text>
-              <Text style={styles.hint}>Esta info la ven los clientes cuando llevas su pedido.</Text>
-              <Text style={styles.fieldLabel}>Tipo de vehículo</Text>
-              <VehicleTypePicker value={vehicleType} onChange={setVehicleType} />
-              {vehicleNeedsPlate(vehicleType) && (
-                <FormField
-                  label="Placas"
-                  value={licensePlate}
-                  onChangeText={setLicensePlate}
-                  icon="card-outline"
-                  placeholder="Ej. ABC-123-D"
-                  embedded
-                  required
-                  autoCapitalize="characters"
-                />
-              )}
-              {driverProfile && (
-                <Text style={styles.statusLine}>
-                  Estado: {driverProfile.is_available ? 'Disponible' : 'No disponible'}
-                </Text>
-              )}
-              <Button
-                title="Ir a entregas disponibles"
-                variant="secondary"
-                onPress={() => driverTabNav.navigate('Disponibles')}
-                style={{ marginBottom: spacing.md }}
-              />
-              <Button title="Guardar datos de repartidor" variant="secondary" onPress={handleSaveDriver} loading={saving} />
-            </View>
-          )}
-
-          {user.role === 'restaurant' && restaurant?.setup_status && (
-            <View style={[styles.card, styles.cardOverlap]}>
+          {isRestaurant && restaurant?.setup_status ? (
+            <View style={styles.setupBannerWrap}>
               <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
             </View>
-          )}
+          ) : null}
 
-          {user.role === 'restaurant' && !restaurant && (
-            <View style={styles.card}>
+          {isRestaurant && !restaurant ? (
+            <View style={[styles.card, styles.cardOverlap]}>
               <EmptyState
                 emoji="🏪"
                 title="Sin local vinculado"
@@ -472,17 +449,27 @@ export default function ProfileScreen() {
               />
               <Button title="Reintentar" variant="secondary" onPress={loadRoleData} style={{ marginTop: 12 }} />
             </View>
-          )}
+          ) : null}
 
-          {user.role === 'restaurant' && restaurant && (
+          {isRestaurant && restaurant ? (
             <View style={styles.card}>
               <SettlementSummary role="restaurant" />
             </View>
-          )}
+          ) : null}
 
-          {user.role === 'restaurant' && restaurant && (
+          {isRestaurant && restaurant ? (
             <View style={styles.card}>
-              <Text style={styles.section}>Tu negocio</Text>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionIconWrap}>
+                  <Ionicons name="storefront-outline" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.sectionHeaderText}>
+                  <Text style={styles.section}>Configuración del local</Text>
+                  <Text style={styles.sectionSub}>
+                    Datos visibles para clientes y repartidores
+                  </Text>
+                </View>
+              </View>
               {!restaurantHasTransferInfo(restaurant) && (
                 <View style={styles.warnBanner}>
                   <Ionicons name="warning-outline" size={20} color={colors.warning} />
@@ -491,6 +478,7 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               )}
+              <Text style={styles.subsection}>Imagen del local</Text>
               <Text style={styles.hint}>Logo o foto que verán los clientes en la app.</Text>
               <Pressable style={styles.logoBox} onPress={handlePickRestaurantImage} hitSlop={HIT_SLOP}>
                 {restaurantImageUri || restaurant.image_url ? (
@@ -506,7 +494,7 @@ export default function ProfileScreen() {
                 )}
               </Pressable>
               <FormField label="Nombre del restaurante" value={restaurantForm.name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, name: v }))} icon="storefront-outline" embedded required />
-              <Text style={styles.section}>Contacto</Text>
+              <Text style={styles.subsection}>Contacto</Text>
               <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" hint="Lo ven clientes y repartidores al coordinar pedidos." />
               <FormField label="WhatsApp (comprobantes)" value={restaurantForm.whatsapp} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, whatsapp: v }))} icon="logo-whatsapp" embedded keyboardType="phone-pad" hint="Opcional. Si lo dejas vacío, se usa el teléfono del negocio." />
               <FormField label="Dirección del local" value={restaurantForm.address} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, address: v }))} icon="location-outline" embedded multiline required />
@@ -517,12 +505,12 @@ export default function ProfileScreen() {
                 coordinate={restaurantCoords}
                 onCoordinateChange={setRestaurantCoords}
               />
-              <Text style={styles.section}>Datos bancarios</Text>
+              <Text style={styles.subsection}>Datos bancarios</Text>
               <Text style={styles.hint}>Los clientes los ven al pagar por transferencia. Solo tú puedes editarlos.</Text>
               <FormField label="Banco" value={restaurantForm.bank_name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, bank_name: v }))} icon="business-outline" embedded placeholder="Ej. BBVA, Banorte" />
               <FormField label="Titular de la cuenta" value={restaurantForm.account_holder} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, account_holder: v }))} icon="person-outline" embedded placeholder="Nombre como aparece en el banco" />
               <FormField label="CLABE interbancaria" value={restaurantForm.clabe} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, clabe: v }))} icon="card-outline" embedded keyboardType="phone-pad" placeholder="18 dígitos" hint="18 dígitos para recibir transferencias." />
-              <Text style={styles.section}>Horario del local</Text>
+              <Text style={styles.subsection}>Horario del local</Text>
               <Text style={styles.hint}>
                 Horario actual: {formatRestaurantHours(restaurant.opening_time, restaurant.closing_time) ?? 'Sin definir (siempre abierto si recibes pedidos)'}
               </Text>
@@ -566,27 +554,70 @@ export default function ProfileScreen() {
               <Text style={styles.hint}>
                 Actual: {RESTAURANT_CATEGORY_LABELS[restaurantCategory] ?? 'General'}
               </Text>
-              <View style={styles.ordersToggle}>
-                <View style={styles.ordersToggleInfo}>
-                  <Text style={styles.ordersToggleLabel}>Recibiendo pedidos</Text>
-                  <Text style={styles.ordersToggleHint}>
-                    {!restaurant.is_active
-                      ? 'Disponible cuando el equipo active tu local en la app.'
-                      : acceptingOrders
-                        ? 'Los clientes pueden pedir a tu local.'
-                        : 'Tu local aparece como cerrado en la app.'}
-                  </Text>
-                </View>
-                <Switch
-                  value={acceptingOrders && restaurant.is_active}
-                  onValueChange={handleToggleAcceptingOrders}
-                  disabled={togglingOrders || !restaurant.is_active}
-                  trackColor={{ true: colors.primary, false: colors.border }}
-                />
-              </View>
               <Button title="Guardar negocio" onPress={handleSaveRestaurant} loading={saving} />
             </View>
+          ) : null}
+
+          {user.role === 'driver' && (
+            <View style={styles.card}>
+              <Text style={styles.section}>Ganancias (7 días)</Text>
+              {driverEarnings ? (
+                <>
+                  <Text style={styles.earningsValue}>
+                    {formatCurrency(driverEarnings.week_earnings)}
+                  </Text>
+                  <Text style={styles.hint}>
+                    {driverEarnings.week_deliveries} entrega
+                    {driverEarnings.week_deliveries === 1 ? '' : 's'} · Efectivo: {driverEarnings.cash_deliveries} · Transferencia: {driverEarnings.transfer_deliveries}
+                  </Text>
+                  {driverEarnings.daily_breakdown.slice(0, 5).map((day) => (
+                    <Text key={day.date} style={styles.dailyRow}>
+                      {day.date}: {day.deliveries} entrega{day.deliveries === 1 ? '' : 's'} · {formatCurrency(day.earnings)}
+                    </Text>
+                  ))}
+                </>
+              ) : (
+                <Text style={styles.hint}>Sin entregas completadas esta semana.</Text>
+              )}
+            </View>
           )}
+
+          {user.role === 'driver' && (
+            <View style={styles.card}>
+              <SettlementSummary role="driver" />
+            </View>
+          )}
+
+          {user.role === 'driver' && (
+            <View style={styles.card}>
+              <Text style={styles.section}>Datos de repartidor</Text>
+              <Text style={styles.hint}>Esta info la ven los clientes cuando llevas su pedido.</Text>
+              <Text style={styles.fieldLabel}>Tipo de vehículo</Text>
+              <VehicleTypePicker value={vehicleType} onChange={setVehicleType} />
+              {vehicleNeedsPlate(vehicleType) && (
+                <FormField
+                  label="Placas"
+                  value={licensePlate}
+                  onChangeText={setLicensePlate}
+                  icon="card-outline"
+                  placeholder="Ej. ABC-123-D"
+                  embedded
+                  required
+                  autoCapitalize="characters"
+                />
+              )}
+              {driverProfile && (
+                <Text style={styles.statusLine}>
+                  Estado: {driverProfile.is_available ? 'Disponible' : 'No disponible'}
+                </Text>
+              )}
+              <Button title="Guardar datos de repartidor" variant="secondary" onPress={handleSaveDriver} loading={saving} />
+            </View>
+          )}
+
+          {!isRestaurant ? personalDataCard : null}
+
+          {isRestaurant ? personalDataCard : null}
 
           <View style={styles.card}>
             <Text style={styles.section}>Cambiar contraseña</Text>
@@ -613,8 +644,22 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
     zIndex: 1,
   },
+  headerRestaurant: {
+    paddingBottom: spacing.xxl + 40,
+  },
+  headerWithDashboard: {
+    paddingBottom: spacing.xxl + 36,
+  },
   name: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: spacing.md },
   username: { color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  restaurantSubtitle: {
+    color: 'rgba(255,255,255,0.92)',
+    marginTop: 6,
+    fontSize: 15,
+    fontWeight: '700',
+    maxWidth: '90%',
+    textAlign: 'center',
+  },
   roleBadge: {
     marginTop: spacing.md,
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -634,7 +679,40 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   cardOverlap: { marginTop: -32, zIndex: 2, elevation: 4 },
-  section: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: spacing.sm, letterSpacing: -0.2 },
+  cardAfterDashboard: { marginTop: 0 },
+  setupBannerWrap: {
+    marginHorizontal: spacing.screen,
+    marginBottom: spacing.md,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: spacing.md,
+  },
+  sectionIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionHeaderText: { flex: 1 },
+  sectionSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  section: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  subsection: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
   hint: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md, lineHeight: 18 },
   fieldLabel: {
     fontSize: 12,

@@ -10,8 +10,15 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from config.throttling import (
+    ForgotPasswordRateThrottle,
+    LoginRateThrottle,
+    RegisterRateThrottle,
+    ResetPasswordRateThrottle,
+    TokenRefreshRateThrottle,
+)
 from .models import DeliveryProfile, PasswordResetToken, User
 from .permissions import IsAdmin, IsDriver
 from .serializers import (
@@ -30,11 +37,17 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [RegisterRateThrottle]
 
 
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+
+class ThrottledTokenRefreshView(TokenRefreshView):
+    throttle_classes = [TokenRefreshRateThrottle]
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -59,6 +72,7 @@ class ChangePasswordView(APIView):
 
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ForgotPasswordRateThrottle]
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -101,6 +115,7 @@ class ForgotPasswordView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ResetPasswordRateThrottle]
 
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)

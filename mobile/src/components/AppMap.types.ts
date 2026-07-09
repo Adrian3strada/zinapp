@@ -1,7 +1,6 @@
 import type { ViewStyle } from 'react-native';
-import type { Region } from 'react-native-maps';
 
-import type { MapCoordinate } from '../utils/maps';
+import type { MapCoordinate, MapRegion } from '../utils/maps';
 import type { MapPinType } from './MapPin';
 
 export interface MapMarker {
@@ -22,7 +21,7 @@ export interface MapPolyline {
 export interface AppMapProps {
   markers?: MapMarker[];
   polylines?: MapPolyline[];
-  region?: Region;
+  region?: MapRegion;
   height?: number;
   style?: ViewStyle;
   showsUserLocation?: boolean;

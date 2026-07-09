@@ -1,11 +1,20 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import CoverageBoundsView, CoverageCheckView, GeocodeView, ProductViewSet, RestaurantViewSet, RouteView
+from .views import (
+    CoverageBoundsView,
+    CoverageCheckView,
+    GeocodeView,
+    ProductPromotionViewSet,
+    ProductViewSet,
+    RestaurantViewSet,
+    RouteView,
+)
 
 router = DefaultRouter()
 router.register('restaurants', RestaurantViewSet, basename='restaurant')
 router.register('products', ProductViewSet, basename='product')
+router.register('promotions', ProductPromotionViewSet, basename='promotion')
 
 urlpatterns = [
     path('geocode/', GeocodeView.as_view(), name='geocode'),

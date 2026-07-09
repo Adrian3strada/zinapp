@@ -66,6 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    const loadingTimeout = setTimeout(() => {
+      if (!cancelled) setIsLoading(false);
+    }, 8000);
 
     (async () => {
       try {
@@ -99,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      clearTimeout(loadingTimeout);
     };
   }, [refreshUser, logout]);
 

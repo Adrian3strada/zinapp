@@ -40,7 +40,8 @@
         "releaseStatus": "draft"
       },
       "ios": {
-        "appleId": "adrianestradachavez123@gmail.com"
+        "appleId": "adrianestradachavez123@gmail.com",
+        "ascAppId": "6789001540"
       }
     }
   }
