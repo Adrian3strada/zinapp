@@ -3,7 +3,7 @@
 
     <li class="nav-item">
       <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
-        <i class="nav-icon fas fa-tachometer-alt"></i>
+        <i class="nav-icon fas fa-gauge-high"></i>
         <p>Resumen</p>
       </a>
     </li>
@@ -11,13 +11,13 @@
     <li class="nav-header">OPERACIONES</li>
     <li class="nav-item">
       <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
-        <i class="nav-icon fas fa-shopping-bag"></i>
+        <i class="nav-icon fas fa-bag-shopping"></i>
         <p>Pedidos</p>
       </a>
     </li>
     <li class="nav-item">
       <a href="{% url 'gestion:disputes' %}" class="nav-link {% if nav == 'disputes' %}active{% endif %}">
-        <i class="nav-icon fas fa-gavel"></i>
+        <i class="nav-icon fas fa-scale-balanced"></i>
         <p>
           Disputas
           {% if panel_pending_disputes %}
@@ -28,7 +28,7 @@
     </li>
     <li class="nav-item">
       <a href="{% url 'gestion:shipments' %}" class="nav-link {% if nav == 'shipments' %}active{% endif %}">
-        <i class="nav-icon fas fa-shipping-fast"></i>
+        <i class="nav-icon fas fa-truck-fast"></i>
         <p>Envíos</p>
       </a>
     </li>
@@ -47,13 +47,13 @@
     </li>
     <li class="nav-item">
       <a href="{% url 'gestion:products' %}" class="nav-link {% if nav == 'products' %}active{% endif %}">
-        <i class="nav-icon fas fa-hamburger"></i>
+        <i class="nav-icon fas fa-burger"></i>
         <p>Productos</p>
       </a>
     </li>
     <li class="nav-item">
       <a href="{% url 'gestion:local-services' %}" class="nav-link {% if nav == 'local-services' %}active{% endif %}">
-        <i class="nav-icon fas fa-store"></i>
+        <i class="nav-icon fas fa-shop"></i>
         <p>Servicios locales</p>
       </a>
     </li>
@@ -75,7 +75,7 @@
     <li class="nav-header">MARKETING</li>
     <li class="nav-item">
       <a href="{% url 'gestion:coupons' %}" class="nav-link {% if nav == 'coupons' %}active{% endif %}">
-        <i class="nav-icon fas fa-ticket-alt"></i>
+        <i class="nav-icon fas fa-ticket"></i>
         <p>Cupones</p>
       </a>
     </li>
@@ -89,7 +89,7 @@
     <li class="nav-header">SISTEMA</li>
     <li class="nav-item">
       <a href="{% url 'admin:index' %}" class="nav-link">
-        <i class="nav-icon fas fa-cogs"></i>
+        <i class="nav-icon fas fa-screwdriver-wrench"></i>
         <p>Consola técnica</p>
       </a>
     </li>

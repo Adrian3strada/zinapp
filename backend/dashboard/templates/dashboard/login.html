@@ -8,8 +8,8 @@
 <body class="hold-transition login-page">
 <div class="login-box">
   <div class="login-logo">
-    <b>Zin</b>App
-    <small class="d-block text-muted mt-1">Panel de administración · Zinapécuaro</small>
+    <img src="{% static 'dashboard/img/logo-on-white.png' %}" alt="ZinApp" class="zin-login-logo">
+    <small class="d-block zin-login-subtitle mt-2">Panel de administración · Zinapécuaro</small>
   </div>
   <div class="card card-outline card-primary">
     <div class="card-body login-card-body">
@@ -46,7 +46,9 @@
         </div>
         <div class="row">
           <div class="col-12">
-            <button type="submit" class="btn btn-primary btn-block">Entrar al panel</button>
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fas fa-sign-in-alt mr-1"></i> Entrar al panel
+            </button>
           </div>
         </div>
       </form>

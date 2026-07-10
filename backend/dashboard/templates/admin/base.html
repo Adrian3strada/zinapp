@@ -45,10 +45,7 @@
   </nav>
 
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
-    <a href="{% url 'dashboard:home' %}" class="brand-link text-center">
-      <span class="brand-text font-weight-light"><b>Zin</b>App</span>
-      <small class="d-block brand-subtitle">Consola técnica</small>
-    </a>
+    {% include "dashboard/includes/brand.html" %}
     <div class="sidebar">
       {% include "dashboard/includes/sidebar.html" %}
     </div>

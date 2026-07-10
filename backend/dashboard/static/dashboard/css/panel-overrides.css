@@ -13,6 +13,97 @@
   --zin-muted: #64748b;
   --zin-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 8px 24px rgba(15, 23, 42, 0.06);
   --zin-radius: 12px;
+  --zin-logo-blue: #1e4fd8;
+}
+
+/* ——— Font Awesome fix ——— */
+.fas, .far, .fab, .fa-solid, .fa-regular, .fa-brands,
+.nav-icon.fas, .nav-icon.far {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+.fas, .fa-solid, .nav-icon.fas {
+  font-weight: 900 !important;
+}
+
+.far, .fa-regular, .nav-icon.far {
+  font-weight: 400 !important;
+}
+
+.fab, .fa-brands {
+  font-weight: 400 !important;
+}
+
+/* ——— Brand / logos ——— */
+.zin-brand-link {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.75rem 0.85rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  text-align: center;
+}
+
+.zin-brand-link:hover {
+  text-decoration: none;
+}
+
+.zin-brand-logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-bottom: 0.45rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.zin-brand-text {
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.zin-brand-subtitle {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.68rem;
+  font-weight: 500;
+  margin-top: 0.1rem;
+}
+
+.sidebar-mini.sidebar-collapse .zin-brand-text,
+.sidebar-mini.sidebar-collapse .zin-brand-subtitle {
+  display: none;
+}
+
+.sidebar-mini.sidebar-collapse .zin-brand-logo {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 0;
+}
+
+.zin-login-logo {
+  max-width: 120px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+.zin-login-subtitle {
+  color: rgba(255, 255, 255, 0.85) !important;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.login-page {
+  background: linear-gradient(135deg, var(--zin-logo-blue) 0%, #0f172a 100%);
 }
 
 /* ——— Base ——— */
@@ -126,8 +217,15 @@ body,
 }
 
 .nav-sidebar .nav-icon {
-  font-size: 0.95rem;
-  width: 1.5rem;
+  font-size: 1rem;
+  width: 1.6rem;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.nav-sidebar > .nav-item > .nav-link.active .nav-icon,
+.nav-sidebar > .nav-item > .nav-link:hover .nav-icon {
+  opacity: 1;
 }
 
 /* ——— Buttons & primary color ——— */
@@ -213,15 +311,6 @@ a:hover {
   background: #fff !important;
   border-radius: var(--zin-radius) !important;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2) !important;
-}
-
-.login-page {
-  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
-}
-
-.login-logo b {
-  color: #fff;
-  font-weight: 800;
 }
 
 /* Detail cards */
