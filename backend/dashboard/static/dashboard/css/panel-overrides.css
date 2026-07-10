@@ -134,11 +134,35 @@ body,
   font-size: 0.9rem;
 }
 
-.breadcrumb {
+.content-header .breadcrumb {
   background: transparent !important;
   padding: 0 !important;
-  margin-top: 0.35rem;
+  margin: 0 !important;
   font-size: 0.8125rem;
+}
+
+.zin-header-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  text-align: right;
+}
+
+.zin-header-actions:empty {
+  display: none;
+}
+
+.zin-header-actions .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .zin-header-meta {
+    align-items: flex-start;
+    text-align: left;
+    margin-top: 0.75rem;
+  }
 }
 
 .breadcrumb-item a {
@@ -345,6 +369,13 @@ a:hover {
   flex-wrap: wrap;
   gap: 0.4rem;
   align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.zin-toolbar-actions {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .zin-filter,

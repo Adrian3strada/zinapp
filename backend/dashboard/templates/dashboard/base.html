@@ -50,30 +50,34 @@
   <div class="content-wrapper">
     <div class="content-header">
       <div class="container-fluid">
-        <div class="row mb-2 align-items-center">
-          <div class="col-sm-6">
+        <div class="row mb-2 align-items-start">
+          <div class="col-md-7 col-lg-8">
             <h1 class="m-0">{% block page_heading %}{{ page_title|default:"Panel" }}{% endblock %}</h1>
             {% if page_subtitle %}
             <p class="text-muted mb-0 mt-1">{{ page_subtitle }}</p>
             {% endif %}
           </div>
-          <div class="col-sm-6 text-sm-right">
-            {% block page_actions %}{% endblock %}
-            {% block breadcrumb %}
-            <ol class="breadcrumb float-sm-right mb-0">
-              <li class="breadcrumb-item"><a href="{% url 'dashboard:home' %}">Inicio</a></li>
-              {% for crumb in breadcrumbs %}
-                {% if crumb.url %}
-                <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.label }}</a></li>
-                {% else %}
-                <li class="breadcrumb-item active">{{ crumb.label }}</li>
+          <div class="col-md-5 col-lg-4">
+            <div class="zin-header-meta">
+              <div class="zin-header-actions">
+                {% block page_actions %}{% endblock %}
+              </div>
+              {% block breadcrumb %}
+              <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'dashboard:home' %}">Inicio</a></li>
+                {% for crumb in breadcrumbs %}
+                  {% if crumb.url %}
+                  <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.label }}</a></li>
+                  {% else %}
+                  <li class="breadcrumb-item active">{{ crumb.label }}</li>
+                  {% endif %}
+                {% endfor %}
+                {% if not breadcrumbs and nav and nav != 'home' %}
+                <li class="breadcrumb-item active">{{ page_title|default:"Panel" }}</li>
                 {% endif %}
-              {% endfor %}
-              {% if not breadcrumbs and nav and nav != 'home' %}
-              <li class="breadcrumb-item active">{{ page_title|default:"Panel" }}</li>
-              {% endif %}
-            </ol>
-            {% endblock %}
+              </ol>
+              {% endblock %}
+            </div>
           </div>
         </div>
       </div>
