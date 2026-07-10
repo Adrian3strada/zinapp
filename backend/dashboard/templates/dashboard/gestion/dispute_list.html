@@ -2,15 +2,19 @@
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header">
-    <div class="filters mb-0">
-      <a href="{% url 'gestion:disputes' %}" class="filter-chip {% if not status_filter %}active{% endif %}">Todos</a>
+  <div class="card-header zin-toolbar">
+    <div class="zin-filter-group">
+      <a href="{% url 'gestion:disputes' %}" class="zin-filter {% if not status_filter %}active{% endif %}">Todos</a>
       {% for value, label in status_choices %}
-      <a href="?status={{ value }}" class="filter-chip {% if status_filter == value %}active{% endif %}">{{ label }}</a>
+      <a href="?status={{ value }}" class="zin-filter {% if status_filter == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
       {% if pending_count %}
-      <span class="badge badge-warning ml-2">{{ pending_count }} pendiente{{ pending_count|pluralize:"s" }}</span>
+      <span class="badge badge-warning zin-filter-badge">{{ pending_count }} pendiente{{ pending_count|pluralize:"s" }}</span>
       {% endif %}
+      <form class="zin-search" method="get">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar #, cliente…" %}
+      </form>
     </div>
   </div>
   <div class="card-body p-0 table-responsive">
@@ -35,12 +39,16 @@
           <td>{{ d.customer.username }}</td>
           <td>{{ d.order.restaurant.name }}</td>
           <td class="mono">${{ d.requested_amount|floatformat:2 }}</td>
-          <td><span class="badge badge-role">{{ d.get_status_display }}</span></td>
+          <td>{% include "dashboard/includes/dispute_status_badge.html" with status=d.status label=d.get_status_display %}</td>
           <td class="text-muted">{{ d.created_at|date:"d/m/Y H:i" }}</td>
-          <td class="text-right"><a href="{% url 'gestion:dispute-detail' d.pk %}">Revisar</a></td>
+          <td class="text-right">
+            <a href="{% url 'gestion:dispute-detail' d.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Revisar">
+              <i class="fas fa-gavel"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
+            </a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-muted text-center py-4">No hay disputas.</td></tr>
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-scale-balanced" title="No hay disputas" message="Las solicitudes de reembolso aparecerán aquí." %}
         {% endfor %}
       </tbody>
     </table>

@@ -3,14 +3,13 @@
 {% block content %}
 <div class="card zin-panel-card">
   <div class="card-header zin-toolbar">
-    <div class="zin-filter-group filters mb-0">
-      <a href="{% url 'gestion:coupons' %}" class="filter-chip {% if not active_filter %}active{% endif %}">Todos</a>
-      <a href="?active=1" class="filter-chip {% if active_filter == '1' %}active{% endif %}">Activos</a>
-      <a href="?active=0" class="filter-chip {% if active_filter == '0' %}active{% endif %}">Inactivos</a>
-      <form class="search-form" method="get">
+    <div class="zin-filter-group">
+      <a href="{% url 'gestion:coupons' %}" class="zin-filter {% if not active_filter %}active{% endif %}">Todos</a>
+      <a href="?active=1" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
+      <a href="?active=0" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Inactivos</a>
+      <form class="zin-search" method="get">
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
-        <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar código…">
-        <button type="submit" class="btn btn-default btn-sm"><i class="fas fa-search"></i></button>
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar código…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
@@ -41,13 +40,20 @@
           <td>{{ c.times_used }}{% if c.max_uses %} / {{ c.max_uses }}{% endif %}</td>
           <td>{% if c.is_active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-muted">Inactivo</span>{% endif %}</td>
           <td class="text-muted">{{ c.expires_at|date:"d/m/Y H:i"|default:"—" }}</td>
-          <td class="text-right row-actions">
-            <a href="{% url 'gestion:coupon-edit' c.pk %}">Editar</a>
-            <a href="{% url 'gestion:coupon-delete' c.pk %}" class="text-danger">Eliminar</a>
+          <td class="text-right">
+            <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'gestion:coupon-edit' c.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
+                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              </a>
+              <a href="{% url 'gestion:coupon-delete' c.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
+                <i class="fas fa-trash"></i>
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-muted text-center py-4">No hay cupones.</td></tr>
+        {% url 'gestion:coupon-create' as coupon_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-ticket" title="No hay cupones" message="Crea códigos de descuento para promociones." action_url=coupon_create_url action_label="Nuevo cupón" %}
         {% endfor %}
       </tbody>
     </table>

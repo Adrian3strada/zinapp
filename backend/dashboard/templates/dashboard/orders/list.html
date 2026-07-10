@@ -11,12 +11,7 @@
     </div>
     <form class="zin-search" method="get">
       {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
-      <div class="input-group input-group-sm">
-        <input type="search" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar #, cliente, restaurante…">
-        <div class="input-group-append">
-          <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-        </div>
-      </div>
+      {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar #, cliente, restaurante…" %}
     </form>
   </div>
   <div class="card-body p-0">
@@ -47,16 +42,18 @@
             <td class="text-right mono font-weight-bold">${{ order.total|floatformat:2 }}</td>
             <td class="text-muted small">{{ order.created_at|date:"d/m/Y H:i" }}</td>
             <td class="text-right">
-              <div class="btn-group btn-group-sm">
-                <a href="{% url 'dashboard:order-detail' order.pk %}" class="btn btn-outline-primary">Ver</a>
-                <a href="{% url 'gestion:order-edit' order.pk %}" class="btn btn-outline-secondary">Editar</a>
+              <div class="btn-group btn-group-sm zin-row-actions">
+                <a href="{% url 'dashboard:order-detail' order.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Ver">
+                  <i class="fas fa-eye"></i><span class="d-none d-lg-inline ml-1">Ver</span>
+                </a>
+                <a href="{% url 'gestion:order-edit' order.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar">
+                  <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+                </a>
               </div>
             </td>
           </tr>
           {% empty %}
-          <tr>
-            <td colspan="9" class="zin-empty">No se encontraron pedidos.</td>
-          </tr>
+          {% include "dashboard/includes/empty_state.html" with colspan=9 icon="fa-bag-shopping" title="No se encontraron pedidos" message="Prueba otro filtro o término de búsqueda." %}
           {% endfor %}
         </tbody>
       </table>

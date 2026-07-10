@@ -2,11 +2,15 @@
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header">
-    <div class="filters mb-0">
-      <a href="{% url 'dashboard:drivers' %}" class="filter-chip {% if available_filter == '' %}active{% endif %}">Todos</a>
-      <a href="?available=1" class="filter-chip {% if available_filter == '1' %}active{% endif %}">Disponibles</a>
-      <a href="?available=0" class="filter-chip {% if available_filter == '0' %}active{% endif %}">No disponibles</a>
+  <div class="card-header zin-toolbar">
+    <div class="zin-filter-group">
+      <a href="{% url 'dashboard:drivers' %}" class="zin-filter {% if available_filter == '' %}active{% endif %}">Todos</a>
+      <a href="?available=1" class="zin-filter {% if available_filter == '1' %}active{% endif %}">Disponibles</a>
+      <a href="?available=0" class="zin-filter {% if available_filter == '0' %}active{% endif %}">No disponibles</a>
+      <form class="zin-search" method="get">
+        {% if available_filter %}<input type="hidden" name="available" value="{{ available_filter }}">{% endif %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar repartidor o placas…" %}
+      </form>
     </div>
   </div>
   <div class="card-body p-0 table-responsive">
@@ -43,12 +47,14 @@
             {% endif %}
           </td>
           <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
-          <td class="text-right"><a href="{% url 'gestion:driver-edit' profile.pk %}">Editar</a></td>
+          <td class="text-right">
+            <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
+              <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+            </a>
+          </td>
         </tr>
         {% empty %}
-        <tr>
-          <td colspan="7" class="text-muted text-center py-4">No hay repartidores.</td>
-        </tr>
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-motorcycle" title="No hay repartidores" message="Los repartidores se registran desde la app." %}
         {% endfor %}
       </tbody>
     </table>

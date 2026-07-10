@@ -2,14 +2,14 @@
 
 {% block content %}
 {% if restaurants_pending > 0 %}
-<div class="card card-warning card-outline mb-3">
+<div class="card card-warning card-outline mb-3 zin-panel-card">
   <div class="card-header">
     <h3 class="card-title">
       <i class="fas fa-exclamation-triangle mr-1"></i>
       {{ restaurants_pending }} local{{ restaurants_pending|pluralize:"es" }} pendiente{{ restaurants_pending|pluralize:"s" }} de activar
     </h3>
     <div class="card-tools">
-      <a href="{% url 'dashboard:restaurants' %}" class="btn btn-tool btn-sm">Ver todos</a>
+      <a href="{% url 'dashboard:restaurants' %}?active=0" class="btn btn-tool btn-sm">Ver todos</a>
     </div>
   </div>
   <div class="card-body">
@@ -17,7 +17,7 @@
       Los negocios se registran en la app y quedan ocultos para clientes hasta que completes su checklist y los actives aquí.
     </p>
     <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0">
+      <table class="table table-sm table-hover zin-table mb-0">
         <thead>
           <tr>
             <th>Negocio</th>
@@ -32,7 +32,11 @@
             <td><strong>{{ restaurant.name }}</strong></td>
             <td>{{ restaurant.owner.username }}</td>
             <td class="text-muted">{{ restaurant.created_at|date:"d/m/Y H:i" }}</td>
-            <td><a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Revisar <i class="fas fa-arrow-right"></i></a></td>
+            <td class="text-right">
+              <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Revisar">
+                <i class="fas fa-eye"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
+              </a>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -46,69 +50,118 @@
 <div class="callout callout-warning mb-3">
   <h5><i class="fas fa-gavel mr-1"></i> {{ disputes_pending }} disputa{{ disputes_pending|pluralize:"s" }} pendiente{{ disputes_pending|pluralize:"s" }}</h5>
   <p class="mb-2">Los clientes pueden solicitar reembolso desde la app en pedidos entregados o cancelados.</p>
-  <a href="{% url 'gestion:disputes' %}?status=pending" class="btn btn-warning btn-sm">Ver disputas</a>
+  <a href="{% url 'gestion:disputes' %}?status=pending" class="btn btn-warning btn-sm">
+    <i class="fas fa-arrow-right mr-1"></i> Ver disputas
+  </a>
 </div>
 {% endif %}
 
-<div class="row">
+<div class="row zin-kpi-hero">
   <div class="col-lg-4 col-md-6 col-12">
-    <div class="small-box bg-success">
+    <div class="small-box bg-success zin-kpi-primary">
       <div class="inner">
         <h3>${{ revenue_today|floatformat:2 }}</h3>
         <p>Ingresos hoy</p>
+        <span class="zin-kpi-meta">{{ orders_delivered_today }} entrega{{ orders_delivered_today|pluralize:"s" }} completada{{ orders_delivered_today|pluralize:"s" }}</span>
       </div>
       <div class="icon"><i class="fas fa-dollar-sign"></i></div>
-      <span class="small-box-footer">{{ orders_delivered_today }} entregas completadas</span>
     </div>
   </div>
   <div class="col-lg-4 col-md-6 col-12">
-    <div class="small-box bg-info">
+    <div class="small-box bg-info zin-kpi-primary">
       <div class="inner">
         <h3>{{ orders_active }}</h3>
         <p>Pedidos activos</p>
+        <span class="zin-kpi-meta">{{ orders_pending }} pendiente{{ orders_pending|pluralize:"s" }} de aceptar</span>
       </div>
-      <div class="icon"><i class="fas fa-shopping-cart"></i></div>
-      <a href="{% url 'dashboard:orders' %}" class="small-box-footer">{{ orders_pending }} pendientes <i class="fas fa-arrow-circle-right"></i></a>
+      <div class="icon"><i class="fas fa-bag-shopping"></i></div>
+      <a href="{% url 'dashboard:orders' %}" class="small-box-footer">Ver pedidos <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 col-12">
-    <div class="small-box bg-primary">
+  <div class="col-lg-4 col-md-12 col-12">
+    <div class="small-box {% if restaurants_pending %}bg-warning{% else %}bg-teal{% endif %} zin-kpi-primary">
       <div class="inner">
-        <h3>{{ orders_today }}</h3>
-        <p>Pedidos hoy</p>
+        <h3>{% if restaurants_pending %}{{ restaurants_pending }}{% else %}{{ restaurants_active }}{% endif %}</h3>
+        <p>{% if restaurants_pending %}Locales por activar{% else %}Restaurantes activos{% endif %}</p>
+        <span class="zin-kpi-meta">{{ restaurants_total }} en catálogo · {{ products_total }} productos</span>
       </div>
-      <div class="icon"><i class="fas fa-gauge-high"></i></div>
-      <span class="small-box-footer">{{ orders_total }} total histórico</span>
+      <div class="icon"><i class="fas {% if restaurants_pending %}fa-clock{% else %}fa-utensils{% endif %}"></i></div>
+      <a href="{% url 'dashboard:restaurants' %}{% if restaurants_pending %}?active=0{% endif %}" class="small-box-footer">
+        {% if restaurants_pending %}Revisar pendientes{% else %}Ver restaurantes{% endif %}
+        <i class="fas fa-arrow-circle-right"></i>
+      </a>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 col-12">
-    <div class="small-box bg-warning">
-      <div class="inner">
-        <h3>{{ drivers_available }}</h3>
-        <p>Repartidores disponibles</p>
+</div>
+
+<div class="card zin-panel-card mb-3">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-bolt mr-1 text-primary"></i> Accesos rápidos</h3>
+  </div>
+  <div class="card-body zin-quick-actions">
+    <a href="{% url 'dashboard:orders' %}" class="zin-quick-action">
+      <i class="fas fa-bag-shopping"></i>
+      <span>Pedidos</span>
+    </a>
+    <a href="{% url 'dashboard:restaurants' %}" class="zin-quick-action">
+      <i class="fas fa-utensils"></i>
+      <span>Restaurantes</span>
+    </a>
+    <a href="{% url 'gestion:disputes' %}" class="zin-quick-action">
+      <i class="fas fa-scale-balanced"></i>
+      <span>Disputas</span>
+      {% if disputes_pending %}<span class="badge badge-danger">{{ disputes_pending }}</span>{% endif %}
+    </a>
+    <a href="{% url 'gestion:coupons' %}" class="zin-quick-action">
+      <i class="fas fa-ticket"></i>
+      <span>Cupones</span>
+    </a>
+    <a href="{% url 'gestion:local-services' %}" class="zin-quick-action">
+      <i class="fas fa-shop"></i>
+      <span>Servicios</span>
+    </a>
+    <a href="{% url 'dashboard:drivers' %}" class="zin-quick-action">
+      <i class="fas fa-motorcycle"></i>
+      <span>Repartidores</span>
+    </a>
+  </div>
+</div>
+
+<div class="row zin-kpi-secondary">
+  <div class="col-lg-3 col-md-6 col-6">
+    <div class="info-box mb-3">
+      <span class="info-box-icon bg-primary"><i class="fas fa-gauge-high"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Pedidos hoy</span>
+        <span class="info-box-number">{{ orders_today }}</span>
       </div>
-      <div class="icon"><i class="fas fa-motorcycle"></i></div>
-      <a href="{% url 'dashboard:drivers' %}" class="small-box-footer">de {{ drivers_total }} registrados <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 col-12">
-    <div class="small-box bg-teal">
-      <div class="inner">
-        <h3>{{ restaurants_active }}</h3>
-        <p>Restaurantes activos</p>
+  <div class="col-lg-3 col-md-6 col-6">
+    <div class="info-box mb-3">
+      <span class="info-box-icon bg-secondary"><i class="fas fa-chart-line"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Ingresos del mes</span>
+        <span class="info-box-number">${{ revenue_month|floatformat:0 }}</span>
       </div>
-      <div class="icon"><i class="fas fa-utensils"></i></div>
-      <a href="{% url 'dashboard:restaurants' %}" class="small-box-footer">{{ restaurants_pending }} pendientes · {{ products_total }} productos <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 col-12">
-    <div class="small-box bg-secondary">
-      <div class="inner">
-        <h3>${{ revenue_month|floatformat:2 }}</h3>
-        <p>Ingresos del mes</p>
+  <div class="col-lg-3 col-md-6 col-6">
+    <div class="info-box mb-3">
+      <span class="info-box-icon bg-warning"><i class="fas fa-motorcycle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Repartidores</span>
+        <span class="info-box-number">{{ drivers_available }}/{{ drivers_total }}</span>
       </div>
-      <div class="icon"><i class="fas fa-chart-line"></i></div>
-      <span class="small-box-footer">Pedidos entregados</span>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6 col-6">
+    <div class="info-box mb-3">
+      <span class="info-box-icon bg-teal"><i class="fas fa-users"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Usuarios</span>
+        <span class="info-box-number">{{ users_total }}</span>
+      </div>
     </div>
   </div>
 </div>
@@ -121,7 +174,7 @@
 
 <div class="row">
   <div class="col-lg-6">
-    <div class="card">
+    <div class="card zin-panel-card">
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-chart-bar mr-1"></i> Pedidos por estado</h3>
       </div>
@@ -140,7 +193,14 @@
               {% endif %}
             {% endfor %}
           {% else %}
-            <p class="text-muted mb-0">Sin pedidos registrados todavía.</p>
+            <div class="zin-empty-state zin-empty-state-compact">
+              <div class="zin-empty-icon"><i class="fas fa-chart-bar"></i></div>
+              <p class="zin-empty-title">Sin pedidos registrados</p>
+              <p class="zin-empty-message">Activa restaurantes para empezar a recibir pedidos.</p>
+              <a href="{% url 'dashboard:restaurants' %}" class="btn btn-primary btn-sm mt-2">
+                <i class="fas fa-utensils mr-1"></i> Ver restaurantes
+              </a>
+            </div>
           {% endif %}
         </div>
       </div>
@@ -148,9 +208,12 @@
   </div>
 
   <div class="col-lg-6">
-    <div class="card">
+    <div class="card zin-panel-card">
       <div class="card-header">
         <h3 class="card-title"><i class="fas fa-users mr-1"></i> Usuarios</h3>
+        <div class="card-tools">
+          <a href="{% url 'dashboard:users' %}" class="btn btn-tool btn-sm">Ver todos</a>
+        </div>
       </div>
       <div class="card-body">
         <div class="info-list">
@@ -180,7 +243,7 @@
   </div>
 </div>
 
-<div class="card">
+<div class="card zin-panel-card">
   <div class="card-header">
     <h3 class="card-title"><i class="fas fa-clock mr-1"></i> Pedidos recientes</h3>
     <div class="card-tools">
@@ -198,22 +261,26 @@
             <th>Estado</th>
             <th class="text-right">Total</th>
             <th>Fecha</th>
+            <th class="text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {% for order in recent_orders %}
           <tr>
-            <td><a href="{% url 'dashboard:order-detail' order.pk %}"><strong>#{{ order.id }}</strong></a></td>
+            <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">#{{ order.id }}</a></td>
             <td>{{ order.restaurant.name }}</td>
             <td>{{ order.customer.username }}</td>
             <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
             <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
             <td class="text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+            <td class="text-right">
+              <a href="{% url 'dashboard:order-detail' order.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Ver">
+                <i class="fas fa-eye"></i><span class="d-none d-lg-inline ml-1">Ver</span>
+              </a>
+            </td>
           </tr>
           {% empty %}
-          <tr>
-            <td colspan="6" class="text-muted text-center py-4">No hay pedidos aún.</td>
-          </tr>
+          {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-bag-shopping" title="No hay pedidos aún" message="Cuando lleguen pedidos desde la app, aparecerán aquí." %}
           {% endfor %}
         </tbody>
       </table>

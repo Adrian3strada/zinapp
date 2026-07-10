@@ -69,7 +69,11 @@ class DashboardHomeView(PanelAccessMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(page_context('Resumen', 'home'))
+        ctx.update(page_context(
+            'Resumen',
+            'home',
+            subtitle='Vista general de pedidos, ingresos y tareas pendientes.',
+        ))
         ctx.update(get_dashboard_stats())
         return ctx
 
@@ -285,6 +289,14 @@ class DriverListView(PanelAccessMixin, ListView):
             qs = qs.filter(is_available=True)
         elif self.request.GET.get('available') == '0':
             qs = qs.filter(is_available=False)
+        search = self.request.GET.get('q', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(user__username__icontains=search)
+                | Q(license_plate__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+            )
         return qs
 
     def get_context_data(self, **kwargs):
@@ -295,4 +307,5 @@ class DriverListView(PanelAccessMixin, ListView):
             subtitle='Disponibilidad, vehículo y ubicación de quienes entregan pedidos.',
         ))
         ctx['available_filter'] = self.request.GET.get('available', '')
+        ctx['search_query'] = self.request.GET.get('q', '')
         return ctx

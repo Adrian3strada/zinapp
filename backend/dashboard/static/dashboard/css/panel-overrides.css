@@ -104,6 +104,32 @@
 
 .login-page {
   background: linear-gradient(135deg, var(--zin-logo-blue) 0%, #0f172a 100%);
+  min-height: 100vh;
+}
+
+.login-box {
+  width: 400px;
+  max-width: 92vw;
+}
+
+.login-box .login-logo {
+  margin-bottom: 1.5rem;
+}
+
+.login-box .login-card-body {
+  padding: 2rem 1.75rem;
+}
+
+.login-box-msg {
+  font-weight: 600;
+  color: var(--zin-text);
+  margin-bottom: 1.25rem !important;
+}
+
+.login-box .input-group-text {
+  background: #f8fafc;
+  border-color: var(--zin-border);
+  color: var(--zin-muted);
 }
 
 /* ——— Base ——— */
@@ -410,7 +436,32 @@ a:hover {
 }
 
 .zin-search {
-  min-width: 260px;
+  min-width: 220px;
+  flex-shrink: 0;
+}
+
+.zin-search-inline {
+  min-width: 180px;
+}
+
+.zin-filter-form {
+  flex: 1;
+  min-width: 0;
+}
+
+.zin-filter-select {
+  width: auto !important;
+  min-width: 160px;
+  max-width: 220px;
+  border-radius: 8px !important;
+  border-color: var(--zin-border) !important;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.zin-filter-badge {
+  align-self: center;
+  font-size: 0.72rem;
 }
 
 .zin-search .form-control {
@@ -507,6 +558,128 @@ a:hover {
   color: var(--zin-muted) !important;
 }
 
+.zin-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.zin-empty-state-compact {
+  padding: 2rem 1rem;
+}
+
+.zin-empty-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: var(--zin-primary-light);
+  color: var(--zin-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+}
+
+.zin-empty-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--zin-text);
+  margin: 0 0 0.35rem;
+}
+
+.zin-empty-message {
+  font-size: 0.875rem;
+  color: var(--zin-muted);
+  margin: 0;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.zin-row-btn {
+  padding: 0.2rem 0.5rem !important;
+  font-size: 0.75rem !important;
+  line-height: 1.4;
+}
+
+.zin-row-actions {
+  flex-wrap: nowrap;
+}
+
+.zin-row-actions form {
+  display: inline-flex;
+}
+
+/* ——— Dashboard home ——— */
+.zin-kpi-hero .small-box {
+  min-height: 148px;
+}
+
+.zin-kpi-primary .inner {
+  padding-bottom: 0.25rem;
+}
+
+.zin-kpi-meta {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.85;
+  margin-top: 0.35rem;
+  font-weight: 500;
+}
+
+.zin-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+
+.zin-quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--zin-border);
+  background: #f8fafc;
+  color: var(--zin-text);
+  text-decoration: none !important;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.zin-quick-action:hover {
+  border-color: #93c5fd;
+  background: var(--zin-primary-light);
+  color: var(--zin-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.zin-quick-action i {
+  font-size: 1.25rem;
+  color: var(--zin-primary);
+}
+
+.zin-quick-action .badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-size: 0.65rem;
+}
+
+.zin-kpi-secondary .info-box {
+  margin-bottom: 0 !important;
+}
+
+.zin-kpi-secondary .info-box-number {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -525,8 +698,13 @@ a:hover {
 .zin-status-preparing, .badge-preparing { background: #ede9fe !important; color: #5b21b6 !important; }
 .zin-status-ready, .badge-ready { background: #d1fae5 !important; color: #065f46 !important; }
 .zin-status-on_the_way, .badge-on_the_way { background: #e0f2fe !important; color: #075985 !important; }
+.zin-status-picked_up, .badge-picked_up { background: #ede9fe !important; color: #5b21b6 !important; }
 .zin-status-delivered, .badge-delivered { background: #dcfce7 !important; color: #166534 !important; }
 .zin-status-cancelled, .badge-cancelled { background: #fee2e2 !important; color: #991b1b !important; }
+.zin-dispute-pending { background: #fef3c7 !important; color: #92400e !important; }
+.zin-dispute-approved { background: #dbeafe !important; color: #1e40af !important; }
+.zin-dispute-rejected { background: #fee2e2 !important; color: #991b1b !important; }
+.zin-dispute-refunded { background: #dcfce7 !important; color: #166534 !important; }
 .badge-success { background: #dcfce7 !important; color: #166534 !important; }
 .badge-warning { background: #fef3c7 !important; color: #92400e !important; }
 .badge-muted { background: #f1f5f9 !important; color: #64748b !important; }
@@ -908,3 +1086,19 @@ a:hover {
 .panel-admin-body.popup .main-header,
 .panel-admin-body.popup .main-footer { display: none !important; }
 .panel-admin-body.popup .content-wrapper { margin-left: 0 !important; }
+
+/* ——— Sidebar tooltips (collapsed) ——— */
+.sidebar-mini.sidebar-collapse .nav-sidebar > .nav-item > .nav-link {
+  position: relative;
+}
+
+.sidebar-mini.sidebar-collapse .nav-sidebar > .nav-item > .nav-link p {
+  width: 0;
+  overflow: hidden;
+}
+
+@media (min-width: 992px) {
+  .sidebar-mini.sidebar-collapse .main-sidebar:hover .nav-sidebar > .nav-item > .nav-link p {
+    width: auto;
+  }
+}

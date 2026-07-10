@@ -295,6 +295,17 @@ class ShipmentListView(PanelAccessMixin, ListView):
         status = self.request.GET.get('status', '').strip()
         if status and status in ShipmentStatus.values:
             qs = qs.filter(status=status)
+        search = self.request.GET.get('q', '').strip()
+        if search:
+            if search.isdigit():
+                qs = qs.filter(Q(id=int(search)) | Q(customer__username__icontains=search))
+            else:
+                qs = qs.filter(
+                    Q(customer__username__icontains=search)
+                    | Q(description__icontains=search)
+                    | Q(pickup_address__icontains=search)
+                    | Q(delivery_address__icontains=search)
+                )
         return qs
 
     def get_context_data(self, **kwargs):
@@ -307,6 +318,7 @@ class ShipmentListView(PanelAccessMixin, ListView):
         ctx.update(
             status_filter=self.request.GET.get('status', ''),
             status_choices=ShipmentStatus.choices,
+            search_query=self.request.GET.get('q', ''),
         )
         return ctx
 
@@ -353,6 +365,15 @@ class DisputeListView(PanelAccessMixin, ListView):
         status = self.request.GET.get('status', '').strip()
         if status and status in DisputeStatus.values:
             qs = qs.filter(status=status)
+        search = self.request.GET.get('q', '').strip()
+        if search:
+            if search.isdigit():
+                qs = qs.filter(Q(id=int(search)) | Q(order_id=int(search)))
+            else:
+                qs = qs.filter(
+                    Q(customer__username__icontains=search)
+                    | Q(order__restaurant__name__icontains=search)
+                )
         return qs
 
     def get_context_data(self, **kwargs):
@@ -366,6 +387,7 @@ class DisputeListView(PanelAccessMixin, ListView):
             status_filter=self.request.GET.get('status', ''),
             status_choices=DisputeStatus.choices,
             pending_count=OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
+            search_query=self.request.GET.get('q', ''),
         )
         return ctx
 

@@ -3,20 +3,22 @@
 {% block content %}
 <div class="card zin-panel-card">
   <div class="card-header zin-toolbar">
-    <form class="zin-filter-group filters mb-0 search-form" method="get" style="flex-wrap:wrap;">
-      <select name="restaurant" class="form-control" style="width:auto;min-width:180px;">
+    <form class="zin-filter-group zin-filter-form" method="get">
+      <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante">
         <option value="">Todos los restaurantes</option>
         {% for r in restaurants %}
         <option value="{{ r.pk }}" {% if restaurant_filter == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
         {% endfor %}
       </select>
-      <select name="available" class="form-control" style="width:auto;">
+      <select name="available" class="form-control form-control-sm zin-filter-select" aria-label="Disponibilidad">
         <option value="">Disponibilidad</option>
         <option value="1" {% if available_filter == '1' %}selected{% endif %}>Disponibles</option>
         <option value="0" {% if available_filter == '0' %}selected{% endif %}>Agotados</option>
       </select>
-      <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar producto…">
-      <button type="submit" class="btn btn-default btn-sm">Filtrar</button>
+      <div class="zin-search zin-search-inline">
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar producto…" %}
+      </div>
+      <button type="submit" class="btn btn-default btn-sm" title="Aplicar filtros"><i class="fas fa-filter"></i></button>
     </form>
     <div class="zin-toolbar-actions">
       <a href="{% url 'gestion:product-create' %}" class="btn btn-primary btn-sm">
@@ -42,13 +44,20 @@
           <td>{{ p.restaurant.name }}</td>
           <td class="mono">${{ p.price|floatformat:2 }}</td>
           <td>{% if p.is_available %}<span class="badge badge-success">Disponible</span>{% else %}<span class="badge badge-muted">Agotado</span>{% endif %}</td>
-          <td class="text-right row-actions">
-            <a href="{% url 'gestion:product-edit' p.pk %}">Editar</a>
-            <a href="{% url 'gestion:product-delete' p.pk %}" class="text-danger">Eliminar</a>
+          <td class="text-right">
+            <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'gestion:product-edit' p.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
+                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              </a>
+              <a href="{% url 'gestion:product-delete' p.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
+                <i class="fas fa-trash"></i>
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-muted text-center py-4">No hay productos.</td></tr>
+        {% url 'gestion:product-create' as product_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-burger" title="No hay productos" message="Agrega platillos al menú de tus restaurantes." action_url=product_create_url action_label="Nuevo producto" %}
         {% endfor %}
       </tbody>
     </table>

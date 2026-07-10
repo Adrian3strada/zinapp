@@ -4,13 +4,12 @@
 <div class="card zin-panel-card">
   <div class="card-header zin-toolbar">
     <div class="zin-filter-group">
-      <a href="{% url 'gestion:local-services' %}" class="filter-chip {% if not active_filter %}active{% endif %}">Todos</a>
-      <a href="?active=1" class="filter-chip {% if active_filter == '1' %}active{% endif %}">Activos</a>
-      <a href="?active=0" class="filter-chip {% if active_filter == '0' %}active{% endif %}">Ocultos</a>
-      <form class="search-form" method="get">
+      <a href="{% url 'gestion:local-services' %}" class="zin-filter {% if not active_filter %}active{% endif %}">Todos</a>
+      <a href="?active=1" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
+      <a href="?active=0" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Ocultos</a>
+      <form class="zin-search" method="get">
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
-        <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar negocio…">
-        <button type="submit" class="btn btn-default btn-sm"><i class="fas fa-search"></i></button>
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar negocio…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
@@ -37,10 +36,15 @@
           <td>{{ s.get_category_display }}</td>
           <td>{{ s.phone|default:s.whatsapp|default:"—" }}</td>
           <td>{% if s.is_active %}<span class="badge badge-success">Visible</span>{% else %}<span class="badge badge-muted">Oculto</span>{% endif %}</td>
-          <td class="text-right"><a href="{% url 'gestion:local-service-edit' s.pk %}">Editar</a></td>
+          <td class="text-right">
+            <a href="{% url 'gestion:local-service-edit' s.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
+              <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+            </a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-muted text-center py-4">No hay servicios publicados.</td></tr>
+        {% url 'gestion:local-service-create' as service_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-shop" title="No hay servicios publicados" message="Agrega barberías, talleres y otros negocios locales." action_url=service_create_url action_label="Nuevo servicio" %}
         {% endfor %}
       </tbody>
     </table>

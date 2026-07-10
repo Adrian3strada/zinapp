@@ -9,12 +9,7 @@
       <a href="?active=0" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Pendientes</a>
       <form class="zin-search" method="get">
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
-        <div class="input-group input-group-sm">
-          <input type="search" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar local o dueño…">
-          <div class="input-group-append">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
-          </div>
-        </div>
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar local o dueño…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
@@ -53,17 +48,19 @@
               <span class="badge badge-muted">Pendiente</span>
             {% endif %}
           </td>
-          <td class="text-right row-actions">
-            <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Gestionar</a>
-            <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}">Editar</a>
+          <td class="text-right">
+            <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Gestionar">
+                <i class="fas fa-sliders"></i><span class="d-none d-lg-inline ml-1">Gestionar</span>
+              </a>
+              <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar">
+                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr>
-          <td colspan="6" class="text-muted text-center py-4">
-            No hay restaurantes registrados. Los dueños se dan de alta desde la app.
-          </td>
-        </tr>
+        {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-utensils" title="No hay restaurantes" message="Los dueños se dan de alta desde la app. Cuando lo hagan, aparecerán aquí para activar." %}
         {% endfor %}
       </tbody>
     </table>

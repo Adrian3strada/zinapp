@@ -3,8 +3,8 @@
 {% block content %}
 {% if avg_restaurant %}
 <div class="row mb-3">
-  <div class="col-md-4">
-    <div class="info-box bg-light">
+  <div class="col-md-6">
+    <div class="info-box mb-0">
       <span class="info-box-icon bg-warning"><i class="fas fa-utensils"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Promedio restaurante</span>
@@ -12,8 +12,8 @@
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="info-box bg-light">
+  <div class="col-md-6">
+    <div class="info-box mb-0">
       <span class="info-box-icon bg-info"><i class="fas fa-motorcycle"></i></span>
       <div class="info-box-content">
         <span class="info-box-text">Promedio repartidor</span>
@@ -49,10 +49,14 @@
           <td>{% if r.driver_rating %}{{ r.driver_rating }} ★{% else %}—{% endif %}</td>
           <td class="text-muted">{{ r.comment|truncatechars:60|default:"—" }}</td>
           <td class="text-muted">{{ r.created_at|date:"d/m/Y" }}</td>
-          <td class="text-right"><a href="{% url 'gestion:review-delete' r.pk %}" class="text-danger">Eliminar</a></td>
+          <td class="text-right">
+            <a href="{% url 'gestion:review-delete' r.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
+              <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+            </a>
+          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="text-muted text-center py-4">No hay reseñas.</td></tr>
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-star" title="No hay reseñas" message="Las calificaciones de clientes aparecerán aquí." %}
         {% endfor %}
       </tbody>
     </table>
