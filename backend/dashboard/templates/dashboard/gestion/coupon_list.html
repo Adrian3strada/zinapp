@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="card card-outline card-primary">
+<div class="card zin-panel-card">
   <div class="card-header">
     <div class="filters mb-0">
       <a href="{% url 'gestion:coupons' %}" class="filter-chip {% if not active_filter %}active{% endif %}">Todos</a>
@@ -21,7 +21,7 @@
     </div>
   </div>
   <div class="card-body p-0 table-responsive">
-    <table class="table table-hover table-striped mb-0">
+    <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
           <th>Código</th>

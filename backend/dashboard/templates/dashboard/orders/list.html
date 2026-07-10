@@ -1,58 +1,66 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
-<div class="card card-outline card-primary">
-  <div class="card-header">
-    <div class="filters mb-0">
-      <a href="{% url 'dashboard:orders' %}" class="filter-chip {% if not status_filter %}active{% endif %}">Todos</a>
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <div class="zin-filter-group">
+      <a href="{% url 'dashboard:orders' %}" class="zin-filter {% if not status_filter %}active{% endif %}">Todos</a>
       {% for value, label in status_choices %}
-      <a href="?status={{ value }}" class="filter-chip {% if status_filter == value %}active{% endif %}">{{ label }}</a>
+      <a href="?status={{ value }}" class="zin-filter {% if status_filter == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
-      <form class="search-form" method="get">
-        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
-        <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar #, cliente, restaurante…">
-        <button type="submit" class="btn btn-default btn-sm"><i class="fas fa-search"></i></button>
-      </form>
     </div>
+    <form class="zin-search" method="get">
+      {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      <div class="input-group input-group-sm">
+        <input type="search" name="q" value="{{ search_query }}" class="form-control" placeholder="Buscar #, cliente, restaurante…">
+        <div class="input-group-append">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i></button>
+        </div>
+      </div>
+    </form>
   </div>
-  <div class="card-body p-0 table-responsive">
-    <table class="table table-hover table-striped mb-0">
-      <thead>
-        <tr>
-          <th>Pedido</th>
-          <th>Restaurante</th>
-          <th>Cliente</th>
-          <th>Repartidor</th>
-          <th>Estado</th>
-          <th>Pago</th>
-          <th class="text-right">Total</th>
-          <th>Creado</th>
-          <th class="text-right">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for order in orders %}
-        <tr>
-          <td><a href="{% url 'dashboard:order-detail' order.pk %}"><strong>#{{ order.id }}</strong></a></td>
-          <td>{{ order.restaurant.name }}</td>
-          <td>{{ order.customer.username }}</td>
-          <td>{% if order.driver %}{{ order.driver.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-          <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
-          <td>{{ order.get_payment_method_display }}</td>
-          <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
-          <td class="text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</td>
-          <td class="text-right row-actions">
-            <a href="{% url 'dashboard:order-detail' order.pk %}">Ver</a>
-            <a href="{% url 'gestion:order-edit' order.pk %}">Editar</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="9" class="text-muted text-center py-4">No se encontraron pedidos.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover zin-table mb-0">
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Restaurante</th>
+            <th>Cliente</th>
+            <th>Repartidor</th>
+            <th>Estado</th>
+            <th>Pago</th>
+            <th class="text-right">Total</th>
+            <th>Creado</th>
+            <th class="text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+          <tr>
+            <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">#{{ order.id }}</a></td>
+            <td>{{ order.restaurant.name }}</td>
+            <td>{{ order.customer.username }}</td>
+            <td>{% if order.driver %}{{ order.driver.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
+            <td><span class="text-muted">{{ order.get_payment_method_display }}</span></td>
+            <td class="text-right mono font-weight-bold">${{ order.total|floatformat:2 }}</td>
+            <td class="text-muted small">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+            <td class="text-right">
+              <div class="btn-group btn-group-sm">
+                <a href="{% url 'dashboard:order-detail' order.pk %}" class="btn btn-outline-primary">Ver</a>
+                <a href="{% url 'gestion:order-edit' order.pk %}" class="btn btn-outline-secondary">Editar</a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="zin-empty">No se encontraron pedidos.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   {% include "dashboard/includes/pagination.html" %}
 </div>
