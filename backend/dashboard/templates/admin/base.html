@@ -6,7 +6,7 @@
 <title>{% block title %}{% endblock %} · ZinApp</title>
 <link rel="stylesheet" href="{% block stylesheet %}{% static 'admin/css/base.css' %}{% endblock %}">
 {% block dark-mode-vars %}{% endblock %}
-<link rel="stylesheet" href="{% static 'dashboard/css/panel.css' %}">
+{% include "dashboard/includes/adminlte_head.html" %}
 <link rel="stylesheet" href="{% static 'dashboard/css/admin-panel.css' %}">
 {% block extrastyle %}{% endblock %}
 {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% block stylesheet_rtl %}{% static 'admin/css/rtl.css' %}{% endblock %}">{% endif %}
@@ -19,35 +19,53 @@
 {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
 </head>
 
-<body class="panel-admin-body {% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
+<body class="hold-transition sidebar-mini layout-fixed panel-admin-body {% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
   data-admin-utc-offset="{% now 'Z' %}">
 
 {% if not is_popup %}
-<div class="overlay" id="overlay"></div>
-<div class="layout">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <h1>ZinApp</h1>
-      <span>Panel de operaciones · Zinapécuaro</span>
-    </div>
-    {% include "dashboard/includes/sidebar.html" %}
-    <div class="sidebar-footer">
-      <div>{{ user.get_full_name|default:user.username }}</div>
-      <a href="{% url 'dashboard:logout' %}">Cerrar sesión</a>
+<div class="wrapper">
+  <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link" data-widget="pushmenu" href="#" role="button" aria-label="Menú">
+          <i class="fas fa-bars"></i>
+        </a>
+      </li>
+      <li class="nav-item d-none d-sm-inline-block">
+        <span class="nav-link text-muted">{{ page_title|default:"Gestión de datos" }}</span>
+      </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard:home' %}">
+          <i class="fas fa-arrow-left mr-1"></i> Panel
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <a href="{% url 'dashboard:home' %}" class="brand-link text-center">
+      <span class="brand-text font-weight-light"><b>Zin</b>App</span>
+      <small class="d-block brand-subtitle">Consola técnica</small>
+    </a>
+    <div class="sidebar">
+      {% include "dashboard/includes/sidebar.html" %}
     </div>
   </aside>
 
-  <div class="main">
-    <header class="topbar">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button type="button" class="menu-toggle" id="menuToggle" aria-label="Menú">☰</button>
-        <h2>{{ page_title|default:"Gestión de datos" }}</h2>
+  <div class="content-wrapper">
+    <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0">{% block content_title_header %}{{ page_title|default:"Gestión de datos" }}{% endblock %}</h1>
+          </div>
+        </div>
       </div>
-      <div class="topbar-user">
-        <a href="{% url 'dashboard:home' %}">← Panel</a>
-      </div>
-    </header>
-    <main class="content panel-admin-content">
+    </div>
+    <section class="content">
+      <div class="container-fluid panel-admin-content">
 {% endif %}
 
 <div id="container" class="panel-admin-inner {% if is_popup %}panel-admin-popup{% endif %}">
@@ -71,11 +89,14 @@
     <div class="panel-admin-main-col" id="content-start" tabindex="-1">
       {% block messages %}
       {% if messages %}
-      <div class="panel-messages">
-        {% for message in messages %}
-        <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">{{ message|capfirst }}</p>
-        {% endfor %}
+      {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% elif message.tags == 'info' %}info{% else %}success{% endif %} alert-dismissible fade show">
+        {{ message|capfirst }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
+      {% endfor %}
       {% endif %}
       {% endblock messages %}
 
@@ -95,24 +116,15 @@
 </div>
 
 {% if not is_popup %}
-    </main>
+      </div>
+    </section>
   </div>
+
+  <footer class="main-footer text-sm">
+    <strong>ZinApp</strong> · Consola técnica
+  </footer>
 </div>
-<script>
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('overlay');
-  const toggle = document.getElementById('menuToggle');
-  if (toggle && sidebar && overlay) {
-    toggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('show');
-    });
-    overlay.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('show');
-    });
-  }
-</script>
+{% include "dashboard/includes/adminlte_scripts.html" %}
 {% endif %}
 
 </body>

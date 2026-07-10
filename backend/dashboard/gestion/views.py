@@ -4,7 +4,7 @@ from django.db.models import Avg, Count, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views import View
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
+from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from accounts.models import DeliveryProfile, User, UserRole
 from local_services.models import LocalService
@@ -13,6 +13,7 @@ from orders.models import DisputeStatus, OrderDispute
 from restaurants.models import Product, Restaurant
 
 from ..mixins import PanelAccessMixin
+from ..page_context import page_context
 from .forms import (
     CouponForm,
     DisputeResolveForm,
@@ -36,30 +37,6 @@ def _verify_app_login(user, password: str) -> bool:
     return authenticate(username=user.username, password=password) is not None
 
 
-class GestionHubView(PanelAccessMixin, TemplateView):
-    template_name = 'dashboard/gestion/hub.html'
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'Gestión de datos'
-        ctx['nav'] = 'gestion'
-        ctx['stats'] = {
-            'users': User.objects.count(),
-            'restaurants': Restaurant.objects.count(),
-            'products': Product.objects.count(),
-            'orders': Order.objects.count(),
-            'coupons': Coupon.objects.filter(is_active=True).count(),
-            'shipments': Shipment.objects.exclude(status=ShipmentStatus.DELIVERED).count(),
-            'reviews': Review.objects.count(),
-            'drivers': DeliveryProfile.objects.filter(is_available=True).count(),
-            'local_services': LocalService.objects.filter(is_active=True).count(),
-            'disputes_pending': OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
-        }
-        from orders.mercadopago import mercadopago_enabled
-        ctx['mercadopago_enabled'] = mercadopago_enabled()
-        return ctx
-
-
 class CouponListView(PanelAccessMixin, ListView):
     model = Coupon
     template_name = 'dashboard/gestion/coupon_list.html'
@@ -79,7 +56,12 @@ class CouponListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(page_title='Cupones', nav='gestion', active_filter=self.request.GET.get('active', ''))
+        ctx.update(page_context(
+            'Cupones',
+            'coupons',
+            subtitle='Códigos de descuento para promociones y campañas.',
+        ))
+        ctx['active_filter'] = self.request.GET.get('active', '')
         ctx['search_query'] = self.request.GET.get('q', '')
         return ctx
 
@@ -92,9 +74,18 @@ class CouponCreateView(PanelAccessMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Nuevo cupón',
+            'coupons',
+            breadcrumbs=[
+                {'label': 'Cupones', 'url': reverse('gestion:coupons')},
+                {'label': 'Nuevo', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Nuevo cupón', nav='gestion', form_title='Crear cupón',
-            back_url=reverse('gestion:coupons'), back_label='Cupones',
+            form_title='Crear cupón',
+            back_url=reverse('gestion:coupons'),
+            back_label='Cupones',
             cancel_url=reverse('gestion:coupons'),
         )
         return ctx
@@ -112,9 +103,18 @@ class CouponUpdateView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            f'Editar {self.object.code}',
+            'coupons',
+            breadcrumbs=[
+                {'label': 'Cupones', 'url': reverse('gestion:coupons')},
+                {'label': self.object.code, 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=f'Editar {self.object.code}', nav='gestion', form_title='Editar cupón',
-            back_url=reverse('gestion:coupons'), back_label='Cupones',
+            form_title='Editar cupón',
+            back_url=reverse('gestion:coupons'),
+            back_label='Cupones',
             cancel_url=reverse('gestion:coupons'),
         )
         return ctx
@@ -131,9 +131,15 @@ class CouponDeleteView(PanelAccessMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Eliminar cupón',
+            'coupons',
+            breadcrumbs=[
+                {'label': 'Cupones', 'url': reverse('gestion:coupons')},
+                {'label': 'Eliminar', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Eliminar cupón',
-            nav='gestion',
             object_label=self.object.code,
             cancel_url=reverse('gestion:coupon-edit', kwargs={'pk': self.object.pk}),
         )
@@ -166,9 +172,12 @@ class ProductListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Productos',
+            'products',
+            subtitle='Platillos del menú de cada restaurante.',
+        ))
         ctx.update(
-            page_title='Productos',
-            nav='gestion',
             restaurants=Restaurant.objects.order_by('name'),
             restaurant_filter=self.request.GET.get('restaurant', ''),
             available_filter=self.request.GET.get('available', ''),
@@ -191,9 +200,18 @@ class ProductCreateView(PanelAccessMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Nuevo producto',
+            'products',
+            breadcrumbs=[
+                {'label': 'Productos', 'url': reverse('gestion:products')},
+                {'label': 'Nuevo', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Nuevo producto', nav='gestion', form_title='Crear producto',
-            back_url=reverse('gestion:products'), back_label='Productos',
+            form_title='Crear producto',
+            back_url=reverse('gestion:products'),
+            back_label='Productos',
             cancel_url=reverse('gestion:products'),
             form_is_multipart=True,
         )
@@ -218,9 +236,18 @@ class ProductUpdateView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            self.object.name,
+            'products',
+            breadcrumbs=[
+                {'label': 'Productos', 'url': reverse('gestion:products')},
+                {'label': self.object.name, 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=self.object.name, nav='gestion', form_title='Editar producto',
-            back_url=reverse('gestion:products'), back_label='Productos',
+            form_title='Editar producto',
+            back_url=reverse('gestion:products'),
+            back_label='Productos',
             cancel_url=reverse('gestion:products'),
             form_is_multipart=True,
         )
@@ -238,9 +265,15 @@ class ProductDeleteView(PanelAccessMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Eliminar producto',
+            'products',
+            breadcrumbs=[
+                {'label': 'Productos', 'url': reverse('gestion:products')},
+                {'label': 'Eliminar', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Eliminar producto',
-            nav='gestion',
             object_label=self.object.name,
             cancel_url=reverse('gestion:product-edit', kwargs={'pk': self.object.pk}),
         )
@@ -266,9 +299,12 @@ class ShipmentListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Envíos',
+            'shipments',
+            subtitle='Paquetes y entregas independientes de pedidos de comida.',
+        ))
         ctx.update(
-            page_title='Envíos',
-            nav='gestion',
             status_filter=self.request.GET.get('status', ''),
             status_choices=ShipmentStatus.choices,
         )
@@ -286,7 +322,14 @@ class ShipmentDetailView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(page_title=f'Envío #{self.object.pk}', nav='gestion')
+        ctx.update(page_context(
+            f'Envío #{self.object.pk}',
+            'shipments',
+            breadcrumbs=[
+                {'label': 'Envíos', 'url': reverse('gestion:shipments')},
+                {'label': f'#{self.object.pk}', 'url': None},
+            ],
+        ))
         return ctx
 
     def get_success_url(self):
@@ -314,9 +357,12 @@ class DisputeListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Disputas',
+            'disputes',
+            subtitle='Solicitudes de reembolso de clientes en pedidos entregados o cancelados.',
+        ))
         ctx.update(
-            page_title='Disputas',
-            nav='gestion',
             status_filter=self.request.GET.get('status', ''),
             status_choices=DisputeStatus.choices,
             pending_count=OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
@@ -337,7 +383,14 @@ class DisputeDetailView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(page_title=f'Disputa #{self.object.pk}', nav='gestion')
+        ctx.update(page_context(
+            f'Disputa #{self.object.pk}',
+            'disputes',
+            breadcrumbs=[
+                {'label': 'Disputas', 'url': reverse('gestion:disputes')},
+                {'label': f'#{self.object.pk}', 'url': None},
+            ],
+        ))
         return ctx
 
     def get_success_url(self):
@@ -375,7 +428,11 @@ class ReviewListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(page_title='Reseñas', nav='gestion')
+        ctx.update(page_context(
+            'Reseñas',
+            'reviews',
+            subtitle='Calificaciones de clientes sobre restaurantes y repartidores.',
+        ))
         agg = Review.objects.aggregate(
             avg_restaurant=Avg('restaurant_rating'),
             avg_driver=Avg('driver_rating'),
@@ -393,9 +450,18 @@ class UserCreateView(PanelAccessMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Nuevo usuario',
+            'users',
+            breadcrumbs=[
+                {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                {'label': 'Nuevo', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Nuevo usuario', nav='gestion', form_title='Crear usuario',
-            back_url=reverse('dashboard:users'), back_label='Usuarios',
+            form_title='Crear usuario',
+            back_url=reverse('dashboard:users'),
+            back_label='Usuarios',
             cancel_url=reverse('dashboard:users'),
         )
         return ctx
@@ -429,9 +495,18 @@ class UserEditView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            self.object.username,
+            'users',
+            breadcrumbs=[
+                {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                {'label': self.object.username, 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=self.object.username, nav='gestion', form_title='Editar usuario',
-            back_url=reverse('dashboard:users'), back_label='Usuarios',
+            form_title='Editar usuario',
+            back_url=reverse('dashboard:users'),
+            back_label='Usuarios',
             cancel_url=reverse('dashboard:users'),
         )
         return ctx
@@ -473,9 +548,15 @@ class DriverEditView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            self.object.user.username,
+            'drivers',
+            breadcrumbs=[
+                {'label': 'Repartidores', 'url': reverse('dashboard:drivers')},
+                {'label': self.object.user.username, 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=self.object.user.username,
-            nav='gestion',
             form_title='Editar repartidor',
             back_url=reverse('dashboard:drivers'),
             back_label='Repartidores',
@@ -502,9 +583,16 @@ class OrderEditView(PanelAccessMixin, UpdateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         order = self.object
+        ctx.update(page_context(
+            f'Pedido #{order.pk}',
+            'orders',
+            breadcrumbs=[
+                {'label': 'Pedidos', 'url': reverse('dashboard:orders')},
+                {'label': f'#{order.pk}', 'url': reverse('dashboard:order-detail', kwargs={'pk': order.pk})},
+                {'label': 'Editar', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=f'Pedido #{order.pk}',
-            nav='gestion',
             form_title=f'Editar pedido #{order.pk}',
             back_url=reverse('dashboard:order-detail', kwargs={'pk': order.pk}),
             back_label='Detalle del pedido',
@@ -518,49 +606,27 @@ class OrderEditView(PanelAccessMixin, UpdateView):
         return super().form_valid(form)
 
 
-class RestaurantListView(PanelAccessMixin, ListView):
-    model = Restaurant
-    template_name = 'dashboard/gestion/restaurant_list.html'
-    context_object_name = 'restaurants'
-    paginate_by = 20
-
-    def get_queryset(self):
-        qs = Restaurant.objects.select_related('owner').order_by('-created_at')
-        q = self.request.GET.get('q', '').strip()
-        if q:
-            qs = qs.filter(Q(name__icontains=q) | Q(owner__username__icontains=q))
-        if self.request.GET.get('active') == '1':
-            qs = qs.filter(is_active=True)
-        elif self.request.GET.get('active') == '0':
-            qs = qs.filter(is_active=False)
-        return qs
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(
-            page_title='Restaurantes (gestión)',
-            nav='gestion',
-            search_query=self.request.GET.get('q', ''),
-            active_filter=self.request.GET.get('active', ''),
-        )
-        return ctx
-
-
 class RestaurantCreateView(PanelAccessMixin, CreateView):
     model = Restaurant
     form_class = RestaurantForm
     template_name = 'dashboard/gestion/restaurant_form.html'
-    success_url = reverse_lazy('gestion:restaurants')
+    success_url = reverse_lazy('dashboard:restaurants')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Nuevo restaurante',
+            'restaurants',
+            breadcrumbs=[
+                {'label': 'Restaurantes', 'url': reverse('dashboard:restaurants')},
+                {'label': 'Nuevo', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Nuevo restaurante',
-            nav='gestion',
             form_title='Crear restaurante',
-            back_url=reverse('gestion:restaurants'),
+            back_url=reverse('dashboard:restaurants'),
             back_label='Restaurantes',
-            cancel_url=reverse('gestion:restaurants'),
+            cancel_url=reverse('dashboard:restaurants'),
         )
         return ctx
 
@@ -573,17 +639,24 @@ class RestaurantUpdateView(PanelAccessMixin, UpdateView):
     model = Restaurant
     form_class = RestaurantForm
     template_name = 'dashboard/gestion/restaurant_form.html'
-    success_url = reverse_lazy('gestion:restaurants')
+    success_url = reverse_lazy('dashboard:restaurants')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            self.object.name,
+            'restaurants',
+            breadcrumbs=[
+                {'label': 'Restaurantes', 'url': reverse('dashboard:restaurants')},
+                {'label': self.object.name, 'url': reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk})},
+                {'label': 'Editar', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=self.object.name,
-            nav='gestion',
             form_title='Editar restaurante',
-            back_url=reverse('gestion:restaurants'),
-            back_label='Restaurantes',
-            cancel_url=reverse('gestion:restaurants'),
+            back_url=reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk}),
+            back_label='Detalle del local',
+            cancel_url=reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk}),
         )
         return ctx
 
@@ -611,9 +684,12 @@ class LocalServiceListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Servicios locales',
+            'local-services',
+            subtitle='Negocios de servicios visibles en la app (barberías, talleres, etc.).',
+        ))
         ctx.update(
-            page_title='Servicios locales',
-            nav='gestion',
             search_query=self.request.GET.get('q', ''),
             active_filter=self.request.GET.get('active', ''),
         )
@@ -628,9 +704,15 @@ class LocalServiceCreateView(PanelAccessMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Nuevo servicio',
+            'local-services',
+            breadcrumbs=[
+                {'label': 'Servicios locales', 'url': reverse('gestion:local-services')},
+                {'label': 'Nuevo', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Nuevo servicio',
-            nav='gestion',
             form_title='Publicar negocio de servicios',
             back_url=reverse('gestion:local-services'),
             back_label='Servicios',
@@ -652,9 +734,15 @@ class LocalServiceUpdateView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            self.object.name,
+            'local-services',
+            breadcrumbs=[
+                {'label': 'Servicios locales', 'url': reverse('gestion:local-services')},
+                {'label': self.object.name, 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title=self.object.name,
-            nav='gestion',
             form_title='Editar servicio',
             back_url=reverse('gestion:local-services'),
             back_label='Servicios',
@@ -675,9 +763,15 @@ class ReviewDeleteView(PanelAccessMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Eliminar reseña',
+            'reviews',
+            breadcrumbs=[
+                {'label': 'Reseñas', 'url': reverse('gestion:reviews')},
+                {'label': 'Eliminar', 'url': None},
+            ],
+        ))
         ctx.update(
-            page_title='Eliminar reseña',
-            nav='gestion',
             object_label=f'Reseña del pedido #{self.object.order_id}',
             cancel_url=reverse('gestion:reviews'),
         )

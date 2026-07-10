@@ -2,17 +2,22 @@
 
 {% block content %}
 {% if restaurants_pending > 0 %}
-<div class="panel-card pending-alert">
-  <div class="panel-card-header">
-    <h3>{{ restaurants_pending }} local{{ restaurants_pending|pluralize:"es" }} pendiente{{ restaurants_pending|pluralize:"s" }} de activar</h3>
-    <a href="{% url 'dashboard:restaurants' %}" class="btn btn-ghost btn-sm">Ver todos</a>
+<div class="card card-warning card-outline mb-3">
+  <div class="card-header">
+    <h3 class="card-title">
+      <i class="fas fa-exclamation-triangle mr-1"></i>
+      {{ restaurants_pending }} local{{ restaurants_pending|pluralize:"es" }} pendiente{{ restaurants_pending|pluralize:"s" }} de activar
+    </h3>
+    <div class="card-tools">
+      <a href="{% url 'dashboard:restaurants' %}" class="btn btn-tool btn-sm">Ver todos</a>
+    </div>
   </div>
-  <div class="panel-card-body padded">
-    <p class="text-muted" style="margin:0 0 12px;">
+  <div class="card-body">
+    <p class="text-muted mb-3">
       Los negocios se registran en la app y quedan ocultos para clientes hasta que completes su checklist y los actives aquí.
     </p>
-    <div class="table-wrap">
-      <table class="data-table compact">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
         <thead>
           <tr>
             <th>Negocio</th>
@@ -27,7 +32,7 @@
             <td><strong>{{ restaurant.name }}</strong></td>
             <td>{{ restaurant.owner.username }}</td>
             <td class="text-muted">{{ restaurant.created_at|date:"d/m/Y H:i" }}</td>
-            <td><a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Revisar →</a></td>
+            <td><a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Revisar <i class="fas fa-arrow-right"></i></a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -38,123 +43,153 @@
 {% endif %}
 
 {% if disputes_pending > 0 %}
-<div class="panel-card pending-alert">
-  <div class="panel-card-header">
-    <h3>{{ disputes_pending }} disputa{{ disputes_pending|pluralize:"s" }} pendiente{{ disputes_pending|pluralize:"s" }} de revisar</h3>
-    <a href="{% url 'gestion:disputes' %}?status=pending" class="btn btn-ghost btn-sm">Ver disputas</a>
-  </div>
-  <div class="panel-card-body padded">
-    <p class="text-muted" style="margin:0;">
-      Los clientes pueden solicitar reembolso desde la app en pedidos entregados o cancelados.
-    </p>
-  </div>
+<div class="callout callout-warning mb-3">
+  <h5><i class="fas fa-gavel mr-1"></i> {{ disputes_pending }} disputa{{ disputes_pending|pluralize:"s" }} pendiente{{ disputes_pending|pluralize:"s" }}</h5>
+  <p class="mb-2">Los clientes pueden solicitar reembolso desde la app en pedidos entregados o cancelados.</p>
+  <a href="{% url 'gestion:disputes' %}?status=pending" class="btn btn-warning btn-sm">Ver disputas</a>
 </div>
 {% endif %}
 
-<div class="stats-grid">
-  <div class="stat-card highlight">
-    <div class="stat-label">Ingresos hoy</div>
-    <div class="stat-value">${{ revenue_today|floatformat:2 }}</div>
-    <div class="stat-sub">{{ orders_delivered_today }} entregas completadas</div>
+<div class="row">
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="small-box bg-success">
+      <div class="inner">
+        <h3>${{ revenue_today|floatformat:2 }}</h3>
+        <p>Ingresos hoy</p>
+      </div>
+      <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+      <span class="small-box-footer">{{ orders_delivered_today }} entregas completadas</span>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">Pedidos activos</div>
-    <div class="stat-value">{{ orders_active }}</div>
-    <div class="stat-sub">{{ orders_pending }} pendientes de aceptar</div>
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="small-box bg-info">
+      <div class="inner">
+        <h3>{{ orders_active }}</h3>
+        <p>Pedidos activos</p>
+      </div>
+      <div class="icon"><i class="fas fa-shopping-cart"></i></div>
+      <a href="{% url 'dashboard:orders' %}" class="small-box-footer">{{ orders_pending }} pendientes <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">Pedidos hoy</div>
-    <div class="stat-value">{{ orders_today }}</div>
-    <div class="stat-sub">{{ orders_total }} total histórico</div>
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="small-box bg-primary">
+      <div class="inner">
+        <h3>{{ orders_today }}</h3>
+        <p>Pedidos hoy</p>
+      </div>
+      <div class="icon"><i class="fas fa-receipt"></i></div>
+      <span class="small-box-footer">{{ orders_total }} total histórico</span>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">Repartidores disponibles</div>
-    <div class="stat-value">{{ drivers_available }}</div>
-    <div class="stat-sub">de {{ drivers_total }} registrados</div>
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="small-box bg-warning">
+      <div class="inner">
+        <h3>{{ drivers_available }}</h3>
+        <p>Repartidores disponibles</p>
+      </div>
+      <div class="icon"><i class="fas fa-motorcycle"></i></div>
+      <a href="{% url 'dashboard:drivers' %}" class="small-box-footer">de {{ drivers_total }} registrados <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">Restaurantes activos</div>
-    <div class="stat-value">{{ restaurants_active }}</div>
-    <div class="stat-sub">{{ restaurants_pending }} pendientes · {{ products_total }} productos</div>
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="small-box bg-teal">
+      <div class="inner">
+        <h3>{{ restaurants_active }}</h3>
+        <p>Restaurantes activos</p>
+      </div>
+      <div class="icon"><i class="fas fa-utensils"></i></div>
+      <a href="{% url 'dashboard:restaurants' %}" class="small-box-footer">{{ restaurants_pending }} pendientes · {{ products_total }} productos <i class="fas fa-arrow-circle-right"></i></a>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">Ingresos del mes</div>
-    <div class="stat-value">${{ revenue_month|floatformat:2 }}</div>
-    <div class="stat-sub">Pedidos entregados</div>
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="small-box bg-secondary">
+      <div class="inner">
+        <h3>${{ revenue_month|floatformat:2 }}</h3>
+        <p>Ingresos del mes</p>
+      </div>
+      <div class="icon"><i class="fas fa-chart-line"></i></div>
+      <span class="small-box-footer">Pedidos entregados</span>
+    </div>
   </div>
 </div>
 
 {% if orders_total == 0 and users_total > 0 %}
-<p class="launch-hint">
-  Aún no hay pedidos — es normal al iniciar. Cuando actives locales y entren clientes, las estadísticas se actualizarán aquí.
-</p>
+<div class="callout callout-info">
+  <p class="mb-0">Aún no hay pedidos — es normal al iniciar. Cuando actives locales y entren clientes, las estadísticas se actualizarán aquí.</p>
+</div>
 {% endif %}
 
-<div class="grid-2">
-  <div class="panel-card">
-    <div class="panel-card-header">
-      <h3>Pedidos por estado</h3>
-    </div>
-    <div class="panel-card-body padded">
-      <div class="status-bars">
-        {% if has_order_status_data %}
-          {% for item in status_breakdown %}
-            {% if item.count > 0 %}
-            <div class="status-row">
-              <span>{{ item.label }}</span>
-              <div class="status-bar-track">
-                <div class="status-bar-fill {{ item.status }}" style="width: {% widthratio item.count status_breakdown_max 100 %}%;"></div>
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-chart-bar mr-1"></i> Pedidos por estado</h3>
+      </div>
+      <div class="card-body">
+        <div class="status-bars">
+          {% if has_order_status_data %}
+            {% for item in status_breakdown %}
+              {% if item.count > 0 %}
+              <div class="status-row">
+                <span>{{ item.label }}</span>
+                <div class="status-bar-track">
+                  <div class="status-bar-fill {{ item.status }}" style="width: {% widthratio item.count status_breakdown_max 100 %}%;"></div>
+                </div>
+                <strong class="mono">{{ item.count }}</strong>
               </div>
-              <strong class="mono">{{ item.count }}</strong>
-            </div>
-            {% endif %}
-          {% endfor %}
-        {% else %}
-          <p class="text-muted">Sin pedidos registrados todavía.</p>
-        {% endif %}
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <p class="text-muted mb-0">Sin pedidos registrados todavía.</p>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="panel-card">
-    <div class="panel-card-header">
-      <h3>Usuarios</h3>
-    </div>
-    <div class="panel-card-body padded">
-      <div class="info-list">
-        <div class="info-item">
-          <label>Total registrados</label>
-          <p>{{ users_total }}</p>
-        </div>
-        <div class="info-item">
-          <label>Clientes</label>
-          <p>{{ users_customers }}</p>
-        </div>
-        <div class="info-item">
-          <label>Dueños de negocio</label>
-          <p>{{ users_restaurants }}</p>
-        </div>
-        <div class="info-item">
-          <label>Repartidores</label>
-          <p>{{ users_drivers }}</p>
-        </div>
-        <div class="info-item">
-          <label>Locales en catálogo</label>
-          <p>{{ restaurants_total }} ({{ restaurants_active }} activos)</p>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-users mr-1"></i> Usuarios</h3>
+      </div>
+      <div class="card-body">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Total registrados</label>
+            <p>{{ users_total }}</p>
+          </div>
+          <div class="info-item">
+            <label>Clientes</label>
+            <p>{{ users_customers }}</p>
+          </div>
+          <div class="info-item">
+            <label>Dueños de negocio</label>
+            <p>{{ users_restaurants }}</p>
+          </div>
+          <div class="info-item">
+            <label>Repartidores</label>
+            <p>{{ users_drivers }}</p>
+          </div>
+          <div class="info-item">
+            <label>Locales en catálogo</label>
+            <p>{{ restaurants_total }} ({{ restaurants_active }} activos)</p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div class="panel-card">
-  <div class="panel-card-header">
-    <h3>Pedidos recientes</h3>
-    <a href="{% url 'dashboard:orders' %}" class="btn btn-ghost btn-sm">Ver todos</a>
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-clock mr-1"></i> Pedidos recientes</h3>
+    <div class="card-tools">
+      <a href="{% url 'dashboard:orders' %}" class="btn btn-tool btn-sm">Ver todos</a>
+    </div>
   </div>
-  <div class="panel-card-body">
-    <div class="table-wrap">
-      <table class="data-table">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-striped mb-0">
         <thead>
           <tr>
             <th>#</th>
@@ -177,7 +212,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="text-muted" style="text-align:center;padding:32px;">No hay pedidos aún.</td>
+            <td colspan="6" class="text-muted text-center py-4">No hay pedidos aún.</td>
           </tr>
           {% endfor %}
         </tbody>

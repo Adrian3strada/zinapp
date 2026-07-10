@@ -1,69 +1,70 @@
 {% extends "dashboard/base.html" %}
 
+{% block page_actions %}
+<a href="{% url 'gestion:restaurant-create' %}" class="btn btn-primary btn-sm mb-2">
+  <i class="fas fa-plus mr-1"></i> Nuevo restaurante
+</a>
+{% endblock %}
+
 {% block content %}
-<div class="panel-card">
-  <div class="panel-card-header">
-    <h3>{{ restaurants_total }} restaurante{{ restaurants_total|pluralize:"s" }}</h3>
-    <p class="text-muted" style="margin:8px 0 0;font-size:13px;">
-      Los locales nuevos quedan <strong>pendientes</strong> hasta que el dueño complete menú y perfil en la app y tú los actives aquí.
-      {% if restaurants_pending %}<span class="badge badge-warning" style="margin-left:6px;">{{ restaurants_pending }} por activar</span>{% endif %}
-    </p>
-  </div>
-  <div class="panel-card-body">
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Dueño</th>
-            <th>Menú</th>
-            <th>Pedidos</th>
-            <th>Estado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for restaurant in restaurants %}
-          <tr>
-            <td><strong>{{ restaurant.name }}</strong></td>
-            <td>{{ restaurant.owner.username }}</td>
-            <td class="mono">{{ restaurant.available_product_count }}/{{ restaurant.product_count }}</td>
-            <td class="mono">{{ restaurant.order_count }}</td>
-            <td>
-              {% if restaurant.is_active %}
-                {% if restaurant.accepting_orders %}
-                  <span class="badge badge-success">Activo</span>
-                {% else %}
-                  <span class="badge badge-warning">Pausado</span>
-                {% endif %}
-              {% else %}
-                <span class="badge badge-muted">Pendiente</span>
-              {% endif %}
-            </td>
-            <td><a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Ver →</a></td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="6" class="text-muted" style="text-align:center;padding:40px;">
-              No hay restaurantes registrados. Los dueños se dan de alta desde la app.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="card card-outline card-primary">
+  <div class="card-header">
+    <div class="filters mb-0">
+      <a href="{% url 'dashboard:restaurants' %}" class="filter-chip {% if not active_filter %}active{% endif %}">Todos</a>
+      <a href="?active=1" class="filter-chip {% if active_filter == '1' %}active{% endif %}">Activos</a>
+      <a href="?active=0" class="filter-chip {% if active_filter == '0' %}active{% endif %}">Pendientes</a>
+      <form class="search-form" method="get">
+        {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
+        <input type="search" name="q" value="{{ search_query }}" placeholder="Buscar local o dueño…">
+        <button type="submit" class="btn btn-default btn-sm"><i class="fas fa-search"></i></button>
+      </form>
     </div>
   </div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-hover table-striped mb-0">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Dueño</th>
+          <th>Menú</th>
+          <th>Pedidos</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for restaurant in restaurants %}
+        <tr>
+          <td><strong>{{ restaurant.name }}</strong></td>
+          <td>{{ restaurant.owner.username }}</td>
+          <td class="mono">{{ restaurant.available_product_count }}/{{ restaurant.product_count }}</td>
+          <td class="mono">{{ restaurant.order_count }}</td>
+          <td>
+            {% if restaurant.is_active %}
+              {% if restaurant.accepting_orders %}
+                <span class="badge badge-success">Activo</span>
+              {% else %}
+                <span class="badge badge-warning">Pausado</span>
+              {% endif %}
+            {% else %}
+              <span class="badge badge-muted">Pendiente</span>
+            {% endif %}
+          </td>
+          <td class="text-right row-actions">
+            <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Gestionar</a>
+            <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}">Editar</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-muted text-center py-4">
+            No hay restaurantes registrados. Los dueños se dan de alta desde la app.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "dashboard/includes/pagination.html" %}
 </div>
-
-{% if is_paginated %}
-<div class="pagination">
-  {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}">← Anterior</a>
-  {% endif %}
-  <span class="current">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
-  {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}">Siguiente →</a>
-  {% endif %}
-</div>
-{% endif %}
 {% endblock %}

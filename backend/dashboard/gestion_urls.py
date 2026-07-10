@@ -1,11 +1,12 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from .gestion import views as gestion_views
 
 app_name = 'gestion'
 
 urlpatterns = [
-    path('', gestion_views.GestionHubView.as_view(), name='home'),
+    path('', RedirectView.as_view(pattern_name='dashboard:home', permanent=False), name='home'),
     path('cupones/', gestion_views.CouponListView.as_view(), name='coupons'),
     path('cupones/nuevo/', gestion_views.CouponCreateView.as_view(), name='coupon-create'),
     path('cupones/<int:pk>/', gestion_views.CouponUpdateView.as_view(), name='coupon-edit'),
@@ -19,7 +20,11 @@ urlpatterns = [
     path('disputas/', gestion_views.DisputeListView.as_view(), name='disputes'),
     path('disputas/<int:pk>/', gestion_views.DisputeDetailView.as_view(), name='dispute-detail'),
     path('pedidos/<int:pk>/editar/', gestion_views.OrderEditView.as_view(), name='order-edit'),
-    path('restaurantes/', gestion_views.RestaurantListView.as_view(), name='restaurants'),
+    path(
+        'restaurantes/',
+        RedirectView.as_view(pattern_name='dashboard:restaurants', permanent=False),
+        name='restaurants',
+    ),
     path('restaurantes/nuevo/', gestion_views.RestaurantCreateView.as_view(), name='restaurant-create'),
     path('restaurantes/<int:pk>/', gestion_views.RestaurantUpdateView.as_view(), name='restaurant-edit'),
     path('servicios/', gestion_views.LocalServiceListView.as_view(), name='local-services'),

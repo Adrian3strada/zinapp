@@ -1,40 +1,35 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
-<p class="gestion-back"><a href="{% url 'gestion:disputes' %}">← Disputas</a></p>
-
-<div class="detail-grid">
-  <div>
-    <div class="panel-card" style="margin-bottom:20px;">
-      <div class="panel-card-header">
-        <h3>Disputa #{{ dispute.id }}</h3>
-        <span class="badge badge-role">{{ dispute.get_status_display }}</span>
-      </div>
-      <div class="panel-card-body padded">
-        <div class="table-wrap">
-          <table class="data-table">
-            <tbody>
-              <tr><td class="text-muted">Pedido</td><td><a href="{% url 'dashboard:order-detail' dispute.order_id %}">#{{ dispute.order_id }} · {{ dispute.order.code }}</a></td></tr>
-              <tr><td class="text-muted">Cliente</td><td>{{ dispute.customer.username }}</td></tr>
-              <tr><td class="text-muted">Restaurante</td><td>{{ dispute.order.restaurant.name }}</td></tr>
-              <tr><td class="text-muted">Total pedido</td><td class="mono">${{ dispute.order.total|floatformat:2 }}</td></tr>
-              <tr><td class="text-muted">Monto solicitado</td><td class="mono">${{ dispute.requested_amount|floatformat:2 }}</td></tr>
-              <tr><td class="text-muted">Motivo</td><td>{{ dispute.reason|linebreaksbr }}</td></tr>
-              <tr><td class="text-muted">Creada</td><td>{{ dispute.created_at|date:"d/m/Y H:i" }}</td></tr>
-              {% if dispute.resolved_at %}
-              <tr><td class="text-muted">Resuelta</td><td>{{ dispute.resolved_at|date:"d/m/Y H:i" }}</td></tr>
-              {% endif %}
-            </tbody>
-          </table>
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Disputa #{{ dispute.id }}</h3>
+        <div class="card-tools">
+          <span class="badge badge-role">{{ dispute.get_status_display }}</span>
         </div>
+      </div>
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td class="text-muted" style="width:35%;">Pedido</td><td><a href="{% url 'dashboard:order-detail' dispute.order_id %}">#{{ dispute.order_id }} · {{ dispute.order.code }}</a></td></tr>
+            <tr><td class="text-muted">Cliente</td><td>{{ dispute.customer.username }}</td></tr>
+            <tr><td class="text-muted">Restaurante</td><td>{{ dispute.order.restaurant.name }}</td></tr>
+            <tr><td class="text-muted">Total pedido</td><td class="mono">${{ dispute.order.total|floatformat:2 }}</td></tr>
+            <tr><td class="text-muted">Monto solicitado</td><td class="mono">${{ dispute.requested_amount|floatformat:2 }}</td></tr>
+            <tr><td class="text-muted">Motivo</td><td>{{ dispute.reason|linebreaksbr }}</td></tr>
+            <tr><td class="text-muted">Creada</td><td>{{ dispute.created_at|date:"d/m/Y H:i" }}</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <div>
-    <div class="panel-card">
-      <div class="panel-card-header"><h3>Resolver disputa</h3></div>
-      <div class="panel-card-body padded">
+  <div class="col-lg-5">
+    <div class="card card-outline card-warning">
+      <div class="card-header"><h3 class="card-title">Resolver disputa</h3></div>
+      <div class="card-body">
         <form method="post" class="gestion-form">
           {% csrf_token %}
           {% for field in form %}
@@ -44,10 +39,8 @@
             {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
           </div>
           {% endfor %}
-          <p class="text-muted" style="font-size:13px;margin:0 0 12px;">
-            Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: marcas el reembolso como procesado.
-          </p>
-          <button type="submit" class="btn btn-primary" style="width:auto;">Guardar</button>
+          <p class="text-muted small">Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: marcas el reembolso como procesado.</p>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Guardar resolución</button>
         </form>
       </div>
     </div>

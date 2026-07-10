@@ -1,38 +1,36 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
-<p class="gestion-back"><a href="{% url 'gestion:shipments' %}">← Envíos</a></p>
-
-<div class="detail-grid">
-  <div>
-    <div class="panel-card" style="margin-bottom:20px;">
-      <div class="panel-card-header">
-        <h3>Envío #{{ shipment.id }}</h3>
-        <span class="badge badge-role">{{ shipment.get_status_display }}</span>
-      </div>
-      <div class="panel-card-body padded">
-        <div class="table-wrap">
-          <table class="data-table">
-            <tbody>
-              <tr><td class="text-muted">Cliente</td><td>{{ shipment.customer.username }}</td></tr>
-              <tr><td class="text-muted">Descripción</td><td>{{ shipment.description }}</td></tr>
-              <tr><td class="text-muted">Tamaño</td><td>{{ shipment.get_size_display }}</td></tr>
-              <tr><td class="text-muted">Recoger en</td><td>{{ shipment.pickup_address }}</td></tr>
-              <tr><td class="text-muted">Entregar en</td><td>{{ shipment.delivery_address }}</td></tr>
-              <tr><td class="text-muted">Pago</td><td>{{ shipment.get_payment_method_display }}</td></tr>
-              <tr><td class="text-muted">Total</td><td class="mono">${{ shipment.total|floatformat:2 }}</td></tr>
-              <tr><td class="text-muted">Creado</td><td>{{ shipment.created_at|date:"d/m/Y H:i" }}</td></tr>
-            </tbody>
-          </table>
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Envío #{{ shipment.id }}</h3>
+        <div class="card-tools">
+          <span class="badge badge-role">{{ shipment.get_status_display }}</span>
         </div>
+      </div>
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td class="text-muted" style="width:35%;">Cliente</td><td>{{ shipment.customer.username }}</td></tr>
+            <tr><td class="text-muted">Descripción</td><td>{{ shipment.description }}</td></tr>
+            <tr><td class="text-muted">Tamaño</td><td>{{ shipment.get_size_display }}</td></tr>
+            <tr><td class="text-muted">Recoger en</td><td>{{ shipment.pickup_address }}</td></tr>
+            <tr><td class="text-muted">Entregar en</td><td>{{ shipment.delivery_address }}</td></tr>
+            <tr><td class="text-muted">Pago</td><td>{{ shipment.get_payment_method_display }}</td></tr>
+            <tr><td class="text-muted">Total</td><td class="mono">${{ shipment.total|floatformat:2 }}</td></tr>
+            <tr><td class="text-muted">Creado</td><td>{{ shipment.created_at|date:"d/m/Y H:i" }}</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
-  <div>
-    <div class="panel-card">
-      <div class="panel-card-header"><h3>Actualizar envío</h3></div>
-      <div class="panel-card-body padded">
+  <div class="col-lg-5">
+    <div class="card card-outline card-info">
+      <div class="card-header"><h3 class="card-title">Actualizar envío</h3></div>
+      <div class="card-body">
         <form method="post" class="gestion-form">
           {% csrf_token %}
           {% for field in form %}
@@ -42,7 +40,7 @@
             {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
           </div>
           {% endfor %}
-          <button type="submit" class="btn btn-primary" style="width:auto;">Guardar cambios</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Guardar cambios</button>
         </form>
       </div>
     </div>

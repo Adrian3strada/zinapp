@@ -15,6 +15,7 @@ from restaurants.setup import restaurant_setup_status
 
 from .access import can_access_panel
 from .mixins import PanelAccessMixin
+from .page_context import page_context
 from .services import get_dashboard_stats, get_order_timeline
 
 
@@ -68,9 +69,8 @@ class DashboardHomeView(PanelAccessMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context('Resumen', 'home'))
         ctx.update(get_dashboard_stats())
-        ctx['page_title'] = 'Resumen'
-        ctx['nav'] = 'home'
         return ctx
 
 
@@ -99,8 +99,11 @@ class OrderListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'Pedidos'
-        ctx['nav'] = 'orders'
+        ctx.update(page_context(
+            'Pedidos',
+            'orders',
+            subtitle='Consulta y da seguimiento a todos los pedidos de la plataforma.',
+        ))
         ctx['status_filter'] = self.request.GET.get('status', '')
         ctx['search_query'] = self.request.GET.get('q', '')
         ctx['status_choices'] = OrderStatus.choices
@@ -119,8 +122,14 @@ class OrderDetailView(PanelAccessMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = f'Pedido #{self.object.id}'
-        ctx['nav'] = 'orders'
+        ctx.update(page_context(
+            f'Pedido #{self.object.id}',
+            'orders',
+            breadcrumbs=[
+                {'label': 'Pedidos', 'url': reverse('dashboard:orders')},
+                {'label': f'#{self.object.id}', 'url': None},
+            ],
+        ))
         ctx['timeline_steps'] = get_order_timeline(self.object)
         return ctx
 
@@ -132,18 +141,35 @@ class RestaurantListView(PanelAccessMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return Restaurant.objects.select_related('owner').annotate(
+        qs = Restaurant.objects.select_related('owner').annotate(
             product_count=Count('products'),
             available_product_count=Count('products', filter=Q(products__is_available=True)),
             order_count=Count('orders'),
         ).order_by('-created_at')
+        search = self.request.GET.get('q', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) | Q(owner__username__icontains=search),
+            )
+        active = self.request.GET.get('active', '').strip()
+        if active == '1':
+            qs = qs.filter(is_active=True)
+        elif active == '0':
+            qs = qs.filter(is_active=False)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'Restaurantes'
-        ctx['nav'] = 'restaurants'
+        pending = Restaurant.objects.filter(is_active=False).count()
+        ctx.update(page_context(
+            'Restaurantes',
+            'restaurants',
+            subtitle='Activa locales nuevos, pausa pedidos y edita datos del negocio.',
+        ))
         ctx['restaurants_total'] = Restaurant.objects.count()
-        ctx['restaurants_pending'] = Restaurant.objects.filter(is_active=False).count()
+        ctx['restaurants_pending'] = pending
+        ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['active_filter'] = self.request.GET.get('active', '')
         return ctx
 
 
@@ -158,8 +184,14 @@ class RestaurantDetailView(PanelAccessMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         restaurant = self.object
-        ctx['page_title'] = restaurant.name
-        ctx['nav'] = 'restaurants'
+        ctx.update(page_context(
+            restaurant.name,
+            'restaurants',
+            breadcrumbs=[
+                {'label': 'Restaurantes', 'url': reverse('dashboard:restaurants')},
+                {'label': restaurant.name, 'url': None},
+            ],
+        ))
         ctx['setup'] = restaurant_setup_status(restaurant)
         ctx['products'] = restaurant.products.all().order_by('name')
         return ctx
@@ -230,8 +262,11 @@ class UserListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'Usuarios'
-        ctx['nav'] = 'users'
+        ctx.update(page_context(
+            'Usuarios',
+            'users',
+            subtitle='Cuentas de clientes, dueños de negocio, repartidores y administradores.',
+        ))
         ctx['role_filter'] = self.request.GET.get('role', '')
         ctx['role_choices'] = UserRole.choices
         ctx['search_query'] = self.request.GET.get('q', '')
@@ -254,7 +289,10 @@ class DriverListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['page_title'] = 'Repartidores'
-        ctx['nav'] = 'drivers'
+        ctx.update(page_context(
+            'Repartidores',
+            'drivers',
+            subtitle='Disponibilidad, vehículo y ubicación de quienes entregan pedidos.',
+        ))
         ctx['available_filter'] = self.request.GET.get('available', '')
         return ctx

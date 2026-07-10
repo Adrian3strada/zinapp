@@ -1,80 +1,80 @@
 {% extends "dashboard/base.html" %}
 
-{% block content %}
-<p style="margin-bottom:20px;">
-  <a href="{% url 'dashboard:orders' %}">← Volver a pedidos</a>
-  &nbsp;·&nbsp;
-  <a href="{% url 'gestion:order-edit' order.pk %}">Editar pedido</a>
-</p>
+{% block page_actions %}
+<a href="{% url 'gestion:order-edit' order.pk %}" class="btn btn-default btn-sm mb-2">
+  <i class="fas fa-edit mr-1"></i> Editar pedido
+</a>
+{% endblock %}
 
-<div class="detail-grid">
-  <div>
-    <div class="panel-card" style="margin-bottom:20px;">
-      <div class="panel-card-header">
-        <h3>Resumen del pedido #{{ order.id }}</h3>
-        {% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}
-      </div>
-      <div class="panel-card-body padded">
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Cant.</th>
-                <th class="text-right">Precio</th>
-                <th class="text-right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in order.items.all %}
-              <tr>
-                <td>{{ item.product.name }}</td>
-                <td>{{ item.quantity }}</td>
-                <td class="text-right mono">${{ item.unit_price|floatformat:2 }}</td>
-                <td class="text-right mono">${{ item.subtotal|floatformat:2 }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" class="text-right text-muted">Subtotal</td>
-                <td class="text-right mono">${{ order.subtotal|floatformat:2 }}</td>
-              </tr>
-              <tr>
-                <td colspan="3" class="text-right text-muted">Envío</td>
-                <td class="text-right mono">${{ order.delivery_fee|floatformat:2 }}</td>
-              </tr>
-              {% if order.discount_amount %}
-              <tr>
-                <td colspan="3" class="text-right text-muted">Descuento</td>
-                <td class="text-right mono">-${{ order.discount_amount|floatformat:2 }}</td>
-              </tr>
-              {% endif %}
-              <tr>
-                <td colspan="3" class="text-right text-bold">Total</td>
-                <td class="text-right mono text-bold">${{ order.total|floatformat:2 }}</td>
-              </tr>
-            </tfoot>
-          </table>
+{% block content %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-outline card-primary mb-3">
+      <div class="card-header">
+        <h3 class="card-title">Resumen del pedido #{{ order.id }}</h3>
+        <div class="card-tools">
+          {% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}
         </div>
+      </div>
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cant.</th>
+              <th class="text-right">Precio</th>
+              <th class="text-right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.items.all %}
+            <tr>
+              <td>{{ item.product.name }}</td>
+              <td>{{ item.quantity }}</td>
+              <td class="text-right mono">${{ item.unit_price|floatformat:2 }}</td>
+              <td class="text-right mono">${{ item.subtotal|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="text-right text-muted">Subtotal</td>
+              <td class="text-right mono">${{ order.subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-right text-muted">Envío</td>
+              <td class="text-right mono">${{ order.delivery_fee|floatformat:2 }}</td>
+            </tr>
+            {% if order.discount_amount %}
+            <tr>
+              <td colspan="3" class="text-right text-muted">Descuento</td>
+              <td class="text-right mono">-${{ order.discount_amount|floatformat:2 }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+              <td colspan="3" class="text-right font-weight-bold">Total</td>
+              <td class="text-right mono font-weight-bold">${{ order.total|floatformat:2 }}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
 
-    <div class="panel-card">
-      <div class="panel-card-header"><h3>Seguimiento</h3></div>
-      <div class="panel-card-body padded">
+    <div class="card card-outline card-secondary">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-route mr-1"></i> Seguimiento</h3></div>
+      <div class="card-body">
         {% if order.status == 'cancelled' %}
-          <p style="color:var(--error);font-weight:600;">Este pedido fue cancelado.</p>
+          <p class="text-danger font-weight-bold mb-0">Este pedido fue cancelado.</p>
         {% elif timeline_steps %}
           <div class="timeline">
             {% for step in timeline_steps %}
-              <div class="timeline-step {{ step.state }}">
-                <div class="timeline-dot">{% if step.state == 'done' %}✓{% endif %}</div>
-                <div>
-                  <strong>{{ step.label }}</strong>
-                  {% if step.state == 'current' %}<span class="text-muted"> · en curso</span>{% endif %}
-                </div>
+            <div class="timeline-step {{ step.state }}">
+              <div class="timeline-dot">{% if step.state == 'done' %}✓{% endif %}</div>
+              <div>
+                <strong>{{ step.label }}</strong>
+                {% if step.state == 'current' %}<span class="text-muted"> · en curso</span>{% endif %}
               </div>
+            </div>
             {% endfor %}
           </div>
         {% endif %}
@@ -82,10 +82,10 @@
     </div>
   </div>
 
-  <div>
-    <div class="panel-card" style="margin-bottom:20px;">
-      <div class="panel-card-header"><h3>Entrega</h3></div>
-      <div class="panel-card-body padded">
+  <div class="col-lg-4">
+    <div class="card card-outline card-info mb-3">
+      <div class="card-header"><h3 class="card-title">Entrega</h3></div>
+      <div class="card-body">
         <div class="info-list">
           <div class="info-item">
             <label>Dirección</label>
@@ -97,29 +97,21 @@
             <p>{{ order.delivery_notes }}</p>
           </div>
           {% endif %}
-          {% if order.delivery_latitude %}
-          <div class="info-item">
-            <label>Coordenadas</label>
-            <p class="mono">{{ order.delivery_latitude }}, {{ order.delivery_longitude }}</p>
-          </div>
-          {% endif %}
         </div>
       </div>
     </div>
 
-    <div class="panel-card" style="margin-bottom:20px;">
-      <div class="panel-card-header"><h3>Participantes</h3></div>
-      <div class="panel-card-body padded">
+    <div class="card card-outline card-info mb-3">
+      <div class="card-header"><h3 class="card-title">Participantes</h3></div>
+      <div class="card-body">
         <div class="info-list">
           <div class="info-item">
             <label>Cliente</label>
             <p>{{ order.customer.get_full_name|default:order.customer.username }}</p>
-            <p class="text-muted" style="font-weight:400;">{{ order.customer.phone|default:"Sin teléfono" }}</p>
           </div>
           <div class="info-item">
             <label>Restaurante</label>
             <p>{{ order.restaurant.name }}</p>
-            <p class="text-muted" style="font-weight:400;">Dueño: {{ order.restaurant.owner.username }}</p>
           </div>
           <div class="info-item">
             <label>Repartidor</label>
@@ -129,34 +121,22 @@
       </div>
     </div>
 
-    <div class="panel-card">
-      <div class="panel-card-header"><h3>Pago</h3></div>
-      <div class="panel-card-body padded">
+    <div class="card card-outline card-info">
+      <div class="card-header"><h3 class="card-title">Pago</h3></div>
+      <div class="card-body">
         <div class="info-list">
           <div class="info-item">
             <label>Método</label>
             <p>{{ order.get_payment_method_display }}</p>
           </div>
           <div class="info-item">
-            <label>Estado del pago</label>
+            <label>Estado</label>
             <p>{{ order.get_payment_status_display }}</p>
           </div>
-          {% if order.coupon %}
-          <div class="info-item">
-            <label>Cupón</label>
-            <p>{{ order.coupon.code }}</p>
-          </div>
-          {% endif %}
           <div class="info-item">
             <label>Creado</label>
             <p>{{ order.created_at|date:"d/m/Y H:i" }}</p>
           </div>
-          {% if order.delivered_at %}
-          <div class="info-item">
-            <label>Entregado</label>
-            <p>{{ order.delivered_at|date:"d/m/Y H:i" }}</p>
-          </div>
-          {% endif %}
         </div>
       </div>
     </div>

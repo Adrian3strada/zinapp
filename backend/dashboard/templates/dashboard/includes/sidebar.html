@@ -1,21 +1,97 @@
-<nav class="sidebar-nav">
-  <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
-    <span class="nav-icon">📊</span> Resumen
-  </a>
-  <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
-    <span class="nav-icon">📦</span> Pedidos
-  </a>
-  <a href="{% url 'dashboard:restaurants' %}" class="nav-link {% if nav == 'restaurants' %}active{% endif %}">
-    <span class="nav-icon">🍽️</span> Restaurantes
-    {% if panel_pending_restaurants %}<span class="nav-badge">{{ panel_pending_restaurants }}</span>{% endif %}
-  </a>
-  <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
-    <span class="nav-icon">👥</span> Usuarios
-  </a>
-  <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
-    <span class="nav-icon">🛵</span> Repartidores
-  </a>
-  <a href="{% url 'gestion:home' %}" class="nav-link {% if nav == 'gestion' %}active{% endif %}">
-    <span class="nav-icon">⚙️</span> Gestión de datos
-  </a>
+<nav class="mt-2">
+  <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+    <li class="nav-item">
+      <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
+        <i class="nav-icon fas fa-tachometer-alt"></i>
+        <p>Resumen</p>
+      </a>
+    </li>
+
+    <li class="nav-header">OPERACIONES</li>
+    <li class="nav-item">
+      <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
+        <i class="nav-icon fas fa-shopping-bag"></i>
+        <p>Pedidos</p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'gestion:disputes' %}" class="nav-link {% if nav == 'disputes' %}active{% endif %}">
+        <i class="nav-icon fas fa-gavel"></i>
+        <p>
+          Disputas
+          {% if panel_pending_disputes %}
+          <span class="badge badge-danger right">{{ panel_pending_disputes }}</span>
+          {% endif %}
+        </p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'gestion:shipments' %}" class="nav-link {% if nav == 'shipments' %}active{% endif %}">
+        <i class="nav-icon fas fa-shipping-fast"></i>
+        <p>Envíos</p>
+      </a>
+    </li>
+
+    <li class="nav-header">CATÁLOGO</li>
+    <li class="nav-item">
+      <a href="{% url 'dashboard:restaurants' %}" class="nav-link {% if nav == 'restaurants' %}active{% endif %}">
+        <i class="nav-icon fas fa-utensils"></i>
+        <p>
+          Restaurantes
+          {% if panel_pending_restaurants %}
+          <span class="badge badge-warning right">{{ panel_pending_restaurants }}</span>
+          {% endif %}
+        </p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'gestion:products' %}" class="nav-link {% if nav == 'products' %}active{% endif %}">
+        <i class="nav-icon fas fa-hamburger"></i>
+        <p>Productos</p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'gestion:local-services' %}" class="nav-link {% if nav == 'local-services' %}active{% endif %}">
+        <i class="nav-icon fas fa-store"></i>
+        <p>Servicios locales</p>
+      </a>
+    </li>
+
+    <li class="nav-header">PERSONAS</li>
+    <li class="nav-item">
+      <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
+        <i class="nav-icon fas fa-users"></i>
+        <p>Usuarios</p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
+        <i class="nav-icon fas fa-motorcycle"></i>
+        <p>Repartidores</p>
+      </a>
+    </li>
+
+    <li class="nav-header">MARKETING</li>
+    <li class="nav-item">
+      <a href="{% url 'gestion:coupons' %}" class="nav-link {% if nav == 'coupons' %}active{% endif %}">
+        <i class="nav-icon fas fa-ticket-alt"></i>
+        <p>Cupones</p>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="{% url 'gestion:reviews' %}" class="nav-link {% if nav == 'reviews' %}active{% endif %}">
+        <i class="nav-icon fas fa-star"></i>
+        <p>Reseñas</p>
+      </a>
+    </li>
+
+    <li class="nav-header">SISTEMA</li>
+    <li class="nav-item">
+      <a href="{% url 'admin:index' %}" class="nav-link">
+        <i class="nav-icon fas fa-cogs"></i>
+        <p>Consola técnica</p>
+      </a>
+    </li>
+  </ul>
 </nav>

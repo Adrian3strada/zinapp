@@ -1,61 +1,62 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
-<p class="gestion-back"><a href="{% url 'gestion:home' %}">← Gestión de datos</a></p>
-
-<div class="gestion-toolbar">
-  <h2 class="gestion-section-title">{{ page_title }}</h2>
-</div>
-
 {% if avg_restaurant %}
-<div class="stats-grid" style="margin-bottom:20px;">
-  <div class="stat-card">
-    <div class="stat-label">Promedio restaurante</div>
-    <div class="stat-value">{{ avg_restaurant|floatformat:1 }} ★</div>
+<div class="row mb-3">
+  <div class="col-md-4">
+    <div class="info-box bg-light">
+      <span class="info-box-icon bg-warning"><i class="fas fa-utensils"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Promedio restaurante</span>
+        <span class="info-box-number">{{ avg_restaurant|floatformat:1 }} ★</span>
+      </div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label">Promedio repartidor</div>
-    <div class="stat-value">{{ avg_driver|floatformat:1|default:"—" }} ★</div>
+  <div class="col-md-4">
+    <div class="info-box bg-light">
+      <span class="info-box-icon bg-info"><i class="fas fa-motorcycle"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Promedio repartidor</span>
+        <span class="info-box-number">{{ avg_driver|floatformat:1|default:"—" }} ★</span>
+      </div>
+    </div>
   </div>
 </div>
 {% endif %}
 
-<div class="panel-card">
-  <div class="panel-card-body">
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Pedido</th>
-            <th>Cliente</th>
-            <th>Restaurante</th>
-            <th>Local</th>
-            <th>Repartidor</th>
-            <th>Comentario</th>
-            <th>Fecha</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in reviews %}
-          <tr>
-            <td><a href="{% url 'dashboard:order-detail' r.order_id %}">#{{ r.order_id }}</a></td>
-            <td>{{ r.customer.username }}</td>
-            <td>{{ r.restaurant.name }}</td>
-            <td>{{ r.restaurant_rating }} ★</td>
-            <td>{% if r.driver_rating %}{{ r.driver_rating }} ★{% else %}—{% endif %}</td>
-            <td class="text-muted">{{ r.comment|truncatechars:60|default:"—" }}</td>
-            <td class="text-muted">{{ r.created_at|date:"d/m/Y" }}</td>
-            <td><a href="{% url 'gestion:review-delete' r.pk %}" class="text-danger">Eliminar</a></td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="8" class="text-muted" style="text-align:center;padding:40px;">No hay reseñas.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+<div class="card card-outline card-primary">
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-hover table-striped mb-0">
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Cliente</th>
+          <th>Restaurante</th>
+          <th>Local</th>
+          <th>Repartidor</th>
+          <th>Comentario</th>
+          <th>Fecha</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reviews %}
+        <tr>
+          <td><a href="{% url 'dashboard:order-detail' r.order_id %}">#{{ r.order_id }}</a></td>
+          <td>{{ r.customer.username }}</td>
+          <td>{{ r.restaurant.name }}</td>
+          <td>{{ r.restaurant_rating }} ★</td>
+          <td>{% if r.driver_rating %}{{ r.driver_rating }} ★{% else %}—{% endif %}</td>
+          <td class="text-muted">{{ r.comment|truncatechars:60|default:"—" }}</td>
+          <td class="text-muted">{{ r.created_at|date:"d/m/Y" }}</td>
+          <td class="text-right"><a href="{% url 'gestion:review-delete' r.pk %}" class="text-danger">Eliminar</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-muted text-center py-4">No hay reseñas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+  {% include "dashboard/includes/pagination.html" %}
 </div>
-
-{% include "dashboard/gestion/includes/pagination.html" %}
 {% endblock %}

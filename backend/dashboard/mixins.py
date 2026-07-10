@@ -7,7 +7,18 @@ from django.urls import reverse_lazy
 from .access import can_access_panel
 
 
-class PanelAccessMixin(LoginRequiredMixin, UserPassesTestMixin):
+class PanelContextMixin:
+    """Adds pagination query string preservation for list views."""
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        query = self.request.GET.copy()
+        query.pop('page', None)
+        ctx['pagination_query'] = query.urlencode()
+        return ctx
+
+
+class PanelAccessMixin(PanelContextMixin, LoginRequiredMixin, UserPassesTestMixin):
     login_url = reverse_lazy('dashboard:login')
 
     def test_func(self):

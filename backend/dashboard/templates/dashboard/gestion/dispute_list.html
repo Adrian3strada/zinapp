@@ -1,58 +1,50 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
-<p class="gestion-back"><a href="{% url 'gestion:home' %}">← Gestión de datos</a></p>
-
-<div class="gestion-toolbar">
-  <h2 class="gestion-section-title">{{ page_title }}</h2>
-  {% if pending_count %}
-  <span class="badge badge-role">{{ pending_count }} pendiente{{ pending_count|pluralize:"s" }}</span>
-  {% endif %}
-</div>
-
-<div class="filters">
-  <a href="{% url 'gestion:disputes' %}" class="filter-chip {% if not status_filter %}active{% endif %}">Todos</a>
-  {% for value, label in status_choices %}
-  <a href="?status={{ value }}" class="filter-chip {% if status_filter == value %}active{% endif %}">{{ label }}</a>
-  {% endfor %}
-</div>
-
-<div class="panel-card">
-  <div class="panel-card-body">
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Pedido</th>
-            <th>Cliente</th>
-            <th>Restaurante</th>
-            <th>Monto</th>
-            <th>Estado</th>
-            <th>Fecha</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for d in disputes %}
-          <tr>
-            <td><strong>#{{ d.id }}</strong></td>
-            <td><a href="{% url 'dashboard:order-detail' d.order_id %}">#{{ d.order_id }}</a></td>
-            <td>{{ d.customer.username }}</td>
-            <td>{{ d.order.restaurant.name }}</td>
-            <td class="mono">${{ d.requested_amount|floatformat:2 }}</td>
-            <td><span class="badge badge-role">{{ d.get_status_display }}</span></td>
-            <td class="text-muted">{{ d.created_at|date:"d/m/Y H:i" }}</td>
-            <td><a href="{% url 'gestion:dispute-detail' d.pk %}">Revisar →</a></td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="8" class="text-muted" style="text-align:center;padding:40px;">No hay disputas.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="card card-outline card-primary">
+  <div class="card-header">
+    <div class="filters mb-0">
+      <a href="{% url 'gestion:disputes' %}" class="filter-chip {% if not status_filter %}active{% endif %}">Todos</a>
+      {% for value, label in status_choices %}
+      <a href="?status={{ value }}" class="filter-chip {% if status_filter == value %}active{% endif %}">{{ label }}</a>
+      {% endfor %}
+      {% if pending_count %}
+      <span class="badge badge-warning ml-2">{{ pending_count }} pendiente{{ pending_count|pluralize:"s" }}</span>
+      {% endif %}
     </div>
   </div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-hover table-striped mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pedido</th>
+          <th>Cliente</th>
+          <th>Restaurante</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in disputes %}
+        <tr>
+          <td><strong>#{{ d.id }}</strong></td>
+          <td><a href="{% url 'dashboard:order-detail' d.order_id %}">#{{ d.order_id }}</a></td>
+          <td>{{ d.customer.username }}</td>
+          <td>{{ d.order.restaurant.name }}</td>
+          <td class="mono">${{ d.requested_amount|floatformat:2 }}</td>
+          <td><span class="badge badge-role">{{ d.get_status_display }}</span></td>
+          <td class="text-muted">{{ d.created_at|date:"d/m/Y H:i" }}</td>
+          <td class="text-right"><a href="{% url 'gestion:dispute-detail' d.pk %}">Revisar</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="text-muted text-center py-4">No hay disputas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "dashboard/includes/pagination.html" %}
 </div>
-
-{% include "dashboard/gestion/includes/pagination.html" %}
 {% endblock %}
