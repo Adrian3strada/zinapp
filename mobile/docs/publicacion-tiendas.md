@@ -97,11 +97,47 @@ delivery,comida,zinapécuaro,pedidos,restaurantes,repartidor,michoacán
 
 ---
 
-## Acceso para revisores (si la app requiere login)
+## Acceso para revisores (App Store / Play)
 
-En Play Console → App content → App access, indica:
+Cuentas dedicadas en producción (no bloqueadas por `DEMO_ACCOUNTS_ENABLED`).  
+Crear/actualizar: `python manage.py seed_app_review` en el backend.
 
-> Cuenta de prueba: crear usuario desde la app con registro, o contactar a adrianestradachavez123@gmail.com para credenciales de demo.
+| Rol | Usuario | Contraseña |
+|-----|---------|------------|
+| Cliente | `apple_review_cliente` | `ReviewZinApp2026!` |
+| Restaurante | `apple_review_rest` | `ReviewZinApp2026!` |
+| Repartidor | `apple_review_driver` | `ReviewZinApp2026!` |
+
+### App Store Connect → App Review Information
+
+**Username:** `apple_review_cliente`  
+**Password:** `ReviewZinApp2026!`
+
+**Notes (pegar en inglés):**
+
+```
+ZinApp is a local delivery app for Zinapécuaro, Mexico. Login is required.
+
+Demo accounts (password for all: ReviewZinApp2026!):
+
+1) Customer: apple_review_cliente
+   — Browse restaurants (including "ZinApp Review Kitchen"), place an order, track delivery.
+
+2) Restaurant: apple_review_rest
+   — Accept and manage incoming orders. Restaurant is pre-activated.
+
+3) Driver: apple_review_driver
+   — View available deliveries and complete them.
+
+How to switch roles: log out from Profile, then sign in with another account.
+Location: allow location if prompted. Customer profile already has a Zinapécuaro address.
+Support: adrianestradachavez123@gmail.com
+```
+
+### Google Play → App access
+
+> Username: apple_review_cliente / Password: ReviewZinApp2026!  
+> Also: apple_review_rest and apple_review_driver (same password) for restaurant and driver modes.
 
 ---
 
