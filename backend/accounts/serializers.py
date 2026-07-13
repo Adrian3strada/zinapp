@@ -194,6 +194,24 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class DeleteAccountSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True)
+    confirmation = serializers.CharField(write_only=True)
+
+    def validate_confirmation(self, value):
+        if (value or '').strip().upper() != 'ELIMINAR':
+            raise serializers.ValidationError(
+                'Escribe ELIMINAR para confirmar que quieres borrar tu cuenta.',
+            )
+        return value
+
+    def validate_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Contraseña incorrecta.')
+        return value
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password])

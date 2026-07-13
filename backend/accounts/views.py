@@ -19,11 +19,13 @@ from config.throttling import (
     ResetPasswordRateThrottle,
     TokenRefreshRateThrottle,
 )
+from .account_deletion import delete_user_account
 from .models import DeliveryProfile, PasswordResetToken, User
 from .permissions import IsAdmin, IsDriver
 from .serializers import (
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
+    DeleteAccountSerializer,
     DeliveryProfileSerializer,
     ForgotPasswordSerializer,
     PushTokenSerializer,
@@ -68,6 +70,24 @@ class ChangePasswordView(APIView):
         request.user.set_password(serializer.validated_data['new_password'])
         request.user.save(update_fields=['password'])
         return Response({'detail': 'Contraseña actualizada.'})
+
+
+class DeleteAccountView(APIView):
+    """App Store 5.1.1(v): in-app account deletion."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = DeleteAccountSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        try:
+            delete_user_account(request.user)
+        except PermissionError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {'detail': 'Tu cuenta y datos personales fueron eliminados.'},
+            status=status.HTTP_200_OK,
+        )
 
 
 class ForgotPasswordView(APIView):

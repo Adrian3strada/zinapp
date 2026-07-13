@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ChangePasswordView,
+    DeleteAccountView,
     DeliveryProfileViewSet,
     ForgotPasswordView,
     LoginView,
@@ -24,6 +25,7 @@ urlpatterns = [
     path('token/refresh/', ThrottledTokenRefreshView.as_view(), name='token-refresh'),
     path('me/', MeView.as_view(), name='me'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('push-token/', PushTokenView.as_view(), name='push-token'),

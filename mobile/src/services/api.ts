@@ -199,6 +199,8 @@ export const authApi = {
   updateMeForm: (data: FormData) => api.patch<User>('/auth/me/', data),
   changePassword: (old_password: string, new_password: string) =>
     api.post('/auth/change-password/', { old_password, new_password }),
+  deleteAccount: (password: string, confirmation = 'ELIMINAR') =>
+    api.post<{ detail: string }>('/auth/delete-account/', { password, confirmation }),
   forgotPassword: (username: string) =>
     api.post<{ detail: string; reset_token?: string; hint?: string }>('/auth/forgot-password/', { username }),
   resetPassword: (token: string, new_password: string) =>

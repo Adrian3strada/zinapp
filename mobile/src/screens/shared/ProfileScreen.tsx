@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import AddressPinPicker from '../../components/AddressPinPicker';
 import Button from '../../components/Button';
@@ -82,6 +82,8 @@ export default function ProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [driverProfile, setDriverProfile] = useState<DeliveryProfile | null>(null);
@@ -328,6 +330,46 @@ export default function ProfileScreen() {
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err));
     }
+  };
+
+  const runAccountDeletion = async () => {
+    if (!deletePassword.trim()) {
+      appAlert('Contraseña requerida', 'Ingresa tu contraseña para eliminar la cuenta.');
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      await authApi.deleteAccount(deletePassword.trim());
+      setDeletePassword('');
+      appAlert(
+        'Cuenta eliminada',
+        'Tu cuenta y datos personales fueron eliminados. Ya no podrás iniciar sesión.',
+        [{ text: 'OK', onPress: () => { void logout(); } }],
+      );
+      void logout();
+    } catch (err) {
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar la cuenta'));
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    appConfirm(
+      '¿Eliminar tu cuenta?',
+      'Esta acción es permanente. Se borrarán tu perfil y datos personales. No podrás recuperar el acceso.',
+      () => {
+        appConfirm(
+          'Confirmación final',
+          'Se eliminará tu cuenta de ZinApp de forma definitiva.',
+          () => {
+            void runAccountDeletion();
+          },
+          'Sí, eliminar',
+        );
+      },
+      'Continuar',
+    );
   };
 
   if (!user) return null;
@@ -626,6 +668,30 @@ export default function ProfileScreen() {
             <Button title="Actualizar contraseña" variant="secondary" onPress={handleChangePassword} />
           </View>
 
+          <View style={[styles.card, styles.dangerCard]}>
+            <Text style={styles.section}>Eliminar cuenta</Text>
+            <Text style={styles.hint}>
+              Borra de forma permanente tu cuenta y datos personales de ZinApp. Esta acción no se puede deshacer.
+            </Text>
+            <FormField
+              label="Contraseña"
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              icon="lock-closed-outline"
+              embedded
+              secureTextEntry
+              autoCorrect={false}
+              required
+              hint="Confirma tu identidad antes de eliminar la cuenta."
+            />
+            <Button
+              title="Eliminar mi cuenta"
+              variant="danger"
+              onPress={handleDeleteAccount}
+              loading={deletingAccount}
+            />
+          </View>
+
           <Button title="Cerrar sesión" variant="danger" onPress={logout} style={styles.logout} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -774,5 +840,9 @@ const styles = StyleSheet.create({
   warnText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   hoursRow: { flexDirection: 'row', gap: 10 },
   hourField: { flex: 1 },
+  dangerCard: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
   logout: { marginHorizontal: spacing.screen, marginTop: spacing.sm },
 });

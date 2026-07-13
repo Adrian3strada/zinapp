@@ -159,3 +159,65 @@ class UserEditPasswordTests(TestCase):
             format='json',
         )
         self.assertEqual(login.status_code, 200, login.data)
+
+
+class DeleteAccountApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='delete_me',
+            password='clave12345',
+            role=UserRole.CUSTOMER,
+            email='deleteme@test.com',
+            phone='4431000099',
+            first_name='Bye',
+            last_name='User',
+            address='Calle Test 1',
+        )
+
+    def test_delete_account_anonymizes_and_blocks_login(self):
+        login = self.client.post(
+            '/api/auth/login/',
+            {'username': 'delete_me', 'password': 'clave12345'},
+            format='json',
+        )
+        self.assertEqual(login.status_code, 200, login.data)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+
+        response = self.client.post(
+            '/api/auth/delete-account/',
+            {'password': 'clave12345', 'confirmation': 'ELIMINAR'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertTrue(self.user.username.startswith('deleted_'))
+        self.assertEqual(self.user.email, '')
+        self.assertEqual(self.user.phone, '')
+        self.assertFalse(self.user.has_usable_password())
+
+        blocked = APIClient().post(
+            '/api/auth/login/',
+            {'username': 'delete_me', 'password': 'clave12345'},
+            format='json',
+        )
+        self.assertEqual(blocked.status_code, 401)
+
+    def test_delete_account_requires_password(self):
+        login = self.client.post(
+            '/api/auth/login/',
+            {'username': 'delete_me', 'password': 'clave12345'},
+            format='json',
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        response = self.client.post(
+            '/api/auth/delete-account/',
+            {'password': 'wrong', 'confirmation': 'ELIMINAR'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+        self.assertEqual(self.user.username, 'delete_me')

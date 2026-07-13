@@ -71,13 +71,15 @@ delivery,comida,zinapécuaro,pedidos,restaurantes,repartidor,michoacán
 
 ## App Privacy / Data safety — qué declarar
 
-| Dato | Uso | ¿Se comparte? |
-|------|-----|----------------|
-| Nombre, email, teléfono | Cuenta y pedidos | Solo restaurante/repartidor del pedido |
-| Ubicación precisa | Delivery y mapas | Sí, para completar el servicio |
-| Fotos | Comprobantes opcionales | No vendidas; uso del servicio |
-| Identificadores (cuenta) | Autenticación | No vendidos |
-| Historial de pedidos | Operación del servicio | No vendido |
+| Dato | Uso | ¿Se comparte? | ¿Tracking (Apple)? |
+|------|-----|----------------|--------------------|
+| Nombre, email, teléfono | Cuenta y pedidos | Solo restaurante/repartidor del pedido | **No** |
+| Ubicación precisa | Delivery y mapas | Sí, para completar el servicio | **No** |
+| Fotos | Comprobantes opcionales | No vendidas; uso del servicio | **No** |
+| Identificadores (cuenta) | Autenticación | No vendidos | **No** |
+| Historial de pedidos | Operación del servicio | No vendido | **No** |
+
+**Importante App Store (Guideline 5.1.2):** ZinApp **no hace tracking** publicitario ni comparte datos con data brokers. En App Store Connect → Privacidad de la app, la pregunta *«¿Usas datos para hacer seguimiento?»* debe ser **No**. No marques “Used to Track You”.
 
 **Permisos del dispositivo:** ubicación, cámara/fotos, notificaciones.
 
@@ -131,7 +133,17 @@ Demo accounts (password for all: ReviewZinApp2026!):
 
 How to switch roles: log out from Profile, then sign in with another account.
 Location: allow location if prompted. Customer profile already has a Zinapécuaro address.
+
+Account deletion (5.1.1): Profile → scroll to "Eliminar cuenta" → enter password → confirm.
+Tracking (5.1.2): ZinApp does not track users for advertising. App Privacy should answer No to tracking; no ATT dialog is shown because we do not track.
+
 Support: adrianestradachavez123@gmail.com
+```
+
+### Reply si Apple pregunta por tracking
+
+```
+ZinApp does not track users. We do not link data with third-party data for advertising or share data with data brokers. App Privacy Information has been / will be updated so that tracking is marked as No. Location and contact data are used only to provide the delivery service.
 ```
 
 ### Google Play → App access
