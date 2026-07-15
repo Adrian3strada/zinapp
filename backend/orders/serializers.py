@@ -378,6 +378,18 @@ class OrderCreateSerializer(serializers.Serializer):
                 coupon.save(update_fields=['times_used'])
                 order.recalculate_totals()
 
+            order_id = order.pk
+
+        def _notify_new_order():
+            from accounts.notifications import notify_order_status
+
+            fresh = Order.objects.select_related(
+                'customer', 'restaurant', 'restaurant__owner', 'driver',
+            ).filter(pk=order_id).first()
+            if fresh:
+                notify_order_status(fresh)
+
+        transaction.on_commit(_notify_new_order)
         return order
 
 

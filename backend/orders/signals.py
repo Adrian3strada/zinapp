@@ -68,7 +68,9 @@ def order_status_changed(sender, instance, created, **kwargs):
         and instance.payment_status == PaymentStatus.PAID
     ):
         notify_payment_confirmed(instance)
-    if created or previous != instance.status:
+    # Skip notify on create: OrderCreateSerializer notifies after items + totals exist.
+    # Otherwise push shows $0.00 because default total fires before recalculate_totals().
+    if not created and previous != instance.status:
         notify_order_status(instance)
 
 
