@@ -4,6 +4,9 @@
 <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-default btn-sm">
   <i class="fas fa-edit mr-1"></i> Editar datos
 </a>
+<a href="{% url 'gestion:restaurant-delete' restaurant.pk %}" class="btn btn-outline-danger btn-sm">
+  <i class="fas fa-trash mr-1"></i> Eliminar
+</a>
 {% endblock %}
 
 {% block content %}

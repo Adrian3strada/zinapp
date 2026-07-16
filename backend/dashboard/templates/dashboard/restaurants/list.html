@@ -56,6 +56,9 @@
               <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar">
                 <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
               </a>
+              <a href="{% url 'gestion:restaurant-delete' restaurant.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
+                <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+              </a>
             </div>
           </td>
         </tr>

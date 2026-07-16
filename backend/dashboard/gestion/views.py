@@ -687,6 +687,51 @@ class RestaurantUpdateView(PanelAccessMixin, UpdateView):
         return super().form_valid(form)
 
 
+class RestaurantDeleteView(PanelAccessMixin, DeleteView):
+    model = Restaurant
+    template_name = 'dashboard/gestion/restaurant_confirm_delete.html'
+    success_url = reverse_lazy('dashboard:restaurants')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        orders_count = self.object.orders.count()
+        ctx.update(page_context(
+            'Eliminar restaurante',
+            'restaurants',
+            breadcrumbs=[
+                {'label': 'Restaurantes', 'url': reverse('dashboard:restaurants')},
+                {
+                    'label': self.object.name,
+                    'url': reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk}),
+                },
+                {'label': 'Eliminar', 'url': None},
+            ],
+        ))
+        ctx.update(
+            object_label=self.object.name,
+            orders_count=orders_count,
+            can_delete=orders_count == 0,
+            cancel_url=reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk}),
+        )
+        return ctx
+
+    def form_valid(self, form):
+        restaurant = self.object
+        orders_count = restaurant.orders.count()
+        if orders_count:
+            messages.error(
+                self.request,
+                f'No se puede eliminar «{restaurant.name}» porque tiene {orders_count} pedido(s). '
+                'Desactiva el local para ocultarlo de la app sin perder el historial.',
+            )
+            return redirect('dashboard:restaurant-detail', pk=restaurant.pk)
+
+        name = restaurant.name
+        response = super().form_valid(form)
+        messages.success(self.request, f'Restaurante «{name}» eliminado.')
+        return response
+
+
 class LocalServiceListView(PanelAccessMixin, ListView):
     model = LocalService
     template_name = 'dashboard/gestion/local_service_list.html'

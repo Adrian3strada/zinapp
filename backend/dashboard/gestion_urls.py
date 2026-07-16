@@ -27,6 +27,11 @@ urlpatterns = [
     ),
     path('restaurantes/nuevo/', gestion_views.RestaurantCreateView.as_view(), name='restaurant-create'),
     path('restaurantes/<int:pk>/', gestion_views.RestaurantUpdateView.as_view(), name='restaurant-edit'),
+    path(
+        'restaurantes/<int:pk>/eliminar/',
+        gestion_views.RestaurantDeleteView.as_view(),
+        name='restaurant-delete',
+    ),
     path('servicios/', gestion_views.LocalServiceListView.as_view(), name='local-services'),
     path('servicios/nuevo/', gestion_views.LocalServiceCreateView.as_view(), name='local-service-create'),
     path('servicios/<int:pk>/', gestion_views.LocalServiceUpdateView.as_view(), name='local-service-edit'),

@@ -1,0 +1,37 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card card-outline card-danger">
+      <div class="card-header">
+        <h3 class="card-title">Eliminar restaurante</h3>
+      </div>
+      <div class="card-body">
+        {% if can_delete %}
+          <p>¿Eliminar <strong>{{ object_label }}</strong>?</p>
+          <p class="text-muted">
+            Se eliminarán también sus productos, promociones y favoritos. Esta acción no se puede deshacer.
+          </p>
+          <form method="post" class="form-actions mt-3">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-trash mr-1"></i> Sí, eliminar restaurante
+            </button>
+            <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+          </form>
+        {% else %}
+          <div class="callout callout-warning">
+            <h5>No se puede eliminar este restaurante</h5>
+            <p class="mb-0">
+              Tiene {{ orders_count }} pedido{{ orders_count|pluralize }} en su historial.
+              Para conservar la información de clientes y pedidos, desactiva el local en lugar de eliminarlo.
+            </p>
+          </div>
+          <a href="{{ cancel_url }}" class="btn btn-default mt-2">Volver al restaurante</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

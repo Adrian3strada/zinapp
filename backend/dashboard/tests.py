@@ -122,3 +122,80 @@ class DisputePanelTests(TestCase):
         self.dispute.refresh_from_db()
         self.assertEqual(self.dispute.status, DisputeStatus.APPROVED)
         self.assertIsNotNone(self.dispute.resolved_at)
+
+
+class RestaurantCrudPanelTests(TestCase):
+    def setUp(self):
+        from restaurants.models import Restaurant
+
+        self.client = Client()
+        self.admin = User.objects.create_user(
+            username='restaurant_admin',
+            password='adminpass123',
+            role=UserRole.ADMIN,
+            is_staff=True,
+        )
+        self.owner = User.objects.create_user(
+            username='restaurant_owner',
+            password='ownerpass123',
+            role=UserRole.RESTAURANT,
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Local sin pedidos',
+            address='Calle Principal 1',
+        )
+        self.client.login(username='restaurant_admin', password='adminpass123')
+
+    def test_admin_can_open_restaurant_crud_views(self):
+        list_response = self.client.get('/panel/restaurantes/')
+        create_response = self.client.get('/panel/gestion/restaurantes/nuevo/')
+        edit_response = self.client.get(f'/panel/gestion/restaurantes/{self.restaurant.pk}/')
+        delete_response = self.client.get(
+            f'/panel/gestion/restaurantes/{self.restaurant.pk}/eliminar/'
+        )
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, 'Nuevo restaurante')
+        self.assertEqual(create_response.status_code, 200)
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertContains(delete_response, 'Sí, eliminar restaurante')
+
+    def test_admin_can_delete_restaurant_without_orders(self):
+        response = self.client.post(
+            f'/panel/gestion/restaurantes/{self.restaurant.pk}/eliminar/'
+        )
+
+        self.assertRedirects(response, '/panel/restaurantes/')
+        self.assertFalse(
+            self.restaurant.__class__.objects.filter(pk=self.restaurant.pk).exists()
+        )
+
+    def test_admin_cannot_delete_restaurant_with_orders(self):
+        from decimal import Decimal
+
+        customer = User.objects.create_user(
+            username='restaurant_customer',
+            password='customerpass123',
+            role=UserRole.CUSTOMER,
+        )
+        Order.objects.create(
+            customer=customer,
+            restaurant=self.restaurant,
+            status=OrderStatus.PENDING,
+            delivery_address='Calle del cliente 2',
+            subtotal=Decimal('100.00'),
+            delivery_fee=Decimal('20.00'),
+            total=Decimal('120.00'),
+        )
+
+        response = self.client.post(
+            f'/panel/gestion/restaurantes/{self.restaurant.pk}/eliminar/',
+            follow=True,
+        )
+
+        self.assertTrue(
+            self.restaurant.__class__.objects.filter(pk=self.restaurant.pk).exists()
+        )
+        self.assertContains(response, 'No se puede eliminar')
