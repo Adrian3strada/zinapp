@@ -199,3 +199,93 @@ class RestaurantCrudPanelTests(TestCase):
             self.restaurant.__class__.objects.filter(pk=self.restaurant.pk).exists()
         )
         self.assertContains(response, 'No se puede eliminar')
+
+
+class UserAndDriverCrudPanelTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = User.objects.create_user(
+            username='user_crud_admin',
+            password='adminpass123',
+            role=UserRole.ADMIN,
+            is_staff=True,
+        )
+        self.client.login(username='user_crud_admin', password='adminpass123')
+
+    def test_admin_can_create_driver_from_driver_list(self):
+        from accounts.models import DeliveryProfile
+
+        response = self.client.post(
+            '/panel/gestion/usuarios/nuevo/?role=driver',
+            {
+                'username': 'nuevo_repartidor',
+                'email': '',
+                'first_name': 'Nuevo',
+                'last_name': 'Repartidor',
+                'role': UserRole.DRIVER,
+                'phone': '4430000000',
+                'password1': 'DriverPass123!',
+                'password2': 'DriverPass123!',
+                'vehicle_type': DeliveryProfile.VehicleType.MOTORCYCLE,
+                'license_plate': 'ABC123',
+            },
+        )
+
+        driver = User.objects.get(username='nuevo_repartidor')
+        self.assertRedirects(response, '/panel/repartidores/')
+        self.assertTrue(DeliveryProfile.objects.filter(user=driver).exists())
+
+    def test_admin_can_delete_user_without_operational_history(self):
+        user = User.objects.create_user(
+            username='user_without_history',
+            password='userpass123',
+            role=UserRole.CUSTOMER,
+        )
+
+        response = self.client.post(f'/panel/gestion/usuarios/{user.pk}/eliminar/')
+
+        self.assertRedirects(response, '/panel/usuarios/')
+        self.assertFalse(User.objects.filter(pk=user.pk).exists())
+
+    def test_admin_cannot_delete_driver_with_delivery_history(self):
+        from decimal import Decimal
+        from restaurants.models import Restaurant
+
+        owner = User.objects.create_user(
+            username='driver_history_owner',
+            password='ownerpass123',
+            role=UserRole.RESTAURANT,
+        )
+        customer = User.objects.create_user(
+            username='driver_history_customer',
+            password='customerpass123',
+            role=UserRole.CUSTOMER,
+        )
+        driver = User.objects.create_user(
+            username='driver_with_history',
+            password='driverpass123',
+            role=UserRole.DRIVER,
+        )
+        restaurant = Restaurant.objects.create(
+            owner=owner,
+            name='Local del repartidor',
+            address='Calle 3',
+        )
+        Order.objects.create(
+            customer=customer,
+            restaurant=restaurant,
+            driver=driver,
+            status=OrderStatus.PENDING,
+            delivery_address='Calle 4',
+            subtotal=Decimal('100.00'),
+            delivery_fee=Decimal('20.00'),
+            total=Decimal('120.00'),
+        )
+
+        response = self.client.post(
+            f'/panel/gestion/usuarios/{driver.pk}/eliminar/',
+            follow=True,
+        )
+
+        self.assertTrue(User.objects.filter(pk=driver.pk).exists())
+        self.assertContains(response, 'No se puede eliminar')

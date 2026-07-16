@@ -39,6 +39,7 @@ urlpatterns = [
     path('resenas/<int:pk>/eliminar/', gestion_views.ReviewDeleteView.as_view(), name='review-delete'),
     path('usuarios/nuevo/', gestion_views.UserCreateView.as_view(), name='user-create'),
     path('usuarios/<int:pk>/', gestion_views.UserEditView.as_view(), name='user-edit'),
+    path('usuarios/<int:pk>/eliminar/', gestion_views.UserDeleteView.as_view(), name='user-delete'),
     path('usuarios/<int:pk>/desactivar/', gestion_views.UserDeactivateView.as_view(), name='user-deactivate'),
     path('usuarios/<int:pk>/activar/', gestion_views.UserActivateView.as_view(), name='user-activate'),
     path('repartidores/<int:pk>/', gestion_views.DriverEditView.as_view(), name='driver-edit'),

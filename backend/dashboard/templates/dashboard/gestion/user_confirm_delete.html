@@ -1,0 +1,43 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card card-outline card-danger">
+      <div class="card-header">
+        <h3 class="card-title">Eliminar usuario</h3>
+      </div>
+      <div class="card-body">
+        {% if can_delete %}
+          <p>¿Eliminar la cuenta de <strong>{{ object_label }}</strong>?</p>
+          <p class="text-muted">
+            También se eliminará su perfil de repartidor si existe. Esta acción no se puede deshacer.
+          </p>
+          <form method="post" class="form-actions mt-3">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-trash mr-1"></i> Sí, eliminar usuario
+            </button>
+            <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+          </form>
+        {% else %}
+          <div class="callout callout-warning">
+            <h5>No se puede eliminar esta cuenta</h5>
+            {% if is_current_user %}
+              <p class="mb-0">No puedes eliminar la cuenta con la que iniciaste sesión.</p>
+            {% elif is_protected %}
+              <p class="mb-0">No se puede eliminar una cuenta superadministradora.</p>
+            {% else %}
+              <p class="mb-0">
+                Tiene historial asociado: {{ blockers|join:", " }}.
+                Desactívala para impedir el acceso sin perder información operativa.
+              </p>
+            {% endif %}
+          </div>
+          <a href="{{ cancel_url }}" class="btn btn-default mt-2">Volver al usuario</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

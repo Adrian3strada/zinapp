@@ -470,6 +470,19 @@ class UserCreateView(PanelAccessMixin, CreateView):
     template_name = 'dashboard/gestion/user_form.html'
     success_url = reverse_lazy('dashboard:users')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        role = self.request.GET.get('role', '').strip()
+        valid_roles = {value for value, _label in UserRole.choices}
+        if role in valid_roles:
+            initial['role'] = role
+        return initial
+
+    def get_success_url(self):
+        if self.object and self.object.role == UserRole.DRIVER:
+            return reverse('dashboard:drivers')
+        return super().get_success_url()
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(page_context(
@@ -557,6 +570,66 @@ class UserEditView(PanelAccessMixin, UpdateView):
                 )
         else:
             messages.success(self.request, 'Usuario actualizado.')
+        return response
+
+
+class UserDeleteView(PanelAccessMixin, DeleteView):
+    model = User
+    template_name = 'dashboard/gestion/user_confirm_delete.html'
+    success_url = reverse_lazy('dashboard:users')
+
+    def _deletion_blockers(self, user):
+        blockers = []
+        checks = (
+            ('pedidos como cliente', user.orders),
+            ('envíos como cliente', user.shipments),
+            ('negocios registrados', user.restaurants),
+            ('entregas de pedidos', user.deliveries),
+            ('entregas de envíos', user.shipment_deliveries),
+        )
+        for label, manager in checks:
+            if manager.exists():
+                blockers.append(label)
+        return blockers
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        is_current_user = self.object.pk == self.request.user.pk
+        is_protected = self.object.is_superuser or is_current_user
+        blockers = self._deletion_blockers(self.object)
+        ctx.update(page_context(
+            'Eliminar usuario',
+            'users',
+            breadcrumbs=[
+                {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                {'label': self.object.username, 'url': reverse('gestion:user-edit', kwargs={'pk': self.object.pk})},
+                {'label': 'Eliminar', 'url': None},
+            ],
+        ))
+        ctx.update(
+            object_label=self.object.username,
+            cancel_url=reverse('gestion:user-edit', kwargs={'pk': self.object.pk}),
+            can_delete=not is_protected and not blockers,
+            blockers=blockers,
+            is_current_user=is_current_user,
+            is_protected=is_protected,
+        )
+        return ctx
+
+    def form_valid(self, form):
+        user = self.object
+        blockers = self._deletion_blockers(user)
+        if user.is_superuser or user.pk == self.request.user.pk or blockers:
+            messages.error(
+                self.request,
+                f'No se puede eliminar «{user.username}». '
+                'Desactiva la cuenta para conservar su historial.',
+            )
+            return redirect('gestion:user-edit', pk=user.pk)
+
+        username = user.username
+        response = super().form_valid(form)
+        messages.success(self.request, f'Usuario «{username}» eliminado.')
         return response
 
 

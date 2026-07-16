@@ -12,6 +12,11 @@
         {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar repartidor o placas…" %}
       </form>
     </div>
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'gestion:user-create' %}?role=driver" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus mr-1"></i> Nuevo repartidor
+      </a>
+    </div>
   </div>
   <div class="card-body p-0 table-responsive">
     <table class="table table-hover zin-table mb-0">
@@ -48,9 +53,17 @@
           </td>
           <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
           <td class="text-right">
-            <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
-              <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-            </a>
+            <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar perfil de repartidor">
+                <i class="fas fa-motorcycle"></i><span class="d-none d-lg-inline ml-1">Perfil</span>
+              </a>
+              <a href="{% url 'gestion:user-edit' profile.user.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar cuenta">
+                <i class="fas fa-user-edit"></i><span class="d-none d-lg-inline ml-1">Cuenta</span>
+              </a>
+              <a href="{% url 'gestion:user-delete' profile.user.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar cuenta">
+                <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}

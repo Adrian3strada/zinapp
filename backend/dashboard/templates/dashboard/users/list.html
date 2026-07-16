@@ -52,6 +52,11 @@
               <a href="{% url 'gestion:user-edit' u.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
                 <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
               </a>
+              {% if not u.is_superuser %}
+              <a href="{% url 'gestion:user-delete' u.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
+                <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+              </a>
+              {% endif %}
               {% if u.is_active and not u.is_superuser %}
               <form method="post" action="{% url 'gestion:user-deactivate' u.pk %}" class="d-inline">
                 {% csrf_token %}
