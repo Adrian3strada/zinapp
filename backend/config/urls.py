@@ -8,8 +8,9 @@ from dashboard.panel_admin import panel_admin
 
 from .cron_views import order_reminders_cron, restaurant_opens_cron, run_all_cron
 from .health import app_config, health
+from .landing_views import LandingView
 from .legal_views import PrivacyPolicyView
-from .webapp_views import webapp_redirect, webapp_serve
+from .webapp_views import webapp_serve
 
 # Rutas que NO deben caer en la SPA (API, panel, legal, media, legacy /app/)
 _WEBAPP_EXCLUDE = r'api/|admin/|panel/|privacidad/|media/|app/'
@@ -34,8 +35,8 @@ urlpatterns = [
     # App web en /app/ (ruta canónica)
     path('app/', webapp_serve, name='webapp-root'),
     re_path(r'^app/(?P<path>.*)$', webapp_serve, name='webapp'),
-    # Raíz → /app/ para que la URL siempre muestre /app/
-    path('', webapp_redirect, name='webapp-home'),
+    # Landing pública (links de tiendas + WhatsApp)
+    path('', LandingView.as_view(), name='landing'),
     re_path(rf'^(?P<path>(?!{_WEBAPP_EXCLUDE}).+)$', webapp_serve, name='webapp-catch'),
 ]
 

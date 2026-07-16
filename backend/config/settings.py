@@ -172,6 +172,8 @@ MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 SERVE_MEDIA = config('SERVE_MEDIA', default=True, cast=bool)
 
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
+APP_STORE_URL = config('APP_STORE_URL', default='').strip()
+PLAY_STORE_URL = config('PLAY_STORE_URL', default='').strip()
 DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

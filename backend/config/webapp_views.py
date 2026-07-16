@@ -3,7 +3,6 @@ from pathlib import Path
 
 from django.conf import settings
 from django.http import FileResponse, Http404
-from django.shortcuts import redirect
 from django.views.decorators.http import require_GET
 
 mimetypes.add_type('font/ttf', '.ttf')
@@ -31,11 +30,6 @@ def _open_file_response(path: Path, cache_control: str) -> FileResponse:
 def _is_static_asset(path: str) -> bool:
     lower = path.lower()
     return any(lower.endswith(ext) for ext in STATIC_ASSET_EXTENSIONS)
-
-
-@require_GET
-def webapp_redirect(_request):
-    return redirect('/app/', permanent=False)
 
 
 @require_GET
