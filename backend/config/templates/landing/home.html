@@ -4,200 +4,503 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ZinApp — comida a domicilio en Zinapécuaro, Michoacán. Pedidos locales con seguimiento en vivo.">
+  <meta name="description" content="ZinApp — comida a domicilio en Zinapécuaro, Michoacán. Pedidos locales, seguimiento en vivo y pago al recibir.">
   <meta name="theme-color" content="#1E5DB8">
+  <meta property="og:title" content="ZinApp — Pedidos en Zinapécuaro">
+  <meta property="og:description" content="Restaurantes locales, seguimiento en vivo y pago al recibir.">
+  <meta property="og:type" content="website">
   <title>ZinApp — Pedidos en Zinapécuaro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
   <style>
     :root {
       --blue: #1E5DB8;
-      --blue-deep: #1341A8;
-      --ink: #0c1b33;
-      --muted: rgba(255, 255, 255, 0.78);
-      --cream: #f4f7fc;
+      --blue-mid: #2568c4;
+      --blue-deep: #0f2f7a;
+      --ink: #0b1630;
+      --paper: #f3f6fb;
+      --muted: #5b6b86;
+      --line: rgba(15, 47, 122, 0.12);
+      --white: #ffffff;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
+    html { scroll-behavior: smooth; }
     body {
+      margin: 0;
       font-family: "Outfit", system-ui, sans-serif;
-      color: #fff;
-      background: var(--blue-deep);
+      color: var(--ink);
+      background: var(--paper);
       -webkit-font-smoothing: antialiased;
     }
-    .stage {
-      min-height: 100%;
+    a { color: inherit; }
+    .wrap {
+      width: min(1080px, calc(100% - 2rem));
+      margin: 0 auto;
+    }
+
+    /* —— Hero —— */
+    .hero {
+      position: relative;
+      min-height: 100svh;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      padding: 2rem 1.25rem 1.5rem;
-      background:
-        radial-gradient(ellipse 80% 55% at 10% 0%, rgba(255, 255, 255, 0.16), transparent 55%),
-        radial-gradient(ellipse 70% 50% at 95% 85%, rgba(10, 40, 100, 0.55), transparent 50%),
-        linear-gradient(160deg, #2a72d4 0%, var(--blue) 42%, var(--blue-deep) 100%);
-      position: relative;
+      color: var(--white);
       overflow: hidden;
+      background:
+        radial-gradient(ellipse 90% 70% at 15% -10%, rgba(255,255,255,0.22), transparent 55%),
+        radial-gradient(ellipse 60% 50% at 100% 90%, rgba(8, 28, 80, 0.55), transparent 55%),
+        linear-gradient(155deg, #3a7fdc 0%, var(--blue) 40%, var(--blue-deep) 100%);
     }
-    .stage::before {
+    .hero::before {
       content: "";
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: radial-gradient(ellipse 70% 70% at 50% 40%, #000 20%, transparent 75%);
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 75% 70% at 50% 35%, #000 10%, transparent 75%);
       pointer-events: none;
+      animation: gridDrift 18s linear infinite;
     }
-    .inner {
+    @keyframes gridDrift {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(-28px, -28px, 0); }
+    }
+    .nav {
       position: relative;
-      width: min(420px, 100%);
-      margin: 0 auto;
-      text-align: center;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.1rem 0 0;
     }
-    .logo {
-      width: min(200px, 62vw);
-      height: auto;
-      margin: 0 auto 1.35rem;
-      display: block;
-      filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.22));
-    }
-    .place {
-      font-size: 0.82rem;
-      font-weight: 700;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin: 0 0 0.85rem;
-    }
-    h1 {
-      font-family: "Source Serif 4", Georgia, serif;
-      font-size: clamp(1.85rem, 7vw, 2.35rem);
-      font-weight: 700;
-      line-height: 1.15;
-      margin: 0 0 0.75rem;
+    .nav-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      font-weight: 800;
       letter-spacing: -0.02em;
     }
+    .nav-brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: rgba(255,255,255,0.88);
+    }
+    .nav-links a:hover { color: #fff; }
+    .nav-cta {
+      padding: 0.55rem 0.9rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.28);
+    }
+
+    .hero-main {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: grid;
+      align-content: center;
+      gap: 1.25rem;
+      padding: 3.5rem 0 4rem;
+      max-width: 720px;
+    }
+    .hero-logo {
+      width: min(168px, 46vw);
+      height: auto;
+      filter: drop-shadow(0 18px 40px rgba(0,0,0,0.28));
+      animation: riseIn 0.8s ease both;
+    }
+    .place {
+      margin: 0;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.78);
+      animation: riseIn 0.8s ease 0.08s both;
+    }
+    .hero h1 {
+      margin: 0;
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(2.4rem, 7vw, 4.1rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      animation: riseIn 0.85s ease 0.14s both;
+    }
+    .hero h1 span {
+      display: block;
+      color: rgba(255,255,255,0.86);
+    }
     .lead {
-      margin: 0 0 1.75rem;
-      font-size: 1.05rem;
+      margin: 0;
+      max-width: 34rem;
+      font-size: clamp(1.05rem, 2.4vw, 1.25rem);
       line-height: 1.45;
-      color: var(--muted);
+      color: rgba(255,255,255,0.84);
       font-weight: 500;
+      animation: riseIn 0.85s ease 0.22s both;
     }
     .actions {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
       gap: 0.7rem;
+      margin-top: 0.4rem;
+      animation: riseIn 0.85s ease 0.3s both;
     }
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 0.55rem;
       min-height: 52px;
-      padding: 0.85rem 1.15rem;
+      padding: 0.85rem 1.2rem;
       border-radius: 14px;
       font: inherit;
       font-weight: 700;
       font-size: 1rem;
       text-decoration: none;
+      border: 1px solid transparent;
       transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
     }
     .btn:active { transform: scale(0.98); }
+    .btn svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; }
     .btn-primary {
       background: #fff;
       color: var(--ink);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.22);
     }
-    .btn-primary:hover { background: var(--cream); }
+    .btn-primary:hover { background: #eef3fb; }
     .btn-ghost {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255,255,255,0.08);
       color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-color: rgba(255,255,255,0.3);
     }
     .btn-ghost:hover {
-      background: rgba(255, 255, 255, 0.14);
-      border-color: rgba(255, 255, 255, 0.45);
+      background: rgba(255,255,255,0.16);
+      border-color: rgba(255,255,255,0.5);
     }
-    .btn svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
-    .secondary {
-      margin-top: 1.1rem;
-      font-size: 0.92rem;
+    .btn-solid {
+      background: var(--blue);
+      color: #fff;
     }
-    .secondary a {
+    .btn-solid:hover { background: var(--blue-mid); }
+    .btn-outline {
+      background: transparent;
+      color: var(--ink);
+      border-color: rgba(15, 47, 122, 0.22);
+    }
+    .btn-outline:hover { border-color: var(--blue); color: var(--blue); }
+
+    .hero-note {
+      margin: 0.35rem 0 0;
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.78);
+      animation: riseIn 0.85s ease 0.36s both;
+    }
+    .hero-note a {
       color: #fff;
       font-weight: 700;
-      text-decoration: underline;
       text-underline-offset: 3px;
     }
-    .foot {
-      position: relative;
-      margin-top: 2.5rem;
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.62);
+
+    /* —— Sections —— */
+    section { padding: 4.5rem 0; }
+    .section-kicker {
+      margin: 0 0 0.55rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--blue);
     }
-    .foot a {
-      color: rgba(255, 255, 255, 0.85);
+    .section-title {
+      margin: 0 0 0.7rem;
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .section-lead {
+      margin: 0 0 2rem;
+      max-width: 36rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+
+    .roles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      border-top: 1px solid var(--line);
+      padding-top: 1.75rem;
+    }
+    .role {
+      padding: 0.25rem 0 0;
+    }
+    .role h3 {
+      margin: 0 0 0.45rem;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+    .role p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.98rem;
+    }
+    .role-num {
+      display: block;
+      margin-bottom: 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--blue);
+    }
+
+    .steps-section {
+      background:
+        linear-gradient(180deg, #e8eef8 0%, var(--paper) 100%);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      counter-reset: step;
+    }
+    .step {
+      position: relative;
+      padding-top: 0.25rem;
+    }
+    .step::before {
+      counter-increment: step;
+      content: "0" counter(step);
+      display: block;
+      margin-bottom: 0.85rem;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: var(--blue);
+    }
+    .step h3 {
+      margin: 0 0 0.45rem;
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+    .step p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .cta-band {
+      position: relative;
+      overflow: hidden;
+      color: #fff;
+      background:
+        radial-gradient(ellipse 70% 80% at 0% 50%, rgba(255,255,255,0.14), transparent 55%),
+        linear-gradient(120deg, var(--blue-mid), var(--blue-deep));
+    }
+    .cta-band .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+    .cta-band h2 {
+      margin: 0 0 0.45rem;
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(1.7rem, 3.5vw, 2.3rem);
+      letter-spacing: -0.02em;
+    }
+    .cta-band p {
+      margin: 0;
+      color: rgba(255,255,255,0.82);
+      max-width: 28rem;
+      line-height: 1.45;
+    }
+    .cta-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+    }
+
+    footer {
+      padding: 2rem 0 2.4rem;
+      background: #0b1630;
+      color: rgba(255,255,255,0.72);
+      font-size: 0.9rem;
+    }
+    footer .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+    }
+    footer strong { color: #fff; font-weight: 800; }
+    footer a {
+      color: rgba(255,255,255,0.86);
       text-decoration: none;
     }
-    .foot a:hover { text-decoration: underline; }
-    .missing {
-      margin: 0 0 0.7rem;
-      padding: 0.75rem 0.9rem;
-      border-radius: 12px;
-      background: rgba(0, 0, 0, 0.22);
-      border: 1px dashed rgba(255, 255, 255, 0.35);
-      font-size: 0.88rem;
-      color: rgba(255, 255, 255, 0.9);
-      text-align: left;
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 820px) {
+      .roles, .steps { grid-template-columns: 1fr; gap: 1.6rem; }
+      .nav-links .hide-sm { display: none; }
+      .hero-main { padding: 2.6rem 0 3.2rem; }
     }
   </style>
 </head>
 <body>
-  <main class="stage">
-    <div class="inner">
-      <img class="logo" src="{% static 'dashboard/img/logo-on-blue.png' %}" width="200" height="200" alt="ZinApp">
-      <p class="place">Zinapécuaro, Michoacán</p>
-      <h1>Pide a domicilio en tu pueblo.</h1>
-      <p class="lead">Restaurantes locales, seguimiento en vivo y pago al recibir.</p>
+  <header class="hero">
+    <div class="wrap">
+      <nav class="nav" aria-label="Principal">
+        <a class="nav-brand" href="/">
+          <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="40" height="40" alt="">
+          ZinApp
+        </a>
+        <div class="nav-links">
+          <a class="hide-sm" href="#como">Cómo funciona</a>
+          <a class="hide-sm" href="#unete">Únete</a>
+          <a class="nav-cta" href="/app/">Abrir app</a>
+        </div>
+      </nav>
 
-      <div class="actions">
+      <div class="hero-main">
+        <img class="hero-logo" src="{% static 'dashboard/img/logo-on-blue.png' %}" width="168" height="168" alt="ZinApp">
+        <p class="place">Zinapécuaro, Michoacán</p>
+        <h1>ZinApp<span>Pide a domicilio en tu pueblo.</span></h1>
+        <p class="lead">Restaurantes locales, seguimiento en vivo y pago al recibir. Hecho aquí, para aquí.</p>
+
+        <div class="actions">
+          {% if app_store_url %}
+            <a class="btn btn-primary" href="{{ app_store_url }}" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.22-1.98 1.08-3.13-1.05.05-2.31.72-3.05 1.6-.66.78-1.24 2.03-1.08 3.18 1.14.09 2.31-.66 3.05-1.65z"/></svg>
+              Descargar en App Store
+            </a>
+          {% endif %}
+          {% if play_store_url %}
+            <a class="btn btn-ghost" href="{{ play_store_url }}" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.7c-.3.2-.5.6-.5 1.1v16.4c0 .5.2.9.5 1.1l.1.1 9.1-9.1v-.2L3.7 2.6l-.1.1zm11.3 6.5L12.1 12l2.8 2.8 3.5-2c.6-.3.6-1.2 0-1.6l-3.5-2zm-1.5 3.6-9.4 9.4c.2 0 .4 0 .6-.1l10.6-6.1-1.8-3.2zm0-1.6 1.8-3.2L5.6 2.1c-.2-.1-.4-.1-.6-.1l9.4 9.2z"/></svg>
+              Google Play
+            </a>
+          {% endif %}
+          {% if whatsapp_url %}
+            <a class="btn btn-ghost" href="{{ whatsapp_url }}?text={{ 'Hola, quiero info de ZinApp'|urlencode }}" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.8-.9-.2-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.5-1-.9-1.4-1.9-1.6-2.2-.1-.3 0-.4.1-.5l.5-.6c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.6-1.5-.8-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-.9.9-.9 2.1s1 2.4 1.1 2.6c.1.2 1.9 2.9 4.6 4 .6.3 1.2.4 1.6.5.7.2 1.3.2 1.8.1.5-.1 1.6-.7 1.9-1.3.2-.6.2-1.2.1-1.3-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 5L2 22l5.1-1.3c1.4.8 3.1 1.3 4.9 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.6 0-3.2-.4-4.5-1.3l-.3-.2-3.1.8.8-3-.2-.3C4 14.9 3.5 13.5 3.5 12 3.5 7.3 7.3 3.5 12 3.5S20.5 7.3 20.5 12 16.7 20.2 12 20.2z"/></svg>
+              WhatsApp
+            </a>
+          {% endif %}
+        </div>
+        <p class="hero-note">¿Ya tienes cuenta? <a href="/app/">Entra desde el navegador</a></p>
+      </div>
+    </div>
+  </header>
+
+  <section id="unete">
+    <div class="wrap">
+      <p class="section-kicker">Para tu pueblo</p>
+      <h2 class="section-title">Una app. Tres lados. Todo local.</h2>
+      <p class="section-lead">ZinApp conecta clientes, negocios y repartidores en Zinapécuaro — sin inventos de ciudad grande.</p>
+      <div class="roles">
+        <article class="role">
+          <span class="role-num">CLIENTES</span>
+          <h3>Pide y sigue tu pedido</h3>
+          <p>Elige tu restaurante, arma el carrito y ve al repartidor en el mapa hasta tu puerta.</p>
+        </article>
+        <article class="role">
+          <span class="role-num">NEGOCIOS</span>
+          <h3>Recibe pedidos en vivo</h3>
+          <p>Publica tu menú, acepta órdenes y gestiona el estado desde el celular o la web.</p>
+        </article>
+        <article class="role">
+          <span class="role-num">REPARTIDORES</span>
+          <h3>Entrega en tu zona</h3>
+          <p>Actívate, toma entregas cercanas y cobra en efectivo o transferencia al entregar.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="steps-section" id="como">
+    <div class="wrap">
+      <p class="section-kicker">En 3 pasos</p>
+      <h2 class="section-title">Así de fácil pedir.</h2>
+      <p class="section-lead">Sin tarjeta obligatoria. Pagas al recibir, como debe ser.</p>
+      <div class="steps">
+        <article class="step">
+          <h3>Descarga o regístrate</h3>
+          <p>Crea tu cuenta en la app de iPhone o abre ZinApp en el navegador.</p>
+        </article>
+        <article class="step">
+          <h3>Haz tu pedido</h3>
+          <p>Escoge el local, marca tu dirección y confirma. Te avisamos en cada paso.</p>
+        </article>
+        <article class="step">
+          <h3>Recibe en tu puerta</h3>
+          <p>Un repartidor de aquí te lo lleva. Tú sigues la ruta en tiempo real.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="wrap">
+      <div>
+        <h2>Empieza a pedir hoy.</h2>
+        <p>Locales de Zinapécuaro ya están en la app. Descarga o escríbenos si quieres registrar tu negocio.</p>
+      </div>
+      <div class="cta-actions">
         {% if app_store_url %}
-          <a class="btn btn-primary" href="{{ app_store_url }}" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.22-1.98 1.08-3.13-1.05.05-2.31.72-3.05 1.6-.66.78-1.24 2.03-1.08 3.18 1.14.09 2.31-.66 3.05-1.65z"/></svg>
-            Descargar en App Store
-          </a>
-        {% else %}
-          <p class="missing">Falta configurar <code>APP_STORE_URL</code> en el servidor para el botón de iPhone.</p>
+          <a class="btn btn-primary" href="{{ app_store_url }}" rel="noopener noreferrer">App Store</a>
         {% endif %}
-
-        {% if play_store_url %}
-          <a class="btn btn-ghost" href="{{ play_store_url }}" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.7c-.3.2-.5.6-.5 1.1v16.4c0 .5.2.9.5 1.1l.1.1 9.1-9.1v-.2L3.7 2.6l-.1.1zm11.3 6.5L12.1 12l2.8 2.8 3.5-2c.6-.3.6-1.2 0-1.6l-3.5-2zm-1.5 3.6-9.4 9.4c.2 0 .4 0 .6-.1l10.6-6.1-1.8-3.2zm0-1.6 1.8-3.2L5.6 2.1c-.2-.1-.4-.1-.6-.1l9.4 9.2z"/></svg>
-            Google Play
-          </a>
-        {% endif %}
-
         {% if whatsapp_url %}
-          <a class="btn btn-ghost" href="{{ whatsapp_url }}?text={{ 'Hola, quiero info de ZinApp'|urlencode }}" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.8-.9-.2-.1-.4-.1-.6.1-.2.3-.7.9-.8 1-.2.2-.3.2-.6.1-.3-.1-1.2-.4-2.3-1.5-1-.9-1.4-1.9-1.6-2.2-.1-.3 0-.4.1-.5l.5-.6c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.6-1.5-.8-2-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.3.3-.9.9-.9 2.1s1 2.4 1.1 2.6c.1.2 1.9 2.9 4.6 4 .6.3 1.2.4 1.6.5.7.2 1.3.2 1.8.1.5-.1 1.6-.7 1.9-1.3.2-.6.2-1.2.1-1.3-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 5L2 22l5.1-1.3c1.4.8 3.1 1.3 4.9 1.3 5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.6 0-3.2-.4-4.5-1.3l-.3-.2-3.1.8.8-3-.2-.3C4 14.9 3.5 13.5 3.5 12 3.5 7.3 7.3 3.5 12 3.5S20.5 7.3 20.5 12 16.7 20.2 12 20.2z"/></svg>
-            WhatsApp
-          </a>
+          <a class="btn btn-ghost" href="{{ whatsapp_url }}?text={{ 'Hola, quiero registrar mi negocio en ZinApp'|urlencode }}" rel="noopener noreferrer">Registrar mi negocio</a>
+        {% endif %}
+        <a class="btn btn-ghost" href="/app/">Abrir en web</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div><strong>ZinApp</strong> · Hecho en Zinapécuaro</div>
+      <div>
+        <a href="{% url 'privacy-policy' %}">Aviso de privacidad</a>
+        &nbsp;·&nbsp;
+        <a href="/app/">Abrir app</a>
+        {% if whatsapp_url %}
+          &nbsp;·&nbsp;
+          <a href="{{ whatsapp_url }}">WhatsApp</a>
         {% endif %}
       </div>
-
-      <p class="secondary">
-        ¿Ya tienes cuenta?
-        <a href="/app/">Abrir en el navegador</a>
-      </p>
-
-      <p class="foot">
-        <a href="{% url 'privacy-policy' %}">Aviso de privacidad</a>
-        · Hecho en Zinapécuaro
-      </p>
     </div>
-  </main>
+  </footer>
 </body>
 </html>
