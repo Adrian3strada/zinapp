@@ -678,26 +678,89 @@
     }
 
     footer {
-      padding: 1.75rem 0 calc(1.75rem + var(--safe-b));
-      background: #0B1630;
+      padding: 3rem 0 calc(1.35rem + var(--safe-b));
+      background:
+        radial-gradient(ellipse 55% 100% at 0% 0%, rgba(37, 99, 235, 0.25), transparent 65%),
+        #0B1630;
       color: rgba(255,255,255,0.7);
       font-size: 0.88rem;
     }
-    footer .wrap {
+    .footer-main {
       display: grid;
-      gap: 0.85rem;
+      gap: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
     }
-    footer strong { color: #fff; font-weight: 700; }
-    footer nav {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem 1.1rem;
+    .footer-brand {
+      display: grid;
+      justify-items: start;
+      gap: 0.85rem;
+      max-width: 22rem;
+    }
+    .footer-brand-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.7rem;
+      color: #fff;
+      text-decoration: none;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .footer-brand-link img {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+    .footer-brand p {
+      margin: 0;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.72);
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.5rem 1rem;
+    }
+    .footer-group h3 {
+      margin: 0 0 0.8rem;
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .footer-group nav {
+      display: grid;
+      gap: 0.65rem;
+    }
+    .footer-group a {
+      width: fit-content;
     }
     footer a {
-      color: rgba(255,255,255,0.86);
+      color: rgba(255,255,255,0.78);
       text-decoration: none;
     }
-    footer a:hover { text-decoration: underline; }
+    footer a:hover { color: #fff; text-decoration: underline; }
+    .footer-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding-top: 1.25rem;
+      font-size: 0.82rem;
+    }
+    .footer-location {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .footer-location svg {
+      width: 1rem;
+      height: 1rem;
+      color: #8AB4FF;
+    }
 
     /* Mobile sticky download bar */
     .mobile-bar {
@@ -757,8 +820,15 @@
         justify-content: space-between;
       }
       footer .wrap {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: 1fr;
         align-items: center;
+      }
+      .footer-main {
+        grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+        align-items: start;
+      }
+      .footer-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
@@ -1016,15 +1086,54 @@
   </section>
 
   <footer>
-    <div class="wrap">
-      <div><strong>ZinApp</strong> · Hecho en Zinapécuaro</div>
-      <nav aria-label="Legal">
-        <a href="{% url 'privacy-policy' %}">Aviso de privacidad</a>
-        <a href="/app/">Abrir app</a>
-        {% if whatsapp_url %}
-          <a href="{{ whatsapp_url }}">WhatsApp</a>
-        {% endif %}
-      </nav>
+    <div class="wrap footer-main">
+      <div class="footer-brand">
+        <a class="footer-brand-link" href="/">
+          <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="42" height="42" alt="">
+          ZinApp
+        </a>
+        <p>La forma local de pedir comida, encontrar servicios y conectar con tu comunidad.</p>
+      </div>
+
+      <div class="footer-grid">
+        <div class="footer-group">
+          <h3>Producto</h3>
+          <nav aria-label="Producto">
+            <a href="#como">Cómo funciona</a>
+            <a href="#por-que">Por qué ZinApp</a>
+            <a href="/app/">Abrir la app web</a>
+          </nav>
+        </div>
+        <div class="footer-group">
+          <h3>Para ti</h3>
+          <nav aria-label="Usuarios">
+            <a href="/app/">Clientes</a>
+            {% if whatsapp_url %}
+              <a href="{{ whatsapp_url }}?text={{ 'Hola, quiero registrar mi negocio en ZinApp'|urlencode }}" rel="noopener noreferrer">Registrar negocio</a>
+              <a href="{{ whatsapp_url }}?text={{ 'Hola, quiero ser repartidor de ZinApp'|urlencode }}" rel="noopener noreferrer">Ser repartidor</a>
+            {% endif %}
+          </nav>
+        </div>
+        <div class="footer-group">
+          <h3>Legal y soporte</h3>
+          <nav aria-label="Legal y soporte">
+            <a href="{% url 'privacy-policy' %}">Aviso de privacidad</a>
+            {% if whatsapp_url %}
+              <a href="{{ whatsapp_url }}?text={{ 'Hola, necesito ayuda con ZinApp'|urlencode }}" rel="noopener noreferrer">WhatsApp</a>
+            {% endif %}
+            {% if app_store_url %}
+              <a href="{{ app_store_url }}" rel="noopener noreferrer">App Store</a>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="wrap footer-bottom">
+      <span>© 2026 ZinApp. Todos los derechos reservados.</span>
+      <span class="footer-location">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        Hecho en Zinapécuaro, Michoacán
+      </span>
     </div>
   </footer>
 
