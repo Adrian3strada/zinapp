@@ -9,7 +9,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
-from accounts.models import DeliveryProfile, User, UserRole
+from accounts.audit import write_audit_log
+from accounts.models import AuditLog, DeliveryProfile, User, UserRole
 from orders.models import Order, OrderStatus
 from restaurants.models import Restaurant
 from restaurants.setup import restaurant_setup_status
@@ -369,6 +370,12 @@ class DriverReviewView(PanelAccessMixin, View):
                 'verification_status', 'review_notes', 'reviewed_by',
                 'reviewed_at', 'is_available', 'updated_at',
             ])
+            write_audit_log(
+                action=AuditLog.Action.DRIVER_VERIFICATION_UPDATED,
+                obj=profile,
+                request=request,
+                metadata={'verification_status': decision},
+            )
             messages.success(
                 request,
                 f'«{profile.user.username}» fue '

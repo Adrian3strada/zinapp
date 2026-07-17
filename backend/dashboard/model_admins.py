@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from accounts.models import DeliveryProfile, PasswordResetToken, User
+from accounts.models import AuditLog, DeliveryProfile, PasswordResetToken, User
 from dashboard.panel_admin import panel_admin
 from orders.models import Coupon, Order, OrderItem, Review, Shipment
 from restaurants.models import Product, Restaurant
@@ -28,6 +28,22 @@ class DeliveryProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'vehicle_type', 'is_available', 'updated_at')
     list_filter = ('vehicle_type', 'is_available')
     search_fields = ('user__username', 'license_plate')
+
+
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ('created_at', 'action', 'actor', 'object_type', 'object_id', 'ip_address')
+    list_filter = ('action', 'object_type', 'created_at')
+    search_fields = ('actor__username', 'object_type', 'object_id')
+    readonly_fields = (
+        'actor', 'action', 'object_type', 'object_id',
+        'metadata', 'ip_address', 'user_agent', 'created_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class ProductInline(admin.TabularInline):
@@ -93,6 +109,7 @@ class ShipmentAdmin(admin.ModelAdmin):
 panel_admin.register(User, UserAdmin)
 panel_admin.register(PasswordResetToken, PasswordResetTokenAdmin)
 panel_admin.register(DeliveryProfile, DeliveryProfileAdmin)
+panel_admin.register(AuditLog, AuditLogAdmin)
 panel_admin.register(Restaurant, RestaurantAdmin)
 panel_admin.register(Product, ProductAdmin)
 panel_admin.register(Order, OrderAdmin)

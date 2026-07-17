@@ -251,7 +251,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 ```bash
 cd backend
-python manage.py test accounts accounts.test_security restaurants orders.tests.MercadoPagoWebhookTests
+python manage.py test accounts accounts.test_security dashboard local_services orders restaurants
 ```
 
 La CI ejecuta la suite Django, comprueba migraciones y corre

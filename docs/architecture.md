@@ -23,6 +23,9 @@ flowchart LR
 - `backend/dashboard`: panel de administración basado en plantillas Django.
 - `mobile/src`: navegación y pantallas separadas por rol (cliente, restaurante,
   repartidor y administrador).
+- `GET /api/schema/` y `GET /api/docs/`: contrato OpenAPI/Swagger generado
+  desde Django REST Framework para revisión técnica cuando
+  `API_DOCS_ENABLED=True`.
 
 ## Límites de confianza
 
@@ -32,5 +35,7 @@ flowchart LR
   y requieren un administrador cuando el backend sirve media.
 - El webhook de Mercado Pago valida la firma y vuelve a consultar el pago antes
   de marcar un pedido como pagado.
+- Los cambios sensibles quedan registrados en `accounts.AuditLog` sin almacenar
+  tokens ni payloads completos de proveedores.
 - Los JWT se guardan con SecureStore en dispositivos y por sesión en web. Una
   migración a cookies HttpOnly requerirá coordinación entre API y clientes.

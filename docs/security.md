@@ -17,8 +17,16 @@ personales. Sigue el proceso de [SECURITY.md](../SECURITY.md).
   como pagado.
 - Mantén `SERVE_MEDIA=false` salvo que haya un proxy o almacenamiento diseñado
   para media. Nunca hagas públicos los documentos de repartidores.
-- Usa Redis u otro caché compartido para rate limits si Gunicorn se ejecuta
-  con varios workers o réplicas; LocMemCache es suficiente solo para desarrollo.
+- Configura `REDIS_URL` para rate limits compartidos si Gunicorn se ejecuta con
+  varios workers o réplicas; sin esa variable el backend usa cache local solo
+  apta para desarrollo.
+- Las acciones sensibles de pedidos, pagos, envíos y verificación de
+  repartidores generan `AuditLog` con actor, objeto, IP, user-agent y metadata
+  mínima para soporte o revisión forense.
+- `GET /api/health/` solo expone `ok`; los detalles de infraestructura deben
+  revisarse en logs internos, no en endpoints públicos.
+- Mantén `API_DOCS_ENABLED=false` en producción normal; actívalo solo para
+  revisión controlada o entornos internos.
 - En web, el access token se guarda por sesión y el refresh token queda solo en
   memoria. Esto reduce persistencia, pero la defensa fuerte ante XSS requiere
   una migración futura a cookies HttpOnly con CSRF.

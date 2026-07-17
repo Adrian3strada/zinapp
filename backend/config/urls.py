@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.urls import include, path, re_path
 from django.views.generic import RedirectView
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from accounts.media_views import serve_media
 from dashboard.panel_admin import panel_admin
@@ -42,6 +43,12 @@ urlpatterns = [
     path('', LandingView.as_view(), name='landing'),
     re_path(rf'^(?P<path>(?!{_WEBAPP_EXCLUDE}).+)$', webapp_serve, name='webapp-catch'),
 ]
+
+if settings.API_DOCS_ENABLED:
+    urlpatterns += [
+        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    ]
 
 if settings.DEBUG or settings.SERVE_MEDIA:
     urlpatterns += [

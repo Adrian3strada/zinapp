@@ -4,7 +4,7 @@ Desde `backend/`, ejecuta:
 
 ```powershell
 python manage.py makemigrations --check --dry-run
-python manage.py test accounts accounts.test_security restaurants orders.tests.MercadoPagoWebhookTests
+python manage.py test accounts accounts.test_security dashboard local_services orders restaurants
 ```
 
 Desde `mobile/`, ejecuta:

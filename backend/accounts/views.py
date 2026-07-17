@@ -10,6 +10,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from config.throttling import (
@@ -61,6 +62,7 @@ class MeView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+@extend_schema(exclude=True)
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -72,6 +74,7 @@ class ChangePasswordView(APIView):
         return Response({'detail': 'Contraseña actualizada.'})
 
 
+@extend_schema(exclude=True)
 class DeleteAccountView(APIView):
     """App Store 5.1.1(v): in-app account deletion."""
 
@@ -90,6 +93,7 @@ class DeleteAccountView(APIView):
         )
 
 
+@extend_schema(exclude=True)
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ForgotPasswordRateThrottle]
@@ -133,6 +137,7 @@ class ForgotPasswordView(APIView):
         return Response(response)
 
 
+@extend_schema(exclude=True)
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ResetPasswordRateThrottle]
@@ -148,6 +153,7 @@ class ResetPasswordView(APIView):
         return Response({'detail': 'Contraseña restablecida. Ya puedes iniciar sesión.'})
 
 
+@extend_schema(exclude=True)
 class PushTokenView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -184,7 +190,7 @@ class DeliveryProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return self.queryset
         if user.is_driver:
             return self.queryset.filter(user=user)

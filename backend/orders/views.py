@@ -5,8 +5,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
-from accounts.models import DeliveryProfile
+from accounts.audit import write_audit_log
+from accounts.models import AuditLog, DeliveryProfile
 from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
@@ -94,7 +96,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = self.queryset
 
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return queryset
 
         if user.is_customer:
@@ -138,7 +140,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return [IsCustomer()]
         if self.action == 'cancel':
             return [IsCustomer()]
-        if self.action == 'list' and self.request.user.is_admin_user:
+        if self.action == 'list' and getattr(self.request.user, 'is_admin_user', False):
             return [IsAdmin()]
         return [IsAuthenticated()]
 
@@ -159,7 +161,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return self._update_status_locked(request, order)
 
     def _update_status_locked(self, request, order):
-        if order.restaurant.owner != request.user and not request.user.is_admin_user:
+        if order.restaurant.owner != request.user and not getattr(request.user, 'is_admin_user', False):
             return Response(
                 {'detail': 'No tienes permiso para actualizar este pedido.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -171,6 +173,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         order.refresh_from_db()
+        write_audit_log(
+            action=AuditLog.Action.ORDER_STATUS_UPDATED,
+            obj=order,
+            request=request,
+            metadata={'status': order.status},
+        )
         return Response(OrderSerializer(order).data)
 
     @action(detail=True, methods=['post'])
@@ -196,6 +204,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            write_audit_log(
+                action=AuditLog.Action.ORDER_ACCEPTED,
+                obj=order,
+                request=request,
+                metadata={'status': OrderStatus.ACCEPTED},
+            )
         order.refresh_from_db()
         return Response(OrderSerializer(order).data)
 
@@ -217,6 +231,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            write_audit_log(
+                action=AuditLog.Action.ORDER_REJECTED,
+                obj=order,
+                request=request,
+                metadata={'status': OrderStatus.CANCELLED},
+            )
         order.refresh_from_db()
         return Response(OrderSerializer(order).data)
 
@@ -254,6 +274,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            write_audit_log(
+                action=AuditLog.Action.ORDER_CANCELLED,
+                obj=order,
+                request=request,
+                metadata={'status': OrderStatus.CANCELLED},
+            )
         order.refresh_from_db()
         return Response(OrderSerializer(order).data)
 
@@ -312,6 +338,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.driver = request.user
             order.status = OrderStatus.ON_THE_WAY
             order.save(update_fields=['driver', 'status', 'updated_at'])
+            write_audit_log(
+                action=AuditLog.Action.ORDER_STATUS_UPDATED,
+                obj=order,
+                request=request,
+                metadata={'status': OrderStatus.ON_THE_WAY, 'driver_id': request.user.id},
+            )
 
         return Response(OrderSerializer(order).data)
 
@@ -329,6 +361,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        write_audit_log(
+            action=AuditLog.Action.ORDER_STATUS_UPDATED,
+            obj=order,
+            request=request,
+            metadata={'status': OrderStatus.DELIVERED},
+        )
         return Response(OrderSerializer(order).data)
 
     @action(detail=False, methods=['get'], url_path='my-deliveries')
@@ -571,7 +609,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def confirm_payment(self, request, pk=None):
         """Confirmación manual de pago en línea (solo administrador)."""
         order = self.get_object()
-        if not request.user.is_admin_user:
+        if not getattr(request.user, 'is_admin_user', False):
             return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
         if order.payment_method != PaymentMethod.ONLINE:
             return Response(
@@ -580,6 +618,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         order.payment_status = PaymentStatus.PAID
         order.save(update_fields=['payment_status', 'updated_at'])
+        write_audit_log(
+            action=AuditLog.Action.PAYMENT_CONFIRMED,
+            obj=order,
+            request=request,
+            metadata={'source': 'manual_admin'},
+        )
         return Response(OrderSerializer(order, context={'request': request}).data)
 
 
@@ -599,7 +643,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = self.queryset
 
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return queryset
 
         if user.is_customer:
@@ -715,6 +759,12 @@ class ShipmentViewSet(viewsets.ModelViewSet):
             shipment.driver = request.user
             shipment.status = ShipmentStatus.PICKED_UP
             shipment.save(update_fields=['driver', 'status', 'updated_at'])
+            write_audit_log(
+                action=AuditLog.Action.SHIPMENT_ACCEPTED,
+                obj=shipment,
+                request=request,
+                metadata={'status': ShipmentStatus.PICKED_UP},
+            )
 
         return Response(ShipmentSerializer(shipment).data)
 
@@ -734,6 +784,12 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         shipment.status = ShipmentStatus.ON_THE_WAY
         shipment.driver_nearby_notified = False
         shipment.save(update_fields=['status', 'driver_nearby_notified', 'updated_at'])
+        write_audit_log(
+            action=AuditLog.Action.SHIPMENT_STATUS_UPDATED,
+            obj=shipment,
+            request=request,
+            metadata={'status': ShipmentStatus.ON_THE_WAY},
+        )
         return Response(ShipmentSerializer(shipment).data)
 
     @action(detail=True, methods=['post'], url_path='mark-delivered')
@@ -752,6 +808,12 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         shipment.status = ShipmentStatus.DELIVERED
         shipment.delivered_at = timezone.now()
         shipment.save(update_fields=['status', 'delivered_at', 'updated_at'])
+        write_audit_log(
+            action=AuditLog.Action.SHIPMENT_STATUS_UPDATED,
+            obj=shipment,
+            request=request,
+            metadata={'status': ShipmentStatus.DELIVERED},
+        )
         return Response(ShipmentSerializer(shipment).data)
 
     @action(detail=False, methods=['get'], url_path='my-deliveries')
@@ -795,6 +857,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         return Response(data)
 
 
+@extend_schema(exclude=True)
 class MercadoPagoWebhookView(APIView):
     """Webhook de notificaciones IPN de Mercado Pago."""
     permission_classes = []
@@ -866,7 +929,32 @@ class MercadoPagoWebhookView(APIView):
 
             if order.payment_method == PaymentMethod.ONLINE:
                 order.payment_status = PaymentStatus.PAID
-                order.save(update_fields=['payment_status', 'updated_at'])
+                order.mercadopago_payment_id = str(payment_id)
+                order.mercadopago_status = str(payment.get('status') or '')
+                order.mercadopago_payload = {
+                    'id': str(payment_id),
+                    'status': payment.get('status'),
+                    'currency_id': payment.get('currency_id'),
+                    'transaction_amount': str(payment.get('transaction_amount')),
+                    'external_reference': str(payment.get('external_reference') or ''),
+                }
+                order.save(update_fields=[
+                    'payment_status',
+                    'mercadopago_payment_id',
+                    'mercadopago_status',
+                    'mercadopago_payload',
+                    'updated_at',
+                ])
+                write_audit_log(
+                    action=AuditLog.Action.MP_WEBHOOK_PAID,
+                    obj=order,
+                    request=request,
+                    metadata={
+                        'payment_id': str(payment_id),
+                        'amount': str(payment_amount),
+                        'currency_id': payment.get('currency_id'),
+                    },
+                )
 
         return Response({'detail': 'OK', 'order_id': order.id})
 
@@ -885,7 +973,7 @@ class OrderDisputeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return self.queryset
         if user.is_customer:
             return self.queryset.filter(customer=user)
@@ -972,7 +1060,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
             return qs.none()
         if self.request.user.is_customer:
             return qs.filter(customer=self.request.user)
-        if self.request.user.is_admin_user:
+        if getattr(self.request.user, 'is_admin_user', False):
             return qs
         if self.request.user.is_restaurant_owner:
             return qs.filter(restaurant__owner=self.request.user)
@@ -982,6 +1070,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 
+@extend_schema(exclude=True)
 class AdminStatsView(APIView):
     permission_classes = [IsAdmin]
 

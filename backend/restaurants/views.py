@@ -6,6 +6,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from accounts.permissions import IsAdmin, IsRestaurantOwner
 
@@ -22,6 +23,7 @@ from .serializers import (
 )
 
 
+@extend_schema(exclude=True)
 class GeocodeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -46,6 +48,7 @@ class GeocodeView(APIView):
         return Response(result)
 
 
+@extend_schema(exclude=True)
 class CoverageCheckView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -61,6 +64,7 @@ class CoverageCheckView(APIView):
         return Response({'in_coverage': is_in_coverage(lat, lon)})
 
 
+@extend_schema(exclude=True)
 class CoverageBoundsView(APIView):
     permission_classes = [AllowAny]
 
@@ -75,6 +79,7 @@ class CoverageBoundsView(APIView):
         })
 
 
+@extend_schema(exclude=True)
 class RouteView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -105,7 +110,7 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         # through the dedicated authenticated ``mine`` endpoint. Keeping the
         # regular catalog public serializer prevents one owner from reading
         # another owner's banking data.
-        can_view_private_data = user.is_authenticated and user.is_admin_user
+        can_view_private_data = user.is_authenticated and getattr(user, 'is_admin_user', False)
         if not can_view_private_data and self.action == 'retrieve':
             return RestaurantPublicDetailSerializer
         if not can_view_private_data and self.action == 'list':
@@ -118,7 +123,7 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return [AllowAny()]
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
-            if self.request.user.is_admin_user:
+            if getattr(self.request.user, 'is_admin_user', False):
                 return [IsAdmin()]
             return [IsRestaurantOwner()]
         return super().get_permissions()
@@ -130,7 +135,7 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.filter(is_active=True)
 
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return queryset
 
         if user.is_restaurant_owner:
@@ -164,7 +169,10 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        if self.request.user.is_restaurant_owner and not self.request.user.is_admin_user:
+        if (
+            self.request.user.is_restaurant_owner
+            and not getattr(self.request.user, 'is_admin_user', False)
+        ):
             serializer.save(owner=self.request.user)
         else:
             serializer.save()
@@ -240,7 +248,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [AllowAny()]
-        if self.request.user.is_admin_user:
+        if getattr(self.request.user, 'is_admin_user', False):
             return [IsAdmin()]
         return [IsRestaurantOwner()]
 
@@ -255,7 +263,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.filter(is_available=True, restaurant__is_active=True)
 
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return queryset
 
         if user.is_restaurant_owner:
@@ -272,7 +280,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         if (
             self.request.user.is_restaurant_owner
             and restaurant.owner != self.request.user
-            and not self.request.user.is_admin_user
+            and not getattr(self.request.user, 'is_admin_user', False)
         ):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('No puedes agregar productos a este restaurante.')
@@ -288,7 +296,7 @@ class ProductPromotionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [AllowAny()]
-        if self.request.user.is_admin_user:
+        if getattr(self.request.user, 'is_admin_user', False):
             return [IsAdmin()]
         return [IsRestaurantOwner()]
 
@@ -311,7 +319,7 @@ class ProductPromotionViewSet(viewsets.ModelViewSet):
                 restaurant__is_active=True,
             )
 
-        if user.is_admin_user:
+        if getattr(user, 'is_admin_user', False):
             return queryset
 
         if user.is_restaurant_owner:

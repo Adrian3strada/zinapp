@@ -9,7 +9,7 @@ pip install -r requirements.txt
 copy .env.example .env
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
-python manage.py test accounts accounts.test_security restaurants orders.tests.MercadoPagoWebhookTests
+python manage.py test accounts accounts.test_security dashboard local_services orders restaurants
 ```
 
 Apps principales: `accounts` (identidad), `restaurants` (catálogo),
@@ -22,3 +22,8 @@ además `ALLOW_DEMO_SEED=true` y nunca debe habilitarse en producción.
 La API vive bajo `/api/`; el panel bajo `/panel/`; `/app/` sirve el build
 generado desde `mobile/`. La configuración de producción y los controles
 requeridos están en `../docs/security.md`.
+
+OpenAPI está disponible en `/api/schema/` y Swagger UI en `/api/docs/` cuando
+`API_DOCS_ENABLED=True`.
+Para producción multi-worker configura `REDIS_URL`; sin Redis los rate limits
+usan memoria local y son útiles solo en desarrollo.

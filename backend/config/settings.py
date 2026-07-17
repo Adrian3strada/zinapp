@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'corsheaders',
     'restaurants.apps.RestaurantsConfig',
     'local_services.apps.LocalServicesConfig',
@@ -172,6 +173,7 @@ MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 # Keep Django's development media server opt-in in production. Public media
 # should normally be served by object storage or the edge proxy.
 SERVE_MEDIA = config('SERVE_MEDIA', default=False, cast=bool)
+API_DOCS_ENABLED = config('API_DOCS_ENABLED', default=DEBUG, cast=bool)
 
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
 APP_STORE_URL = config('APP_STORE_URL', default='').strip()
@@ -189,11 +191,23 @@ CORS_ALLOWED_ORIGINS = config(
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-    },
-}
+REDIS_URL = config('REDIS_URL', default='').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+        },
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+    }
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -208,6 +222,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_RATES': {
         'anon': '120/min',
         'user': '400/min',
@@ -217,6 +232,13 @@ REST_FRAMEWORK = {
         'reset_password': '15/hour',
         'token_refresh': '30/min',
     },
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'ZinApp API',
+    'DESCRIPTION': 'API privada y pública de ZinApp.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 SIMPLE_JWT = {

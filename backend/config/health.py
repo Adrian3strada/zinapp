@@ -6,10 +6,8 @@ from .app_config import get_public_app_config
 
 @require_GET
 def health(_request):
-    from django.conf import settings
     from django.db import connection
 
-    db_engine = settings.DATABASES['default']['ENGINE'].split('.')[-1]
     db_ok = False
     try:
         connection.ensure_connection()
@@ -23,7 +21,6 @@ def health(_request):
     return JsonResponse(
         {
             'ok': db_ok,
-            'database': db_engine,
         },
         status=status,
     )

@@ -4,9 +4,11 @@ import hmac
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
+from accounts.models import AuditLog
 from orders.models import Coupon, Order, OrderStatus, PaymentMethod, PaymentStatus
 from restaurants.models import Restaurant
 
@@ -24,6 +26,7 @@ def mercadopago_signature_headers(payment_id, secret='mp_webhook_secret', reques
 
 class OrderApiTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.customer = User.objects.create_user(
             username='testclient',
@@ -213,6 +216,7 @@ class OrderApiTests(TestCase):
             user=driver,
             vehicle_type=DeliveryProfile.VehicleType.MOTORCYCLE,
             license_plate='ABC-123',
+            verification_status=DeliveryProfile.VerificationStatus.APPROVED,
         )
         product = Product.objects.create(
             restaurant=self.restaurant,
@@ -321,10 +325,18 @@ class OrderApiTests(TestCase):
         self.assertEqual(cancel_resp.status_code, 400)
 
     def test_shipment_accept_sets_picked_up_status(self):
+        from accounts.models import DeliveryProfile
+
         driver = User.objects.create_user(
             username='shipdriver',
             password='test1234',
             role='driver',
+        )
+        DeliveryProfile.objects.create(
+            user=driver,
+            vehicle_type=DeliveryProfile.VehicleType.MOTORCYCLE,
+            license_plate='SHIP-1',
+            verification_status=DeliveryProfile.VerificationStatus.APPROVED,
         )
         self.client.force_authenticate(self.customer)
         create_resp = self.client.post('/api/shipments/', {
@@ -400,6 +412,7 @@ class OrderApiTests(TestCase):
 @override_settings(MERCADOPAGO_WEBHOOK_SECRET='mp_webhook_secret')
 class MercadoPagoWebhookTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.customer = User.objects.create_user(
             username='mp_customer',
@@ -454,6 +467,14 @@ class MercadoPagoWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
         self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
+        self.assertEqual(self.order.mercadopago_payment_id, 'pay_123')
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action=AuditLog.Action.MP_WEBHOOK_PAID,
+                object_type='Order',
+                object_id=str(self.order.id),
+            ).exists()
+        )
 
     @patch('orders.mercadopago.fetch_payment')
     def test_invalid_signature_rejects_webhook_before_fetch(self, mock_fetch):

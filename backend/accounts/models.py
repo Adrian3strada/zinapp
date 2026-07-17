@@ -114,3 +114,43 @@ class PasswordResetToken(models.Model):
     class Meta:
         verbose_name = 'Token de recuperación'
         verbose_name_plural = 'Tokens de recuperación'
+
+
+class AuditLog(models.Model):
+    class Action(models.TextChoices):
+        ORDER_STATUS_UPDATED = 'order_status_updated', 'Estado de pedido actualizado'
+        ORDER_ACCEPTED = 'order_accepted', 'Pedido aceptado'
+        ORDER_REJECTED = 'order_rejected', 'Pedido rechazado'
+        ORDER_CANCELLED = 'order_cancelled', 'Pedido cancelado'
+        PAYMENT_CONFIRMED = 'payment_confirmed', 'Pago confirmado'
+        MP_WEBHOOK_PAID = 'mp_webhook_paid', 'Pago confirmado por Mercado Pago'
+        SHIPMENT_ACCEPTED = 'shipment_accepted', 'Envío aceptado'
+        SHIPMENT_STATUS_UPDATED = 'shipment_status_updated', 'Estado de envío actualizado'
+        DRIVER_VERIFICATION_UPDATED = 'driver_verification_updated', 'Verificación de repartidor actualizada'
+
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='audit_logs',
+    )
+    action = models.CharField(max_length=64, choices=Action.choices)
+    object_type = models.CharField(max_length=80)
+    object_id = models.CharField(max_length=80)
+    metadata = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Registro de auditoría'
+        verbose_name_plural = 'Registros de auditoría'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['action', 'created_at']),
+            models.Index(fields=['object_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f'{self.action} {self.object_type}:{self.object_id}'
