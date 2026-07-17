@@ -62,6 +62,7 @@ export default function Button({
     >
       {title}
     </Text>
+  );
 
   if (variant === 'primary' && !isDisabled) {
     return (
