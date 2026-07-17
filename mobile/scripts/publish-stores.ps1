@@ -29,7 +29,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot\..
 
-$PrivacyUrl = 'https://zinapp-api-production.up.railway.app/privacidad/'
+$PrivacyUrl = 'https://zinapp.com.mx/privacidad/'
 $SupportEmail = 'adrianestradachavez123@gmail.com'
 $PackageId = 'com.zinapp.delivery'
 

@@ -82,7 +82,16 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     (async () => {
       try {
         const { data } = await restaurantApi.get(restaurantId);
-        if (!cancelled) setCartRestaurant(data);
+        if (!data.has_transfer_info) {
+          if (!cancelled) setCartRestaurant(data);
+          return;
+        }
+        try {
+          const { data: transferInfo } = await restaurantApi.transferInfo(restaurantId);
+          if (!cancelled) setCartRestaurant({ ...data, ...transferInfo });
+        } catch {
+          if (!cancelled) setCartRestaurant(data);
+        }
       } catch {
         if (!cancelled) setCartRestaurant(null);
       }

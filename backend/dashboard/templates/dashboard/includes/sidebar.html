@@ -68,7 +68,7 @@
     <li class="nav-item">
       <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
         <i class="nav-icon fas fa-motorcycle"></i>
-        <p>Repartidores</p>
+        <p>Repartidores {% if panel_pending_drivers %}<span class="badge badge-warning right">{{ panel_pending_drivers }}</span>{% endif %}</p>
       </a>
     </li>
 

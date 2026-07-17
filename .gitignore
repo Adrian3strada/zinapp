@@ -1,4 +1,17 @@
+# Secrets and local environment overrides
 .env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.keystore
+google-play-key.json
+credentials.json
+
 __pycache__/
 node_modules/
 # Assets empaquetados de la app web (fuentes Ionicons, iconos navegación)
@@ -8,3 +21,10 @@ node_modules/
 media/
 *.pyc
 .DS_Store
+
+# Local Expo web builds. The deployable build is copied deliberately to
+# backend/static/webapp by mobile/scripts/build-web.ps1 -Deploy.
+mobile/dist/
+mobile/dist-test/
+mobile/backend/
+mobile/web-build/

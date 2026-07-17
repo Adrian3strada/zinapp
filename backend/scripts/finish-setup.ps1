@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot\..
 
-$apiUrl = 'https://zinapp-api-production.up.railway.app/api'
+$apiUrl = 'https://zinapp.com.mx/api'
 $ok = $true
 
 Write-Host '=== ZinApp - verificacion final ===' -ForegroundColor Cyan

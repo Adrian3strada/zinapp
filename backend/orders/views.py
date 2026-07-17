@@ -67,6 +67,14 @@ def driver_has_active_delivery(user) -> bool:
     )
 
 
+def driver_can_receive_deliveries(user) -> bool:
+    profile = getattr(user, 'delivery_profile', None)
+    return bool(
+        profile
+        and profile.verification_status == DeliveryProfile.VerificationStatus.APPROVED
+    )
+
+
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.select_related(
         'customer', 'restaurant', 'restaurant__owner', 'driver',
@@ -252,6 +260,11 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def available(self, request):
         """Pedidos listos para recoger sin repartidor asignado."""
+        if not driver_can_receive_deliveries(request.user):
+            return Response(
+                {'detail': 'Tu perfil está pendiente de aprobación por ZinApp.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         orders = Order.objects.filter(
             status=OrderStatus.READY,
             driver__isnull=True,
@@ -261,7 +274,15 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='accept-delivery')
     def accept_delivery(self, request, pk=None):
-        profile, _ = DeliveryProfile.objects.get_or_create(user=request.user)
+        profile, _ = DeliveryProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'is_available': False},
+        )
+        if not driver_can_receive_deliveries(request.user):
+            return Response(
+                {'detail': 'Tu perfil está pendiente de aprobación por ZinApp.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         if not profile.is_available:
             return Response(
                 {'detail': 'Debes estar disponible para aceptar entregas.'},
@@ -642,6 +663,11 @@ class ShipmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def available(self, request):
+        if not driver_can_receive_deliveries(request.user):
+            return Response(
+                {'detail': 'Tu perfil está pendiente de aprobación por ZinApp.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         shipments = Shipment.objects.filter(
             status=ShipmentStatus.PENDING,
             driver__isnull=True,
@@ -651,7 +677,15 @@ class ShipmentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='accept-delivery')
     def accept_delivery(self, request, pk=None):
-        profile, _ = DeliveryProfile.objects.get_or_create(user=request.user)
+        profile, _ = DeliveryProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'is_available': False},
+        )
+        if not driver_can_receive_deliveries(request.user):
+            return Response(
+                {'detail': 'Tu perfil está pendiente de aprobación por ZinApp.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         if not profile.is_available:
             return Response(
                 {'detail': 'Debes estar disponible para aceptar entregas.'},
@@ -765,6 +799,7 @@ class MercadoPagoWebhookView(APIView):
     """Webhook de notificaciones IPN de Mercado Pago."""
     permission_classes = []
     authentication_classes = []
+    throttle_classes = []
 
     def post(self, request):
         topic = request.data.get('type') or request.query_params.get('type')
@@ -775,7 +810,13 @@ class MercadoPagoWebhookView(APIView):
         if topic != 'payment' or not payment_id:
             return Response({'detail': 'Ignorado.'})
 
-        from .mercadopago import fetch_payment
+        from .mercadopago import fetch_payment, verify_webhook_signature
+
+        if not verify_webhook_signature(request, str(payment_id)):
+            return Response(
+                {'detail': 'Firma de webhook inválida.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
         payment = fetch_payment(str(payment_id))
         if not payment:
@@ -784,18 +825,48 @@ class MercadoPagoWebhookView(APIView):
         if payment.get('status') != 'approved':
             return Response({'detail': 'Pago no aprobado.'})
 
-        order_id = payment.get('external_reference') or payment.get('metadata', {}).get('order_id')
+        metadata = payment.get('metadata') or {}
+        if metadata.get('type') and metadata.get('type') != 'order':
+            return Response({'detail': 'Notificación ignorada.'})
+
+        order_id = payment.get('external_reference') or metadata.get('order_id')
         if not order_id:
             return Response({'detail': 'Sin referencia.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            order = Order.objects.get(pk=int(order_id))
-        except (Order.DoesNotExist, ValueError, TypeError):
+            payment_amount = Decimal(str(payment.get('transaction_amount'))).quantize(Decimal('0.01'))
+        except Exception:
+            payment_amount = None
+
+        if payment.get('currency_id') != 'MXN':
+            return Response(
+                {'detail': 'El pago no corresponde al pedido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            order_pk = int(order_id)
+        except (ValueError, TypeError):
             return Response({'detail': 'Pedido no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        if order.payment_method == PaymentMethod.ONLINE and order.payment_status != PaymentStatus.PAID:
-            order.payment_status = PaymentStatus.PAID
-            order.save(update_fields=['payment_status', 'updated_at'])
+        with transaction.atomic():
+            try:
+                order = Order.objects.select_for_update().get(pk=order_pk)
+            except Order.DoesNotExist:
+                return Response({'detail': 'Pedido no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if str(payment.get('external_reference')) != str(order.id) or payment_amount != order.total:
+                return Response(
+                    {'detail': 'El pago no corresponde al pedido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if order.status == OrderStatus.CANCELLED or order.payment_status == PaymentStatus.PAID:
+                return Response({'detail': 'OK', 'order_id': order.id})
+
+            if order.payment_method == PaymentMethod.ONLINE:
+                order.payment_status = PaymentStatus.PAID
+                order.save(update_fields=['payment_status', 'updated_at'])
 
         return Response({'detail': 'OK', 'order_id': order.id})
 

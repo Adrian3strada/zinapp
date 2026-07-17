@@ -4,6 +4,12 @@ import { API_URL } from '../config/api';
 
 /** URL base del sitio (sin /api). */
 export function getSiteOrigin(): string {
+  // En la app web, el panel debe conservar el dominio abierto por la persona.
+  // Esto evita redirigir a Railway cuando la app se sirve desde zinapp.com.mx.
+  if (typeof window !== 'undefined' && window.location.origin) {
+    return window.location.origin;
+  }
+
   try {
     return new URL(API_URL).origin;
   } catch {
@@ -16,7 +22,7 @@ export function getSiteOrigin(): string {
         // fall through
       }
     }
-    return 'https://zinapp-api-production.up.railway.app';
+    return 'https://zinapp.com.mx';
   }
 }
 

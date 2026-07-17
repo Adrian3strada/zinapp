@@ -15,7 +15,10 @@ from .serializers import (
     ProductPromotionSerializer,
     ProductSerializer,
     RestaurantDetailSerializer,
+    RestaurantPublicDetailSerializer,
+    RestaurantPublicSerializer,
     RestaurantSerializer,
+    RestaurantTransferInfoSerializer,
 )
 
 
@@ -97,6 +100,16 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_serializer_class(self):
+        user = self.request.user
+        # Restaurant owners receive their private setup/payment fields only
+        # through the dedicated authenticated ``mine`` endpoint. Keeping the
+        # regular catalog public serializer prevents one owner from reading
+        # another owner's banking data.
+        can_view_private_data = user.is_authenticated and user.is_admin_user
+        if not can_view_private_data and self.action == 'retrieve':
+            return RestaurantPublicDetailSerializer
+        if not can_view_private_data and self.action == 'list':
+            return RestaurantPublicSerializer
         if self.action == 'retrieve':
             return RestaurantDetailSerializer
         return RestaurantSerializer
@@ -186,6 +199,15 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         if not restaurant:
             return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='transfer-info')
+    def transfer_info(self, request, pk=None):
+        """Expose bank details only to an authenticated checkout session."""
+        restaurant = self.get_object()
+        if not restaurant.is_active or not (restaurant.clabe or '').strip():
+            return Response({'detail': 'Transferencia no disponible.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = RestaurantTransferInfoSerializer(restaurant, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='toggle-favorite')

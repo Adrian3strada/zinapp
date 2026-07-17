@@ -33,7 +33,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zinapp.delivery",
-      "buildNumber": "6",
+      "buildNumber": "8",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
@@ -92,8 +92,8 @@
       "eas": {
         "projectId": "56ddb1bb-632f-4087-9a80-e839403c24fc"
       },
-      "apiUrl": "https://zinapp-api-production.up.railway.app/api",
-      "privacyPolicyUrl": "https://zinapp-api-production.up.railway.app/privacidad/",
+      "apiUrl": "https://zinapp.com.mx/api",
+      "privacyPolicyUrl": "https://zinapp.com.mx/privacidad/",
       "supportEmail": "adrianestradachavez123@gmail.com",
       "deliveryFee": 25,
       "transferInfo": {

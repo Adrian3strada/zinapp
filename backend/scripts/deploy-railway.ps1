@@ -106,7 +106,7 @@ railway domain
 Write-Host ''
 Write-Host '=== BASE DE DATOS LISTA (PostgreSQL en Railway) ===' -ForegroundColor Green
 Write-Host 'Verificar: .\scripts\finish-setup.ps1'
-Write-Host 'Health:    https://zinapp-api-production.up.railway.app/api/health/'
+Write-Host 'Health:    https://zinapp.com.mx/api/health/'
 Write-Host ''
 Write-Host 'GitHub: copia CRON_SECRET de Railway a secret RAILWAY_CRON_TOKEN' -ForegroundColor Yellow
 

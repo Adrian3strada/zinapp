@@ -45,6 +45,11 @@ class User(AbstractUser):
 
 
 class DeliveryProfile(models.Model):
+    class VerificationStatus(models.TextChoices):
+        PENDING = 'pending', 'Pendiente'
+        APPROVED = 'approved', 'Aprobado'
+        REJECTED = 'rejected', 'Rechazado'
+
     class VehicleType(models.TextChoices):
         BICYCLE = 'bicycle', 'Bicicleta'
         MOTORCYCLE = 'motorcycle', 'Motocicleta'
@@ -63,6 +68,25 @@ class DeliveryProfile(models.Model):
     )
     license_plate = models.CharField(max_length=20, blank=True)
     is_available = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=12,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING,
+    )
+    identity_document = models.ImageField(
+        upload_to='driver_documents/',
+        blank=True,
+        null=True,
+    )
+    review_notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='reviewed_delivery_profiles',
+    )
+    reviewed_at = models.DateTimeField(blank=True, null=True)
     current_latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
     )

@@ -32,8 +32,28 @@ export interface DeliveryProfile {
   vehicle_type?: 'bicycle' | 'motorcycle' | 'car';
   license_plate?: string;
   is_available: boolean;
+  verification_status: 'pending' | 'approved' | 'rejected';
+  identity_document?: string | null;
+  identity_document_url?: string | null;
+  review_notes?: string;
+  setup_status?: DriverSetupStatus;
   current_latitude?: string | null;
   current_longitude?: string | null;
+}
+
+export interface DriverSetupStep {
+  key: 'phone' | 'vehicle' | 'plate' | 'photo' | 'identity';
+  label: string;
+  done: boolean;
+}
+
+export interface DriverSetupStatus {
+  steps: DriverSetupStep[];
+  done_count: number;
+  total_count: number;
+  complete: boolean;
+  is_approved: boolean;
+  ready_for_deliveries: boolean;
 }
 
 export interface OrderDriverDeliveryProfile {

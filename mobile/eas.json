@@ -18,7 +18,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "preview",
-        "EXPO_PUBLIC_API_URL": "https://zinapp-api-production.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://zinapp.com.mx/api"
       }
     },
     "production": {
@@ -28,7 +28,7 @@
       },
       "env": {
         "EXPO_PUBLIC_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://zinapp-api-production.up.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://zinapp.com.mx/api"
       }
     }
   },
@@ -38,10 +38,6 @@
         "serviceAccountKeyPath": "./google-play-key.json",
         "track": "internal",
         "releaseStatus": "draft"
-      },
-      "ios": {
-        "appleId": "adrianestradachavez123@gmail.com",
-        "ascAppId": "6789001540"
       }
     }
   }

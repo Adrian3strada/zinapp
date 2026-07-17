@@ -272,3 +272,80 @@ class RestaurantDetailSerializer(RestaurantSerializer):
         if hasattr(obj, '_prefetched_objects_cache') and 'products' in obj._prefetched_objects_cache:
             products = obj._prefetched_objects_cache['products']
         return ProductSerializer(products, many=True, context=self.context).data
+
+
+class RestaurantPublicSerializer(serializers.ModelSerializer):
+    """Fields safe to expose through the unauthenticated restaurant catalog."""
+
+    products_count = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
+    is_open = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
+    rating_average = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    has_transfer_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = (
+            'id', 'name', 'category', 'description', 'address', 'phone', 'whatsapp',
+            'image', 'image_url', 'latitude', 'longitude', 'is_active',
+            'accepting_orders', 'opening_time', 'closing_time', 'is_open',
+            'is_favorited', 'rating_average', 'reviews_count', 'products_count',
+            'has_transfer_info',
+        )
+
+    def get_products_count(self, obj):
+        return obj.products.filter(is_available=True).count()
+
+    def get_image_url(self, obj):
+        return build_image_url(obj, self.context.get('request'))
+
+    def get_is_open(self, obj):
+        return obj.is_open_now()
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return bool(
+            user
+            and getattr(user, 'is_authenticated', False)
+            and getattr(user, 'is_customer', False)
+            and obj.favorites.filter(user=user).exists()
+        )
+
+    def get_rating_average(self, obj):
+        avg = obj.reviews.aggregate(avg=Avg('restaurant_rating'))['avg']
+        return round(float(avg), 1) if avg else None
+
+    def get_reviews_count(self, obj):
+        return obj.reviews.count()
+
+    def get_has_transfer_info(self, obj):
+        return bool((obj.clabe or '').strip())
+
+
+class RestaurantPublicDetailSerializer(RestaurantPublicSerializer):
+    products = serializers.SerializerMethodField()
+
+    class Meta(RestaurantPublicSerializer.Meta):
+        fields = RestaurantPublicSerializer.Meta.fields + ('products',)
+
+    def get_products(self, obj):
+        products = obj.products.all()
+        if hasattr(obj, '_prefetched_objects_cache') and 'products' in obj._prefetched_objects_cache:
+            products = obj._prefetched_objects_cache['products']
+        return ProductSerializer(products, many=True, context=self.context).data
+
+
+class RestaurantTransferInfoSerializer(serializers.ModelSerializer):
+    """Banking information available only to an authenticated checkout."""
+
+    has_transfer_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = ('bank_name', 'account_holder', 'clabe', 'whatsapp', 'phone', 'has_transfer_info')
+
+    def get_has_transfer_info(self, obj):
+        return bool((obj.clabe or '').strip())

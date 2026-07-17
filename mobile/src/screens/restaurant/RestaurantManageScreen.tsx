@@ -402,7 +402,7 @@ export default function RestaurantManageScreen() {
           ) : (
             <View style={styles.menuSection}>
               <View style={styles.sectionRow}>
-                <View>
+                <View style={styles.sectionCopy}>
                   <Text style={styles.sectionTitle}>Catálogo</Text>
                   <Text style={styles.sectionSub}>
                     Toca un platillo para editarlo · usa el switch para ocultarlo
@@ -597,6 +597,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: spacing.md,
   },
+  sectionCopy: { flex: 1, minWidth: 0 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   sectionSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
   addBtn: {
@@ -608,6 +609,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     minHeight: 44,
+    flexShrink: 0,
   },
   addText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
   productCard: {

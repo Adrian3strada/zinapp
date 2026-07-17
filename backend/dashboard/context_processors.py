@@ -1,3 +1,4 @@
+from accounts.models import DeliveryProfile
 from orders.models import DisputeStatus, OrderDispute
 from restaurants.models import Restaurant
 
@@ -9,6 +10,9 @@ def panel_nav(request):
         return {}
     return {
         'panel_pending_restaurants': Restaurant.objects.filter(is_active=False).count(),
+        'panel_pending_drivers': DeliveryProfile.objects.filter(
+            verification_status=DeliveryProfile.VerificationStatus.PENDING,
+        ).count(),
         'panel_pending_disputes': OrderDispute.objects.filter(
             status=DisputeStatus.PENDING,
         ).count(),

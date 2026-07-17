@@ -173,6 +173,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class DeliveryProfileViewSet(viewsets.ModelViewSet):
     queryset = DeliveryProfile.objects.select_related('user').all()
     serializer_class = DeliveryProfileSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
@@ -191,7 +192,13 @@ class DeliveryProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get', 'patch'], permission_classes=[IsDriver])
     def me(self, request):
-        profile, _ = DeliveryProfile.objects.get_or_create(user=request.user)
+        profile, _ = DeliveryProfile.objects.get_or_create(
+            user=request.user,
+            defaults={
+                'is_available': False,
+                'verification_status': DeliveryProfile.VerificationStatus.PENDING,
+            },
+        )
         if request.method == 'GET':
             serializer = self.get_serializer(profile, context={'request': request})
             return Response(serializer.data)

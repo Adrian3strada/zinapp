@@ -10,7 +10,7 @@ from accounts.serializers import (
 )
 from restaurants.fields import CoordinateField
 from restaurants.geo import is_in_coverage, round_coordinate
-from restaurants.serializers import ProductSerializer, RestaurantSerializer
+from restaurants.serializers import ProductSerializer, RestaurantPublicSerializer
 
 from .models import Coupon, Order, OrderDispute, OrderItem, OrderMessage, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentSize, ShipmentStatus, get_shipment_fee
 
@@ -97,7 +97,10 @@ class CouponValidateSerializer(serializers.Serializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     customer_detail = OrderParticipantUserSerializer(source='customer', read_only=True)
-    restaurant_detail = RestaurantSerializer(source='restaurant', read_only=True)
+    # Orders can be read by drivers; never embed restaurant banking data here.
+    # Transfer details are fetched by an authenticated customer from the
+    # restaurant transfer-info endpoint during checkout.
+    restaurant_detail = RestaurantPublicSerializer(source='restaurant', read_only=True)
     driver_detail = OrderParticipantUserSerializer(source='driver', read_only=True)
     driver_delivery_profile = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)

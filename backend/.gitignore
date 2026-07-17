@@ -4,6 +4,16 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
+!.env.example
+!.env.*.example
 media/
 db.sqlite3
 *.log
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.keystore
+credentials.json

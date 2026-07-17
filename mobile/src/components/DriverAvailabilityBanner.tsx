@@ -7,11 +7,12 @@ import { cardShadow } from '../theme/shadows';
 
 interface Props {
   isAvailable: boolean;
+  isApproved?: boolean;
   updating: boolean;
   onToggle: (value: boolean) => void;
 }
 
-export default function DriverAvailabilityBanner({ isAvailable, updating, onToggle }: Props) {
+export default function DriverAvailabilityBanner({ isAvailable, isApproved = true, updating, onToggle }: Props) {
   return (
     <View style={[styles.banner, !isAvailable && styles.bannerOff, isAvailable && styles.bannerOn]}>
       <View style={[styles.iconWrap, isAvailable && styles.iconWrapOn]}>
@@ -24,7 +25,9 @@ export default function DriverAvailabilityBanner({ isAvailable, updating, onTogg
       <View style={styles.textWrap}>
         <Text style={styles.title}>{isAvailable ? 'Estás en línea' : 'Fuera de línea'}</Text>
         <Text style={styles.sub}>
-          {isAvailable
+          {!isApproved
+            ? 'Completa tu perfil y espera la aprobación de ZinApp'
+            : isAvailable
             ? 'Recibes pedidos y compartes ubicación con la app'
             : 'Activa para ver pedidos nuevos y compartir GPS'}
         </Text>
@@ -35,6 +38,7 @@ export default function DriverAvailabilityBanner({ isAvailable, updating, onTogg
         <Switch
           value={isAvailable}
           onValueChange={onToggle}
+          disabled={!isApproved}
           trackColor={{ false: colors.border, true: colors.shipmentStart + '55' }}
           thumbColor={isAvailable ? colors.shipmentStart : colors.textMuted}
           accessibilityLabel="Disponible para entregas"

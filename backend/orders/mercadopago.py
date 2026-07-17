@@ -2,6 +2,8 @@
 
 import json
 import logging
+import hashlib
+import hmac
 import urllib.error
 import urllib.request
 
@@ -16,6 +18,37 @@ MP_PAYMENT_URL = 'https://api.mercadopago.com/v1/payments'
 def mercadopago_enabled() -> bool:
     token = getattr(settings, 'MERCADOPAGO_ACCESS_TOKEN', '') or ''
     return bool(token.strip())
+
+
+def verify_webhook_signature(request, payment_id: str) -> bool:
+    """Verify Mercado Pago's v1 webhook signature when a secret is configured.
+
+    The secret is optional only for backward compatibility with existing
+    deployments. Production integrations must set MERCADOPAGO_WEBHOOK_SECRET.
+    """
+    secret = (getattr(settings, 'MERCADOPAGO_WEBHOOK_SECRET', '') or '').strip()
+    if not secret:
+        return False
+
+    signature = request.headers.get('x-signature', '')
+    request_id = request.headers.get('x-request-id', '')
+    values = dict(
+        part.strip().split('=', 1)
+        for part in signature.split(',')
+        if '=' in part
+    )
+    timestamp = values.get('ts', '')
+    received_hash = values.get('v1', '')
+    if not timestamp or not received_hash:
+        return False
+
+    manifest = f'id:{payment_id};request-id:{request_id};ts:{timestamp};'
+    expected_hash = hmac.new(
+        secret.encode(),
+        manifest.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(received_hash, expected_hash)
 
 
 def create_checkout_preference(order) -> dict | None:

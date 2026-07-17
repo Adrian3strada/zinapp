@@ -27,7 +27,8 @@ type AvailableItem = { kind: 'order'; id: string; order: Order };
 export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
   const { insets, listPaddingBottom } = useTabScreenInsets();
-  const { isAvailable, updating, toggleAvailability } = useDriverProfileContext();
+  const { isAvailable, profile, updating, toggleAvailability } = useDriverProfileContext();
+  const isApproved = profile?.verification_status === 'approved';
   const { hasActiveDelivery } = useDriverActiveDeliveries();
   const [items, setItems] = useState<AvailableItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +134,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               topInset={insets.top}
               firstName={user?.first_name}
               eyebrow="Pedidos disponibles"
-              subtitle={isAvailable ? countLabel : 'Activa tu disponibilidad para ver pedidos'}
+              subtitle={!isApproved ? 'Completa tu validación para recibir pedidos' : isAvailable ? countLabel : 'Activa tu disponibilidad para ver pedidos'}
               isAvailable={isAvailable}
               stats={[
                 { label: 'Listos', value: items.length, icon: 'fast-food-outline' },
@@ -143,6 +144,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
             />
             <DriverAvailabilityBanner
               isAvailable={isAvailable}
+              isApproved={isApproved}
               updating={updating}
               onToggle={toggleAvailability}
             />
@@ -155,7 +157,14 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
                 </View>
               </View>
             ) : null}
-            {!isAvailable ? (
+            {!isApproved ? (
+              <View style={styles.tipBox}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={colors.shipmentStart} />
+                <Text style={styles.tipText}>
+                  Tu cuenta está pendiente de aprobación. Completa foto de perfil e INE en Mi perfil.
+                </Text>
+              </View>
+            ) : !isAvailable ? (
               <View style={styles.tipBox}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.shipmentStart} />
                 <Text style={styles.tipText}>
@@ -187,7 +196,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
               onAccept={() => handleAccept(item)}
               acceptLabel={hasActiveDelivery ? 'Entrega en curso' : 'Aceptar pedido'}
-              acceptDisabled={!isAvailable || hasActiveDelivery}
+              acceptDisabled={!isApproved || !isAvailable || hasActiveDelivery}
               acceptLoading={acceptingId === item.id}
             />
           );

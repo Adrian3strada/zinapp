@@ -12,9 +12,12 @@ python manage.py normalize_usernames
 python manage.py fix_password_hashes
 python manage.py collectstatic --noinput
 
-if [ "$SEED_DATA" = "true" ] || [ "$SEED_DATA" = "True" ] || [ "$SEED_DATA" = "1" ]; then
-  echo "SEED_DATA activo - cargando datos demo"
+if { [ "$SEED_DATA" = "true" ] || [ "$SEED_DATA" = "True" ] || [ "$SEED_DATA" = "1" ]; } \
+  && { [ "$ALLOW_DEMO_SEED" = "true" ] || [ "$ALLOW_DEMO_SEED" = "True" ] || [ "$ALLOW_DEMO_SEED" = "1" ]; }; then
+  echo "SEED_DATA y ALLOW_DEMO_SEED activos - cargando datos demo"
   python manage.py seed_data
+elif [ "$SEED_DATA" = "true" ] || [ "$SEED_DATA" = "True" ] || [ "$SEED_DATA" = "1" ]; then
+  echo "SEED_DATA ignorado: establece ALLOW_DEMO_SEED=true solo en entornos efímeros"
 fi
 
 if [ "$RESET_APP_DATA" = "true" ] || [ "$RESET_APP_DATA" = "True" ] || [ "$RESET_APP_DATA" = "1" ]; then

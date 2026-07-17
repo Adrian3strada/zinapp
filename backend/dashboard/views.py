@@ -4,6 +4,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
@@ -12,6 +13,7 @@ from accounts.models import DeliveryProfile, User, UserRole
 from orders.models import Order, OrderStatus
 from restaurants.models import Restaurant
 from restaurants.setup import restaurant_setup_status
+from accounts.setup import driver_setup_status
 
 from .access import can_access_panel
 from .mixins import PanelAccessMixin
@@ -289,6 +291,9 @@ class DriverListView(PanelAccessMixin, ListView):
             qs = qs.filter(is_available=True)
         elif self.request.GET.get('available') == '0':
             qs = qs.filter(is_available=False)
+        verification = self.request.GET.get('verification', '').strip()
+        if verification in DeliveryProfile.VerificationStatus.values:
+            qs = qs.filter(verification_status=verification)
         search = self.request.GET.get('q', '').strip()
         if search:
             qs = qs.filter(
@@ -307,5 +312,68 @@ class DriverListView(PanelAccessMixin, ListView):
             subtitle='Disponibilidad, vehículo y ubicación de quienes entregan pedidos.',
         ))
         ctx['available_filter'] = self.request.GET.get('available', '')
+        ctx['verification_filter'] = self.request.GET.get('verification', '')
+        ctx['drivers_pending'] = DeliveryProfile.objects.filter(
+            verification_status=DeliveryProfile.VerificationStatus.PENDING,
+        ).count()
         ctx['search_query'] = self.request.GET.get('q', '')
         return ctx
+
+
+class DriverDetailView(PanelAccessMixin, DetailView):
+    model = DeliveryProfile
+    template_name = 'dashboard/drivers/detail.html'
+    context_object_name = 'profile'
+
+    def get_queryset(self):
+        return DeliveryProfile.objects.select_related('user', 'reviewed_by')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        profile = self.object
+        ctx.update(page_context(
+            profile.user.username,
+            'drivers',
+            breadcrumbs=[
+                {'label': 'Repartidores', 'url': reverse('dashboard:drivers')},
+                {'label': profile.user.username, 'url': None},
+            ],
+        ))
+        ctx['setup'] = driver_setup_status(profile)
+        return ctx
+
+
+class DriverReviewView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        profile = get_object_or_404(DeliveryProfile, pk=pk)
+        setup = driver_setup_status(profile)
+        decision = request.POST.get('decision')
+        notes = (request.POST.get('review_notes') or '').strip()
+        if decision == 'approved' and not setup['complete']:
+            messages.error(
+                request,
+                f'«{profile.user.username}» debe completar el checklist '
+                f'({setup["done_count"]}/{setup["total_count"]}) antes de aprobarlo.',
+            )
+        elif decision in (
+            DeliveryProfile.VerificationStatus.APPROVED,
+            DeliveryProfile.VerificationStatus.REJECTED,
+        ):
+            profile.verification_status = decision
+            profile.review_notes = notes
+            profile.reviewed_by = request.user
+            profile.reviewed_at = timezone.now()
+            if decision == DeliveryProfile.VerificationStatus.REJECTED:
+                profile.is_available = False
+            profile.save(update_fields=[
+                'verification_status', 'review_notes', 'reviewed_by',
+                'reviewed_at', 'is_available', 'updated_at',
+            ])
+            messages.success(
+                request,
+                f'«{profile.user.username}» fue '
+                f'{"aprobado" if decision == "approved" else "rechazado"}.',
+            )
+        else:
+            messages.error(request, 'Selecciona una decisión válida.')
+        return redirect(reverse('dashboard:driver-detail', kwargs={'pk': pk}))

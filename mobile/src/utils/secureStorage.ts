@@ -1,11 +1,17 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-/** Almacenamiento seguro en móvil; localStorage en web. */
+/**
+ * Almacenamiento seguro en móvil; almacenamiento por sesión en web.
+ *
+ * sessionStorage still cannot protect a bearer token from an XSS in the same
+ * origin, but avoids persisting credentials after the browser closes. Moving
+ * web auth to HttpOnly cookies requires a coordinated backend/API change.
+ */
 export async function getStorageItem(key: string): Promise<string | null> {
   if (Platform.OS === 'web') {
     try {
-      return globalThis.localStorage?.getItem(key) ?? null;
+      return globalThis.sessionStorage?.getItem(key) ?? null;
     } catch {
       return null;
     }
@@ -20,7 +26,7 @@ export async function getStorageItem(key: string): Promise<string | null> {
 export async function setStorageItem(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
     try {
-      globalThis.localStorage?.setItem(key, value);
+      globalThis.sessionStorage?.setItem(key, value);
     } catch {
       // ignore quota / private mode
     }
@@ -36,7 +42,7 @@ export async function setStorageItem(key: string, value: string): Promise<void> 
 export async function deleteStorageItem(key: string): Promise<void> {
   if (Platform.OS === 'web') {
     try {
-      globalThis.localStorage?.removeItem(key);
+      globalThis.sessionStorage?.removeItem(key);
     } catch {
       // ignore
     }

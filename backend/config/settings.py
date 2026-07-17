@@ -169,7 +169,9 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
-SERVE_MEDIA = config('SERVE_MEDIA', default=True, cast=bool)
+# Keep Django's development media server opt-in in production. Public media
+# should normally be served by object storage or the edge proxy.
+SERVE_MEDIA = config('SERVE_MEDIA', default=False, cast=bool)
 
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
 APP_STORE_URL = config('APP_STORE_URL', default='').strip()
@@ -227,6 +229,7 @@ SIMPLE_JWT = {
 MERCADOPAGO_ACCESS_TOKEN = config('MERCADOPAGO_ACCESS_TOKEN', default='')
 MERCADOPAGO_BACK_URL = config('MERCADOPAGO_BACK_URL', default='')
 MERCADOPAGO_WEBHOOK_URL = config('MERCADOPAGO_WEBHOOK_URL', default='')
+MERCADOPAGO_WEBHOOK_SECRET = config('MERCADOPAGO_WEBHOOK_SECRET', default='')
 
 CRON_SECRET = config('CRON_SECRET', default='')
 

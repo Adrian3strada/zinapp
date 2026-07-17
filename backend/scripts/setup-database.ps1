@@ -75,7 +75,7 @@ function Invoke-RailwayDb {
         Write-Host '  railway variable set SEED_DATA=false --service zinapp-api' -ForegroundColor Yellow
     }
 
-    Write-Host 'Verifica: curl https://zinapp-api-production.up.railway.app/api/health/' -ForegroundColor Green
+    Write-Host 'Verifica: curl https://zinapp.com.mx/api/health/' -ForegroundColor Green
 }
 
 Write-Host "=== ZinApp setup-database ($Target) ===" -ForegroundColor Cyan

@@ -45,14 +45,14 @@ $resolvedApi = if ($ApiUrl) { $ApiUrl } else { $envFile['EXPO_PUBLIC_API_URL'] }
 $resolvedBase = Normalize-BasePath ($(if ($WebBasePath) { $WebBasePath } else { $envFile['EXPO_PUBLIC_WEB_BASE_PATH'] }))
 
 if (-not $resolvedApi) {
-    $resolvedApi = 'https://zinapp-api-production.up.railway.app/api'
+    $resolvedApi = 'https://zinapp.com.mx/api'
 }
 if (-not $publicUrl) {
     if ($resolvedBase -eq '/') {
         $hostPart = ([uri]$resolvedApi).GetLeftPart([System.UriPartial]::Authority)
         $publicUrl = $hostPart
     } else {
-        $publicUrl = 'https://zinapp-api-production.up.railway.app'
+        $publicUrl = 'https://zinapp.com.mx'
     }
 }
 

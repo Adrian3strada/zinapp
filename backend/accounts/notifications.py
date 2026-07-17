@@ -108,6 +108,7 @@ def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> None:
     drivers = User.objects.filter(
         role=UserRole.DRIVER,
         delivery_profile__is_available=True,
+        delivery_profile__verification_status='approved',
     ).exclude(expo_push_token='')
     for driver in drivers:
         send_push_to_user(driver, title, body, data, channel_id='deliveries')

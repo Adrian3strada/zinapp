@@ -17,7 +17,7 @@ Set-Location $PSScriptRoot\..
 
 $BundleId = 'com.zinapp.delivery'
 $AppleId = 'adrianestradachavez123@gmail.com'
-$PrivacyUrl = 'https://zinapp-api-production.up.railway.app/privacidad/'
+$PrivacyUrl = 'https://zinapp.com.mx/privacidad/'
 $SupportEmail = 'adrianestradachavez123@gmail.com'
 $ExpoBuildsUrl = 'https://expo.dev/accounts/g2adriaans-team/projects/zinapp/builds'
 
@@ -60,7 +60,7 @@ function Test-Prerequisites {
     }
 
     try {
-        $h = Invoke-WebRequest -Uri 'https://zinapp-api-production.up.railway.app/api/health/' -UseBasicParsing -TimeoutSec 20
+        $h = Invoke-WebRequest -Uri 'https://zinapp.com.mx/api/health/' -UseBasicParsing -TimeoutSec 20
         Write-Host "[OK] API Railway ($($h.StatusCode))" -ForegroundColor Green
     } catch {
         Write-Host '[ERROR] API Railway no responde' -ForegroundColor Red

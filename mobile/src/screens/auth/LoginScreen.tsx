@@ -34,7 +34,7 @@ import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 
 const PRIVACY_URL =
   (Constants.expoConfig?.extra as { privacyPolicyUrl?: string } | undefined)?.privacyPolicyUrl
-  ?? 'https://zinapp-api-production.up.railway.app/privacidad/';
+  ?? 'https://zinapp.com.mx/privacidad/';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { login, enterGuestMode } = useAuth();

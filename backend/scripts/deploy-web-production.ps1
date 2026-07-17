@@ -27,9 +27,9 @@ Write-Host 'Esperando deploy (~90s)...' -ForegroundColor Yellow
 Start-Sleep -Seconds 90
 
 $urls = @(
-    @{ Name = 'App web'; Url = 'https://zinapp-api-production.up.railway.app/app/' },
-    @{ Name = 'Privacidad'; Url = 'https://zinapp-api-production.up.railway.app/privacidad/' },
-    @{ Name = 'API health'; Url = 'https://zinapp-api-production.up.railway.app/api/health/' }
+    @{ Name = 'App web'; Url = 'https://zinapp.com.mx/app/' },
+    @{ Name = 'Privacidad'; Url = 'https://zinapp.com.mx/privacidad/' },
+    @{ Name = 'API health'; Url = 'https://zinapp.com.mx/api/health/' }
 )
 
 foreach ($item in $urls) {
@@ -43,6 +43,6 @@ foreach ($item in $urls) {
 
 Write-Host ''
 Write-Host 'Comparte con usuarios:' -ForegroundColor Green
-Write-Host '  https://zinapp-api-production.up.railway.app/app/' -ForegroundColor White
+Write-Host '  https://zinapp.com.mx/app/' -ForegroundColor White
 Write-Host ''
 Write-Host 'Demo: cliente1 / test1234' -ForegroundColor Gray

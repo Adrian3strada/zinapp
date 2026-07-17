@@ -1,10 +1,15 @@
+import shutil
+import tempfile
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from rest_framework.test import APIClient
 
 from accounts.models import DeliveryProfile, UserRole
 from dashboard.gestion.forms import UserCreateForm
+from restaurants.models import Restaurant
 
 User = get_user_model()
 
@@ -91,22 +96,53 @@ class PanelUserLoginTests(TestCase):
 
 class DeliveryProfileApiTests(TestCase):
     def setUp(self):
+        self.media_root = tempfile.mkdtemp()
+        self.override = override_settings(MEDIA_ROOT=self.media_root)
+        self.override.enable()
         self.client = APIClient()
+        self.web_client = Client()
         self.driver = User.objects.create_user(
             username='kike',
             password='test1234',
             role='driver',
+            phone='4431234567',
         )
-        DeliveryProfile.objects.create(user=self.driver, is_available=False)
+        self.driver.avatar.save(
+            'avatar.jpg',
+            SimpleUploadedFile('avatar.jpg', b'avatar', content_type='image/jpeg'),
+        )
+        self.profile = DeliveryProfile.objects.create(
+            user=self.driver,
+            is_available=False,
+            license_plate='ABC123',
+            identity_document=SimpleUploadedFile(
+                'ine.jpg', b'identity', content_type='image/jpeg',
+            ),
+        )
 
-    def test_driver_can_toggle_availability_via_me(self):
+    def tearDown(self):
+        self.override.disable()
+        shutil.rmtree(self.media_root, ignore_errors=True)
+
+    def test_pending_driver_cannot_toggle_availability_via_me(self):
         self.client.force_authenticate(self.driver)
         response = self.client.patch(
             '/api/auth/delivery-profiles/me/',
             {'is_available': True},
             format='json',
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
+
+    def test_approved_driver_can_toggle_availability_via_me(self):
+        self.profile.verification_status = DeliveryProfile.VerificationStatus.APPROVED
+        self.profile.save(update_fields=['verification_status'])
+        self.client.force_authenticate(self.driver)
+        response = self.client.patch(
+            '/api/auth/delivery-profiles/me/',
+            {'is_available': True},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertTrue(response.data['is_available'])
 
     def test_driver_can_read_own_profile_via_me(self):
@@ -114,6 +150,40 @@ class DeliveryProfileApiTests(TestCase):
         response = self.client.get('/api/auth/delivery-profiles/me/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['user']['id'], self.driver.id)
+
+    def test_anonymous_cannot_fetch_driver_document_media(self):
+        response = self.web_client.get(self.profile.identity_document.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_admin_can_fetch_driver_document_media(self):
+        admin = User.objects.create_user(
+            username='media_admin',
+            password='adminpass123',
+            role=UserRole.ADMIN,
+            is_staff=True,
+        )
+        self.web_client.login(username=admin.username, password='adminpass123')
+
+        response = self.web_client.get(self.profile.identity_document.url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_public_restaurant_image_media_still_served(self):
+        owner = User.objects.create_user(
+            username='media_rest_owner',
+            password='test1234',
+            role=UserRole.RESTAURANT,
+        )
+        restaurant = Restaurant.objects.create(
+            owner=owner,
+            name='Imagen publica',
+            address='Centro',
+            image=SimpleUploadedFile('rest.jpg', b'restaurant', content_type='image/jpeg'),
+        )
+
+        response = self.web_client.get(restaurant.image.url)
+
+        self.assertEqual(response.status_code, 200)
 
 
 class UserEditPasswordTests(TestCase):

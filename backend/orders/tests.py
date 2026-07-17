@@ -1,13 +1,25 @@
 from decimal import Decimal
+import hashlib
+import hmac
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from orders.models import Coupon, Order, OrderStatus
+from orders.models import Coupon, Order, OrderStatus, PaymentMethod, PaymentStatus
 from restaurants.models import Restaurant
 
 User = get_user_model()
+
+
+def mercadopago_signature_headers(payment_id, secret='mp_webhook_secret', request_id='req-123', ts='1700000000'):
+    manifest = f'id:{payment_id};request-id:{request_id};ts:{ts};'
+    digest = hmac.new(secret.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+    return {
+        'HTTP_X_SIGNATURE': f'ts={ts},v1={digest}',
+        'HTTP_X_REQUEST_ID': request_id,
+    }
 
 
 class OrderApiTests(TestCase):
@@ -383,3 +395,124 @@ class OrderApiTests(TestCase):
         self.assertEqual(len(active_resp.data), 1)
         self.assertEqual(active_resp.data[0]['status'], OrderStatus.PENDING)
         self.assertIn('restaurant_name', active_resp.data[0])
+
+
+@override_settings(MERCADOPAGO_WEBHOOK_SECRET='mp_webhook_secret')
+class MercadoPagoWebhookTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            username='mp_customer',
+            password='test1234',
+            role='customer',
+        )
+        self.owner = User.objects.create_user(
+            username='mp_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='MP Rest',
+            address='Centro',
+            is_active=True,
+            accepting_orders=True,
+        )
+        self.order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            delivery_address='Calle 1',
+            payment_method=PaymentMethod.ONLINE,
+            payment_status=PaymentStatus.PENDING,
+            subtotal=Decimal('100.00'),
+            delivery_fee=Decimal('25.00'),
+            total=Decimal('125.00'),
+        )
+
+    def payment_payload(self, **overrides):
+        payload = {
+            'status': 'approved',
+            'external_reference': str(self.order.id),
+            'transaction_amount': '125.00',
+            'currency_id': 'MXN',
+            'metadata': {'order_id': self.order.id, 'type': 'order'},
+        }
+        payload.update(overrides)
+        return payload
+
+    @patch('orders.mercadopago.fetch_payment')
+    def test_signed_webhook_marks_matching_order_paid(self, mock_fetch):
+        mock_fetch.return_value = self.payment_payload()
+
+        response = self.client.post(
+            '/api/payments/mercadopago/webhook/',
+            {'type': 'payment', 'data': {'id': 'pay_123'}},
+            format='json',
+            **mercadopago_signature_headers('pay_123'),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
+
+    @patch('orders.mercadopago.fetch_payment')
+    def test_invalid_signature_rejects_webhook_before_fetch(self, mock_fetch):
+        response = self.client.post(
+            '/api/payments/mercadopago/webhook/',
+            {'type': 'payment', 'data': {'id': 'pay_123'}},
+            format='json',
+            HTTP_X_SIGNATURE='ts=1700000000,v1=bad',
+            HTTP_X_REQUEST_ID='req-123',
+        )
+
+        self.assertEqual(response.status_code, 401)
+        mock_fetch.assert_not_called()
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    @patch('orders.mercadopago.fetch_payment')
+    def test_amount_mismatch_does_not_mark_order_paid(self, mock_fetch):
+        mock_fetch.return_value = self.payment_payload(transaction_amount='126.00')
+
+        response = self.client.post(
+            '/api/payments/mercadopago/webhook/',
+            {'type': 'payment', 'data': {'id': 'pay_123'}},
+            format='json',
+            **mercadopago_signature_headers('pay_123'),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    @patch('orders.mercadopago.fetch_payment')
+    def test_wrong_currency_does_not_mark_order_paid(self, mock_fetch):
+        mock_fetch.return_value = self.payment_payload(currency_id='USD')
+
+        response = self.client.post(
+            '/api/payments/mercadopago/webhook/',
+            {'type': 'payment', 'data': {'id': 'pay_123'}},
+            format='json',
+            **mercadopago_signature_headers('pay_123'),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    @patch('orders.mercadopago.fetch_payment')
+    def test_cancelled_order_is_not_marked_paid(self, mock_fetch):
+        self.order.status = OrderStatus.CANCELLED
+        self.order.save(update_fields=['status', 'updated_at'])
+        mock_fetch.return_value = self.payment_payload()
+
+        response = self.client.post(
+            '/api/payments/mercadopago/webhook/',
+            {'type': 'payment', 'data': {'id': 'pay_123'}},
+            format='json',
+            **mercadopago_signature_headers('pay_123'),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)

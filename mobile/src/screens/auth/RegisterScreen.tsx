@@ -138,7 +138,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       if (form.role === 'driver') {
         appAlert(
           '¡Bienvenido repartidor!',
-          'Tu cuenta está lista. Activa tu disponibilidad en la pestaña Disponibles cuando quieras recibir pedidos.',
+          'Completa tu foto de perfil e INE en Mi perfil. ZinApp revisará tus datos antes de habilitarte para recibir pedidos.',
         );
       } else if (form.role === 'restaurant') {
         appAlert(

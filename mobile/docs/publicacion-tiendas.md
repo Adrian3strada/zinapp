@@ -8,8 +8,8 @@ Copia y pega en Play Console y App Store Connect.
 
 | Campo | Valor |
 |-------|-------|
-| Política de privacidad | https://zinapp-api-production.up.railway.app/privacidad/ |
-| Email de soporte | adrianestradachavez123@gmail.com |
+| Política de privacidad | https://zinapp.com.mx/privacidad/ |
+| Email de soporte | `<SUPPORT_EMAIL_CONFIGURADO>` |
 | Package (Android) | com.zinapp.delivery |
 | Bundle ID (iOS) | com.zinapp.delivery |
 
@@ -106,29 +106,29 @@ Crear/actualizar: `python manage.py seed_app_review` en el backend.
 
 | Rol | Usuario | Contraseña |
 |-----|---------|------------|
-| Cliente | `apple_review_cliente` | `ReviewZinApp2026!` |
-| Restaurante | `apple_review_rest` | `ReviewZinApp2026!` |
-| Repartidor | `apple_review_driver` | `ReviewZinApp2026!` |
+| Cliente | `<REVIEW_CUSTOMER_USERNAME>` | `<REVIEW_PASSWORD>` |
+| Restaurante | `<REVIEW_RESTAURANT_USERNAME>` | `<REVIEW_PASSWORD>` |
+| Repartidor | `<REVIEW_DRIVER_USERNAME>` | `<REVIEW_PASSWORD>` |
 
 ### App Store Connect → App Review Information
 
-**Username:** `apple_review_cliente`  
-**Password:** `ReviewZinApp2026!`
+**Username:** `<REVIEW_CUSTOMER_USERNAME>`
+**Password:** `<REVIEW_PASSWORD>`
 
 **Notes (pegar en inglés):**
 
 ```
 ZinApp is a local delivery app for Zinapécuaro, Mexico. Login is required.
 
-Demo accounts (password for all: ReviewZinApp2026!):
+Review accounts (use the current password from the secret manager):
 
-1) Customer: apple_review_cliente
+1) Customer: <REVIEW_CUSTOMER_USERNAME>
    — Browse restaurants (including "ZinApp Review Kitchen"), place an order, track delivery.
 
-2) Restaurant: apple_review_rest
+2) Restaurant: <REVIEW_RESTAURANT_USERNAME>
    — Accept and manage incoming orders. Restaurant is pre-activated.
 
-3) Driver: apple_review_driver
+3) Driver: <REVIEW_DRIVER_USERNAME>
    — View available deliveries and complete them.
 
 How to switch roles: log out from Profile, then sign in with another account.
@@ -137,7 +137,7 @@ Location: allow location if prompted. Customer profile already has a Zinapécuar
 Account deletion (5.1.1): Profile → scroll to "Eliminar cuenta" → enter password → confirm.
 Tracking (5.1.2): ZinApp does not track users for advertising. App Privacy should answer No to tracking; no ATT dialog is shown because we do not track.
 
-Support: adrianestradachavez123@gmail.com
+Support: <SUPPORT_EMAIL_CONFIGURADO>
 ```
 
 ### Reply si Apple pregunta por tracking
@@ -148,8 +148,8 @@ ZinApp does not track users. We do not link data with third-party data for adver
 
 ### Google Play → App access
 
-> Username: apple_review_cliente / Password: ReviewZinApp2026!  
-> Also: apple_review_rest and apple_review_driver (same password) for restaurant and driver modes.
+> Username: <REVIEW_CUSTOMER_USERNAME> / Password: <REVIEW_PASSWORD>
+> Provide the restaurant and driver review credentials from the secret manager when required.
 
 ---
 
@@ -159,7 +159,7 @@ Publicada en la misma URL de Railway, sin tiendas:
 
 | | |
 |--|--|
-| **URL produccion** | https://zinapp-api-production.up.railway.app/app/ |
+| **URL produccion** | https://zinapp.com.mx/app/ |
 | **Desarrollo local** | `cd mobile && npm run web` |
 
 ```powershell
@@ -175,6 +175,6 @@ O en un paso: `npm run build:web:deploy`
 
 ## Notas internas
 
-- Backend: https://zinapp-api-production.up.railway.app/api
+- Backend: https://zinapp.com.mx/api
 - Builds: `.\scripts\publish-stores.ps1 -Step build -Platform all`
 - Submit: `.\scripts\publish-stores.ps1 -Step submit -Platform android` (requiere `google-play-key.json`)

@@ -96,6 +96,7 @@ export default function ProfileScreen() {
   } | null>(null);
   const [vehicleType, setVehicleType] = useState<DeliveryProfile['vehicle_type']>('motorcycle');
   const [licensePlate, setLicensePlate] = useState('');
+  const [identityDocumentUri, setIdentityDocumentUri] = useState<string | null>(null);
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [restaurantForm, setRestaurantForm] = useState({
@@ -189,6 +190,11 @@ export default function ProfileScreen() {
     if (uri) setRestaurantImageUri(uri);
   };
 
+  const handlePickIdentityDocument = async () => {
+    const uri = await pickImageFromLibrary();
+    if (uri) setIdentityDocumentUri(uri);
+  };
+
   const handleToggleAcceptingOrders = async (value: boolean) => {
     if (!restaurant || togglingOrders) return;
     if (!restaurant.is_active) {
@@ -241,11 +247,15 @@ export default function ProfileScreen() {
     }
     setSaving(true);
     try {
-      await deliveryApi.updateProfile({
-        vehicle_type: vehicleType,
-        license_plate: licensePlate.trim(),
-      });
+      const fd = new FormData();
+      fd.append('vehicle_type', vehicleType ?? 'motorcycle');
+      fd.append('license_plate', licensePlate.trim());
+      if (identityDocumentUri) {
+        await appendImage(fd, 'identity_document', identityDocumentUri, 'ine.jpg');
+      }
+      await deliveryApi.updateProfile(fd);
       await loadRoleData();
+      setIdentityDocumentUri(null);
       appAlert('Datos de repartidor guardados');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err));
@@ -650,9 +660,16 @@ export default function ProfileScreen() {
               )}
               {driverProfile && (
                 <Text style={styles.statusLine}>
-                  Estado: {driverProfile.is_available ? 'Disponible' : 'No disponible'}
+                  Estado: {driverProfile.verification_status === 'approved' ? (driverProfile.is_available ? 'Disponible' : 'Aprobado, no disponible') : 'Pendiente de aprobación'}
                 </Text>
               )}
+              <Text style={styles.fieldLabel}>Identificación oficial (INE)</Text>
+              <Pressable style={styles.documentPicker} onPress={handlePickIdentityDocument}>
+                <Ionicons name="card-outline" size={20} color={colors.primary} />
+                <Text style={styles.documentPickerText}>
+                  {identityDocumentUri || driverProfile?.identity_document_url ? 'INE cargada · cambiar foto' : 'Subir foto de INE'}
+                </Text>
+              </Pressable>
               <Button title="Guardar datos de repartidor" variant="secondary" onPress={handleSaveDriver} loading={saving} />
             </View>
           )}
@@ -789,6 +806,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   statusLine: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md },
+  documentPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+  },
+  documentPickerText: { color: colors.primary, fontWeight: '700', flex: 1 },
   earningsValue: { fontSize: 28, fontWeight: '800', color: colors.primary, marginBottom: spacing.xs },
   dailyRow: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.sm },

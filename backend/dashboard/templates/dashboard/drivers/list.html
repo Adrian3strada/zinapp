@@ -7,8 +7,10 @@
       <a href="{% url 'dashboard:drivers' %}" class="zin-filter {% if available_filter == '' %}active{% endif %}">Todos</a>
       <a href="?available=1" class="zin-filter {% if available_filter == '1' %}active{% endif %}">Disponibles</a>
       <a href="?available=0" class="zin-filter {% if available_filter == '0' %}active{% endif %}">No disponibles</a>
+      <a href="?verification=pending" class="zin-filter {% if verification_filter == 'pending' %}active{% endif %}">Pendientes ({{ drivers_pending }})</a>
       <form class="zin-search" method="get">
         {% if available_filter %}<input type="hidden" name="available" value="{{ available_filter }}">{% endif %}
+        {% if verification_filter %}<input type="hidden" name="verification" value="{{ verification_filter }}">{% endif %}
         {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar repartidor o placas…" %}
       </form>
     </div>
@@ -25,6 +27,7 @@
           <th>Repartidor</th>
           <th>Vehículo</th>
           <th>Placas</th>
+          <th>Validación</th>
           <th>Disponible</th>
           <th>Ubicación GPS</th>
           <th>Actualizado</th>
@@ -37,6 +40,15 @@
           <td><strong>{{ profile.user.username }}</strong></td>
           <td>{{ profile.get_vehicle_type_display }}</td>
           <td>{{ profile.license_plate|default:"—" }}</td>
+          <td>
+            {% if profile.verification_status == 'approved' %}
+              <span class="badge badge-success">Aprobado</span>
+            {% elif profile.verification_status == 'rejected' %}
+              <span class="badge badge-danger">Rechazado</span>
+            {% else %}
+              <span class="badge badge-warning">Pendiente</span>
+            {% endif %}
+          </td>
           <td>
             {% if profile.is_available %}
               <span class="badge badge-success">Disponible</span>
@@ -54,6 +66,9 @@
           <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'dashboard:driver-detail' profile.pk %}" class="btn btn-outline-success btn-xs zin-row-btn" title="Revisar validación">
+                <i class="fas fa-check-circle"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
+              </a>
               <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar perfil de repartidor">
                 <i class="fas fa-motorcycle"></i><span class="d-none d-lg-inline ml-1">Perfil</span>
               </a>
@@ -67,7 +82,7 @@
           </td>
         </tr>
         {% empty %}
-        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-motorcycle" title="No hay repartidores" message="Los repartidores se registran desde la app." %}
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-motorcycle" title="No hay repartidores" message="Los repartidores se registran desde la app." %}
         {% endfor %}
       </tbody>
     </table>

@@ -140,6 +140,9 @@ class PublicCatalogTests(TestCase):
             name='Public Tacos',
             address='Centro',
             phone='4511111111',
+            bank_name='Banco privado',
+            account_holder='Propietario privado',
+            clabe='012180001234567890',
             is_active=True,
             accepting_orders=True,
         )
@@ -159,6 +162,42 @@ class PublicCatalogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         names = [r['name'] for r in response.data['results']]
         self.assertIn('Public Tacos', names)
+        restaurant = next(item for item in response.data['results'] if item['name'] == 'Public Tacos')
+        self.assertTrue(restaurant['has_transfer_info'])
+        for private_field in ('owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe'):
+            self.assertNotIn(private_field, restaurant)
+
+    def test_anonymous_restaurant_detail_hides_owner_and_payment_data(self):
+        from rest_framework.test import APIClient
+
+        response = APIClient().get(f'/api/restaurants/{self.restaurant.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        for private_field in ('owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe'):
+            self.assertNotIn(private_field, response.data)
+
+    def test_transfer_info_requires_authentication(self):
+        from rest_framework.test import APIClient
+
+        response = APIClient().get(f'/api/restaurants/{self.restaurant.id}/transfer-info/')
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_authenticated_customer_can_get_transfer_info(self):
+        from rest_framework.test import APIClient
+
+        customer = User.objects.create_user(
+            username='transfer_customer',
+            password='test1234',
+            role='customer',
+        )
+        client = APIClient()
+        client.force_authenticate(customer)
+
+        response = client.get(f'/api/restaurants/{self.restaurant.id}/transfer-info/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['clabe'], '012180001234567890')
 
     def test_anonymous_can_list_products(self):
         from rest_framework.test import APIClient

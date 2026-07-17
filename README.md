@@ -2,6 +2,50 @@
 
 App móvil tipo Didi Food / Uber Eats enfocada en Zinapécuaro, Michoacán.
 
+ZinApp es un monorepo Windows-first: `backend/` contiene la API Django,
+panel y aplicación web; `mobile/` contiene la app Expo. La documentación
+detallada está en [`docs/`](docs/).
+
+## Inicio rápido
+
+| Requisito | Versión comprobada |
+|------|------|
+| Python | 3.12 |
+| Node.js | 20 |
+| npm | incluido con Node 20 |
+| PowerShell | 5.1+ (scripts operativos) |
+| Docker Desktop | opcional, para PostgreSQL local |
+
+```powershell
+# Terminal 1
+cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+
+# Terminal 2
+cd mobile
+npm ci
+npx expo start --go --clear
+```
+
+Para exponer la API a Expo Go en la red local, ajusta
+`EXPO_PUBLIC_API_URL` a la IP LAN del equipo. Consulta
+[getting started](docs/getting-started.md) para las variantes Docker y web.
+
+## Documentación
+
+- [Arquitectura](docs/architecture.md)
+- [Configuración local y entornos](docs/getting-started.md)
+- [Pruebas y CI](docs/testing.md)
+- [Seguridad y respuesta a vulnerabilidades](docs/security.md)
+- [Guía de contribución](CONTRIBUTING.md)
+- [Backend Django](backend/README.md)
+- [Aplicación Expo](mobile/README.md)
+
 ## Stack
 
 | Capa | Tecnología |
@@ -42,8 +86,9 @@ App móvil tipo Didi Food / Uber Eats enfocada en Zinapécuaro, Michoacán.
 ## Backend
 
 ```bash
-conda activate zinapp
 cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
 python manage.py migrate
@@ -116,6 +161,7 @@ Sin HTTPS (solo prueba interna): `.\scripts\deploy-production.ps1` (sin `-WithHt
 MERCADOPAGO_ACCESS_TOKEN=APP_USR-...
 MERCADOPAGO_BACK_URL=https://tu-dominio.com/pago/ok
 MERCADOPAGO_WEBHOOK_URL=https://tu-dominio.com/api/payments/mercadopago/webhook/
+MERCADOPAGO_WEBHOOK_SECRET=<secreto de firmas configurado en Mercado Pago>
 ```
 
 ## Mobile
@@ -184,6 +230,7 @@ SECRET_KEY=<50+ caracteres aleatorios>
 DEMO_ACCOUNTS_ENABLED=false
 CRON_SECRET=<token largo para cron interno>
 CORS_ALLOWED_ORIGINS=https://tu-dominio.com
+MERCADOPAGO_WEBHOOK_SECRET=<secreto de firmas de Mercado Pago>
 ```
 
 Medidas activas en el backend:
@@ -204,8 +251,13 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 ```bash
 cd backend
-python manage.py test accounts accounts.test_security orders restaurants
+python manage.py test accounts accounts.test_security restaurants orders.tests.MercadoPagoWebhookTests
 ```
+
+La CI ejecuta la suite Django, comprueba migraciones y corre
+`npx tsc --noEmit` en cada pull request. El APK de GitHub Actions es un
+artefacto de vista previa firmado para depuración; las builds de distribución
+deben generarse con EAS y las credenciales protegidas del proveedor.
 
 ## Licencia
 

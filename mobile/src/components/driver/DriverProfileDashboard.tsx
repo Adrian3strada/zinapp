@@ -34,6 +34,7 @@ export default function DriverProfileDashboard({
 }: Props) {
   const navigation = useNavigation<BottomTabNavigationProp<DriverTabParamList>>();
   const isAvailable = profile?.is_available ?? false;
+  const isApproved = profile?.verification_status === 'approved';
   const vehicleLabel = profile?.vehicle_type
     ? VEHICLE_OPTIONS.find((v) => v.value === profile.vehicle_type)?.label ?? profile.vehicle_type
     : 'Sin vehículo';
@@ -50,14 +51,14 @@ export default function DriverProfileDashboard({
           <View style={[styles.statusPill, isAvailable ? styles.statusOnline : styles.statusOffline]}>
             <View style={[styles.statusDot, { backgroundColor: isAvailable ? colors.success : colors.textMuted }]} />
             <Text style={[styles.statusText, { color: isAvailable ? colors.success : colors.textMuted }]}>
-              {isAvailable ? 'Disponible' : 'Fuera de línea'}
+              {!isApproved ? 'Pendiente de aprobación' : isAvailable ? 'Disponible' : 'Fuera de línea'}
             </Text>
           </View>
         </View>
         <Switch
           value={isAvailable}
           onValueChange={onToggleAvailability}
-          disabled={updating}
+          disabled={updating || !isApproved}
           trackColor={{ false: colors.border, true: colors.shipmentStart + '55' }}
           thumbColor={isAvailable ? colors.shipmentStart : colors.textMuted}
         />

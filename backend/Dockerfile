@@ -16,11 +16,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN sed -i 's/\r$//' scripts/docker-entrypoint.sh && chmod +x scripts/docker-entrypoint.sh
+RUN sed -i 's/\r$//' scripts/docker-entrypoint.sh \
+    && chmod +x scripts/docker-entrypoint.sh \
+    && addgroup --system zinapp \
+    && adduser --system --ingroup zinapp --home /app zinapp \
+    && chown -R zinapp:zinapp /app
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD python -c "import os,urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"8000\")}/api/health/')" || exit 1
+
+USER zinapp
 
 ENTRYPOINT ["/bin/sh", "scripts/docker-entrypoint.sh"]

@@ -3,9 +3,11 @@ import { appAlert } from '../utils/appAlert';
 
 import { deliveryApi } from '../services/api';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import type { DeliveryProfile } from '../types';
 
 interface DriverProfileContextValue {
   isAvailable: boolean;
+  profile: DeliveryProfile | null;
   loading: boolean;
   updating: boolean;
   toggleAvailability: (value: boolean) => Promise<void>;
@@ -16,14 +18,17 @@ const DriverProfileContext = createContext<DriverProfileContextValue | null>(nul
 
 export function DriverProfileProvider({ children }: { children: React.ReactNode }) {
   const [isAvailable, setIsAvailable] = useState(false);
+  const [profile, setProfile] = useState<DeliveryProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const { data } = await deliveryApi.getProfile();
+      setProfile(data);
       setIsAvailable(data.is_available);
     } catch {
+      setProfile(null);
       setIsAvailable(false);
     } finally {
       setLoading(false);
@@ -50,8 +55,8 @@ export function DriverProfileProvider({ children }: { children: React.ReactNode 
   }, [isAvailable, updating]);
 
   const value = useMemo(
-    () => ({ isAvailable, loading, updating, toggleAvailability, refresh }),
-    [isAvailable, loading, updating, toggleAvailability, refresh],
+    () => ({ isAvailable, profile, loading, updating, toggleAvailability, refresh }),
+    [isAvailable, profile, loading, updating, toggleAvailability, refresh],
   );
 
   return <DriverProfileContext.Provider value={value}>{children}</DriverProfileContext.Provider>;

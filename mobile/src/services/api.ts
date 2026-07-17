@@ -215,6 +215,10 @@ export const restaurantApi = {
       params: { page, ...(category ? { category } : {}) },
     }),
   get: (id: number) => api.get<Restaurant & { products: Product[] }>(`/restaurants/${id}/`),
+  transferInfo: (id: number) =>
+    api.get<Pick<Restaurant, 'bank_name' | 'account_holder' | 'clabe' | 'whatsapp' | 'phone' | 'has_transfer_info'>>(
+      `/restaurants/${id}/transfer-info/`,
+    ),
   toggleFavorite: (id: number) =>
     api.post<{ is_favorited: boolean }>(`/restaurants/${id}/toggle-favorite/`),
   mine: () => api.get<Restaurant & { products: Product[] }>('/restaurants/mine/'),
@@ -278,7 +282,7 @@ export const promotionApi = {
 
 export const deliveryApi = {
   getProfile: () => api.get<DeliveryProfile>('/auth/delivery-profiles/me/'),
-  updateProfile: (data: { vehicle_type?: string; license_plate?: string }) =>
+  updateProfile: (data: { vehicle_type?: string; license_plate?: string } | FormData) =>
     api.patch<DeliveryProfile>('/auth/delivery-profiles/me/', data),
   updateLocation: (latitude: number, longitude: number) =>
     api.patch('/auth/delivery-profiles/me/', {

@@ -6,9 +6,9 @@ Guía operativa para registrar restaurantes y locales en producción.
 
 | Recurso | URL |
 |---------|-----|
-| App (clientes y dueños) | https://zinapp-api-production.up.railway.app/app/ |
-| Panel admin | https://zinapp-api-production.up.railway.app/panel/ |
-| API | https://zinapp-api-production.up.railway.app/api |
+| App (clientes y dueños) | https://zinapp.com.mx/app/ |
+| Panel admin | https://zinapp.com.mx/panel/ |
+| API | https://zinapp.com.mx/api |
 
 ## Flujo completo
 
@@ -44,7 +44,7 @@ La app muestra un banner con el progreso hasta que el local esté listo.
 
 ### 3. Revisión en panel admin (tú, como operador)
 
-1. Entra a **https://zinapp-api-production.up.railway.app/panel/** con tu cuenta admin.
+1. Entra a **https://zinapp.com.mx/panel/** con tu cuenta admin.
 2. En **Resumen** verás los locales pendientes de activar (badge en Restaurantes).
 3. Ve a **Restaurantes** → **Ver** el detalle del negocio.
 4. Revisa la checklist (menú, logo, CLABE, horario, ubicación).
@@ -85,4 +85,4 @@ Mensaje sugerido al registrar una tienda:
 
 > Regístrate en la app como Restaurante, completa tu menú y perfil (logo, CLABE, horario y dirección). Cuando veas «Esperando activación», avísanos y publicamos tu local en la app.
 
-Contacto soporte: adrianestradachavez123@gmail.com
+Contacto soporte: `<SUPPORT_EMAIL_CONFIGURADO>`

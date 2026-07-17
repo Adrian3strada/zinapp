@@ -9,6 +9,7 @@ from restaurants.fields import CoordinateField
 from restaurants.models import Restaurant
 
 from .models import DeliveryProfile, PasswordResetToken, User, UserRole
+from .setup import driver_setup_status
 from .username import normalize_username
 
 
@@ -176,6 +177,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 vehicle_type=vehicle_type or DeliveryProfile.VehicleType.MOTORCYCLE,
                 license_plate=license_plate,
                 is_available=False,
+                verification_status=DeliveryProfile.VerificationStatus.PENDING,
             )
 
         if user.role == UserRole.RESTAURANT:
@@ -297,6 +299,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class DeliveryProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    identity_document_url = serializers.SerializerMethodField()
+    setup_status = serializers.SerializerMethodField()
     current_latitude = CoordinateField(
         max_digits=9, decimal_places=6, required=False, allow_null=True
     )
@@ -308,6 +312,43 @@ class DeliveryProfileSerializer(serializers.ModelSerializer):
         model = DeliveryProfile
         fields = (
             'id', 'user', 'vehicle_type', 'license_plate', 'is_available',
+            'verification_status', 'identity_document', 'identity_document_url',
+            'review_notes', 'reviewed_at', 'setup_status',
             'current_latitude', 'current_longitude', 'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'user', 'created_at', 'updated_at')
+        read_only_fields = (
+            'id', 'user', 'verification_status', 'review_notes', 'reviewed_at',
+            'identity_document_url', 'setup_status', 'created_at', 'updated_at',
+        )
+
+    def get_identity_document_url(self, obj):
+        if not obj.identity_document:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.identity_document.url)
+        return obj.identity_document.url
+
+    def get_setup_status(self, obj):
+        return driver_setup_status(obj)
+
+    def validate(self, attrs):
+        if attrs.get('is_available'):
+            profile = self.instance
+            if profile is None:
+                return attrs
+            candidate = DeliveryProfile(
+                user=profile.user,
+                vehicle_type=attrs.get('vehicle_type', profile.vehicle_type),
+                license_plate=attrs.get('license_plate', profile.license_plate),
+                identity_document=attrs.get('identity_document', profile.identity_document),
+                verification_status=profile.verification_status,
+            )
+            if not driver_setup_status(candidate)['ready_for_deliveries']:
+                raise serializers.ValidationError({
+                    'is_available': (
+                        'Completa tu perfil y espera la aprobación de ZinApp '
+                        'antes de activar tu disponibilidad.'
+                    ),
+                })
+        return attrs

@@ -1,4 +1,4 @@
-# Configura dominio propio en Railway (en lugar de zinapp-api-production.up.railway.app)
+# Configura el dominio propio en Railway en lugar del host temporal.
 # Uso:
 #   .\scripts\setup-railway-domain.ps1 -Domain zinapp.mx
 #   .\scripts\setup-railway-domain.ps1 -Domain app.zinapp.mx -ApiDomain api.zinapp.mx

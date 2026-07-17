@@ -2,7 +2,7 @@
 # Uso: .\scripts\capture-appstore-screenshots.ps1
 
 $ErrorActionPreference = 'Stop'
-$url = 'https://zinapp-api-production.up.railway.app/app/'
+$url = 'https://zinapp.com.mx/app/'
 
 Write-Host ''
 Write-Host '=== Capturas App Store — ZinApp ===' -ForegroundColor Cyan

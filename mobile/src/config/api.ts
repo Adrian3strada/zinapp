@@ -5,8 +5,8 @@ const extra = Constants.expoConfig?.extra as {
   environment?: string;
 } | undefined;
 
-/** API pública en Railway (APK / preview / production). */
-export const PRODUCTION_API_URL = 'https://zinapp-api-production.up.railway.app/api';
+/** API pública canónica (APK / preview / producción). */
+export const PRODUCTION_API_URL = 'https://zinapp.com.mx/api';
 
 /** En release (APK/AAB) siempre usar Railway, nunca IP local. */
 function resolveApiUrl(): string {
