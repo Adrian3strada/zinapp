@@ -28,7 +28,11 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: python manage.py makemigrations --check --dry-run
-      - run: python manage.py test accounts accounts.test_security dashboard local_services orders restaurants
+      - run: python manage.py test accounts accounts.test_security
+      - run: python manage.py test dashboard
+      - run: python manage.py test local_services
+      - run: python manage.py test orders
+      - run: python manage.py test restaurants
 
   mobile:
     runs-on: ubuntu-latest
