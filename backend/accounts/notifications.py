@@ -48,7 +48,7 @@ def send_push_to_user(
     body: str,
     data: dict | None = None,
     *,
-    channel_id: str = 'orders',
+    channel_id: str = 'orders_v2',
 ) -> bool:
     token = getattr(user, 'expo_push_token', '') or ''
     if not token or not token.startswith('ExponentPushToken'):
@@ -58,7 +58,7 @@ def send_push_to_user(
         'to': token,
         'title': title,
         'body': body,
-        'sound': 'bell.wav',
+        'sound': 'alert.wav',
         'priority': 'high',
         'channelId': channel_id,
         'data': data or {},
@@ -66,8 +66,8 @@ def send_push_to_user(
     payload['android'] = {
         'channelId': channel_id,
         'priority': 'high',
-        'sound': 'bell.wav',
-        'vibrate': [0, 250, 250, 250],
+        'sound': 'alert.wav',
+        'vibrate': [0, 400, 120, 400, 120, 500, 160, 500],
     }
 
     try:
@@ -111,7 +111,7 @@ def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> None:
         delivery_profile__verification_status='approved',
     ).exclude(expo_push_token='')
     for driver in drivers:
-        send_push_to_user(driver, title, body, data, channel_id='deliveries')
+        send_push_to_user(driver, title, body, data, channel_id='deliveries_v2')
 
 
 def _order_ref(order) -> str:
@@ -146,7 +146,7 @@ def notify_order_status(order):
         else:
             customer_msg = ORDER_CUSTOMER_MESSAGES['cancelled']
     if customer_msg:
-        send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders')
+        send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders_v2')
 
     if order.restaurant and order.restaurant.owner:
         owner_msg = ORDER_OWNER_MESSAGES.get(status)
@@ -173,7 +173,7 @@ def notify_order_status(order):
                 title,
                 f'Entrega {ref} completada.',
                 data,
-                channel_id='deliveries',
+                channel_id='deliveries_v2',
             )
         elif status == 'cancelled':
             send_push_to_user(
@@ -181,7 +181,7 @@ def notify_order_status(order):
                 title,
                 f'El pedido {ref} fue cancelado.',
                 data,
-                channel_id='deliveries',
+                channel_id='deliveries_v2',
             )
 
 
@@ -194,7 +194,7 @@ def notify_shipment_status(shipment):
     if status == 'on_the_way' and shipment.driver:
         customer_msg = f'¡Tu paquete va en camino! {_driver_name(shipment.driver)} te lo lleva.'
     if customer_msg:
-        send_push_to_user(shipment.customer, title, customer_msg, data, channel_id='deliveries')
+        send_push_to_user(shipment.customer, title, customer_msg, data, channel_id='deliveries_v2')
 
     if status == 'pending':
         _broadcast_to_available_drivers(
@@ -212,7 +212,7 @@ def notify_shipment_status(shipment):
         }
         driver_msg = driver_messages.get(status)
         if driver_msg:
-            send_push_to_user(shipment.driver, title, driver_msg, data, channel_id='deliveries')
+            send_push_to_user(shipment.driver, title, driver_msg, data, channel_id='deliveries_v2')
 
 
 def _format_nearby_distance(distance_meters: float) -> str:
@@ -233,7 +233,7 @@ def notify_driver_nearby_order(order, distance_meters: float) -> None:
             'status': 'on_the_way',
             'type': 'driver_nearby',
         },
-        channel_id='orders',
+        channel_id='orders_v2',
     )
 
 
@@ -248,7 +248,7 @@ def notify_driver_nearby_shipment(shipment, distance_meters: float) -> None:
             'status': 'on_the_way',
             'type': 'driver_nearby',
         },
-        channel_id='deliveries',
+        channel_id='deliveries_v2',
     )
 
 
@@ -266,7 +266,7 @@ def notify_restaurant_opened(restaurant) -> None:
         restaurant=restaurant,
     ).select_related('user').exclude(user__expo_push_token='')
     for favorite in favorites:
-        send_push_to_user(favorite.user, title, body, data, channel_id='orders')
+        send_push_to_user(favorite.user, title, body, data, channel_id='orders_v2')
 
 
 def notify_payment_confirmed(order) -> None:
@@ -280,7 +280,7 @@ def notify_payment_confirmed(order) -> None:
         title,
         f'Pago recibido por {total_label}. Tu pedido sigue en proceso.',
         data,
-        channel_id='orders',
+        channel_id='orders_v2',
     )
 
     if order.restaurant and order.restaurant.owner:
@@ -337,7 +337,7 @@ def notify_review_reminder(order) -> None:
             'status': 'delivered',
             'type': 'review_reminder',
         },
-        channel_id='orders',
+        channel_id='orders_v2',
     )
 
 
@@ -351,5 +351,5 @@ def notify_shipment_pending_reminder(shipment) -> None:
             'status': 'pending',
             'type': 'shipment_pending_reminder',
         },
-        channel_id='deliveries',
+        channel_id='deliveries_v2',
     )

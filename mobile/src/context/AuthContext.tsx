@@ -46,7 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     const token = await tokenStorage.getAccessToken();
-    if (!token) {
+    const refresh = await tokenStorage.getRefreshToken();
+    if (!token && !refresh) {
       setUser(null);
       return;
     }
@@ -59,8 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(data);
       await userCache.set(data);
-    } catch {
-      await logout();
+    } catch (error: unknown) {
+      // Solo cerrar sesión ante 401 (token inválido). Un fallo de red no debe
+      // expulsar al usuario si aún hay tokens válidos en el dispositivo.
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        await logout();
+      }
     }
   }, [logout]);
 
@@ -73,7 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const token = await tokenStorage.getAccessToken();
-        if (!token) {
+        const refresh = await tokenStorage.getRefreshToken();
+        if (!token && !refresh) {
           if (!cancelled) setUser(null);
           return;
         }
@@ -94,7 +101,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         await refreshUser();
       } catch {
-        if (!cancelled) await logout();
+        // No forzar logout aquí: un fallo al arrancar puede ser solo red.
+        if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setIsLoading(false);
       }

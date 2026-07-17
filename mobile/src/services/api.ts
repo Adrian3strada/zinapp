@@ -77,9 +77,14 @@ async function refreshAccessToken(): Promise<string | null> {
       );
       await tokenStorage.setTokens(data.access, data.refresh ?? refresh);
       return data.access;
-    } catch {
-      await tokenStorage.clear();
-      sessionEvents.emitExpired();
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      // Solo invalidar sesión si el refresh fue rechazado (401/403).
+      // Errores de red/5xx no deben cerrar la sesión.
+      if (status === 401 || status === 403) {
+        await tokenStorage.clear();
+        sessionEvents.emitExpired();
+      }
       return null;
     } finally {
       refreshInFlight = null;

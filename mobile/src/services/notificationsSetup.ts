@@ -4,12 +4,17 @@ import { Platform } from 'react-native';
 import { colors } from '../theme/colors';
 import { notificationSuccess } from '../utils/haptics';
 
-/** Nombre del tono empaquetado en el APK (assets/sounds/bell.wav). */
-export const NOTIFICATION_SOUND = 'bell.wav';
+/** Tono fuerte empaquetado en el build nativo (assets/sounds/alert.wav). */
+export const NOTIFICATION_SOUND = 'alert.wav';
 
+/**
+ * IDs de canal con versión: Android cachea el sonido del canal.
+ * Al cambiar el tono hay que subir el sufijo (_v2, _v3…) o los usuarios
+ * seguirán oyendo el anterior hasta reinstalar / borrar datos.
+ */
 export const NOTIFICATION_CHANNELS = {
-  orders: 'orders',
-  deliveries: 'deliveries',
+  orders: 'orders_v2',
+  deliveries: 'deliveries_v2',
 } as const;
 
 export function resolveNotificationChannel(
@@ -45,48 +50,50 @@ export async function setupNotificationChannels(): Promise<void> {
   const channelBase = {
     sound: NOTIFICATION_SOUND,
     enableVibrate: true,
-    vibrationPattern: [0, 280, 120, 280],
+    // Más largo e insistente que el patrón anterior.
+    vibrationPattern: [0, 400, 120, 400, 120, 500, 160, 500],
     lightColor: colors.primary,
     showBadge: true,
   };
 
   await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.orders, {
     name: 'Pedidos',
-    description: 'Estado de pedidos y avisos del restaurante',
+    description: 'Avisos urgentes de pedidos nuevos y cambios de estado',
     importance: Notifications.AndroidImportance.MAX,
     ...channelBase,
   });
 
   await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.deliveries, {
     name: 'Envíos y entregas',
-    description: 'Envíos, repartidor en camino y entregas',
+    description: 'Avisos urgentes de envíos, repartidor y entregas',
     importance: Notifications.AndroidImportance.MAX,
     ...channelBase,
   });
 }
 
-const bellSource = require('../../assets/sounds/bell.wav');
-let bellPlayer: AudioPlayer | null = null;
-let bellPlaying = false;
+const alertSource = require('../../assets/sounds/alert.wav');
+let alertPlayer: AudioPlayer | null = null;
+let alertPlaying = false;
 
-async function playBellSound(): Promise<void> {
-  if (bellPlaying) return;
-  bellPlaying = true;
+async function playAlertSound(): Promise<void> {
+  if (alertPlaying) return;
+  alertPlaying = true;
   try {
     await setAudioModeAsync({
       playsInSilentMode: true,
     });
-    if (!bellPlayer) {
-      bellPlayer = createAudioPlayer(bellSource);
+    if (!alertPlayer) {
+      alertPlayer = createAudioPlayer(alertSource);
     } else {
-      bellPlayer.seekTo(0);
+      alertPlayer.seekTo(0);
     }
-    bellPlayer.play();
+    alertPlayer.volume = 1;
+    alertPlayer.play();
     setTimeout(() => {
-      bellPlaying = false;
-    }, 1200);
+      alertPlaying = false;
+    }, 2000);
   } catch {
-    bellPlaying = false;
+    alertPlaying = false;
   }
 }
 
@@ -94,6 +101,6 @@ export async function onNotificationReceived(): Promise<void> {
   if (Platform.OS === 'web') return;
   await Promise.allSettled([
     notificationSuccess(),
-    playBellSound(),
+    playAlertSound(),
   ]);
 }

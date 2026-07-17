@@ -121,7 +121,7 @@
         {
           "color": "#1E5DB8",
           "sounds": [
-            "./assets/sounds/bell.wav"
+            "./assets/sounds/alert.wav"
           ]
         }
       ],

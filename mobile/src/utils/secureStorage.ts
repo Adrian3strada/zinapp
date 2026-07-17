@@ -2,11 +2,11 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 /**
- * Almacenamiento seguro en móvil; almacenamiento por sesión en web.
+ * Almacenamiento seguro en móvil (SecureStore); por sesión en web (sessionStorage).
  *
- * sessionStorage still cannot protect a bearer token from an XSS in the same
- * origin, but avoids persisting credentials after the browser closes. Moving
- * web auth to HttpOnly cookies requires a coordinated backend/API change.
+ * En web se usa sessionStorage para access y refresh: sobrevive a recargas de la
+ * pestaña y se limpia al cerrar el navegador. No protege de XSS en el mismo
+ * origen; HttpOnly cookies requeriría cambio coordinado de backend/API.
  */
 export async function getStorageItem(key: string): Promise<string | null> {
   if (Platform.OS === 'web') {
