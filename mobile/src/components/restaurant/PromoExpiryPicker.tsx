@@ -19,7 +19,7 @@ interface Props {
   onChange: (endDate: string, endTime: string) => void;
 }
 
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MONTH_NAMES = [
   'Enero',
   'Febrero',
@@ -136,9 +136,9 @@ export default function PromoExpiryPicker({ endDate, endTime, onChange }: Props)
 
         <View style={styles.weekdayRow}>
           {WEEKDAYS.map((label, index) => (
-            <Text key={`${label}-${index}`} style={styles.weekdayLabel}>
-              {label}
-            </Text>
+            <View key={`${label}-${index}`} style={styles.weekdayCell}>
+              <Text style={styles.weekdayLabel}>{label}</Text>
+            </View>
           ))}
         </View>
 
@@ -151,27 +151,28 @@ export default function PromoExpiryPicker({ endDate, endTime, onChange }: Props)
             const disabled = isPast(cell.iso);
             const isToday = cell.iso === todayIso;
             return (
-              <Pressable
-                key={cell.iso}
-                style={[
-                  styles.dayCell,
-                  selectedDay && styles.dayCellSelected,
-                  isToday && !selectedDay && styles.dayCellToday,
-                  disabled && styles.dayCellDisabled,
-                ]}
-                onPress={() => !disabled && selectDate(cell.iso)}
-                disabled={disabled}
-              >
-                <Text
+              <View key={cell.iso} style={styles.dayCell}>
+                <Pressable
                   style={[
-                    styles.dayText,
-                    selectedDay && styles.dayTextSelected,
-                    disabled && styles.dayTextDisabled,
+                    styles.dayHit,
+                    selectedDay && styles.dayHitSelected,
+                    isToday && !selectedDay && styles.dayHitToday,
+                    disabled && styles.dayHitDisabled,
                   ]}
+                  onPress={() => !disabled && selectDate(cell.iso)}
+                  disabled={disabled}
                 >
-                  {cell.day}
-                </Text>
-              </Pressable>
+                  <Text
+                    style={[
+                      styles.dayText,
+                      selectedDay && styles.dayTextSelected,
+                      disabled && styles.dayTextDisabled,
+                    ]}
+                  >
+                    {cell.day}
+                  </Text>
+                </Pressable>
+              </View>
             );
           })}
         </View>
@@ -262,25 +263,40 @@ const styles = StyleSheet.create({
   },
   monthTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
   weekdayRow: { flexDirection: 'row', marginBottom: 4 },
+  weekdayCell: {
+    width: `${100 / 7}%`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
   weekdayLabel: {
-    flex: 1,
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: '100%',
+  },
+  // Columna fija al 1/7: evita que aspectRatio haga caber solo 6 días por fila.
   dayCell: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
-    minHeight: 36,
+    paddingVertical: 2,
   },
-  dayCellSelected: { backgroundColor: colors.accent },
-  dayCellToday: { borderWidth: 1, borderColor: colors.accent },
-  dayCellDisabled: { opacity: 0.35 },
+  dayHit: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayHitSelected: { backgroundColor: colors.accent },
+  dayHitToday: { borderWidth: 1.5, borderColor: colors.accent },
+  dayHitDisabled: { opacity: 0.35 },
   dayText: { fontSize: 14, fontWeight: '700', color: colors.text },
   dayTextSelected: { color: '#FFF' },
   dayTextDisabled: { color: colors.textMuted },

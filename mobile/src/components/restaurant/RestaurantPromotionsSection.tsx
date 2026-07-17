@@ -366,7 +366,7 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
 
               <View style={styles.modalFooter}>
                 <Button title="Cancelar" variant="secondary" onPress={() => setEditorOpen(false)} style={styles.modalBtn} />
-                <Button title="Publicar promo" onPress={savePromo} loading={saving} style={styles.modalBtn} />
+                <Button title="Publicar" onPress={savePromo} loading={saving} style={styles.modalBtn} />
               </View>
             </View>
           </View>

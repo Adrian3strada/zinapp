@@ -56,10 +56,12 @@ export default function Button({
         styles[`text_${variant}`],
         size === 'lg' && styles.textLg,
       ]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.85}
     >
       {title}
     </Text>
-  );
 
   if (variant === 'primary' && !isDisabled) {
     return (
