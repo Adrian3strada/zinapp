@@ -1,1 +1,25 @@
 {% extends "dashboard/gestion/form.html" %}
+
+{% block form_before %}
+<div class="alert alert-secondary mb-3">
+  <div class="d-flex justify-content-between align-items-start flex-wrap">
+    <div>
+      <strong>Verificación:</strong> {{ verification_status }}
+      {% if reviewed_at %}<br><span class="text-muted">Revisado {{ reviewed_at|date:"d/m/Y H:i" }}{% if reviewed_by %} por {{ reviewed_by.username }}{% endif %}</span>{% endif %}
+      {% if review_notes %}<br><span class="text-muted">Notas: {{ review_notes }}</span>{% endif %}
+    </div>
+    <a href="{{ driver_detail_url }}" class="btn btn-sm btn-outline-primary mt-1">
+      <i class="fas fa-id-card mr-1"></i> Revisar verificación
+    </a>
+  </div>
+  {% if identity_document %}
+  <hr class="my-2">
+  <p class="mb-1"><strong>Documento de identidad</strong> (solo visible en el panel)</p>
+  <a href="{{ identity_document.url }}" target="_blank" rel="noopener">
+    <img src="{{ identity_document.url }}" alt="Documento" style="max-height: 160px; border-radius: 6px;">
+  </a>
+  {% else %}
+  <p class="mb-0 mt-2 text-muted">Aún no hay documento de identidad cargado.</p>
+  {% endif %}
+</div>
+{% endblock %}

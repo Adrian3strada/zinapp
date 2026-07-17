@@ -37,9 +37,29 @@
           <td>{{ s.phone|default:s.whatsapp|default:"—" }}</td>
           <td>{% if s.is_active %}<span class="badge badge-success">Visible</span>{% else %}<span class="badge badge-muted">Oculto</span>{% endif %}</td>
           <td class="text-right">
-            <a href="{% url 'gestion:local-service-edit' s.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
-              <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-            </a>
+            <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'gestion:local-service-edit' s.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
+                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              </a>
+              {% if s.is_active %}
+              <form method="post" action="{% url 'gestion:local-service-deactivate' s.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-warning btn-xs zin-row-btn" title="Ocultar">
+                  <i class="fas fa-eye-slash"></i>
+                </button>
+              </form>
+              {% else %}
+              <form method="post" action="{% url 'gestion:local-service-activate' s.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-success btn-xs zin-row-btn" title="Mostrar">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </form>
+              {% endif %}
+              <a href="{% url 'gestion:local-service-delete' s.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
+                <i class="fas fa-trash"></i>
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}

@@ -1,16 +1,19 @@
 from django.contrib import messages
 from django.contrib.auth import authenticate
-from django.db.models import Avg, Count, Q
+from django.db.models.deletion import ProtectedError
+from django.db.models import Avg, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views import View
-from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
+from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
-from accounts.models import DeliveryProfile, User, UserRole
+from accounts.audit import write_audit_log
+from accounts.models import AuditLog, DeliveryProfile, User, UserRole
 from local_services.models import LocalService
 from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
-from restaurants.models import Product, Restaurant
+from restaurants.models import Product, ProductPromotion, Restaurant
 
 from ..mixins import PanelAccessMixin
 from ..page_context import page_context
@@ -21,6 +24,7 @@ from .forms import (
     LocalServiceForm,
     OrderAdminForm,
     ProductForm,
+    ProductPromotionForm,
     RestaurantForm,
     ShipmentStatusForm,
     UserCreateForm,
@@ -35,6 +39,18 @@ def _verify_app_login(user, password: str) -> bool:
     if not user.is_active or not user.check_password(password):
         return False
     return authenticate(username=user.username, password=password) is not None
+
+
+def _changed_metadata(form, old_values):
+    changes = {}
+    for field in form.changed_data:
+        if field.startswith('new_password'):
+            continue
+        changes[field] = {
+            'old': str(old_values.get(field, '')),
+            'new': str(getattr(form.instance, field, '')),
+        }
+    return changes
 
 
 class CouponListView(PanelAccessMixin, ListView):
@@ -265,6 +281,7 @@ class ProductDeleteView(PanelAccessMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        has_history = self.object.order_items.exists()
         ctx.update(page_context(
             'Eliminar producto',
             'products',
@@ -276,12 +293,211 @@ class ProductDeleteView(PanelAccessMixin, DeleteView):
         ctx.update(
             object_label=self.object.name,
             cancel_url=reverse('gestion:product-edit', kwargs={'pk': self.object.pk}),
+            has_history=has_history,
+            deactivate_instead=has_history,
+            confirm_message=(
+                f'El producto «{self.object.name}» tiene historial de pedidos. '
+                'Se desactivará para ocultarlo del menú sin perder el historial.'
+                if has_history else None
+            ),
+            confirm_button_label='Sí, desactivar' if has_history else 'Sí, eliminar',
         )
         return ctx
 
     def form_valid(self, form):
-        messages.success(self.request, f'Producto «{self.object.name}» eliminado.')
-        return super().form_valid(form)
+        product = self.object
+        if product.order_items.exists():
+            product.is_available = False
+            product.save(update_fields=['is_available', 'updated_at'])
+            write_audit_log(
+                action=AuditLog.Action.PANEL_ENTITY_DEACTIVATED,
+                obj=product,
+                request=self.request,
+                metadata={'reason': 'product_has_order_history'},
+            )
+            messages.warning(
+                self.request,
+                f'Producto «{product.name}» desactivado porque tiene historial de pedidos.',
+            )
+            return redirect('gestion:products')
+        try:
+            name = product.name
+            response = super().form_valid(form)
+            messages.success(self.request, f'Producto «{name}» eliminado.')
+            return response
+        except ProtectedError:
+            product.is_available = False
+            product.save(update_fields=['is_available', 'updated_at'])
+            write_audit_log(
+                action=AuditLog.Action.PANEL_ENTITY_DEACTIVATED,
+                obj=product,
+                request=self.request,
+                metadata={'reason': 'protected_error'},
+            )
+            messages.warning(
+                self.request,
+                f'Producto «{product.name}» desactivado porque está protegido por historial.',
+            )
+            return redirect('gestion:products')
+
+
+class ProductPromotionListView(PanelAccessMixin, ListView):
+    model = ProductPromotion
+    template_name = 'dashboard/gestion/promotion_list.html'
+    context_object_name = 'promotions'
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = ProductPromotion.objects.select_related(
+            'restaurant', 'product',
+        ).order_by('-is_active', '-valid_until', '-id')
+        restaurant_id = self.request.GET.get('restaurant', '').strip()
+        if restaurant_id.isdigit():
+            qs = qs.filter(restaurant_id=int(restaurant_id))
+        active = self.request.GET.get('active', '')
+        if active == '1':
+            qs = qs.filter(is_active=True)
+        elif active == '0':
+            qs = qs.filter(is_active=False)
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                Q(product__name__icontains=q)
+                | Q(restaurant__name__icontains=q)
+                | Q(label__icontains=q)
+            )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Promociones',
+            'promotions',
+            subtitle='Promos activas y programadas para productos del catálogo.',
+        ))
+        ctx.update(
+            restaurants=Restaurant.objects.order_by('name'),
+            restaurant_filter=self.request.GET.get('restaurant', ''),
+            active_filter=self.request.GET.get('active', ''),
+            search_query=self.request.GET.get('q', ''),
+        )
+        return ctx
+
+
+class ProductPromotionCreateView(PanelAccessMixin, CreateView):
+    model = ProductPromotion
+    form_class = ProductPromotionForm
+    template_name = 'dashboard/gestion/promotion_form.html'
+    success_url = reverse_lazy('gestion:promotions')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Nueva promoción',
+            'promotions',
+            breadcrumbs=[
+                {'label': 'Promociones', 'url': reverse('gestion:promotions')},
+                {'label': 'Nueva', 'url': None},
+            ],
+        ))
+        ctx.update(
+            form_title='Crear promoción',
+            back_url=reverse('gestion:promotions'),
+            back_label='Promociones',
+            cancel_url=reverse('gestion:promotions'),
+        )
+        return ctx
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        write_audit_log(
+            action=AuditLog.Action.PANEL_ENTITY_UPDATED,
+            obj=self.object,
+            request=self.request,
+            metadata={'entity': 'ProductPromotion', 'operation': 'create'},
+        )
+        messages.success(self.request, 'Promoción creada.')
+        return response
+
+
+class ProductPromotionUpdateView(PanelAccessMixin, UpdateView):
+    model = ProductPromotion
+    form_class = ProductPromotionForm
+    template_name = 'dashboard/gestion/promotion_form.html'
+    success_url = reverse_lazy('gestion:promotions')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            f'Editar promoción #{self.object.pk}',
+            'promotions',
+            breadcrumbs=[
+                {'label': 'Promociones', 'url': reverse('gestion:promotions')},
+                {'label': f'#{self.object.pk}', 'url': None},
+            ],
+        ))
+        ctx.update(
+            form_title='Editar promoción',
+            back_url=reverse('gestion:promotions'),
+            back_label='Promociones',
+            cancel_url=reverse('gestion:promotions'),
+        )
+        return ctx
+
+    def form_valid(self, form):
+        old_values = {
+            field: getattr(self.object, field, '')
+            for field in ('product', 'promo_type', 'percent_off', 'special_price', 'valid_until', 'is_active')
+        }
+        response = super().form_valid(form)
+        write_audit_log(
+            action=AuditLog.Action.PANEL_ENTITY_UPDATED,
+            obj=self.object,
+            request=self.request,
+            metadata={'entity': 'ProductPromotion', 'changes': _changed_metadata(form, old_values)},
+        )
+        messages.success(self.request, 'Promoción actualizada.')
+        return response
+
+
+class ProductPromotionDeleteView(PanelAccessMixin, DeleteView):
+    model = ProductPromotion
+    template_name = 'dashboard/gestion/confirm_delete.html'
+    success_url = reverse_lazy('gestion:promotions')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Quitar promoción',
+            'promotions',
+            breadcrumbs=[
+                {'label': 'Promociones', 'url': reverse('gestion:promotions')},
+                {'label': 'Quitar', 'url': None},
+            ],
+        ))
+        ctx.update(
+            object_label=str(self.object),
+            cancel_url=reverse('gestion:promotion-edit', kwargs={'pk': self.object.pk}),
+        )
+        return ctx
+
+    def form_valid(self, form):
+        promotion = self.object
+        if promotion.is_active:
+            promotion.is_active = False
+            promotion.save(update_fields=['is_active', 'updated_at'])
+            write_audit_log(
+                action=AuditLog.Action.PANEL_ENTITY_DEACTIVATED,
+                obj=promotion,
+                request=self.request,
+                metadata={'entity': 'ProductPromotion'},
+            )
+            messages.warning(self.request, 'Promoción desactivada.')
+            return redirect('gestion:promotions')
+        label = str(promotion)
+        response = super().form_valid(form)
+        messages.success(self.request, f'Promoción «{label}» eliminada.')
+        return response
 
 
 class ShipmentListView(PanelAccessMixin, ListView):
@@ -348,8 +564,23 @@ class ShipmentDetailView(PanelAccessMixin, UpdateView):
         return reverse('gestion:shipment-detail', kwargs={'pk': self.object.pk})
 
     def form_valid(self, form):
+        old_status = self.object.status
+        old_driver_id = self.object.driver_id
+        response = super().form_valid(form)
+        write_audit_log(
+            action=AuditLog.Action.SHIPMENT_STATUS_UPDATED,
+            obj=self.object,
+            request=self.request,
+            metadata={
+                'from_status': old_status,
+                'to_status': self.object.status,
+                'from_driver_id': old_driver_id,
+                'to_driver_id': self.object.driver_id,
+                'source': 'panel',
+            },
+        )
         messages.success(self.request, 'Envío actualizado.')
-        return super().form_valid(form)
+        return response
 
 
 class DisputeListView(PanelAccessMixin, ListView):
@@ -421,19 +652,34 @@ class DisputeDetailView(PanelAccessMixin, UpdateView):
     def form_valid(self, form):
         dispute = self.get_object()
         was_pending = dispute.status == DisputeStatus.PENDING
+        old_status = dispute.status
         response = super().form_valid(form)
         dispute.refresh_from_db()
         if was_pending and dispute.status != DisputeStatus.PENDING and not dispute.resolved_at:
-            from django.utils import timezone
-            from orders.models import PaymentStatus
-
             dispute.resolved_at = timezone.now()
             dispute.save(update_fields=['resolved_at', 'updated_at'])
-            if dispute.status == DisputeStatus.REFUNDED:
-                order = dispute.order
-                order.payment_status = PaymentStatus.PAID
-                order.save(update_fields=['payment_status', 'updated_at'])
-        messages.success(self.request, 'Disputa actualizada.')
+        # Do not mutate order.payment_status on refund: PaymentStatus has no
+        # refunded state and marking PAID would hide the dispute outcome.
+        write_audit_log(
+            action=AuditLog.Action.DISPUTE_UPDATED,
+            obj=dispute,
+            request=self.request,
+            metadata={
+                'from_status': old_status,
+                'to_status': dispute.status,
+                'order_id': dispute.order_id,
+                'requested_amount': str(dispute.requested_amount),
+                'order_payment_status': dispute.order.payment_status,
+            },
+        )
+        if dispute.status == DisputeStatus.REFUNDED:
+            messages.success(
+                self.request,
+                'Disputa marcada como reembolsada. El estado de pago del pedido no se modificó; '
+                'registra el reembolso en Mercado Pago u otro canal si aplica.',
+            )
+        else:
+            messages.success(self.request, 'Disputa actualizada.')
         return response
 
 
@@ -618,13 +864,35 @@ class UserDeleteView(PanelAccessMixin, DeleteView):
 
     def form_valid(self, form):
         user = self.object
-        blockers = self._deletion_blockers(user)
-        if user.is_superuser or user.pk == self.request.user.pk or blockers:
+        if user.is_superuser or user.pk == self.request.user.pk:
             messages.error(
                 self.request,
-                f'No se puede eliminar «{user.username}». '
-                'Desactiva la cuenta para conservar su historial.',
+                f'No se puede eliminar «{user.username}».',
             )
+            return redirect('gestion:user-edit', pk=user.pk)
+
+        blockers = self._deletion_blockers(user)
+        if blockers:
+            if user.is_active:
+                user.is_active = False
+                user.save(update_fields=['is_active'])
+                write_audit_log(
+                    action=AuditLog.Action.PANEL_ENTITY_DEACTIVATED,
+                    obj=user,
+                    request=self.request,
+                    metadata={'reason': 'user_has_history', 'blockers': blockers},
+                )
+                messages.warning(
+                    self.request,
+                    f'Usuario «{user.username}» desactivado porque tiene historial '
+                    f'({", ".join(blockers)}). Conserva sus datos operativos.',
+                )
+            else:
+                messages.error(
+                    self.request,
+                    f'No se puede eliminar «{user.username}» porque tiene historial '
+                    f'({", ".join(blockers)}). Ya está inactivo.',
+                )
             return redirect('gestion:user-edit', pk=user.pk)
 
         username = user.username
@@ -643,12 +911,13 @@ class DriverEditView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        profile = self.object
         ctx.update(page_context(
-            self.object.user.username,
+            profile.user.username,
             'drivers',
             breadcrumbs=[
                 {'label': 'Repartidores', 'url': reverse('dashboard:drivers')},
-                {'label': self.object.user.username, 'url': None},
+                {'label': profile.user.username, 'url': None},
             ],
         ))
         ctx.update(
@@ -656,12 +925,27 @@ class DriverEditView(PanelAccessMixin, UpdateView):
             back_url=reverse('dashboard:drivers'),
             back_label='Repartidores',
             cancel_url=reverse('dashboard:drivers'),
+            driver_user=profile.user,
+            verification_status=profile.get_verification_status_display(),
+            verification_status_code=profile.verification_status,
+            review_notes=profile.review_notes,
+            reviewed_at=profile.reviewed_at,
+            reviewed_by=profile.reviewed_by,
+            identity_document=profile.identity_document,
+            driver_detail_url=reverse('dashboard:driver-detail', kwargs={'pk': profile.pk}),
         )
         return ctx
 
     def form_valid(self, form):
+        response = super().form_valid(form)
+        write_audit_log(
+            action=AuditLog.Action.PANEL_ENTITY_UPDATED,
+            obj=self.object,
+            request=self.request,
+            metadata={'entity': 'DeliveryProfile', 'changes': list(form.changed_data)},
+        )
         messages.success(self.request, 'Perfil de repartidor actualizado.')
-        return super().form_valid(form)
+        return response
 
 
 class OrderEditView(PanelAccessMixin, UpdateView):
@@ -697,8 +981,23 @@ class OrderEditView(PanelAccessMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        old_status = self.object.status
+        old_driver_id = self.object.driver_id
+        response = super().form_valid(form)
+        write_audit_log(
+            action=AuditLog.Action.ORDER_STATUS_UPDATED,
+            obj=self.object,
+            request=self.request,
+            metadata={
+                'from_status': old_status,
+                'to_status': self.object.status,
+                'from_driver_id': old_driver_id,
+                'to_driver_id': self.object.driver_id,
+                'source': 'panel',
+            },
+        )
         messages.success(self.request, 'Pedido actualizado.')
-        return super().form_valid(form)
+        return response
 
 
 class RestaurantCreateView(PanelAccessMixin, CreateView):
@@ -706,6 +1005,12 @@ class RestaurantCreateView(PanelAccessMixin, CreateView):
     form_class = RestaurantForm
     template_name = 'dashboard/gestion/restaurant_form.html'
     success_url = reverse_lazy('dashboard:restaurants')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -722,6 +1027,7 @@ class RestaurantCreateView(PanelAccessMixin, CreateView):
             back_url=reverse('dashboard:restaurants'),
             back_label='Restaurantes',
             cancel_url=reverse('dashboard:restaurants'),
+            form_is_multipart=True,
         )
         return ctx
 
@@ -735,6 +1041,12 @@ class RestaurantUpdateView(PanelAccessMixin, UpdateView):
     form_class = RestaurantForm
     template_name = 'dashboard/gestion/restaurant_form.html'
     success_url = reverse_lazy('dashboard:restaurants')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -752,6 +1064,7 @@ class RestaurantUpdateView(PanelAccessMixin, UpdateView):
             back_url=reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk}),
             back_label='Detalle del local',
             cancel_url=reverse('dashboard:restaurant-detail', kwargs={'pk': self.object.pk}),
+            form_is_multipart=True,
         )
         return ctx
 
@@ -894,6 +1207,88 @@ class LocalServiceUpdateView(PanelAccessMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, 'Servicio actualizado.')
         return super().form_valid(form)
+
+
+class LocalServiceActivateView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        service = get_object_or_404(LocalService, pk=pk)
+        service.is_active = True
+        service.save(update_fields=['is_active', 'updated_at'])
+        write_audit_log(
+            action=AuditLog.Action.PANEL_ENTITY_UPDATED,
+            obj=service,
+            request=request,
+            metadata={'entity': 'LocalService', 'operation': 'activate'},
+        )
+        messages.success(request, f'Servicio «{service.name}» visible en la app.')
+        return redirect('gestion:local-services')
+
+
+class LocalServiceDeactivateView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        service = get_object_or_404(LocalService, pk=pk)
+        service.is_active = False
+        service.save(update_fields=['is_active', 'updated_at'])
+        write_audit_log(
+            action=AuditLog.Action.PANEL_ENTITY_DEACTIVATED,
+            obj=service,
+            request=request,
+            metadata={'entity': 'LocalService', 'operation': 'deactivate'},
+        )
+        messages.success(request, f'Servicio «{service.name}» oculto de la app.')
+        return redirect('gestion:local-services')
+
+
+class LocalServiceDeleteView(PanelAccessMixin, DeleteView):
+    model = LocalService
+    template_name = 'dashboard/gestion/confirm_delete.html'
+    success_url = reverse_lazy('gestion:local-services')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        deactivate_instead = self.object.is_active
+        ctx.update(page_context(
+            'Eliminar servicio',
+            'local-services',
+            breadcrumbs=[
+                {'label': 'Servicios locales', 'url': reverse('gestion:local-services')},
+                {'label': self.object.name, 'url': reverse('gestion:local-service-edit', kwargs={'pk': self.object.pk})},
+                {'label': 'Eliminar', 'url': None},
+            ],
+        ))
+        ctx.update(
+            object_label=self.object.name,
+            cancel_url=reverse('gestion:local-service-edit', kwargs={'pk': self.object.pk}),
+            deactivate_instead=deactivate_instead,
+            confirm_message=(
+                f'El servicio «{self.object.name}» está visible. '
+                'Se ocultará de la app. Para borrarlo del todo, desactívalo primero y vuelve a confirmar.'
+                if deactivate_instead else None
+            ),
+            confirm_button_label='Sí, ocultar' if deactivate_instead else 'Sí, eliminar',
+        )
+        return ctx
+
+    def form_valid(self, form):
+        service = self.object
+        if service.is_active:
+            service.is_active = False
+            service.save(update_fields=['is_active', 'updated_at'])
+            write_audit_log(
+                action=AuditLog.Action.PANEL_ENTITY_DEACTIVATED,
+                obj=service,
+                request=self.request,
+                metadata={'entity': 'LocalService', 'operation': 'deactivate_via_delete'},
+            )
+            messages.warning(
+                self.request,
+                f'Servicio «{service.name}» oculto. Confirma de nuevo si quieres eliminarlo permanentemente.',
+            )
+            return redirect('gestion:local-services')
+        name = service.name
+        response = super().form_valid(form)
+        messages.success(self.request, f'Servicio «{name}» eliminado.')
+        return response
 
 
 class ReviewDeleteView(PanelAccessMixin, DeleteView):

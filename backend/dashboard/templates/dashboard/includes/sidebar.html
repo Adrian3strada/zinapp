@@ -52,6 +52,12 @@
       </a>
     </li>
     <li class="nav-item">
+      <a href="{% url 'gestion:promotions' %}" class="nav-link {% if nav == 'promotions' %}active{% endif %}">
+        <i class="nav-icon fas fa-percent"></i>
+        <p>Promociones</p>
+      </a>
+    </li>
+    <li class="nav-item">
       <a href="{% url 'gestion:local-services' %}" class="nav-link {% if nav == 'local-services' %}active{% endif %}">
         <i class="nav-icon fas fa-shop"></i>
         <p>Servicios locales</p>

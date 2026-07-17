@@ -1,0 +1,77 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <form class="zin-filter-group zin-filter-form" method="get">
+      <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante">
+        <option value="">Todos los restaurantes</option>
+        {% for r in restaurants %}
+        <option value="{{ r.pk }}" {% if restaurant_filter == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="active" class="form-control form-control-sm zin-filter-select" aria-label="Estado">
+        <option value="">Estado</option>
+        <option value="1" {% if active_filter == '1' %}selected{% endif %}>Activas</option>
+        <option value="0" {% if active_filter == '0' %}selected{% endif %}>Inactivas</option>
+      </select>
+      <div class="zin-search zin-search-inline">
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar promoción…" %}
+      </div>
+      <button type="submit" class="btn btn-default btn-sm" title="Aplicar filtros"><i class="fas fa-filter"></i></button>
+    </form>
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'gestion:promotion-create' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus mr-1"></i> Nueva promoción
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Restaurante</th>
+          <th>Tipo</th>
+          <th>Vigencia</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for promo in promotions %}
+        <tr>
+          <td><strong>{{ promo.product.name }}</strong>{% if promo.label %}<br><span class="text-muted">{{ promo.label }}</span>{% endif %}</td>
+          <td>{{ promo.restaurant.name }}</td>
+          <td>{{ promo.get_promo_type_display }}</td>
+          <td>{{ promo.valid_until|date:"d/m/Y H:i" }}</td>
+          <td>
+            {% if promo.is_currently_active %}
+            <span class="badge badge-success">Activa</span>
+            {% elif promo.is_active %}
+            <span class="badge badge-warning">Programada/vencida</span>
+            {% else %}
+            <span class="badge badge-muted">Inactiva</span>
+            {% endif %}
+          </td>
+          <td class="text-right">
+            <div class="btn-group btn-group-sm zin-row-actions">
+              <a href="{% url 'gestion:promotion-edit' promo.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
+                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              </a>
+              <a href="{% url 'gestion:promotion-delete' promo.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Quitar">
+                <i class="fas fa-trash"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        {% url 'gestion:promotion-create' as promotion_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-percent" title="No hay promociones" message="Crea descuentos, 2x1 o precios especiales para productos." action_url=promotion_create_url action_label="Nueva promoción" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "dashboard/includes/pagination.html" %}
+</div>
+{% endblock %}

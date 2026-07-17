@@ -3,13 +3,22 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-5">
-    <div class="card card-outline card-danger">
-      <div class="card-header"><h3 class="card-title">Confirmar eliminación</h3></div>
+    <div class="card card-outline {% if deactivate_instead %}card-warning{% else %}card-danger{% endif %}">
+      <div class="card-header">
+        <h3 class="card-title">{% if deactivate_instead %}Confirmar desactivación{% else %}Confirmar eliminación{% endif %}</h3>
+      </div>
       <div class="card-body">
+        {% if confirm_message %}
+        <p>{{ confirm_message }}</p>
+        {% else %}
         <p>¿Eliminar <strong>{{ object_label }}</strong>? Esta acción no se puede deshacer.</p>
+        {% endif %}
         <form method="post" class="form-actions mt-3">
           {% csrf_token %}
-          <button type="submit" class="btn btn-danger"><i class="fas fa-trash mr-1"></i> Sí, eliminar</button>
+          <button type="submit" class="btn {% if deactivate_instead %}btn-warning{% else %}btn-danger{% endif %}">
+            <i class="fas {% if deactivate_instead %}fa-eye-slash{% else %}fa-trash{% endif %} mr-1"></i>
+            {{ confirm_button_label|default:"Sí, eliminar" }}
+          </button>
           <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
         </form>
       </div>

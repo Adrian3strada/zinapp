@@ -4,13 +4,14 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from accounts.models import DeliveryProfile, User, UserRole
 from accounts.username import normalize_username
 from orders.models import Coupon, Order, OrderStatus, Shipment, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
 from local_services.models import LocalService
-from restaurants.models import Product, Restaurant
+from restaurants.models import Product, ProductPromotion, PromoType, Restaurant
 
 
 class PanelFormMixin:
@@ -47,7 +48,74 @@ class ProductForm(PanelFormMixin, forms.ModelForm):
         widgets = {'description': forms.Textarea(attrs={'rows': 3})}
 
 
+class ProductPromotionForm(PanelFormMixin, forms.ModelForm):
+    class Meta:
+        model = ProductPromotion
+        fields = (
+            'product', 'promo_type', 'percent_off', 'special_price',
+            'label', 'valid_until', 'is_active',
+        )
+        widgets = {
+            'valid_until': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['product'].queryset = Product.objects.select_related(
+            'restaurant',
+        ).order_by('restaurant__name', 'name')
+        self.fields['percent_off'].required = False
+        self.fields['special_price'].required = False
+        self.fields['label'].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        promo_type = cleaned.get('promo_type')
+        percent_off = cleaned.get('percent_off')
+        special_price = cleaned.get('special_price')
+        valid_until = cleaned.get('valid_until')
+
+        if promo_type == PromoType.PERCENT_OFF:
+            if percent_off is None or percent_off < 1 or percent_off > 99:
+                self.add_error('percent_off', 'Indica un porcentaje entre 1 y 99.')
+            cleaned['special_price'] = None
+        elif promo_type == PromoType.SPECIAL_PRICE:
+            if special_price is None or special_price <= 0:
+                self.add_error('special_price', 'Indica un precio promocional mayor a 0.')
+            cleaned['percent_off'] = None
+        elif promo_type == PromoType.TWO_FOR_ONE:
+            cleaned['percent_off'] = None
+            cleaned['special_price'] = None
+
+        if valid_until and valid_until <= timezone.now():
+            self.add_error('valid_until', 'La promoción debe terminar en una fecha futura.')
+        return cleaned
+
+    def save(self, commit=True):
+        promotion = super().save(commit=False)
+        promotion.restaurant = promotion.product.restaurant
+        if commit:
+            if promotion.is_active:
+                ProductPromotion.objects.filter(
+                    product=promotion.product,
+                    is_active=True,
+                ).exclude(pk=promotion.pk).update(is_active=False)
+            promotion.save()
+        return promotion
+
+
 class OrderAdminForm(PanelFormMixin, forms.ModelForm):
+    VALID_TRANSITIONS = {
+        OrderStatus.PENDING: [OrderStatus.ACCEPTED, OrderStatus.CANCELLED],
+        OrderStatus.ACCEPTED: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
+        OrderStatus.PREPARING: [OrderStatus.READY, OrderStatus.CANCELLED],
+        # Panel admins may assign a driver (equivalent to accept_delivery).
+        OrderStatus.READY: [OrderStatus.ON_THE_WAY, OrderStatus.CANCELLED],
+        OrderStatus.ON_THE_WAY: [OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+        OrderStatus.DELIVERED: [],
+        OrderStatus.CANCELLED: [],
+    }
+
     class Meta:
         model = Order
         fields = ('status', 'driver')
@@ -60,6 +128,40 @@ class OrderAdminForm(PanelFormMixin, forms.ModelForm):
         self.fields['driver'].queryset = User.objects.filter(role=UserRole.DRIVER).order_by('username')
         self.fields['driver'].required = False
 
+    def clean_status(self):
+        new_status = self.cleaned_data['status']
+        current = self.instance.status
+        if new_status == current:
+            return new_status
+        allowed = self.VALID_TRANSITIONS.get(current, [])
+        if new_status not in allowed:
+            raise ValidationError(
+                f'No se puede cambiar de {self.instance.get_status_display()} '
+                f'a {dict(OrderStatus.choices).get(new_status, new_status)}.'
+            )
+        return new_status
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get('status')
+        driver = cleaned.get('driver')
+        if status in (OrderStatus.ON_THE_WAY, OrderStatus.DELIVERED) and not driver:
+            self.add_error('driver', 'Asigna un repartidor para este estado.')
+        return cleaned
+
+    def save(self, commit=True):
+        order = super().save(commit=False)
+        now = timezone.now()
+        if order.status == OrderStatus.ACCEPTED and not order.accepted_at:
+            order.accepted_at = now
+        elif order.status == OrderStatus.READY and not order.ready_at:
+            order.ready_at = now
+        elif order.status == OrderStatus.DELIVERED and not order.delivered_at:
+            order.delivered_at = now
+        if commit:
+            order.save()
+        return order
+
 
 class RestaurantForm(PanelFormMixin, forms.ModelForm):
     class Meta:
@@ -67,7 +169,7 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
         fields = (
             'owner', 'name', 'category', 'description', 'address', 'phone',
             'whatsapp', 'bank_name', 'account_holder', 'clabe',
-            'latitude', 'longitude', 'location_pinned',
+            'image', 'latitude', 'longitude', 'location_pinned',
             'opening_time', 'closing_time', 'is_active', 'accepting_orders',
         )
         widgets = {
@@ -98,6 +200,14 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
 
 
 class ShipmentStatusForm(PanelFormMixin, forms.ModelForm):
+    VALID_TRANSITIONS = {
+        ShipmentStatus.PENDING: [ShipmentStatus.PICKED_UP, ShipmentStatus.CANCELLED],
+        ShipmentStatus.PICKED_UP: [ShipmentStatus.ON_THE_WAY, ShipmentStatus.CANCELLED],
+        ShipmentStatus.ON_THE_WAY: [ShipmentStatus.DELIVERED, ShipmentStatus.CANCELLED],
+        ShipmentStatus.DELIVERED: [],
+        ShipmentStatus.CANCELLED: [],
+    }
+
     class Meta:
         model = Shipment
         fields = ('status', 'driver')
@@ -109,6 +219,35 @@ class ShipmentStatusForm(PanelFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['driver'].queryset = User.objects.filter(role=UserRole.DRIVER).order_by('username')
         self.fields['driver'].required = False
+
+    def clean_status(self):
+        new_status = self.cleaned_data['status']
+        current = self.instance.status
+        if new_status == current:
+            return new_status
+        allowed = self.VALID_TRANSITIONS.get(current, [])
+        if new_status not in allowed:
+            raise ValidationError(
+                f'No se puede cambiar de {self.instance.get_status_display()} '
+                f'a {dict(ShipmentStatus.choices).get(new_status, new_status)}.'
+            )
+        return new_status
+
+    def clean(self):
+        cleaned = super().clean()
+        status = cleaned.get('status')
+        driver = cleaned.get('driver')
+        if status in (ShipmentStatus.PICKED_UP, ShipmentStatus.ON_THE_WAY, ShipmentStatus.DELIVERED) and not driver:
+            self.add_error('driver', 'Asigna un repartidor para avanzar este envío.')
+        return cleaned
+
+    def save(self, commit=True):
+        shipment = super().save(commit=False)
+        if shipment.status == ShipmentStatus.DELIVERED and not shipment.delivered_at:
+            shipment.delivered_at = timezone.now()
+        if commit:
+            shipment.save()
+        return shipment
 
 
 class DisputeResolveForm(PanelFormMixin, forms.ModelForm):

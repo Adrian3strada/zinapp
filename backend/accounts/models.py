@@ -127,6 +127,9 @@ class AuditLog(models.Model):
         SHIPMENT_ACCEPTED = 'shipment_accepted', 'Envío aceptado'
         SHIPMENT_STATUS_UPDATED = 'shipment_status_updated', 'Estado de envío actualizado'
         DRIVER_VERIFICATION_UPDATED = 'driver_verification_updated', 'Verificación de repartidor actualizada'
+        DISPUTE_UPDATED = 'dispute_updated', 'Disputa actualizada'
+        PANEL_ENTITY_UPDATED = 'panel_entity_updated', 'Entidad del panel actualizada'
+        PANEL_ENTITY_DEACTIVATED = 'panel_entity_deactivated', 'Entidad del panel desactivada'
 
     actor = models.ForeignKey(
         User,
