@@ -1,5 +1,6 @@
 import json
 import logging
+import urllib.error
 import urllib.request
 
 from django.conf import settings
@@ -50,9 +51,17 @@ def send_push_to_user(
     *,
     channel_id: str = 'orders_v2',
 ) -> bool:
+    """
+    True = entregado o omitido de forma permanente (sin token / dispositivo baja).
+    False = fallo transitorio; el caller puede reintentar.
+    """
     token = getattr(user, 'expo_push_token', '') or ''
     if not token or not token.startswith('ExponentPushToken'):
-        return False
+        logger.info(
+            'Push omitido para %s: sin token Expo válido',
+            getattr(user, 'username', user),
+        )
+        return True
 
     payload = {
         'to': token,
@@ -80,38 +89,66 @@ def send_push_to_user(
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read().decode()
             if resp.status != 200:
+                logger.error(
+                    'Push HTTP %s para %s: %s',
+                    resp.status,
+                    user.username,
+                    raw[:500],
+                )
                 return False
             result = json.loads(raw) if raw else {}
             ticket = (result.get('data') or [{}])[0]
             if ticket.get('status') == 'error':
                 details = ticket.get('details') or {}
+                err_code = details.get('error', ticket)
                 if details.get('error') == 'DeviceNotRegistered':
                     user.expo_push_token = ''
                     user.save(update_fields=['expo_push_token'])
-                logger.warning(
-                    'Push rechazado para %s: %s',
-                    user.username,
-                    details.get('error', ticket),
-                )
+                    logger.warning(
+                        'Push DeviceNotRegistered para %s — token limpiado',
+                        user.username,
+                    )
+                    return True
+                logger.error('Push rechazado para %s: %s', user.username, err_code)
                 return False
             if getattr(settings, 'DEBUG', False):
                 logger.info('Push [%s]: %s — %s', user.username, title, body)
             return True
-    except Exception as exc:
-        logger.warning('Push falló para %s: %s', user.username, exc)
+    except urllib.error.HTTPError as exc:
+        body_preview = ''
+        try:
+            body_preview = exc.read().decode()[:500]
+        except Exception:
+            pass
+        logger.error(
+            'Push HTTPError para %s: %s %s',
+            user.username,
+            exc.code,
+            body_preview,
+            exc_info=True,
+        )
+        return False
+    except Exception:
+        logger.exception('Push falló para %s', user.username)
         return False
 
 
-def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> None:
+def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> bool:
     from accounts.models import User, UserRole
 
-    drivers = User.objects.filter(
+    drivers = list(User.objects.filter(
         role=UserRole.DRIVER,
         delivery_profile__is_available=True,
         delivery_profile__verification_status='approved',
-    ).exclude(expo_push_token='')
-    for driver in drivers:
+    ).exclude(expo_push_token=''))
+    if not drivers:
+        logger.warning('Broadcast drivers: nadie disponible con push token')
+        return True
+    results = [
         send_push_to_user(driver, title, body, data, channel_id='deliveries_v2')
+        for driver in drivers
+    ]
+    return any(results)
 
 
 def _order_ref(order) -> str:
@@ -292,12 +329,12 @@ def notify_payment_confirmed(order) -> None:
         )
 
 
-def notify_pending_order_reminder(order) -> None:
+def notify_pending_order_reminder(order) -> bool:
     if not order.restaurant or not order.restaurant.owner:
-        return
+        return True
     ref = _order_ref(order)
     data = {'orderId': order.id, 'status': order.status, 'type': 'pending_reminder'}
-    send_push_to_user(
+    return send_push_to_user(
         order.restaurant.owner,
         f'Pedido {ref}',
         f'El pedido {ref} sigue esperando confirmación. Respóndele al cliente.',
@@ -305,30 +342,32 @@ def notify_pending_order_reminder(order) -> None:
     )
 
 
-def notify_ready_no_driver(order) -> None:
+def notify_ready_no_driver(order) -> bool:
     ref = _order_ref(order)
     data = {'orderId': order.id, 'status': order.status, 'type': 'ready_no_driver'}
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el local'
 
+    ok_owner = True
     if order.restaurant and order.restaurant.owner:
-        send_push_to_user(
+        ok_owner = send_push_to_user(
             order.restaurant.owner,
             f'Pedido {ref}',
             f'Pedido {ref} listo — aún sin repartidor.',
             data,
         )
 
-    _broadcast_to_available_drivers(
+    ok_drivers = _broadcast_to_available_drivers(
         'Entrega urgente',
         f'Pedido {ref} lleva rato esperando en {restaurant_name}.',
         data,
     )
+    return ok_owner and ok_drivers
 
 
-def notify_review_reminder(order) -> None:
+def notify_review_reminder(order) -> bool:
     ref = _order_ref(order)
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
-    send_push_to_user(
+    return send_push_to_user(
         order.customer,
         f'Pedido {ref}',
         f'¿Cómo estuvo tu pedido en {restaurant_name}? Déjanos una reseña.',
@@ -341,8 +380,8 @@ def notify_review_reminder(order) -> None:
     )
 
 
-def notify_shipment_pending_reminder(shipment) -> None:
-    send_push_to_user(
+def notify_shipment_pending_reminder(shipment) -> bool:
+    return send_push_to_user(
         shipment.customer,
         f'Envío #{shipment.id}',
         f'Tu envío #{shipment.id} sigue buscando repartidor. Te avisamos cuando alguien lo tome.',

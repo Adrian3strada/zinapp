@@ -12,14 +12,28 @@
       <i class="fas fa-id-card mr-1"></i> Revisar verificación
     </a>
   </div>
-  {% if identity_document %}
   <hr class="my-2">
-  <p class="mb-1"><strong>Documento de identidad</strong> (solo visible en el panel)</p>
-  <a href="{{ identity_document.url }}" target="_blank" rel="noopener">
-    <img src="{{ identity_document.url }}" alt="Documento" style="max-height: 160px; border-radius: 6px;">
-  </a>
-  {% else %}
-  <p class="mb-0 mt-2 text-muted">Aún no hay documento de identidad cargado.</p>
-  {% endif %}
+  <div class="row">
+    <div class="col-sm-6 mb-2">
+      <p class="mb-1"><strong>Foto de perfil actual</strong></p>
+      {% if driver_avatar %}
+      <a href="{{ driver_avatar.url }}" target="_blank" rel="noopener">
+        <img src="{{ driver_avatar.url }}" alt="Foto de perfil" style="max-height: 120px; border-radius: 6px;">
+      </a>
+      {% else %}
+      <p class="mb-0 text-muted">Sin foto de perfil.</p>
+      {% endif %}
+    </div>
+    <div class="col-sm-6 mb-2">
+      <p class="mb-1"><strong>INE actual</strong> (solo panel)</p>
+      {% if identity_document %}
+      <a href="{{ identity_document.url }}" target="_blank" rel="noopener">
+        <img src="{{ identity_document.url }}" alt="INE" style="max-height: 120px; border-radius: 6px;">
+      </a>
+      {% else %}
+      <p class="mb-0 text-muted">Sin documento de identidad.</p>
+      {% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -229,10 +229,8 @@ class ForgotPasswordSerializer(serializers.Serializer):
     username = serializers.CharField()
 
     def validate_username(self, value):
-        username = value.strip().lower()
-        if not User.objects.filter(username__iexact=username).exists():
-            raise serializers.ValidationError('No existe una cuenta con ese usuario.')
-        return username
+        # No revelar si el usuario existe (anti-enumeración).
+        return normalize_username(value)
 
 
 class ResetPasswordSerializer(serializers.Serializer):

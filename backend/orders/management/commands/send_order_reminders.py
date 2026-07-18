@@ -38,10 +38,10 @@ class Command(BaseCommand):
         ).select_related('restaurant', 'restaurant__owner', 'customer')
 
         for order in pending_orders:
-            notify_pending_order_reminder(order)
-            order.pending_reminder_sent = True
-            order.save(update_fields=['pending_reminder_sent'])
-            sent['pending'] += 1
+            if notify_pending_order_reminder(order):
+                order.pending_reminder_sent = True
+                order.save(update_fields=['pending_reminder_sent'])
+                sent['pending'] += 1
 
         ready_cutoff = now - timedelta(minutes=READY_NO_DRIVER_MINUTES)
         ready_orders = Order.objects.filter(
@@ -53,10 +53,10 @@ class Command(BaseCommand):
         ).select_related('restaurant', 'restaurant__owner')
 
         for order in ready_orders:
-            notify_ready_no_driver(order)
-            order.ready_no_driver_reminder_sent = True
-            order.save(update_fields=['ready_no_driver_reminder_sent'])
-            sent['ready_no_driver'] += 1
+            if notify_ready_no_driver(order):
+                order.ready_no_driver_reminder_sent = True
+                order.save(update_fields=['ready_no_driver_reminder_sent'])
+                sent['ready_no_driver'] += 1
 
         review_cutoff = now - timedelta(hours=REVIEW_REMINDER_HOURS)
         has_review = Review.objects.filter(order_id=OuterRef('pk'))
@@ -70,10 +70,10 @@ class Command(BaseCommand):
         ).select_related('customer', 'restaurant')
 
         for order in review_orders:
-            notify_review_reminder(order)
-            order.review_reminder_sent = True
-            order.save(update_fields=['review_reminder_sent'])
-            sent['review'] += 1
+            if notify_review_reminder(order):
+                order.review_reminder_sent = True
+                order.save(update_fields=['review_reminder_sent'])
+                sent['review'] += 1
 
         shipment_cutoff = now - timedelta(minutes=SHIPMENT_PENDING_MINUTES)
         pending_shipments = Shipment.objects.filter(
@@ -84,10 +84,10 @@ class Command(BaseCommand):
         ).select_related('customer')
 
         for shipment in pending_shipments:
-            notify_shipment_pending_reminder(shipment)
-            shipment.pending_reminder_sent = True
-            shipment.save(update_fields=['pending_reminder_sent'])
-            sent['shipment_pending'] += 1
+            if notify_shipment_pending_reminder(shipment):
+                shipment.pending_reminder_sent = True
+                shipment.save(update_fields=['pending_reminder_sent'])
+                sent['shipment_pending'] += 1
 
         self.stdout.write(
             self.style.SUCCESS(

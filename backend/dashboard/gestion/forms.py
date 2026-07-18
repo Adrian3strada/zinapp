@@ -276,8 +276,30 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
         choices=DeliveryProfile.VehicleType.choices,
         required=False,
         initial=DeliveryProfile.VehicleType.MOTORCYCLE,
+        label='Tipo de vehículo',
     )
-    license_plate = forms.CharField(required=False, max_length=20)
+    license_plate = forms.CharField(
+        required=False,
+        max_length=20,
+        label='Placas',
+        help_text='Obligatorio salvo bicicleta.',
+    )
+    avatar = forms.ImageField(
+        required=False,
+        label='Foto de perfil',
+        help_text='Para repartidores: visible en la app.',
+    )
+    identity_document = forms.ImageField(
+        required=False,
+        label='INE / identificación',
+        help_text='Para repartidores: solo visible en el panel.',
+    )
+    approve_driver = forms.BooleanField(
+        required=False,
+        initial=True,
+        label='Aprobar repartidor ahora',
+        help_text='Si hay teléfono, vehículo, placas (si aplica), foto e INE, queda listo para entregas.',
+    )
     restaurant_name = forms.CharField(
         required=False,
         max_length=120,
@@ -344,10 +366,13 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
         if email:
             user.email = email
         user.is_active = True
+        avatar = self.cleaned_data.get('avatar')
+        if avatar:
+            user.avatar = avatar
         if commit:
             user.save()
             if user.role == UserRole.DRIVER:
-                DeliveryProfile.objects.get_or_create(
+                profile, _created = DeliveryProfile.objects.get_or_create(
                     user=user,
                     defaults={
                         'vehicle_type': self.cleaned_data.get('vehicle_type')
@@ -356,6 +381,21 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
                         'is_available': False,
                     },
                 )
+                update_fields = []
+                vehicle_type = self.cleaned_data.get('vehicle_type')
+                if vehicle_type and profile.vehicle_type != vehicle_type:
+                    profile.vehicle_type = vehicle_type
+                    update_fields.append('vehicle_type')
+                license_plate = self.cleaned_data.get('license_plate', '')
+                if license_plate and profile.license_plate != license_plate:
+                    profile.license_plate = license_plate
+                    update_fields.append('license_plate')
+                identity = self.cleaned_data.get('identity_document')
+                if identity:
+                    profile.identity_document = identity
+                    update_fields.append('identity_document')
+                if update_fields:
+                    profile.save(update_fields=[*update_fields, 'updated_at'])
             if user.role == UserRole.RESTAURANT:
                 name = self.cleaned_data.get('restaurant_name', '').strip()
                 address = self.cleaned_data.get('restaurant_address', '').strip()
@@ -383,12 +423,32 @@ class UserEditForm(PanelFormMixin, forms.ModelForm):
         label='Confirmar contraseña',
         widget=forms.PasswordInput,
     )
+    avatar = forms.ImageField(
+        required=False,
+        label='Foto de perfil',
+        help_text='Visible en la app.',
+    )
+    identity_document = forms.ImageField(
+        required=False,
+        label='INE / identificación',
+        help_text='Solo para repartidores. Visible en el panel.',
+    )
+    vehicle_type = forms.ChoiceField(
+        choices=DeliveryProfile.VehicleType.choices,
+        required=False,
+        label='Tipo de vehículo',
+    )
+    license_plate = forms.CharField(
+        required=False,
+        max_length=20,
+        label='Placas',
+    )
 
     class Meta:
         model = User
         fields = (
             'username', 'email', 'first_name', 'last_name',
-            'role', 'phone', 'address', 'is_active', 'is_staff',
+            'role', 'phone', 'address', 'avatar', 'is_active', 'is_staff',
         )
 
     def clean_username(self):
@@ -415,6 +475,35 @@ class UserEditForm(PanelFormMixin, forms.ModelForm):
             return self.instance.is_staff
         return self.cleaned_data.get('is_staff', False)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        is_driver = (
+            (self.instance and self.instance.role == UserRole.DRIVER)
+            or (self.data and self.data.get('role') == UserRole.DRIVER)
+        )
+        if not is_driver:
+            self.fields.pop('identity_document', None)
+            self.fields.pop('vehicle_type', None)
+            self.fields.pop('license_plate', None)
+            self.order_fields([
+                'username', 'email', 'first_name', 'last_name', 'role', 'phone',
+                'address', 'avatar', 'is_active', 'is_staff',
+                'new_password1', 'new_password2',
+            ])
+        else:
+            if self.instance and self.instance.pk:
+                profile = DeliveryProfile.objects.filter(user=self.instance).first()
+                if profile:
+                    self.fields['identity_document'].initial = profile.identity_document
+                    self.fields['vehicle_type'].initial = profile.vehicle_type
+                    self.fields['license_plate'].initial = profile.license_plate
+            self.order_fields([
+                'username', 'email', 'first_name', 'last_name', 'role', 'phone',
+                'address', 'vehicle_type', 'license_plate', 'avatar',
+                'identity_document', 'is_active', 'is_staff',
+                'new_password1', 'new_password2',
+            ])
+
     def clean(self):
         cleaned = super().clean()
         p1 = cleaned.get('new_password1') or ''
@@ -439,20 +528,67 @@ class UserEditForm(PanelFormMixin, forms.ModelForm):
         if commit:
             user.save()
             if user.role == UserRole.DRIVER:
-                DeliveryProfile.objects.get_or_create(
+                profile, _created = DeliveryProfile.objects.get_or_create(
                     user=user,
                     defaults={
-                        'vehicle_type': DeliveryProfile.VehicleType.MOTORCYCLE,
+                        'vehicle_type': self.cleaned_data.get('vehicle_type')
+                        or DeliveryProfile.VehicleType.MOTORCYCLE,
+                        'license_plate': self.cleaned_data.get('license_plate', ''),
                         'is_available': False,
                     },
                 )
+                update_fields = []
+                vehicle_type = self.cleaned_data.get('vehicle_type')
+                if vehicle_type and profile.vehicle_type != vehicle_type:
+                    profile.vehicle_type = vehicle_type
+                    update_fields.append('vehicle_type')
+                if 'license_plate' in self.cleaned_data:
+                    plate = self.cleaned_data.get('license_plate') or ''
+                    if profile.license_plate != plate:
+                        profile.license_plate = plate
+                        update_fields.append('license_plate')
+                identity = self.cleaned_data.get('identity_document')
+                if identity:
+                    profile.identity_document = identity
+                    update_fields.append('identity_document')
+                if update_fields:
+                    profile.save(update_fields=[*update_fields, 'updated_at'])
         return user
 
 
 class DriverProfileForm(PanelFormMixin, forms.ModelForm):
+    avatar = forms.ImageField(
+        required=False,
+        label='Foto de perfil',
+        help_text='Visible en la app.',
+    )
+
     class Meta:
         model = DeliveryProfile
-        fields = ('vehicle_type', 'license_plate', 'is_available')
+        fields = (
+            'vehicle_type', 'license_plate', 'is_available', 'identity_document',
+        )
+        labels = {
+            'identity_document': 'INE / identificación',
+            'is_available': 'Disponible para pedidos',
+        }
+        help_texts = {
+            'identity_document': 'Solo visible en el panel para verificación.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and getattr(self.instance, 'user_id', None):
+            self.fields['avatar'].initial = self.instance.user.avatar
+
+    def save(self, commit=True):
+        profile = super().save(commit=commit)
+        avatar = self.cleaned_data.get('avatar')
+        if avatar:
+            profile.user.avatar = avatar
+            if commit:
+                profile.user.save(update_fields=['avatar'])
+        return profile
 
 
 class LocalServiceForm(PanelFormMixin, forms.ModelForm):

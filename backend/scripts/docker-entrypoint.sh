@@ -1,6 +1,13 @@
 #!/bin/sh
 set -e
 
+# Railway mounts the media volume as root. Fix ownership, then drop privileges.
+if [ "$(id -u)" = "0" ]; then
+  mkdir -p /app/media
+  chown -R zinapp:zinapp /app/media
+  exec gosu zinapp /bin/sh "$0" "$@"
+fi
+
 echo "ZinApp API - esperando base de datos"
 python scripts/wait_for_db.py
 

@@ -38,12 +38,7 @@ class LocalServiceApiTests(APITestCase):
             is_active=False,
         )
 
-    def test_list_requires_auth(self):
-        res = self.client.get('/api/local-services/')
-        self.assertEqual(res.status_code, 401)
-
-    def test_list_active_only(self):
-        self.client.force_authenticate(user=self.user)
+    def test_list_is_public(self):
         res = self.client.get('/api/local-services/')
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.data), 2)
@@ -53,8 +48,13 @@ class LocalServiceApiTests(APITestCase):
         self.assertIn('schedule', res.data[0])
         self.assertIn('logo_url', res.data[0])
 
-    def test_filter_by_category(self):
+    def test_list_active_only_authenticated(self):
         self.client.force_authenticate(user=self.user)
+        res = self.client.get('/api/local-services/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 2)
+
+    def test_filter_by_category(self):
         res = self.client.get('/api/local-services/', {'category': 'auto'})
         self.assertEqual(res.status_code, 200)
         self.assertEqual(len(res.data), 1)

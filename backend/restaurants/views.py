@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
-from accounts.permissions import IsAdmin, IsRestaurantOwner
+from accounts.permissions import IsAdmin, IsCustomer, IsRestaurantOwner
 
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
 from .models import Product, ProductPromotion, Restaurant
@@ -209,9 +209,14 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
         return Response(serializer.data)
 
-    @action(detail=True, methods=['get'], url_path='transfer-info')
+    @action(
+        detail=True,
+        methods=['get'],
+        url_path='transfer-info',
+        permission_classes=[IsCustomer],
+    )
     def transfer_info(self, request, pk=None):
-        """Expose bank details only to an authenticated checkout session."""
+        """CLABE solo para clientes en checkout (no repartidores ni otros roles)."""
         restaurant = self.get_object()
         if not restaurant.is_active or not (restaurant.clabe or '').strip():
             return Response({'detail': 'Transferencia no disponible.'}, status=status.HTTP_404_NOT_FOUND)

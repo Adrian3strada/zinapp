@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.db.models.deletion import ProtectedError
@@ -10,6 +12,7 @@ from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from accounts.audit import write_audit_log
 from accounts.models import AuditLog, DeliveryProfile, User, UserRole
+from accounts.setup import driver_setup_status
 from local_services.models import LocalService
 from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
@@ -30,6 +33,8 @@ from .forms import (
     UserCreateForm,
     UserEditForm,
 )
+
+logger = logging.getLogger('dashboard')
 
 
 def _verify_app_login(user, password: str) -> bool:
@@ -716,6 +721,12 @@ class UserCreateView(PanelAccessMixin, CreateView):
     template_name = 'dashboard/gestion/user_form.html'
     success_url = reverse_lazy('dashboard:users')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
+
     def get_initial(self):
         initial = super().get_initial()
         role = self.request.GET.get('role', '').strip()
@@ -731,33 +742,76 @@ class UserCreateView(PanelAccessMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update(page_context(
-            'Nuevo usuario',
-            'users',
-            breadcrumbs=[
-                {'label': 'Usuarios', 'url': reverse('dashboard:users')},
-                {'label': 'Nuevo', 'url': None},
-            ],
-        ))
-        ctx.update(
-            form_title='Crear usuario',
-            back_url=reverse('dashboard:users'),
-            back_label='Usuarios',
-            cancel_url=reverse('dashboard:users'),
+        creating_driver = (
+            self.request.GET.get('role') == UserRole.DRIVER
+            or self.request.POST.get('role') == UserRole.DRIVER
         )
+        if creating_driver:
+            ctx.update(page_context(
+                'Nuevo repartidor',
+                'drivers',
+                breadcrumbs=[
+                    {'label': 'Repartidores', 'url': reverse('dashboard:drivers')},
+                    {'label': 'Nuevo', 'url': None},
+                ],
+            ))
+            ctx.update(
+                form_title='Dar de alta repartidor',
+                back_url=reverse('dashboard:drivers'),
+                back_label='Repartidores',
+                cancel_url=reverse('dashboard:drivers'),
+                form_is_multipart=True,
+            )
+        else:
+            ctx.update(page_context(
+                'Nuevo usuario',
+                'users',
+                breadcrumbs=[
+                    {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                    {'label': 'Nuevo', 'url': None},
+                ],
+            ))
+            ctx.update(
+                form_title='Crear usuario',
+                back_url=reverse('dashboard:users'),
+                back_label='Usuarios',
+                cancel_url=reverse('dashboard:users'),
+                form_is_multipart=True,
+            )
         return ctx
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except OSError as exc:
+            logger.exception('User create failed writing media')
+            form.add_error(None, f'Error al guardar archivos: {exc}')
+            return self.form_invalid(form)
+
         password = form.cleaned_data.get('password1')
         if password and self.object and not self.object.check_password(password):
             self.object.set_password(password)
             self.object.save(update_fields=['password'])
+
+        if self.object.role == UserRole.DRIVER:
+            self._maybe_approve_driver(form)
+
         if password and not _verify_app_login(self.object, password):
             messages.error(
                 self.request,
                 f'Usuario «{self.object.username}» creado, pero la verificación de acceso falló. '
                 'Edita el usuario y vuelve a guardar la contraseña.',
+            )
+        elif self.object.role == UserRole.DRIVER:
+            profile = getattr(self.object, 'delivery_profile', None)
+            status = (
+                profile.get_verification_status_display()
+                if profile else 'Pendiente'
+            )
+            messages.success(
+                self.request,
+                f'Repartidor «{self.object.username}» creado ({status}). '
+                'En la app entra con ese usuario y la contraseña que definiste.',
             )
         else:
             messages.success(
@@ -767,12 +821,53 @@ class UserCreateView(PanelAccessMixin, CreateView):
             )
         return response
 
+    def _maybe_approve_driver(self, form):
+        if not form.cleaned_data.get('approve_driver'):
+            return
+        try:
+            profile = self.object.delivery_profile
+        except DeliveryProfile.DoesNotExist:
+            return
+        setup = driver_setup_status(profile)
+        if not setup['complete']:
+            messages.warning(
+                self.request,
+                'El repartidor quedó pendiente: falta foto, INE, teléfono o placas '
+                'para poder aprobarlo.',
+            )
+            return
+        profile.verification_status = DeliveryProfile.VerificationStatus.APPROVED
+        profile.reviewed_by = self.request.user
+        profile.reviewed_at = timezone.now()
+        profile.review_notes = (profile.review_notes or '').strip() or 'Alta desde panel.'
+        profile.is_available = True
+        profile.save(update_fields=[
+            'verification_status', 'reviewed_by', 'reviewed_at',
+            'review_notes', 'is_available', 'updated_at',
+        ])
+        write_audit_log(
+            action=AuditLog.Action.DRIVER_VERIFICATION_UPDATED,
+            obj=profile,
+            request=self.request,
+            metadata={
+                'entity': 'DeliveryProfile',
+                'operation': 'approve_on_create',
+                'to_status': profile.verification_status,
+            },
+        )
+
 
 class UserEditView(PanelAccessMixin, UpdateView):
     model = User
     form_class = UserEditForm
     template_name = 'dashboard/gestion/user_form.html'
     success_url = reverse_lazy('dashboard:users')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -789,11 +884,18 @@ class UserEditView(PanelAccessMixin, UpdateView):
             back_url=reverse('dashboard:users'),
             back_label='Usuarios',
             cancel_url=reverse('dashboard:users'),
+            form_is_multipart=True,
         )
         return ctx
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except OSError as exc:
+            logger.exception('User edit failed writing media')
+            form.add_error('avatar', 'No se pudo guardar el archivo. Intenta de nuevo.')
+            messages.error(self.request, f'Error al guardar archivos: {exc}')
+            return self.form_invalid(form)
         password = form.cleaned_data.get('new_password1')
         if password:
             self.object.refresh_from_db()
@@ -906,6 +1008,12 @@ class DriverEditView(PanelAccessMixin, UpdateView):
     form_class = DriverProfileForm
     template_name = 'dashboard/gestion/driver_form.html'
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
+
     def get_success_url(self):
         return reverse('dashboard:drivers')
 
@@ -925,7 +1033,9 @@ class DriverEditView(PanelAccessMixin, UpdateView):
             back_url=reverse('dashboard:drivers'),
             back_label='Repartidores',
             cancel_url=reverse('dashboard:drivers'),
+            form_is_multipart=True,
             driver_user=profile.user,
+            driver_avatar=profile.user.avatar,
             verification_status=profile.get_verification_status_display(),
             verification_status_code=profile.verification_status,
             review_notes=profile.review_notes,
@@ -937,7 +1047,16 @@ class DriverEditView(PanelAccessMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except OSError as exc:
+            logger.exception('Driver profile update failed writing media')
+            form.add_error(
+                'identity_document',
+                'No se pudo guardar el archivo. Intenta de nuevo.',
+            )
+            messages.error(self.request, f'Error al guardar archivos: {exc}')
+            return self.form_invalid(form)
         write_audit_log(
             action=AuditLog.Action.PANEL_ENTITY_UPDATED,
             obj=self.object,
@@ -1155,6 +1274,12 @@ class LocalServiceCreateView(PanelAccessMixin, CreateView):
     template_name = 'dashboard/gestion/local_service_form.html'
     success_url = reverse_lazy('gestion:local-services')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(page_context(
@@ -1175,8 +1300,21 @@ class LocalServiceCreateView(PanelAccessMixin, CreateView):
         return ctx
 
     def form_valid(self, form):
-        messages.success(self.request, f'Servicio «{form.instance.name}» publicado.')
-        return super().form_valid(form)
+        try:
+            response = super().form_valid(form)
+        except OSError as exc:
+            logger.exception('LocalService create failed writing media')
+            form.add_error(
+                'logo',
+                'No se pudo guardar el logo. Intenta de nuevo o deja el logo vacío.',
+            )
+            messages.error(self.request, f'Error al guardar archivos: {exc}')
+            return self.form_invalid(form)
+        except Exception:
+            logger.exception('LocalService create failed')
+            raise
+        messages.success(self.request, f'Servicio «{self.object.name}» publicado.')
+        return response
 
 
 class LocalServiceUpdateView(PanelAccessMixin, UpdateView):
@@ -1184,6 +1322,12 @@ class LocalServiceUpdateView(PanelAccessMixin, UpdateView):
     form_class = LocalServiceForm
     template_name = 'dashboard/gestion/local_service_form.html'
     success_url = reverse_lazy('gestion:local-services')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method == 'POST':
+            kwargs['files'] = self.request.FILES
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1205,8 +1349,18 @@ class LocalServiceUpdateView(PanelAccessMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        try:
+            response = super().form_valid(form)
+        except OSError as exc:
+            logger.exception('LocalService update failed writing media')
+            form.add_error(
+                'logo',
+                'No se pudo guardar el logo. Intenta de nuevo o deja el logo vacío.',
+            )
+            messages.error(self.request, f'Error al guardar archivos: {exc}')
+            return self.form_invalid(form)
         messages.success(self.request, 'Servicio actualizado.')
-        return super().form_valid(form)
+        return response
 
 
 class LocalServiceActivateView(PanelAccessMixin, View):

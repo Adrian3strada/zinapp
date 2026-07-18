@@ -199,6 +199,21 @@ class PublicCatalogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['clabe'], '012180001234567890')
 
+    def test_driver_cannot_get_transfer_info(self):
+        from rest_framework.test import APIClient
+
+        driver = User.objects.create_user(
+            username='transfer_driver',
+            password='test1234',
+            role='driver',
+        )
+        client = APIClient()
+        client.force_authenticate(driver)
+
+        response = client.get(f'/api/restaurants/{self.restaurant.id}/transfer-info/')
+
+        self.assertEqual(response.status_code, 403)
+
     def test_anonymous_can_list_products(self):
         from rest_framework.test import APIClient
 

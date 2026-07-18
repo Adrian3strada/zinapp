@@ -212,6 +212,16 @@ class UserAndDriverCrudPanelTests(TestCase):
         )
         self.client.login(username='user_crud_admin', password='adminpass123')
 
+    def _png_upload(self, name):
+        import io
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new('RGB', (32, 32), color='blue').save(buf, format='PNG')
+        return SimpleUploadedFile(name, buf.getvalue(), content_type='image/png')
+
     def test_admin_can_create_driver_from_driver_list(self):
         from accounts.models import DeliveryProfile
 
@@ -228,12 +238,49 @@ class UserAndDriverCrudPanelTests(TestCase):
                 'password2': 'DriverPass123!',
                 'vehicle_type': DeliveryProfile.VehicleType.MOTORCYCLE,
                 'license_plate': 'ABC123',
+                'avatar': self._png_upload('avatar.png'),
+                'identity_document': self._png_upload('ine.png'),
+                'approve_driver': 'on',
             },
         )
 
         driver = User.objects.get(username='nuevo_repartidor')
+        profile = DeliveryProfile.objects.get(user=driver)
         self.assertRedirects(response, '/panel/repartidores/')
-        self.assertTrue(DeliveryProfile.objects.filter(user=driver).exists())
+        self.assertTrue(driver.avatar)
+        self.assertTrue(profile.identity_document)
+        self.assertEqual(
+            profile.verification_status,
+            DeliveryProfile.VerificationStatus.APPROVED,
+        )
+
+    def test_create_driver_form_shows_document_fields(self):
+        response = self.client.get('/panel/gestion/usuarios/nuevo/?role=driver')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Foto de perfil')
+        self.assertContains(response, 'INE')
+        self.assertContains(response, 'enctype="multipart/form-data"')
+
+    def test_edit_driver_user_form_shows_document_fields(self):
+        from accounts.models import DeliveryProfile
+
+        driver = User.objects.create_user(
+            username='edit_docs_driver',
+            password='DriverPass123!',
+            role=UserRole.DRIVER,
+            phone='4431111111',
+        )
+        DeliveryProfile.objects.create(
+            user=driver,
+            vehicle_type=DeliveryProfile.VehicleType.MOTORCYCLE,
+            license_plate='XYZ99',
+        )
+
+        response = self.client.get(f'/panel/gestion/usuarios/{driver.pk}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Foto de perfil')
+        self.assertContains(response, 'INE')
+        self.assertContains(response, 'enctype="multipart/form-data"')
 
     def test_admin_can_delete_user_without_operational_history(self):
         user = User.objects.create_user(
@@ -477,6 +524,33 @@ class LocalServicePanelTests(TestCase):
             is_active=True,
         )
         self.client.login(username='service_admin', password='adminpass123')
+
+    def test_admin_can_create_service(self):
+        page = self.client.get('/panel/gestion/servicios/nuevo/')
+        self.assertEqual(page.status_code, 200)
+
+        created = self.client.post(
+            '/panel/gestion/servicios/nuevo/',
+            {
+                'name': 'Taller Express',
+                'category': 'auto',
+                'description': 'Frenos y aceite',
+                'address': 'Centro',
+                'schedule': 'Lun-Vie 9-18',
+                'phone': '4431112233',
+                'whatsapp': '',
+                'instagram': '',
+                'facebook': '',
+                'is_active': 'on',
+                'sort_order': '1',
+            },
+            follow=True,
+        )
+        self.assertEqual(created.status_code, 200)
+        self.assertTrue(
+            self.service.__class__.objects.filter(name='Taller Express').exists(),
+        )
+        self.assertContains(created, 'publicado')
 
     def test_admin_can_deactivate_and_delete_service(self):
         deactivate = self.client.post(

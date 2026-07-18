@@ -295,7 +295,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             status=OrderStatus.READY,
             driver__isnull=True,
         ).select_related('restaurant', 'customer').prefetch_related('items')
-        serializer = OrderSerializer(orders, many=True)
+        serializer = OrderSerializer(orders, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='accept-delivery')
@@ -716,7 +716,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
             status=ShipmentStatus.PENDING,
             driver__isnull=True,
         ).select_related('customer')
-        serializer = ShipmentSerializer(shipments, many=True)
+        serializer = ShipmentSerializer(shipments, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='accept-delivery')
@@ -1024,8 +1024,9 @@ class CouponViewSet(viewsets.ModelViewSet):
             'description': coupon.description,
         })
 
-    @action(detail=False, methods=['get'], url_path='active', permission_classes=[AllowAny])
+    @action(detail=False, methods=['get'], url_path='active', permission_classes=[IsCustomer])
     def active_coupons(self, request):
+        """Códigos activos solo para clientes autenticados (evita scraping anónimo)."""
         now = timezone.now()
         coupons = Coupon.objects.filter(is_active=True).filter(
             Q(expires_at__isnull=True) | Q(expires_at__gt=now),

@@ -1,0 +1,93 @@
+from decimal import Decimal
+
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient, APITestCase
+
+from accounts.models import DeliveryProfile, UserRole
+from orders.models import Coupon, Order, OrderStatus
+from restaurants.models import Restaurant
+
+User = get_user_model()
+
+
+class HardeningApiTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            username='hard_customer',
+            password='test1234',
+            role=UserRole.CUSTOMER,
+            phone='4431111111',
+            address='Calle Secreta 1',
+            email='customer@example.com',
+        )
+        self.driver = User.objects.create_user(
+            username='hard_driver',
+            password='test1234',
+            role=UserRole.DRIVER,
+        )
+        DeliveryProfile.objects.create(
+            user=self.driver,
+            verification_status=DeliveryProfile.VerificationStatus.APPROVED,
+            is_available=True,
+        )
+        self.owner = User.objects.create_user(
+            username='hard_owner',
+            password='test1234',
+            role=UserRole.RESTAURANT,
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Local Hard',
+            address='Centro',
+            is_active=True,
+            clabe='012180001234567890',
+        )
+        self.order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            status=OrderStatus.READY,
+            delivery_address='Calle Secreta 99',
+            delivery_notes='Portón azul',
+            subtotal=Decimal('100.00'),
+            delivery_fee=Decimal('20.00'),
+            total=Decimal('120.00'),
+        )
+        Coupon.objects.create(
+            code='PUBLICO10',
+            description='Promo',
+            discount_percent=10,
+            is_active=True,
+        )
+
+    def test_forgot_password_does_not_enumerate_users(self):
+        missing = self.client.post('/api/auth/forgot-password/', {'username': 'no_existe_xyz'})
+        existing = self.client.post('/api/auth/forgot-password/', {'username': 'hard_customer'})
+        self.assertEqual(missing.status_code, 200)
+        self.assertEqual(existing.status_code, 200)
+        self.assertEqual(missing.data['detail'], existing.data['detail'])
+        self.assertNotIn('reset_token', missing.data)
+
+    def test_active_coupons_require_customer(self):
+        anon = self.client.get('/api/coupons/active/')
+        self.assertEqual(anon.status_code, 401)
+
+        self.client.force_authenticate(self.driver)
+        as_driver = self.client.get('/api/coupons/active/')
+        self.assertEqual(as_driver.status_code, 403)
+
+        self.client.force_authenticate(self.customer)
+        as_customer = self.client.get('/api/coupons/active/')
+        self.assertEqual(as_customer.status_code, 200)
+        self.assertEqual(as_customer.data[0]['code'], 'PUBLICO10')
+
+    def test_available_orders_hide_customer_contact_for_drivers(self):
+        self.client.force_authenticate(self.driver)
+        response = self.client.get('/api/orders/available/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        row = response.data[0]
+        self.assertEqual(row['customer_detail']['phone'], '')
+        self.assertEqual(row['customer_detail']['address'], '')
+        self.assertEqual(row['delivery_address'], 'Disponible al aceptar la entrega')
+        self.assertEqual(row['delivery_notes'], '')

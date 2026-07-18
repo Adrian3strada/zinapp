@@ -82,7 +82,8 @@
           </td>
         </tr>
         {% empty %}
-        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-motorcycle" title="No hay repartidores" message="Los repartidores se registran desde la app." %}
+        {% url 'gestion:user-create' as driver_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-motorcycle" title="No hay repartidores" message="Da de alta repartidores desde el panel o deja que se registren en la app." action_url=driver_create_url|add:"?role=driver" action_label="Nuevo repartidor" %}
         {% endfor %}
       </tbody>
     </table>

@@ -4,6 +4,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 
 import EmptyState from '../../components/EmptyState';
 import ScreenContainer from '../../components/ScreenContainer';
+import { useAuth } from '../../context/AuthContext';
 import type { OffersScreenProps } from '../../navigation/types';
 import { couponApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -22,11 +23,17 @@ function discountLabel(coupon: PublicCoupon): string {
 }
 
 export default function OffersScreen({ navigation }: OffersScreenProps) {
+  const { user, isGuest, requestLogin } = useAuth();
   const [coupons, setCoupons] = useState<PublicCoupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    if (!user || isGuest) {
+      setCoupons([]);
+      setLoading(false);
+      return;
+    }
     try {
       const { data } = await couponApi.listActive();
       setCoupons(data);
@@ -35,7 +42,7 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user, isGuest]);
 
   useEffect(() => {
     load();
@@ -63,13 +70,23 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
         }
         ListEmptyComponent={
           !loading ? (
-            <EmptyState
-              emoji="🏷️"
-              title="Sin ofertas activas"
-              subtitle="Vuelve pronto o pide sin cupón"
-              actionLabel="Ver restaurantes"
-              onAction={() => navigation.navigate('Comida')}
-            />
+            isGuest || !user ? (
+              <EmptyState
+                emoji="🏷️"
+                title="Inicia sesión para ver cupones"
+                subtitle="Los códigos de descuento solo están disponibles con tu cuenta."
+                actionLabel="Iniciar sesión"
+                onAction={requestLogin}
+              />
+            ) : (
+              <EmptyState
+                emoji="🏷️"
+                title="Sin ofertas activas"
+                subtitle="Vuelve pronto o pide sin cupón"
+                actionLabel="Ver restaurantes"
+                onAction={() => navigation.navigate('Comida')}
+              />
+            )
           ) : null
         }
         renderItem={({ item }) => (

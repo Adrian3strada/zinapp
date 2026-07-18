@@ -175,7 +175,31 @@ class OrderSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         if not instance.code:
             instance.ensure_code()
-        return super().to_representation(instance)
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        # Pedidos READY sin asignar: el repartidor no ve teléfono/dirección
+        # del cliente hasta aceptar la entrega.
+        if (
+            user
+            and getattr(user, 'is_authenticated', False)
+            and getattr(user, 'is_driver', False)
+            and instance.driver_id != user.id
+        ):
+            detail = data.get('customer_detail') or {}
+            data['customer_detail'] = {
+                'id': detail.get('id'),
+                'username': detail.get('username'),
+                'first_name': detail.get('first_name') or '',
+                'last_name': '',
+                'role': detail.get('role'),
+                'phone': '',
+                'address': '',
+                'avatar_url': detail.get('avatar_url'),
+            }
+            data['delivery_address'] = 'Disponible al aceptar la entrega'
+            data['delivery_notes'] = ''
+        return data
 
 
 class OrderCreateSerializer(serializers.Serializer):
@@ -579,6 +603,36 @@ class ShipmentSerializer(serializers.ModelSerializer):
         if not profile or not profile.current_latitude or not profile.current_longitude:
             return None
         return profile.updated_at
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if (
+            user
+            and getattr(user, 'is_authenticated', False)
+            and getattr(user, 'is_driver', False)
+            and instance.driver_id != user.id
+        ):
+            detail = data.get('customer_detail') or {}
+            data['customer_detail'] = {
+                'id': detail.get('id'),
+                'username': detail.get('username'),
+                'email': '',
+                'first_name': detail.get('first_name') or '',
+                'last_name': '',
+                'role': detail.get('role'),
+                'phone': '',
+                'address': '',
+                'avatar': None,
+                'avatar_url': detail.get('avatar_url'),
+                'date_joined': detail.get('date_joined'),
+                'expo_push_token': '',
+            }
+            data['delivery_address'] = 'Disponible al aceptar el envío'
+            data['delivery_notes'] = ''
+            data['pickup_notes'] = ''
+        return data
 
 
 class ShipmentCreateSerializer(serializers.Serializer):

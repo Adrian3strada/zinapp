@@ -65,8 +65,8 @@ async function refreshAccessToken(): Promise<string | null> {
   refreshInFlight = (async () => {
     const refresh = await tokenStorage.getRefreshToken();
     if (!refresh) {
-      await tokenStorage.clear();
-      sessionEvents.emitExpired();
+      // Sin refresh no hay sesión renovable. No emitir "expired": en modo
+      // invitado un 401 de endpoint protegido no debe expulsar al guest.
       return null;
     }
 
@@ -94,6 +94,18 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshInFlight;
 }
 
+function requestHadAuthHeader(headers?: Record<string, string> | unknown): boolean {
+  if (!headers || typeof headers !== 'object') return false;
+  const h = headers as Record<string, string> & {
+    get?: (name: string) => string | undefined;
+  };
+  if (typeof h.get === 'function') {
+    const value = h.get('Authorization') ?? h.get('authorization');
+    return Boolean(value);
+  }
+  return Boolean(h.Authorization || h.authorization);
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -113,6 +125,15 @@ api.interceptors.response.use(
       if (originalRequest.url?.includes('/token/refresh/')) {
         await tokenStorage.clear();
         sessionEvents.emitExpired();
+        return Promise.reject(error);
+      }
+
+      // Invitado / anónimo: no intentar refresh ni cerrar "sesión".
+      const [accessToken, refreshToken] = await Promise.all([
+        tokenStorage.getAccessToken(),
+        tokenStorage.getRefreshToken(),
+      ]);
+      if (!accessToken && !refreshToken && !requestHadAuthHeader(originalRequest.headers)) {
         return Promise.reject(error);
       }
 
