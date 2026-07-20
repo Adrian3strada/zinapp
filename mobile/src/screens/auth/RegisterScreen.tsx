@@ -78,8 +78,12 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       appAlert('Usuario requerido', 'Elige un nombre de usuario único.');
       return;
     }
-    if (email && !EMAIL_REGEX.test(email)) {
-      appAlert('Email inválido', 'Usa un formato como nombre@correo.com o déjalo vacío.');
+    if (!email) {
+      appAlert('Email requerido', 'Necesitamos tu correo para recuperar la contraseña.');
+      return;
+    }
+    if (!EMAIL_REGEX.test(email)) {
+      appAlert('Email inválido', 'Usa un formato como nombre@correo.com.');
       return;
     }
     if (!form.first_name.trim() || !form.last_name.trim()) {
@@ -223,8 +227,9 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             value={form.email}
             onChangeText={(v) => update('email', v)}
             icon="mail-outline"
-            placeholder="nombre@correo.com (opcional)"
-            hint="Para recuperar tu contraseña."
+            placeholder="nombre@correo.com"
+            hint="Obligatorio. Lo usamos para recuperar tu contraseña."
+            required
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"

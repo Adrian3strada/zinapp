@@ -19,7 +19,7 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
-  ResetPassword: { token: string };
+  ResetPassword: { token?: string };
 };
 
 export type CustomerTabParamList = {

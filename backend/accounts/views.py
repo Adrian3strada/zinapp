@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
@@ -16,6 +17,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 logger = logging.getLogger(__name__)
 
+# Sin 0/O/1/I para facilitar lectura del código en el correo.
+_RESET_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+
+def _generate_reset_code(length=8):
+    return ''.join(secrets.choice(_RESET_CODE_ALPHABET) for _ in range(length))
+
+from config.email_utils import email_reset_enabled
 from config.throttling import (
     ForgotPasswordRateThrottle,
     LoginRateThrottle,
@@ -104,33 +113,45 @@ class ForgotPasswordView(APIView):
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username = serializer.validated_data['username']
+        identifier = serializer.validated_data['identifier']
         # Respuesta idéntica siempre (anti-enumeración).
         response = {
-            'detail': 'Si el usuario existe, recibirás instrucciones para restablecer.',
+            'detail': (
+                'Si la cuenta existe y tiene correo, te enviamos un código '
+                'para restablecer la contraseña.'
+            ),
         }
         whatsapp = getattr(settings, 'SUPPORT_WHATSAPP', '').strip()
-        email_ready = bool(
-            getattr(settings, 'EMAIL_HOST', '')
-            and getattr(settings, 'EMAIL_HOST_USER', '')
-        )
+        email_ready = email_reset_enabled()
         if whatsapp and not email_ready:
             response['password_reset_via_whatsapp'] = True
             response['hint'] = (
                 'Si no llega correo, contacta soporte por WhatsApp para restablecer.'
             )
 
-        user = User.objects.filter(username__iexact=username).first()
+        user = (
+            User.objects.filter(username__iexact=identifier).first()
+            or User.objects.filter(email__iexact=identifier).first()
+        )
         if not user:
             return Response(response)
 
-        token_value = secrets.token_urlsafe(32)
         PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
-        reset_token = PasswordResetToken.objects.create(
-            user=user,
-            token=token_value,
-            expires_at=timezone.now() + timedelta(hours=2),
-        )
+        reset_token = None
+        for _ in range(5):
+            token_value = _generate_reset_code()
+            try:
+                reset_token = PasswordResetToken.objects.create(
+                    user=user,
+                    token=token_value,
+                    expires_at=timezone.now() + timedelta(hours=2),
+                )
+                break
+            except IntegrityError:
+                continue
+        if reset_token is None:
+            logger.error('Forgot-password: no se pudo generar código único user_id=%s', user.pk)
+            return Response(response)
 
         if user.email and email_ready:
             try:
@@ -138,8 +159,10 @@ class ForgotPasswordView(APIView):
                     subject='Restablece tu contraseña — ZinApp',
                     message=(
                         f'Hola {user.first_name or user.username},\n\n'
-                        f'Tu código para restablecer contraseña en ZinApp:\n\n{token_value}\n\n'
-                        'Válido 2 horas. En la app: Recuperar contraseña → pegar el código.'
+                        f'Tu código para restablecer la contraseña en ZinApp:\n\n'
+                        f'{reset_token.token}\n\n'
+                        'Válido 2 horas.\n'
+                        'En la app: Recuperar contraseña → Ya tengo el código → pega este código.\n'
                     ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
@@ -152,14 +175,19 @@ class ForgotPasswordView(APIView):
                 )
                 if settings.DEBUG:
                     response['reset_token'] = reset_token.token
-                    response['hint'] = 'Email falló — usa este token en desarrollo.'
+                    response['hint'] = 'Email falló — usa este código en desarrollo.'
+                elif whatsapp:
+                    response['password_reset_via_whatsapp'] = True
+                    response['hint'] = (
+                        'No pudimos enviar el correo. Contacta soporte por WhatsApp.'
+                    )
         elif settings.DEBUG:
             response['reset_token'] = reset_token.token
-            response['hint'] = 'En desarrollo: usa este token en /api/auth/reset-password/'
+            response['hint'] = 'En desarrollo: usa este código en Restablecer contraseña.'
         elif not user.email and whatsapp:
             response['password_reset_via_whatsapp'] = True
             response['hint'] = (
-                'Si no llega correo, contacta soporte por WhatsApp para restablecer.'
+                'Tu cuenta no tiene correo. Contacta soporte por WhatsApp para restablecer.'
             )
 
         return Response(response)

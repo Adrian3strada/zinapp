@@ -14,16 +14,24 @@ import { authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
+import { getApiErrorMessage } from '../../utils/apiErrors';
 import { clearWebResetTokenFromUrl } from '../../utils/webDeepLink';
 
 export default function ResetPasswordScreen({ navigation, route }: ResetPasswordScreenProps) {
   const insets = useSafeAreaInsets();
+  const initialToken = (route.params?.token || '').trim().toUpperCase();
+  const [code, setCode] = useState(initialToken);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
+    const token = code.trim().toUpperCase();
+    if (!token) {
+      appAlert('Código requerido', 'Pega el código que recibiste por correo.');
+      return;
+    }
     if (password.length < 6) {
       appAlert('Contraseña', 'Debe tener al menos 6 caracteres.');
       return;
@@ -34,13 +42,13 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
     }
     setLoading(true);
     try {
-      await authApi.resetPassword(route.params.token, password);
+      await authApi.resetPassword(token, password);
       clearWebResetTokenFromUrl();
       appAlert('Listo', 'Contraseña actualizada.', [
         { text: 'Iniciar sesión', onPress: () => navigation.navigate('Login') },
       ]);
     } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'Token inválido o expirado.'));
+      appAlert('Error', getApiErrorMessage(err, 'Código inválido o expirado.'));
     } finally {
       setLoading(false);
     }
@@ -62,41 +70,60 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
         >
           <BrandLogo variant="light" width={200} compact showTagline={false} />
           <Text style={styles.title}>Nueva contraseña</Text>
-          <Text style={styles.heroSub}>Elige una contraseña segura para tu cuenta.</Text>
+          <Text style={styles.heroSub}>
+            Ingresa el código del correo y elige una contraseña nueva.
+          </Text>
         </LinearGradient>
 
         <View style={[styles.formWrap, cardShadow]}>
-        <FormSection title="Seguridad" variant="plain">
-          <FormField
-            label="Nueva contraseña"
-            value={password}
-            onChangeText={setPassword}
-            icon="lock-closed-outline"
-            placeholder="Mínimo 6 caracteres"
-            required
-            secureTextEntry={!showPassword}
-            autoCorrect={false}
-            rightElement={
-              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-            }
-          />
-          <FormField
-            label="Confirmar contraseña"
-            value={confirm}
-            onChangeText={setConfirm}
-            icon="lock-closed-outline"
-            required
-            secureTextEntry={!showPassword}
-            autoCorrect={false}
-          />
-          <Button title={loading ? 'Guardando…' : 'Restablecer'} onPress={handleSubmit} disabled={loading} size="lg" />
-        </FormSection>
+          <FormSection title="Seguridad" variant="plain">
+            <FormField
+              label="Código del correo"
+              value={code}
+              onChangeText={(v) => setCode(v.toUpperCase())}
+              icon="key-outline"
+              placeholder="Ej. A3F9K2M7"
+              required
+              autoCapitalize="characters"
+              autoCorrect={false}
+              hint="Código de 8 caracteres que enviamos a tu correo."
+            />
+            <FormField
+              label="Nueva contraseña"
+              value={password}
+              onChangeText={setPassword}
+              icon="lock-closed-outline"
+              placeholder="Mínimo 6 caracteres"
+              required
+              secureTextEntry={!showPassword}
+              autoCorrect={false}
+              rightElement={
+                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textMuted}
+                  />
+                </Pressable>
+              }
+            />
+            <FormField
+              label="Confirmar contraseña"
+              value={confirm}
+              onChangeText={setConfirm}
+              icon="lock-closed-outline"
+              required
+              secureTextEntry={!showPassword}
+              autoCorrect={false}
+            />
+            <Button
+              title={loading ? 'Guardando…' : 'Restablecer'}
+              onPress={handleSubmit}
+              disabled={loading}
+              size="lg"
+            />
+          </FormSection>
+          <Button title="Volver" variant="ghost" onPress={() => navigation.goBack()} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -112,7 +139,6 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  heroEmoji: { fontSize: 40, marginBottom: 8 },
   title: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: 12 },
   heroSub: {
     fontSize: 14,

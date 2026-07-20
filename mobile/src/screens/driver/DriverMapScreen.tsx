@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
@@ -17,8 +17,54 @@ import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { regionForCoordinates, toCoordinate, type MapCoordinate } from '../../utils/maps';
 import type { StreetRouteSegment } from '../../utils/routing';
-import { showNavigationPicker } from '../../utils/navigationLinks';
+import {
+  getGoogleMapsNavUrl,
+  openExternalUrl,
+  showNavigationPicker,
+} from '../../utils/navigationLinks';
 import { mapHeight } from '../../utils/responsive';
+
+type NavButtonProps = {
+  coord: MapCoordinate;
+  label: string;
+  title: string;
+  address?: string;
+  primary?: boolean;
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
+function NavigationTargetButton({
+  coord,
+  label,
+  title,
+  address,
+  primary,
+  icon,
+}: NavButtonProps) {
+  const iconColor = primary ? '#FFF' : colors.shipmentStart;
+
+  return (
+    <Pressable
+      style={[
+        primary ? styles.navBtn : styles.navBtnSecondary,
+        Platform.OS === 'web' ? ({ cursor: 'pointer', zIndex: 5 } as object) : null,
+      ]}
+      accessibilityRole="link"
+      accessibilityLabel={`${label}: abrir en Google Maps`}
+      onPress={() => {
+        // Web: sync en el mismo tick del tap (sin modal / async).
+        if (Platform.OS === 'web') {
+          openExternalUrl(getGoogleMapsNavUrl(coord));
+          return;
+        }
+        showNavigationPicker(coord, title, address);
+      }}
+    >
+      <Ionicons name={icon} size={18} color={iconColor} />
+      <Text style={primary ? styles.navText : styles.navTextSecondary}>{label}</Text>
+    </Pressable>
+  );
+}
 
 export default function DriverMapScreen({ route }: DriverMapScreenProps) {
   const { orderId } = route.params;
@@ -224,46 +270,37 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       <View style={styles.panel}>
         <RouteStatsBar items={routeStatItems} loading={routesLoading} />
         <View style={styles.navRow}>
-          {primaryCoord && (
-            <Pressable
-              style={styles.navBtnSecondary}
-              onPress={() =>
-                showNavigationPicker(
-                  primaryCoord,
-                  'Ir al restaurante',
-                  order?.restaurant_detail?.name,
-                )
-              }
-            >
-              <Ionicons name="restaurant" size={18} color={colors.shipmentStart} />
-              <Text style={styles.navTextSecondary}>Restaurante</Text>
-            </Pressable>
-          )}
-          {secondaryCoord && (
-            <Pressable
-              style={styles.navBtn}
-              onPress={() =>
-                showNavigationPicker(
-                  secondaryCoord,
-                  'Ir a entrega',
-                  order?.delivery_address,
-                )
-              }
-            >
-              <Ionicons name="navigate" size={18} color="#FFF" />
-              <Text style={styles.navText}>Entrega</Text>
-            </Pressable>
-          )}
+          {primaryCoord ? (
+            <NavigationTargetButton
+              coord={primaryCoord}
+              label="Restaurante"
+              title="Ir al restaurante"
+              address={order?.restaurant_detail?.name}
+              icon="restaurant"
+            />
+          ) : null}
+          {secondaryCoord ? (
+            <NavigationTargetButton
+              coord={secondaryCoord}
+              label="Entrega"
+              title="Ir a entrega"
+              address={order?.delivery_address}
+              icon="navigate"
+              primary
+            />
+          ) : null}
         </View>
       </View>
-      <AppMap
-        markers={mapMarkers}
-        polylines={polylines}
-        region={region}
-        height={mapHeight(0.52)}
-        followMarkerId={userLocation ? 'me' : null}
-        emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
-      />
+      <View style={styles.mapWrap}>
+        <AppMap
+          markers={mapMarkers}
+          polylines={polylines}
+          region={region}
+          height={mapHeight(0.52)}
+          followMarkerId={userLocation ? 'me' : null}
+          emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
+        />
+      </View>
       <Text style={styles.hint}>
         El pin azul eres tú. La línea sólida es tu ruta a la siguiente parada. Toca los botones para abrir Google Maps o Waze.
       </Text>
@@ -285,7 +322,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  panel: { padding: 16, gap: 10, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  panel: {
+    position: 'relative',
+    padding: 16,
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    zIndex: 5,
+    elevation: 5,
+  },
   title: { fontSize: 20, fontWeight: '800', color: '#FFF' },
   address: { fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 20 },
   nextStopBanner: {
@@ -326,5 +372,6 @@ const styles = StyleSheet.create({
   },
   navText: { color: '#FFF', fontWeight: '800' },
   navTextSecondary: { color: colors.shipmentStart, fontWeight: '800' },
+  mapWrap: { zIndex: 0, position: 'relative' },
   hint: { padding: 16, color: colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
 });

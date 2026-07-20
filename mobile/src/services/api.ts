@@ -227,8 +227,13 @@ export const authApi = {
     api.post('/auth/change-password/', { old_password, new_password }),
   deleteAccount: (password: string, confirmation = 'ELIMINAR') =>
     api.post<{ detail: string }>('/auth/delete-account/', { password, confirmation }),
-  forgotPassword: (username: string) =>
-    api.post<{ detail: string; reset_token?: string; hint?: string }>('/auth/forgot-password/', { username }),
+  forgotPassword: (identifier: string) =>
+    api.post<{
+      detail: string;
+      reset_token?: string;
+      hint?: string;
+      password_reset_via_whatsapp?: boolean;
+    }>('/auth/forgot-password/', { identifier }),
   resetPassword: (token: string, new_password: string) =>
     api.post('/auth/reset-password/', { token, new_password }),
   registerPushToken: (expo_push_token: string) =>

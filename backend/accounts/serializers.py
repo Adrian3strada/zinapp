@@ -70,7 +70,7 @@ class OrderDriverDeliverySerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
-    email = serializers.EmailField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=True)
     restaurant_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
     restaurant_address = serializers.CharField(required=False, allow_blank=True, write_only=True)
     restaurant_phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
@@ -102,6 +102,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Este nombre de usuario ya está ocupado.')
         return username
 
+    def validate_email(self, value):
+        email = (value or '').strip().lower()
+        if not email:
+            raise serializers.ValidationError('El correo es obligatorio.')
+        if User.objects.filter(email__iexact=email).exists():
+            raise serializers.ValidationError('Este correo ya está registrado.')
+        return email
+
     def validate_role(self, value):
         if value == UserRole.ADMIN:
             raise serializers.ValidationError(
@@ -114,9 +122,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'password_confirm': 'Las contraseñas no coinciden.'}
             )
-        email = attrs.get('email', '')
-        if email:
-            attrs['email'] = email.strip().lower()
+        attrs['email'] = (attrs.get('email') or '').strip().lower()
 
         if attrs.get('role') == UserRole.RESTAURANT:
             name = (attrs.get('restaurant_name') or '').strip()
@@ -226,11 +232,20 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    """Acepta identifier (usuario o email) o username (compat)."""
 
-    def validate_username(self, value):
+    identifier = serializers.CharField(required=False, allow_blank=True)
+    username = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        raw = (attrs.get('identifier') or attrs.get('username') or '').strip().lower()
+        if not raw:
+            raise serializers.ValidationError(
+                {'identifier': 'Indica tu usuario o correo.'}
+            )
         # No revelar si el usuario existe (anti-enumeración).
-        return normalize_username(value)
+        attrs['identifier'] = raw
+        return attrs
 
 
 class ResetPasswordSerializer(serializers.Serializer):
@@ -238,15 +253,16 @@ class ResetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
     def validate(self, attrs):
+        code = (attrs.get('token') or '').strip().upper()
         try:
             token = PasswordResetToken.objects.select_related('user').get(
-                token=attrs['token'],
+                token=code,
                 used=False,
             )
         except PasswordResetToken.DoesNotExist:
-            raise serializers.ValidationError({'token': 'Token inválido o expirado.'})
+            raise serializers.ValidationError({'token': 'Código inválido o expirado.'})
         if token.expires_at < timezone.now():
-            raise serializers.ValidationError({'token': 'Token expirado.'})
+            raise serializers.ValidationError({'token': 'Código expirado.'})
         attrs['reset_token'] = token
         return attrs
 

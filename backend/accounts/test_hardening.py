@@ -61,11 +61,17 @@ class HardeningApiTests(APITestCase):
         )
 
     def test_forgot_password_does_not_enumerate_users(self):
-        missing = self.client.post('/api/auth/forgot-password/', {'username': 'no_existe_xyz'})
+        missing = self.client.post('/api/auth/forgot-password/', {'identifier': 'no_existe_xyz'})
         existing = self.client.post('/api/auth/forgot-password/', {'username': 'hard_customer'})
+        by_email = self.client.post(
+            '/api/auth/forgot-password/',
+            {'identifier': self.customer.email},
+        )
         self.assertEqual(missing.status_code, 200)
         self.assertEqual(existing.status_code, 200)
+        self.assertEqual(by_email.status_code, 200)
         self.assertEqual(missing.data['detail'], existing.data['detail'])
+        self.assertEqual(missing.data['detail'], by_email.data['detail'])
         self.assertNotIn('reset_token', missing.data)
 
     def test_active_coupons_require_customer(self):

@@ -1,4 +1,6 @@
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
+
+import { openExternalUrl } from './navigationLinks';
 
 export type TransferKind = 'order' | 'shipment';
 
@@ -13,6 +15,12 @@ export async function openWhatsApp(phone: string, message: string): Promise<void
     throw new Error('No hay número de contacto disponible.');
   }
   const url = buildWhatsAppUrl(phone, message);
+  if (Platform.OS === 'web') {
+    if (!openExternalUrl(url)) {
+      throw new Error('No se pudo abrir WhatsApp en este dispositivo.');
+    }
+    return;
+  }
   const supported = await Linking.canOpenURL(url);
   if (!supported) {
     throw new Error('No se pudo abrir WhatsApp en este dispositivo.');
