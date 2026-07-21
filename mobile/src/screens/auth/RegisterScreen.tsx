@@ -149,7 +149,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
           '¡Negocio registrado!',
           'Tu cuenta está lista. Sigue estos pasos:\n\n'
           + '1. En Menú: agrega al menos un platillo\n'
-          + '2. En Mi perfil: logo, CLABE, horario y dirección\n'
+          + '2. En Mi perfil: logo, horario y dirección\n'
           + '3. Cuando completes todo, ZinApp activará tu local en la app\n\n'
           + 'Mientras tanto, los clientes no verán tu negocio.',
         );

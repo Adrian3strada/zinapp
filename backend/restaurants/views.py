@@ -1,4 +1,4 @@
-from django.db.models import Count, Prefetch, Q
+from django.db.models import BooleanField, Case, Count, F, Prefetch, Q, Value, When
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
-from accounts.permissions import IsAdmin, IsCustomer, IsRestaurantOwner
+from accounts.permissions import IsAdmin, IsRestaurantOwner
 
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
 from .models import Product, ProductPromotion, Restaurant
@@ -19,8 +19,35 @@ from .serializers import (
     RestaurantPublicDetailSerializer,
     RestaurantPublicSerializer,
     RestaurantSerializer,
-    RestaurantTransferInfoSerializer,
 )
+
+
+def annotate_is_open_now(queryset, now_time=None):
+    """Marca restaurantes abiertos ahora (misma lógica que Restaurant.is_open_now)."""
+    now = now_time or timezone.localtime().time()
+    open_schedule = (
+        Q(opening_time__isnull=True)
+        | Q(closing_time__isnull=True)
+        | (
+            Q(opening_time__lte=F('closing_time'))
+            & Q(opening_time__lte=now)
+            & Q(closing_time__gte=now)
+        )
+        | (
+            Q(opening_time__gt=F('closing_time'))
+            & (Q(opening_time__lte=now) | Q(closing_time__gte=now))
+        )
+    )
+    return queryset.annotate(
+        is_open_now_sort=Case(
+            When(
+                Q(is_active=True, accepting_orders=True) & open_schedule,
+                then=Value(True),
+            ),
+            default=Value(False),
+            output_field=BooleanField(),
+        ),
+    )
 
 
 @extend_schema(exclude=True)
@@ -161,6 +188,8 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         category = request.query_params.get('category')
         if category and category != 'all':
             queryset = queryset.filter(category=category)
+        # Catálogo cliente: abiertos primero, luego por nombre.
+        queryset = annotate_is_open_now(queryset).order_by('-is_open_now_sort', 'name')
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -207,20 +236,6 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         if not restaurant:
             return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
-        return Response(serializer.data)
-
-    @action(
-        detail=True,
-        methods=['get'],
-        url_path='transfer-info',
-        permission_classes=[IsCustomer],
-    )
-    def transfer_info(self, request, pk=None):
-        """CLABE solo para clientes en checkout (no repartidores ni otros roles)."""
-        restaurant = self.get_object()
-        if not restaurant.is_active or not (restaurant.clabe or '').strip():
-            return Response({'detail': 'Transferencia no disponible.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = RestaurantTransferInfoSerializer(restaurant, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'], url_path='toggle-favorite')
@@ -290,6 +305,43 @@ class ProductViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('No puedes agregar productos a este restaurante.')
         serializer.save()
+
+    @action(detail=False, methods=['get'], url_path='featured', permission_classes=[AllowAny])
+    def featured(self, request):
+        """Muestra platillos de distintos restaurantes (inicio de la app)."""
+        try:
+            limit = min(max(int(request.query_params.get('limit', 8)), 1), 12)
+        except (TypeError, ValueError):
+            limit = 8
+
+        qs = (
+            self.get_queryset()
+            .filter(is_available=True, restaurant__is_active=True)
+            .select_related('restaurant')
+            .order_by('-updated_at')[:80]
+        )
+        products = list(qs)
+        products.sort(
+            key=lambda p: (
+                0 if p.restaurant.is_open_now() else 1,
+                0 if p.image else 1,
+                -p.pk,
+            )
+        )
+
+        picked = []
+        seen_restaurants = set()
+        # Primero un platillo por sucursal (diversidad).
+        for product in products:
+            if product.restaurant_id in seen_restaurants:
+                continue
+            seen_restaurants.add(product.restaurant_id)
+            picked.append(product)
+            if len(picked) >= limit:
+                break
+
+        serializer = self.get_serializer(picked, many=True)
+        return Response(serializer.data)
 
 
 class ProductPromotionViewSet(viewsets.ModelViewSet):

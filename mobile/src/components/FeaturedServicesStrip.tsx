@@ -30,14 +30,16 @@ function FeaturedServiceCard({
         size="sm"
         style={styles.logo}
       />
-      <Text style={styles.name} numberOfLines={2}>
-        {service.name}
-      </Text>
-      {!!service.category_display && (
-        <Text style={styles.category} numberOfLines={1}>
-          {service.category_display}
+      <View style={styles.textBlock}>
+        <Text style={styles.name} numberOfLines={2}>
+          {service.name}
         </Text>
-      )}
+        {!!service.category_display && (
+          <Text style={styles.category} numberOfLines={1}>
+            {service.category_display}
+          </Text>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -99,7 +101,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   card: {
-    width: 132,
+    width: 148,
     backgroundColor: colors.surface,
     borderRadius: 18,
     padding: spacing.md,
@@ -113,6 +115,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 14,
+  },
+  textBlock: {
+    minWidth: 0,
+    gap: 4,
   },
   name: {
     fontSize: 14,

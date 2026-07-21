@@ -63,7 +63,7 @@ export interface OrderDriverDeliveryProfile {
 }
 
 export interface RestaurantSetupStep {
-  key: 'menu' | 'profile' | 'bank' | 'hours' | 'location';
+  key: 'menu' | 'profile' | 'hours' | 'location';
   label: string;
   done: boolean;
 }
@@ -84,10 +84,6 @@ export interface Restaurant {
   address: string;
   phone: string;
   whatsapp?: string;
-  bank_name?: string;
-  account_holder?: string;
-  clabe?: string;
-  has_transfer_info?: boolean;
   image: string | null;
   image_url?: string | null;
   latitude: string | null;
@@ -107,6 +103,7 @@ export interface Restaurant {
 export interface Product {
   id: number;
   restaurant: number;
+  restaurant_name?: string;
   name: string;
   description: string;
   price: string;

@@ -386,7 +386,7 @@ export default function RestaurantManageScreen() {
           <View style={styles.tipCard}>
             <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
             <Text style={styles.tipText}>
-              Logo, horario, CLABE y ubicación del local se configuran en la pestaña{' '}
+              Logo, horario y ubicación del local se configuran en la pestaña{' '}
               <Text style={styles.tipBold}>Perfil</Text>.
             </Text>
           </View>

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
-import { authApi, LoginPayload, RegisterPayload } from '../services/api';
+import { authApi, ensureFreshAccessToken, LoginPayload, RegisterPayload } from '../services/api';
 import { clearPushToken, registerPushNotifications } from '../services/pushRegistration';
 import { sessionEvents } from '../services/sessionEvents';
 import { tokenStorage } from '../services/tokenStorage';
@@ -61,11 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(data);
       await userCache.set(data);
     } catch (error: unknown) {
-      // Solo cerrar sesión ante 401 (token inválido). Un fallo de red no debe
-      // expulsar al usuario si aún hay tokens válidos en el dispositivo.
+      // Solo cerrar sesión si ya no hay refresh (token inválido de verdad).
+      // Fallos de red o access caducado que aún se puede renovar: mantener sesión.
       const status = (error as { response?: { status?: number } })?.response?.status;
-      if (status === 401) {
-        await logout();
+      if (status === 401 || status === 403) {
+        const stillHasRefresh = await tokenStorage.getRefreshToken();
+        if (!stillHasRefresh) {
+          await logout();
+        }
       }
     }
   }, [logout]);
@@ -95,14 +98,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setUser(cached);
           setIsLoading(false);
-          refreshUser();
-          return;
         }
 
+        // Al reabrir la app: renovar access con el refresh guardado.
+        await ensureFreshAccessToken();
+        if (cancelled) return;
         await refreshUser();
       } catch {
-        // No forzar logout aquí: un fallo al arrancar puede ser solo red.
-        if (!cancelled) setUser(null);
+        // Mantener usuario en caché si hay tokens; no expulsar por fallo de arranque.
+        if (!cancelled) {
+          const cached = await userCache.get();
+          const refresh = await tokenStorage.getRefreshToken();
+          if (cached && refresh) setUser(cached);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }

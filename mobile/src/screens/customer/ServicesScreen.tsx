@@ -161,12 +161,12 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
         </Pressable>
 
         {loading && services.length === 0 ? (
-          <ListSkeleton rows={4} />
+          <ListSkeleton count={4} />
         ) : error && services.length === 0 ? (
           <EmptyState
             emoji="⚠️"
             title="No se pudo cargar"
-            message={error}
+            subtitle={error}
             actionLabel="Reintentar"
             onAction={() => load()}
           />
@@ -174,7 +174,7 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
           <EmptyState
             emoji="💇"
             title={search || category ? 'Sin resultados' : 'Próximamente'}
-            message={
+            subtitle={
               search || category
                 ? 'Prueba otra categoría o término de búsqueda.'
                 : 'Aquí aparecerán negocios como peluquerías, talleres y más.'
@@ -266,8 +266,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.serviceStart + '14',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  requestBody: { flex: 1, gap: 4 },
+  requestBody: { flex: 1, minWidth: 0, gap: 4 },
   requestTitle: {
     fontSize: 16,
     fontWeight: '800',
@@ -281,5 +282,6 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+    paddingBottom: spacing.sm,
   },
 });

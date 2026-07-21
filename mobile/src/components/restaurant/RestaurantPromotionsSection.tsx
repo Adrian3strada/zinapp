@@ -365,7 +365,12 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
               </ScrollView>
 
               <View style={styles.modalFooter}>
-                <Button title="Cancelar" variant="secondary" onPress={() => setEditorOpen(false)} style={styles.modalBtn} />
+                <Button
+                  title="Cancelar"
+                  variant="secondary"
+                  onPress={() => setEditorOpen(false)}
+                  style={styles.modalBtn}
+                />
                 <Button title="Publicar" onPress={savePromo} loading={saving} style={styles.modalBtn} />
               </View>
             </View>
@@ -520,9 +525,9 @@ const styles = StyleSheet.create({
   modalFooter: {
     flexDirection: 'row',
     gap: 10,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  modalBtn: { flex: 1, minWidth: 0 },
+  modalBtn: { flex: 1, flexGrow: 1, flexShrink: 1, minWidth: 0 },
 });

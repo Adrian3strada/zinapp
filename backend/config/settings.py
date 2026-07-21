@@ -244,8 +244,9 @@ SPECTACULAR_SETTINGS = {
 
 SIMPLE_JWT = {
     # Access corto; el cliente renueva con refresh sin forzar re-login.
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
+    # Sesión persistente al cerrar la app; se renueva al usarla (rotate).
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=365),
     'ROTATE_REFRESH_TOKENS': True,
     # Invalida el refresh anterior al rotar (requiere token_blacklist).
     'BLACKLIST_AFTER_ROTATION': True,
@@ -264,10 +265,23 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='').strip()
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-DEFAULT_FROM_EMAIL = config(
-    'DEFAULT_FROM_EMAIL',
-    default=EMAIL_HOST_USER or 'noreply@zinapp.mx',
-)
+_default_from = config('DEFAULT_FROM_EMAIL', default='').strip()
+if _default_from:
+    DEFAULT_FROM_EMAIL = _default_from
+elif EMAIL_HOST and 'resend.com' in EMAIL_HOST.lower():
+    # Resend rechaza from="resend"; sin dominio verificado usa onboarding@resend.dev
+    DEFAULT_FROM_EMAIL = 'ZinApp <onboarding@resend.dev>'
+else:
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'noreply@zinapp.mx'
+
+_email_smtp_ready = bool(EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+if _email_smtp_ready:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+elif DEBUG:
+    # Local sin Resend: el correo se imprime en la consola del runserver.
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 
 LOGGING = {
     'version': 1,

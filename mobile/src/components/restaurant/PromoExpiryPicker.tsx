@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import {
@@ -35,6 +35,8 @@ const MONTH_NAMES = [
   'Diciembre',
 ];
 
+type DayCell = { day: number; iso: string } | null;
+
 function isoToDate(iso: string): Date | null {
   const parsed = parseIsoDate(iso);
   if (!parsed) return null;
@@ -46,28 +48,44 @@ function startOfToday(): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-function buildCalendarCells(viewYear: number, viewMonth: number) {
+/** Semanas de exactamente 7 celdas (lun–dom) para alinear columnas sin % fraccionarios. */
+function buildCalendarWeeks(viewYear: number, viewMonth: number): DayCell[][] {
   const firstDay = new Date(viewYear, viewMonth - 1, 1);
   const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
   const startOffset = (firstDay.getDay() + 6) % 7;
-  const cells: Array<{ day: number; iso: string } | null> = [];
+  const cells: DayCell[] = [];
 
   for (let i = 0; i < startOffset; i += 1) cells.push(null);
   for (let day = 1; day <= daysInMonth; day += 1) {
     cells.push({ day, iso: toIsoDate(viewYear, viewMonth, day) });
   }
-  return cells;
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: DayCell[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    weeks.push(cells.slice(i, i + 7));
+  }
+  return weeks;
 }
 
 export default function PromoExpiryPicker({ endDate, endTime, onChange }: Props) {
   const selected = parseIsoDate(endDate) ?? parseIsoDate(todayIsoDate())!;
   const [viewYear, setViewYear] = useState(selected.year);
   const [viewMonth, setViewMonth] = useState(selected.month);
+  const [daySize, setDaySize] = useState(34);
 
   const todayIso = todayIsoDate();
   const today = startOfToday();
-  const cells = useMemo(() => buildCalendarCells(viewYear, viewMonth), [viewYear, viewMonth]);
+  const weeks = useMemo(() => buildCalendarWeeks(viewYear, viewMonth), [viewYear, viewMonth]);
   const summary = formatPromoExpirySummary(endDate, endTime);
+
+  const onGridLayout = (event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    if (!width) return;
+    // 7 columnas iguales; deja aire entre círculos.
+    const next = Math.max(28, Math.min(40, Math.floor(width / 7) - 6));
+    setDaySize((prev) => (prev === next ? prev : next));
+  };
 
   const shiftMonth = (delta: number) => {
     let month = viewMonth + delta;
@@ -126,7 +144,7 @@ export default function PromoExpiryPicker({ endDate, endTime, onChange }: Props)
           <Pressable style={styles.navBtn} onPress={() => shiftMonth(-1)} hitSlop={8}>
             <Ionicons name="chevron-back" size={20} color={colors.text} />
           </Pressable>
-          <Text style={styles.monthTitle}>
+          <Text style={styles.monthTitle} numberOfLines={1}>
             {MONTH_NAMES[viewMonth - 1]} {viewYear}
           </Text>
           <Pressable style={styles.navBtn} onPress={() => shiftMonth(1)} hitSlop={8}>
@@ -134,47 +152,57 @@ export default function PromoExpiryPicker({ endDate, endTime, onChange }: Props)
           </Pressable>
         </View>
 
-        <View style={styles.weekdayRow}>
+        <View style={styles.weekdayRow} onLayout={onGridLayout}>
           {WEEKDAYS.map((label, index) => (
-            <View key={`${label}-${index}`} style={styles.weekdayCell}>
+            <View key={`${label}-${index}`} style={styles.col}>
               <Text style={styles.weekdayLabel}>{label}</Text>
             </View>
           ))}
         </View>
 
-        <View style={styles.grid}>
-          {cells.map((cell, index) => {
-            if (!cell) {
-              return <View key={`empty-${index}`} style={styles.dayCell} />;
-            }
-            const selectedDay = cell.iso === endDate;
-            const disabled = isPast(cell.iso);
-            const isToday = cell.iso === todayIso;
-            return (
-              <View key={cell.iso} style={styles.dayCell}>
-                <Pressable
-                  style={[
-                    styles.dayHit,
-                    selectedDay && styles.dayHitSelected,
-                    isToday && !selectedDay && styles.dayHitToday,
-                    disabled && styles.dayHitDisabled,
-                  ]}
-                  onPress={() => !disabled && selectDate(cell.iso)}
-                  disabled={disabled}
-                >
-                  <Text
-                    style={[
-                      styles.dayText,
-                      selectedDay && styles.dayTextSelected,
-                      disabled && styles.dayTextDisabled,
-                    ]}
-                  >
-                    {cell.day}
-                  </Text>
-                </Pressable>
-              </View>
-            );
-          })}
+        <View style={styles.weeks}>
+          {weeks.map((week, weekIndex) => (
+            <View key={`week-${weekIndex}`} style={styles.weekRow}>
+              {week.map((cell, dayIndex) => {
+                if (!cell) {
+                  return <View key={`empty-${weekIndex}-${dayIndex}`} style={styles.col} />;
+                }
+                const selectedDay = cell.iso === endDate;
+                const disabled = isPast(cell.iso);
+                const isToday = cell.iso === todayIso;
+                return (
+                  <View key={cell.iso} style={styles.col}>
+                    <Pressable
+                      style={[
+                        styles.dayHit,
+                        {
+                          width: daySize,
+                          height: daySize,
+                          borderRadius: daySize / 2,
+                        },
+                        selectedDay && styles.dayHitSelected,
+                        isToday && !selectedDay && styles.dayHitToday,
+                        disabled && styles.dayHitDisabled,
+                      ]}
+                      onPress={() => !disabled && selectDate(cell.iso)}
+                      disabled={disabled}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          daySize < 32 && styles.dayTextCompact,
+                          selectedDay && styles.dayTextSelected,
+                          disabled && styles.dayTextDisabled,
+                        ]}
+                      >
+                        {cell.day}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          ))}
         </View>
       </View>
 
@@ -252,6 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
+    gap: 8,
   },
   navBtn: {
     width: 36,
@@ -261,13 +290,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surface,
   },
-  monthTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
-  weekdayRow: { flexDirection: 'row', marginBottom: 4 },
-  weekdayCell: {
-    width: `${100 / 7}%`,
+  monthTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+  },
+  weekdayRow: {
+    flexDirection: 'row',
+    width: '100%',
+    marginBottom: 2,
+  },
+  weeks: { width: '100%' },
+  weekRow: {
+    flexDirection: 'row',
+    width: '100%',
+    alignItems: 'center',
+  },
+  col: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    minWidth: 0,
+    paddingVertical: 2,
   },
   weekdayLabel: {
     textAlign: 'center',
@@ -275,22 +321,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textMuted,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: '100%',
-  },
-  // Columna fija al 1/7: evita que aspectRatio haga caber solo 6 días por fila.
-  dayCell: {
-    width: `${100 / 7}%`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 2,
-  },
   dayHit: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -298,6 +329,7 @@ const styles = StyleSheet.create({
   dayHitToday: { borderWidth: 1.5, borderColor: colors.accent },
   dayHitDisabled: { opacity: 0.35 },
   dayText: { fontSize: 14, fontWeight: '700', color: colors.text },
+  dayTextCompact: { fontSize: 12 },
   dayTextSelected: { color: '#FFF' },
   dayTextDisabled: { color: colors.textMuted },
   timeLabel: {

@@ -341,7 +341,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                   orderId={order.id}
                   displayRef={orderRef(order)}
                   total={order.total}
-                  transferInfo={resolveTransferInfo(order.restaurant_detail, {
+                  transferInfo={resolveTransferInfo({
                     whatsapp: appConfig.support_whatsapp,
                   })}
                 />

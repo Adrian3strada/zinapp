@@ -38,7 +38,6 @@ import type { DeliveryProfile, Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
-import { restaurantHasTransferInfo } from '../../config/payments';
 import { appendImage, pickImageFromLibrary } from '../../utils/imagePicker';
 import { formatRestaurantHours } from '../../utils/restaurantMeta';
 import type { MapCoordinate } from '../../utils/maps';
@@ -105,9 +104,6 @@ export default function ProfileScreen() {
     phone: '',
     whatsapp: '',
     address: '',
-    bank_name: '',
-    account_holder: '',
-    clabe: '',
     opening_time: '',
     closing_time: '',
   });
@@ -148,9 +144,6 @@ export default function ProfileScreen() {
           phone: data.phone ?? '',
           whatsapp: data.whatsapp ?? '',
           address: data.address ?? '',
-          bank_name: data.bank_name ?? '',
-          account_holder: data.account_holder ?? '',
-          clabe: data.clabe ?? '',
           opening_time: fromApiTime(data.opening_time),
           closing_time: fromApiTime(data.closing_time),
         });
@@ -302,9 +295,6 @@ export default function ProfileScreen() {
       fd.append('address', restaurantForm.address.trim());
       fd.append('latitude', String(restaurantCoords.latitude));
       fd.append('longitude', String(restaurantCoords.longitude));
-      fd.append('bank_name', restaurantForm.bank_name.trim());
-      fd.append('account_holder', restaurantForm.account_holder.trim());
-      fd.append('clabe', restaurantForm.clabe.replace(/\D/g, ''));
       fd.append('category', restaurantCategory);
       fd.append('accepting_orders', acceptingOrders ? 'true' : 'false');
       const openTime = toApiTime(restaurantForm.opening_time);
@@ -522,14 +512,6 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               </View>
-              {!restaurantHasTransferInfo(restaurant) && (
-                <View style={styles.warnBanner}>
-                  <Ionicons name="warning-outline" size={20} color={colors.warning} />
-                  <Text style={styles.warnText}>
-                    Agrega tu CLABE para que los clientes te paguen por transferencia directamente.
-                  </Text>
-                </View>
-              )}
               <Text style={styles.subsection}>Imagen del local</Text>
               <Text style={styles.hint}>Logo o foto que verán los clientes en la app.</Text>
               <Pressable style={styles.logoBox} onPress={handlePickRestaurantImage} hitSlop={HIT_SLOP}>
@@ -548,7 +530,7 @@ export default function ProfileScreen() {
               <FormField label="Nombre del restaurante" value={restaurantForm.name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, name: v }))} icon="storefront-outline" embedded required />
               <Text style={styles.subsection}>Contacto</Text>
               <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" hint="Lo ven clientes y repartidores al coordinar pedidos." />
-              <FormField label="WhatsApp (comprobantes)" value={restaurantForm.whatsapp} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, whatsapp: v }))} icon="logo-whatsapp" embedded keyboardType="phone-pad" hint="Opcional. Si lo dejas vacío, se usa el teléfono del negocio." />
+              <FormField label="WhatsApp del negocio" value={restaurantForm.whatsapp} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, whatsapp: v }))} icon="logo-whatsapp" embedded keyboardType="phone-pad" hint="Opcional. Si lo dejas vacío, se usa el teléfono del negocio." />
               <FormField label="Dirección del local" value={restaurantForm.address} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, address: v }))} icon="location-outline" embedded multiline required />
               <AddressPinPicker
                 title="Ubicación exacta del local"
@@ -557,11 +539,6 @@ export default function ProfileScreen() {
                 coordinate={restaurantCoords}
                 onCoordinateChange={setRestaurantCoords}
               />
-              <Text style={styles.subsection}>Datos bancarios</Text>
-              <Text style={styles.hint}>Los clientes los ven al pagar por transferencia. Solo tú puedes editarlos.</Text>
-              <FormField label="Banco" value={restaurantForm.bank_name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, bank_name: v }))} icon="business-outline" embedded placeholder="Ej. BBVA, Banorte" />
-              <FormField label="Titular de la cuenta" value={restaurantForm.account_holder} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, account_holder: v }))} icon="person-outline" embedded placeholder="Nombre como aparece en el banco" />
-              <FormField label="CLABE interbancaria" value={restaurantForm.clabe} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, clabe: v }))} icon="card-outline" embedded keyboardType="phone-pad" placeholder="18 dígitos" hint="18 dígitos para recibir transferencias." />
               <Text style={styles.subsection}>Horario del local</Text>
               <Text style={styles.hint}>
                 Horario actual: {formatRestaurantHours(restaurant.opening_time, restaurant.closing_time) ?? 'Sin definir (siempre abierto si recibes pedidos)'}

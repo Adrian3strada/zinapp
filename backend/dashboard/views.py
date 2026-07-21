@@ -214,7 +214,7 @@ class RestaurantToggleActiveView(PanelAccessMixin, View):
             messages.error(
                 request,
                 f'«{restaurant.name}» aún no está listo: el dueño debe completar '
-                f'menú, logo, CLABE, horario y ubicación en la app '
+                f'menú, logo, horario y ubicación en la app '
                 f'({setup["done_count"]}/{setup["total_count"]}).',
             )
             return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))

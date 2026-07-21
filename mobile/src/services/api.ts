@@ -72,7 +72,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
     try {
       const { data } = await axios.post<{ access: string; refresh?: string }>(
-        `${API_URL}/token/refresh/`,
+        `${API_URL}/auth/token/refresh/`,
         { refresh },
       );
       await tokenStorage.setTokens(data.access, data.refresh ?? refresh);
@@ -80,7 +80,7 @@ async function refreshAccessToken(): Promise<string | null> {
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       // Solo invalidar sesión si el refresh fue rechazado (401/403).
-      // Errores de red/5xx no deben cerrar la sesión.
+      // Errores de red/5xx/404 no deben cerrar la sesión.
       if (status === 401 || status === 403) {
         await tokenStorage.clear();
         sessionEvents.emitExpired();
@@ -92,6 +92,17 @@ async function refreshAccessToken(): Promise<string | null> {
   })();
 
   return refreshInFlight;
+}
+
+/** Renueva el access token si hay refresh guardado (arranque / reabrir app). */
+export async function ensureFreshAccessToken(): Promise<string | null> {
+  const refresh = await tokenStorage.getRefreshToken();
+  if (!refresh) {
+    return tokenStorage.getAccessToken();
+  }
+  const fresh = await refreshAccessToken();
+  if (fresh) return fresh;
+  return tokenStorage.getAccessToken();
 }
 
 function requestHadAuthHeader(headers?: Record<string, string> | unknown): boolean {
@@ -122,7 +133,7 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      if (originalRequest.url?.includes('/token/refresh/')) {
+      if (originalRequest.url?.includes('/auth/token/refresh/') || originalRequest.url?.includes('/token/refresh/')) {
         await tokenStorage.clear();
         sessionEvents.emitExpired();
         return Promise.reject(error);
@@ -246,10 +257,6 @@ export const restaurantApi = {
       params: { page, ...(category ? { category } : {}) },
     }),
   get: (id: number) => api.get<Restaurant & { products: Product[] }>(`/restaurants/${id}/`),
-  transferInfo: (id: number) =>
-    api.get<Pick<Restaurant, 'bank_name' | 'account_holder' | 'clabe' | 'whatsapp' | 'phone' | 'has_transfer_info'>>(
-      `/restaurants/${id}/transfer-info/`,
-    ),
   toggleFavorite: (id: number) =>
     api.post<{ is_favorited: boolean }>(`/restaurants/${id}/toggle-favorite/`),
   mine: () => api.get<Restaurant & { products: Product[] }>('/restaurants/mine/'),
@@ -283,6 +290,8 @@ export const restaurantApi = {
 };
 
 export const productApi = {
+  featured: (limit = 8) =>
+    api.get<Product[]>('/products/featured/', { params: { limit } }),
   listByRestaurant: (restaurantId: number, page = 1) =>
     api.get<PaginatedResponse<Product>>('/products/', {
       params: { restaurant: restaurantId, page },

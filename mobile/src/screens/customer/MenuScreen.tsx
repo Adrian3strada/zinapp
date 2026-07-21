@@ -32,11 +32,13 @@ const MenuProductRow = React.memo(function MenuProductRow({
   quantity,
   onAdd,
   onDecrease,
+  onPress,
 }: {
   product: Product;
   quantity: number;
   onAdd: (product: Product) => void;
   onDecrease: (product: Product) => void;
+  onPress: (product: Product) => void;
 }) {
   return (
     <ProductCard
@@ -44,6 +46,7 @@ const MenuProductRow = React.memo(function MenuProductRow({
       quantity={quantity}
       onAdd={() => onAdd(product)}
       onDecrease={() => onDecrease(product)}
+      onPress={() => onPress(product)}
     />
   );
 });
@@ -131,6 +134,13 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     void impactLight();
   }, [quantityByProduct, updateQuantity]);
 
+  const handleOpenDetail = useCallback((product: Product) => {
+    navigation.navigate('ProductDetail', {
+      product,
+      restaurantName: restaurant?.name ?? restaurantName,
+    });
+  }, [navigation, restaurant?.name, restaurantName]);
+
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
       <MenuProductRow
@@ -138,9 +148,10 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
         quantity={quantityByProduct.get(item.id) ?? 0}
         onAdd={handleAdd}
         onDecrease={handleDecrease}
+        onPress={handleOpenDetail}
       />
     ),
-    [handleAdd, handleDecrease, quantityByProduct],
+    [handleAdd, handleDecrease, handleOpenDetail, quantityByProduct],
   );
 
   const listPaddingBottom = useMemo(

@@ -32,6 +32,7 @@ import type {
   MyOrdersScreenProps,
   OrderDetailScreenProps,
   OrderParticipantProfileScreenProps,
+  ProductDetailScreenProps,
   RestaurantsScreenProps,
   ServicesScreenProps,
 } from './types';
@@ -108,6 +109,18 @@ function MenuScreenWithBoundary(props: MenuScreenProps) {
     <AppErrorBoundary>
       <MenuScreen {...props} />
     </AppErrorBoundary>
+  );
+}
+
+const ProductDetailScreen = React.lazy(() => import('../screens/customer/ProductDetailScreen'));
+
+function LazyProductDetailScreen(props: ProductDetailScreenProps) {
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <AppErrorBoundary>
+        <ProductDetailScreen {...props} />
+      </AppErrorBoundary>
+    </Suspense>
   );
 }
 
@@ -271,6 +284,11 @@ export default function CustomerNavigator({
           name="Menu"
           component={MenuScreenWithBoundary}
           options={{ ...modalPresentationOptions, title: 'Menú' }}
+        />
+        <Stack.Screen
+          name="ProductDetail"
+          component={LazyProductDetailScreen}
+          options={{ ...modalPresentationOptions, title: 'Platillo' }}
         />
         <Stack.Screen
           name="OrderDetail"

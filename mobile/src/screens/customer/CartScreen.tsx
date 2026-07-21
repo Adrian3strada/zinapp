@@ -26,7 +26,7 @@ import { couponApi, orderApi, restaurantApi, authApi } from '../../services/api'
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { DELIVERY_FEE } from '../../config/delivery';
-import { resolveTransferInfo, restaurantHasTransferInfo } from '../../config/payments';
+import { resolveTransferInfo } from '../../config/payments';
 import type { Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
@@ -66,12 +66,11 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
   const transferInfo = useMemo(
     () =>
-      resolveTransferInfo(cartRestaurant, {
+      resolveTransferInfo({
         whatsapp: appConfig.support_whatsapp,
       }),
-    [cartRestaurant, appConfig.support_whatsapp],
+    [appConfig.support_whatsapp],
   );
-  const transferFromRestaurant = restaurantHasTransferInfo(cartRestaurant);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -79,28 +78,18 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       return;
     }
     let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await restaurantApi.get(restaurantId);
-        if (!data.has_transfer_info) {
-          if (!cancelled) setCartRestaurant(data);
-          return;
-        }
-        try {
-          const { data: transferInfo } = await restaurantApi.transferInfo(restaurantId);
-          if (!cancelled) setCartRestaurant({ ...data, ...transferInfo });
-        } catch {
-          if (!cancelled) setCartRestaurant(data);
-        }
-      } catch {
+    restaurantApi
+      .get(restaurantId)
+      .then(({ data }) => {
+        if (!cancelled) setCartRestaurant(data);
+      })
+      .catch(() => {
         if (!cancelled) setCartRestaurant(null);
-      }
-    })();
+      });
     return () => {
       cancelled = true;
     };
   }, [restaurantId]);
-
   useEffect(() => {
     if (user?.address && !address) {
       setAddress(user.address);
@@ -475,7 +464,6 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             tipAmount={tipAmount}
             scheduleKey={scheduleKey}
             transferInfo={transferInfo}
-            transferFromRestaurant={transferFromRestaurant}
             onlinePaymentsEnabled={appConfig.online_payments_enabled}
             onAddressChange={handleAddressChange}
             onNotesChange={setNotes}

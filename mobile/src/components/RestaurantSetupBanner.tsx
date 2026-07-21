@@ -17,7 +17,6 @@ interface Props {
 const STEP_TAB: Record<string, keyof RestaurantTabParamList> = {
   menu: 'MiNegocio',
   profile: 'Perfil',
-  bank: 'Perfil',
   hours: 'Perfil',
   location: 'Perfil',
 };
@@ -25,7 +24,6 @@ const STEP_TAB: Record<string, keyof RestaurantTabParamList> = {
 const STEP_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   menu: 'restaurant-outline',
   profile: 'image-outline',
-  bank: 'card-outline',
   hours: 'time-outline',
   location: 'location-outline',
 };
@@ -33,7 +31,7 @@ const STEP_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props) {
   const navigation = useNavigation<BottomTabNavigationProp<RestaurantTabParamList>>();
 
-  // La configuración se termina al completar los cinco pasos. Que el local esté
+  // La configuración se termina al completar los pasos. Que el local esté
   // cerrado por horario no debe volver a mostrar el checklist terminado.
   if (setupStatus.complete) {
     return null;

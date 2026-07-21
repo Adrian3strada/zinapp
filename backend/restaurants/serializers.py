@@ -102,15 +102,16 @@ class ProductPromotionPublicSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     active_promotion = serializers.SerializerMethodField()
+    restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
 
     class Meta:
         model = Product
         fields = (
-            'id', 'restaurant', 'name', 'description', 'price',
+            'id', 'restaurant', 'restaurant_name', 'name', 'description', 'price',
             'image', 'image_url', 'is_available', 'active_promotion',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'created_at', 'updated_at', 'active_promotion')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'active_promotion', 'restaurant_name')
 
     def validate_price(self, value):
         if value is None or value <= 0:
@@ -152,14 +153,13 @@ class RestaurantSerializer(serializers.ModelSerializer):
     is_favorited = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
-    has_transfer_info = serializers.SerializerMethodField()
     setup_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
         fields = (
             'id', 'owner', 'owner_detail', 'name', 'category', 'description', 'address',
-            'phone', 'whatsapp', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
+            'phone', 'whatsapp',
             'image', 'image_url', 'latitude', 'longitude', 'location_pinned', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'is_open', 'is_favorited',
             'rating_average',
@@ -174,18 +174,6 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
     latitude = CoordinateField(max_digits=9, decimal_places=6, required=False, allow_null=True)
     longitude = CoordinateField(max_digits=9, decimal_places=6, required=False, allow_null=True)
-
-    def validate_clabe(self, value):
-        clabe = (value or '').strip()
-        if not clabe:
-            return ''
-        digits = ''.join(c for c in clabe if c.isdigit())
-        if len(digits) != 18:
-            raise serializers.ValidationError('La CLABE debe tener 18 dígitos.')
-        return digits
-
-    def get_has_transfer_info(self, obj):
-        return bool((obj.clabe or '').strip())
 
     def get_products_count(self, obj):
         return obj.products.filter(is_available=True).count()
@@ -283,7 +271,6 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
     is_favorited = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
-    has_transfer_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Restaurant
@@ -292,7 +279,6 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
             'image', 'image_url', 'latitude', 'longitude', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'is_open',
             'is_favorited', 'rating_average', 'reviews_count', 'products_count',
-            'has_transfer_info',
         )
 
     def get_products_count(self, obj):
@@ -321,9 +307,6 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
     def get_reviews_count(self, obj):
         return obj.reviews.count()
 
-    def get_has_transfer_info(self, obj):
-        return bool((obj.clabe or '').strip())
-
 
 class RestaurantPublicDetailSerializer(RestaurantPublicSerializer):
     products = serializers.SerializerMethodField()
@@ -336,16 +319,3 @@ class RestaurantPublicDetailSerializer(RestaurantPublicSerializer):
         if hasattr(obj, '_prefetched_objects_cache') and 'products' in obj._prefetched_objects_cache:
             products = obj._prefetched_objects_cache['products']
         return ProductSerializer(products, many=True, context=self.context).data
-
-
-class RestaurantTransferInfoSerializer(serializers.ModelSerializer):
-    """Banking information available only to an authenticated checkout."""
-
-    has_transfer_info = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Restaurant
-        fields = ('bank_name', 'account_holder', 'clabe', 'whatsapp', 'phone', 'has_transfer_info')
-
-    def get_has_transfer_info(self, obj):
-        return bool((obj.clabe or '').strip())

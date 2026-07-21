@@ -36,7 +36,6 @@ En las pestañas **Menú** y **Mi perfil**, completar la checklist:
 |------|-------|-----------|
 | Menú | Menú | Al menos 1 platillo disponible |
 | Logo | Mi perfil | Subir foto del local |
-| CLABE | Mi perfil | 18 dígitos para transferencias |
 | Horario | Mi perfil | Hora de apertura y cierre |
 | Ubicación | Mi perfil | Dirección correcta (se geocodifica al guardar) |
 
@@ -47,11 +46,12 @@ La app muestra un banner con el progreso hasta que el local esté listo.
 1. Entra a **https://zinapp.com.mx/panel/** con tu cuenta admin.
 2. En **Resumen** verás los locales pendientes de activar (badge en Restaurantes).
 3. Ve a **Restaurantes** → **Ver** el detalle del negocio.
-4. Revisa la checklist (menú, logo, CLABE, horario, ubicación).
+4. Revisa la checklist (menú, logo, horario, ubicación).
 5. Si está completa → **Activar en la app**.
 6. Opcional: **Pausar pedidos** si el local cierra temporalmente.
 
 > El dueño **no** activa su propio negocio; solo completa datos en la app y espera tu activación.
+> Las transferencias de clientes van a la cuenta bancaria de **ZinApp**, no a la del local.
 
 ### 4. Operación diaria
 
@@ -83,6 +83,6 @@ Las imágenes se guardan en `/app/media/`. En Railway, configurar un **volume pe
 
 Mensaje sugerido al registrar una tienda:
 
-> Regístrate en la app como Restaurante, completa tu menú y perfil (logo, CLABE, horario y dirección). Cuando veas «Esperando activación», avísanos y publicamos tu local en la app.
+> Regístrate en la app como Restaurante, completa tu menú y perfil (logo, horario y dirección). Cuando veas «Esperando activación», avísanos y publicamos tu local en la app.
 
 Contacto soporte: `<SUPPORT_EMAIL_CONFIGURADO>`

@@ -4,7 +4,6 @@
 def restaurant_setup_status(restaurant) -> dict:
     available_products = restaurant.products.filter(is_available=True).count()
     has_logo = bool(restaurant.image)
-    has_clabe = bool((restaurant.clabe or '').strip())
     has_hours = bool(restaurant.opening_time and restaurant.closing_time)
     has_location = (
         restaurant.latitude is not None
@@ -22,11 +21,6 @@ def restaurant_setup_status(restaurant) -> dict:
             'key': 'profile',
             'label': 'Logo o foto del local',
             'done': has_logo,
-        },
-        {
-            'key': 'bank',
-            'label': 'CLABE para transferencias',
-            'done': has_clabe,
         },
         {
             'key': 'hours',

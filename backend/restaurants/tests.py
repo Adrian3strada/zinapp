@@ -52,36 +52,19 @@ class RestaurantPaymentInfoTests(TestCase):
             name='Pizza Test',
             address='Calle 1',
             phone='4431112233',
-            bank_name='BBVA',
-            account_holder='Pizza Test SA',
-            clabe='012180001234567890',
         )
 
-    def test_has_transfer_info_when_clabe_set(self):
-        factory = APIRequestFactory()
-        request = factory.get('/')
-        data = RestaurantSerializer(self.restaurant, context={'request': request}).data
-        self.assertTrue(data['has_transfer_info'])
-        self.assertEqual(data['clabe'], '012180001234567890')
-
-    def test_clabe_must_be_18_digits(self):
-        serializer = RestaurantSerializer(
-            self.restaurant,
-            data={'clabe': '123'},
-            partial=True,
-        )
-        self.assertFalse(serializer.is_valid())
-        self.assertIn('clabe', serializer.errors)
-
-    def test_setup_status_reflects_checklist(self):
+    def test_setup_status_omits_bank_step(self):
         factory = APIRequestFactory()
         request = factory.get('/')
         data = RestaurantSerializer(self.restaurant, context={'request': request}).data
         status = data['setup_status']
         self.assertFalse(status['complete'])
-        self.assertEqual(status['done_count'], 1)
-        self.assertTrue(any(s['key'] == 'bank' and s['done'] for s in status['steps']))
+        self.assertEqual(status['done_count'], 0)
+        self.assertFalse(any(s['key'] == 'bank' for s in status['steps']))
         self.assertTrue(any(s['key'] == 'menu' and not s['done'] for s in status['steps']))
+        for private_field in ('bank_name', 'account_holder', 'clabe', 'has_transfer_info'):
+            self.assertNotIn(private_field, data)
 
 
 class RestaurantLocationTests(TestCase):
@@ -140,9 +123,6 @@ class PublicCatalogTests(TestCase):
             name='Public Tacos',
             address='Centro',
             phone='4511111111',
-            bank_name='Banco privado',
-            account_holder='Propietario privado',
-            clabe='012180001234567890',
             is_active=True,
             accepting_orders=True,
         )
@@ -163,8 +143,9 @@ class PublicCatalogTests(TestCase):
         names = [r['name'] for r in response.data['results']]
         self.assertIn('Public Tacos', names)
         restaurant = next(item for item in response.data['results'] if item['name'] == 'Public Tacos')
-        self.assertTrue(restaurant['has_transfer_info'])
-        for private_field in ('owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe'):
+        for private_field in (
+            'owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
+        ):
             self.assertNotIn(private_field, restaurant)
 
     def test_anonymous_restaurant_detail_hides_owner_and_payment_data(self):
@@ -173,17 +154,12 @@ class PublicCatalogTests(TestCase):
         response = APIClient().get(f'/api/restaurants/{self.restaurant.id}/')
 
         self.assertEqual(response.status_code, 200)
-        for private_field in ('owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe'):
+        for private_field in (
+            'owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
+        ):
             self.assertNotIn(private_field, response.data)
 
-    def test_transfer_info_requires_authentication(self):
-        from rest_framework.test import APIClient
-
-        response = APIClient().get(f'/api/restaurants/{self.restaurant.id}/transfer-info/')
-
-        self.assertEqual(response.status_code, 401)
-
-    def test_authenticated_customer_can_get_transfer_info(self):
+    def test_transfer_info_endpoint_removed(self):
         from rest_framework.test import APIClient
 
         customer = User.objects.create_user(
@@ -195,24 +171,7 @@ class PublicCatalogTests(TestCase):
         client.force_authenticate(customer)
 
         response = client.get(f'/api/restaurants/{self.restaurant.id}/transfer-info/')
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['clabe'], '012180001234567890')
-
-    def test_driver_cannot_get_transfer_info(self):
-        from rest_framework.test import APIClient
-
-        driver = User.objects.create_user(
-            username='transfer_driver',
-            password='test1234',
-            role='driver',
-        )
-        client = APIClient()
-        client.force_authenticate(driver)
-
-        response = client.get(f'/api/restaurants/{self.restaurant.id}/transfer-info/')
-
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)
 
     def test_anonymous_can_list_products(self):
         from rest_framework.test import APIClient
@@ -221,3 +180,68 @@ class PublicCatalogTests(TestCase):
         response = client.get(f'/api/products/?restaurant={self.restaurant.id}')
         self.assertEqual(response.status_code, 200)
         self.assertGreaterEqual(len(response.data['results']), 1)
+
+    def test_featured_products_diversify_restaurants(self):
+        from restaurants.models import Product
+        from rest_framework.test import APIClient
+
+        other_owner = User.objects.create_user(
+            username='featured_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        other = Restaurant.objects.create(
+            owner=other_owner,
+            name='Other Spot',
+            address='Centro',
+            is_active=True,
+            accepting_orders=True,
+        )
+        Product.objects.create(restaurant=other, name='Pizza', price='80.00', is_available=True)
+        Product.objects.create(
+            restaurant=self.restaurant,
+            name='Second Taco',
+            price='18.00',
+            is_available=True,
+        )
+
+        response = APIClient().get('/api/products/featured/?limit=8')
+        self.assertEqual(response.status_code, 200)
+        names = {item['name'] for item in response.data}
+        restaurants = {item['restaurant'] for item in response.data}
+        self.assertIn('Taco', names)
+        self.assertIn('Pizza', names)
+        self.assertEqual(len(restaurants), len(response.data))
+        self.assertTrue(all(item.get('restaurant_name') for item in response.data))
+
+    def test_list_puts_open_restaurants_first(self):
+        from restaurants.models import Product
+        from rest_framework.test import APIClient
+
+        closed_owner = User.objects.create_user(
+            username='closed_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        closed = Restaurant.objects.create(
+            owner=closed_owner,
+            name='AAA Closed First Alphabetically',
+            address='Centro',
+            is_active=True,
+            accepting_orders=False,
+        )
+        Product.objects.create(
+            restaurant=closed,
+            name='Torta',
+            price='20.00',
+            is_available=True,
+        )
+
+        response = APIClient().get('/api/restaurants/')
+        self.assertEqual(response.status_code, 200)
+        names = [r['name'] for r in response.data['results']]
+        self.assertLess(names.index('Public Tacos'), names.index(closed.name))
+        open_item = next(r for r in response.data['results'] if r['name'] == 'Public Tacos')
+        closed_item = next(r for r in response.data['results'] if r['name'] == closed.name)
+        self.assertTrue(open_item['is_open'])
+        self.assertFalse(closed_item['is_open'])

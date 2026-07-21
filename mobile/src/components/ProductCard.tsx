@@ -17,16 +17,17 @@ interface Props {
   quantity?: number;
   onAdd: () => void;
   onDecrease?: () => void;
+  onPress?: () => void;
 }
 
-function ProductCard({ product, quantity = 0, onAdd, onDecrease }: Props) {
+function ProductCard({ product, quantity = 0, onAdd, onDecrease, onPress }: Props) {
   const emoji = getProductEmoji(product.name);
   const inCart = quantity > 0;
   const promoHint = promoPriceHint(product);
   const promoLabel = product.active_promotion ? promoDisplayLabel(product.active_promotion) : null;
 
-  return (
-    <View style={[styles.card, promoLabel && styles.cardPromo]}>
+  const content = (
+    <>
       <FoodImage
         emoji={emoji}
         color={colors.primary}
@@ -49,6 +50,23 @@ function ProductCard({ product, quantity = 0, onAdd, onDecrease }: Props) {
         ) : null}
         <Text style={styles.price}>{promoHint ?? formatCurrency(product.price)}</Text>
       </View>
+    </>
+  );
+
+  return (
+    <View style={[styles.card, promoLabel && styles.cardPromo]}>
+      {onPress ? (
+        <Pressable
+          style={styles.mainPress}
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver detalle de ${product.name}`}
+        >
+          {content}
+        </Pressable>
+      ) : (
+        content
+      )}
       {inCart ? (
         <View style={styles.qtyRow}>
           <Pressable
@@ -101,6 +119,7 @@ const styles = StyleSheet.create({
   cardPromo: {
     borderColor: colors.accent + '55',
   },
+  mainPress: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   info: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   name: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2, flexShrink: 1 },

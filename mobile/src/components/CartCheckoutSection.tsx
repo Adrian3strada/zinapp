@@ -40,7 +40,6 @@ interface Props {
   tipAmount: number;
   scheduleKey: ScheduleKey;
   transferInfo: TransferInfo;
-  transferFromRestaurant?: boolean;
   onAddressChange: (text: string) => void;
   onNotesChange: (text: string) => void;
   onlinePaymentsEnabled?: boolean;
@@ -101,7 +100,6 @@ function CartCheckoutSection({
   tipAmount,
   scheduleKey,
   transferInfo,
-  transferFromRestaurant = false,
   onlinePaymentsEnabled = false,
   onAddressChange,
   onNotesChange,
@@ -231,9 +229,7 @@ function CartCheckoutSection({
         </View>
         {paymentMethod === 'transfer' && (
           <View style={styles.transferBox}>
-            <Text style={styles.transferTitle}>
-              {transferFromRestaurant ? 'Datos del local para transferencia' : 'Datos para transferencia'}
-            </Text>
+            <Text style={styles.transferTitle}>Datos ZinApp para transferencia</Text>
             <Text style={styles.transferLine}>Banco: {transferInfo.bank}</Text>
             <Text style={styles.transferLine}>Titular: {transferInfo.holder}</Text>
             <Text style={styles.transferClabe}>CLABE: {transferInfo.clabe}</Text>

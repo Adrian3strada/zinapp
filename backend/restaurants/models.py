@@ -28,7 +28,7 @@ class Restaurant(models.Model):
     whatsapp = models.CharField(
         max_length=20,
         blank=True,
-        help_text='WhatsApp para comprobantes de transferencia (opcional; si vacío, usa teléfono del negocio).',
+        help_text='WhatsApp de contacto del negocio (opcional; si vacío, usa teléfono).',
     )
     bank_name = models.CharField(max_length=80, blank=True)
     account_holder = models.CharField(max_length=120, blank=True)

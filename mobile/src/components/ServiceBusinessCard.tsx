@@ -28,7 +28,7 @@ function MetaRow({
 }) {
   return (
     <View style={styles.metaRow}>
-      <Ionicons name={icon} size={14} color={colors.textMuted} />
+      <Ionicons name={icon} size={16} color={colors.textMuted} style={styles.metaIcon} />
       <Text style={styles.metaText}>{text}</Text>
     </View>
   );
@@ -41,6 +41,7 @@ export default function ServiceBusinessCard({ service }: Props) {
   const schedule = service.schedule?.trim();
   const instagram = service.instagram?.trim();
   const facebook = service.facebook?.trim();
+  const description = service.description?.trim() || 'Servicio local en Zinapécuaro';
 
   const handleCall = async () => {
     if (!phone) {
@@ -74,9 +75,62 @@ export default function ServiceBusinessCard({ service }: Props) {
     try {
       await openSocialLink(platform, value);
     } catch (err) {
-      appAlert(platform === 'instagram' ? 'Instagram' : 'Facebook', err instanceof Error ? err.message : 'No se pudo abrir.');
+      appAlert(
+        platform === 'instagram' ? 'Instagram' : 'Facebook',
+        err instanceof Error ? err.message : 'No se pudo abrir.',
+      );
     }
   };
+
+  const actions = [
+    phone
+      ? {
+          key: 'call',
+          label: 'Llamar',
+          icon: 'call' as const,
+          color: colors.primary,
+          style: styles.actionBtn,
+          onPress: handleCall,
+        }
+      : null,
+    whatsapp
+      ? {
+          key: 'whatsapp',
+          label: 'WhatsApp',
+          icon: 'logo-whatsapp' as const,
+          color: '#25D366',
+          style: [styles.actionBtn, styles.whatsappBtn],
+          onPress: handleWhatsApp,
+        }
+      : null,
+    instagram
+      ? {
+          key: 'instagram',
+          label: 'Instagram',
+          icon: 'logo-instagram' as const,
+          color: '#E1306C',
+          style: [styles.actionBtn, styles.socialBtn],
+          onPress: () => handleSocial('instagram', instagram),
+        }
+      : null,
+    facebook
+      ? {
+          key: 'facebook',
+          label: 'Facebook',
+          icon: 'logo-facebook' as const,
+          color: '#1877F2',
+          style: [styles.actionBtn, styles.socialBtn],
+          onPress: () => handleSocial('facebook', facebook),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    color: string;
+    style: object | object[];
+    onPress: () => void;
+  }>;
 
   return (
     <View style={styles.card}>
@@ -88,55 +142,50 @@ export default function ServiceBusinessCard({ service }: Props) {
           size="md"
           style={styles.logo}
         />
-        <View style={styles.info}>
+        <View style={styles.titleBlock}>
           {!!service.category_display && (
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{service.category_display}</Text>
+              <Text style={styles.categoryText} numberOfLines={1}>
+                {service.category_display}
+              </Text>
             </View>
           )}
           <Text style={styles.name}>{service.name}</Text>
-          <Text style={styles.description} numberOfLines={4}>
-            {service.description?.trim() || 'Servicio local en Zinapécuaro'}
-          </Text>
         </View>
       </View>
 
-      {(schedule || address) && (
+      <Text style={styles.description}>{description}</Text>
+
+      {(schedule || address || phone) && (
         <View style={styles.metaBlock}>
           {schedule ? <MetaRow icon="time-outline" text={schedule} /> : null}
           {address ? <MetaRow icon="location-outline" text={address} /> : null}
+          {phone ? <MetaRow icon="call-outline" text={phone} /> : null}
         </View>
       )}
 
-      <View style={styles.actions}>
-        {phone ? (
-          <Pressable style={styles.actionBtn} onPress={handleCall}>
-            <Ionicons name="call" size={18} color={colors.primary} />
-            <Text style={styles.actionText}>Llamar</Text>
-          </Pressable>
-        ) : null}
-        {whatsapp ? (
-          <Pressable style={[styles.actionBtn, styles.whatsappBtn]} onPress={handleWhatsApp}>
-            <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-            <Text style={styles.actionText}>WhatsApp</Text>
-          </Pressable>
-        ) : null}
-        {instagram ? (
-          <Pressable style={[styles.actionBtn, styles.socialBtn]} onPress={() => handleSocial('instagram', instagram)}>
-            <Ionicons name="logo-instagram" size={18} color="#E1306C" />
-            <Text style={styles.actionText}>Instagram</Text>
-          </Pressable>
-        ) : null}
-        {facebook ? (
-          <Pressable style={[styles.actionBtn, styles.socialBtn]} onPress={() => handleSocial('facebook', facebook)}>
-            <Ionicons name="logo-facebook" size={18} color="#1877F2" />
-            <Text style={styles.actionText}>Facebook</Text>
-          </Pressable>
-        ) : null}
-        {!phone && !whatsapp && !instagram && !facebook ? (
-          <Text style={styles.noContact}>Sin datos de contacto por ahora</Text>
-        ) : null}
-      </View>
+      {actions.length > 0 ? (
+        <View style={styles.actions}>
+          {actions.map((action) => (
+            <Pressable
+              key={action.key}
+              style={({ pressed }) => [
+                action.style,
+                styles.actionFlex,
+                pressed && styles.actionPressed,
+              ]}
+              onPress={action.onPress}
+            >
+              <Ionicons name={action.icon} size={18} color={action.color} />
+              <Text style={styles.actionText} numberOfLines={1}>
+                {action.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.noContact}>Sin datos de contacto por ahora</Text>
+      )}
     </View>
   );
 }
@@ -147,21 +196,30 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: spacing.lg,
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    overflow: 'hidden',
     ...cardShadow,
   },
   header: {
     flexDirection: 'row',
     gap: spacing.md,
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 18,
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    flexShrink: 0,
   },
-  info: { flex: 1, gap: 6 },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
   categoryBadge: {
     alignSelf: 'flex-start',
+    maxWidth: '100%',
     backgroundColor: colors.serviceStart + '18',
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -179,26 +237,33 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.2,
+    lineHeight: 24,
   },
   description: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
     color: colors.textSecondary,
     fontWeight: '500',
   },
   metaBlock: {
-    gap: 6,
+    gap: 8,
     paddingTop: 2,
+    paddingBottom: 2,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
   },
+  metaIcon: {
+    marginTop: 2,
+    flexShrink: 0,
+  },
   metaText: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
     color: colors.textSecondary,
     fontWeight: '500',
   },
@@ -207,17 +272,27 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  actionFlex: {
+    // Dos botones por fila en pantallas angostas; no se cortan.
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 140,
+    maxWidth: '100%',
+  },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    minHeight: 44,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
     borderRadius: 12,
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  actionPressed: { opacity: 0.88 },
   whatsappBtn: {
     backgroundColor: '#25D36618',
     borderColor: '#25D36644',
@@ -226,6 +301,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   actionText: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '700',
     color: colors.text,

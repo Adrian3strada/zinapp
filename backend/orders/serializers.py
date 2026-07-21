@@ -97,9 +97,8 @@ class CouponValidateSerializer(serializers.Serializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     customer_detail = OrderParticipantUserSerializer(source='customer', read_only=True)
-    # Orders can be read by drivers; never embed restaurant banking data here.
-    # Transfer details are fetched by an authenticated customer from the
-    # restaurant transfer-info endpoint during checkout.
+    # Orders can be read by drivers; never embed restaurant banking data.
+    # Transferencia usa siempre los datos bancarios de ZinApp (app / plataforma).
     restaurant_detail = RestaurantPublicSerializer(source='restaurant', read_only=True)
     driver_detail = OrderParticipantUserSerializer(source='driver', read_only=True)
     driver_delivery_profile = serializers.SerializerMethodField()

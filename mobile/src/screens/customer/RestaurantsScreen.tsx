@@ -61,13 +61,20 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
   } = usePaginatedList(fetchPage, [fetchPage], 'No se pudieron cargar los restaurantes');
 
   const filtered = useMemo(() => {
-    return restaurants.filter((r) => {
+    const list = restaurants.filter((r) => {
       const matchSearch =
         !search ||
         r.name.toLowerCase().includes(search.toLowerCase()) ||
         (r.description ?? '').toLowerCase().includes(search.toLowerCase());
       const matchCat = category ? restaurantMatchesCategory(r, category) : true;
       return matchSearch && matchCat;
+    });
+    // Abiertos primero (refuerzo local al filtrar por búsqueda).
+    return [...list].sort((a, b) => {
+      const aOpen = a.is_open === false ? 0 : 1;
+      const bOpen = b.is_open === false ? 0 : 1;
+      if (aOpen !== bOpen) return bOpen - aOpen;
+      return a.name.localeCompare(b.name, 'es');
     });
   }, [restaurants, search, category]);
 

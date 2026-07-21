@@ -86,12 +86,11 @@ export default function HomeHero({
 const styles = StyleSheet.create({
   hero: {
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxl + 4,
+    paddingBottom: spacing.xl,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',
-  },
-  decorA: {
+  },  decorA: {
     position: 'absolute',
     width: 180,
     height: 180,

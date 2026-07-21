@@ -168,7 +168,7 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
         model = Restaurant
         fields = (
             'owner', 'name', 'category', 'description', 'address', 'phone',
-            'whatsapp', 'bank_name', 'account_holder', 'clabe',
+            'whatsapp',
             'image', 'latitude', 'longitude', 'location_pinned',
             'opening_time', 'closing_time', 'is_active', 'accepting_orders',
         )

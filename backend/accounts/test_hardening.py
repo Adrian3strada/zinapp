@@ -41,7 +41,6 @@ class HardeningApiTests(APITestCase):
             name='Local Hard',
             address='Centro',
             is_active=True,
-            clabe='012180001234567890',
         )
         self.order = Order.objects.create(
             customer=self.customer,

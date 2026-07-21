@@ -11,7 +11,8 @@ import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
   title: string;
-  subtitle: string;
+  /** Texto corto bajo el título (opcional en layout tipo Didi). */
+  subtitle?: string;
   icon: ServiceCategoryIcon;
   colors: [string, string];
   onPress: () => void;
@@ -19,6 +20,7 @@ interface Props {
   badge?: number;
 }
 
+/** Cuadrito de acceso rápido estilo Didi: icono + etiqueta. */
 export default function ServiceSectionCard({
   title,
   subtitle,
@@ -33,72 +35,57 @@ export default function ServiceSectionCard({
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed, style]}
       onPress={onPress}
       hitSlop={HIT_SLOP}
+      accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
     >
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        pointerEvents={webPassThroughPointerEvents()}
-        style={styles.gradient}
-      >
-        <View style={styles.decor} />
-        <View style={styles.iconCircle}>
-          <Ionicons name={icon} size={26} color="#FFF" />
+      <View style={styles.tile}>
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          pointerEvents={webPassThroughPointerEvents()}
+          style={styles.iconBox}
+        >
+          <Ionicons name={icon} size={30} color="#FFF" />
           {badge != null && badge > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
             </View>
           )}
-        </View>
-        <View style={styles.textBlock}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
-        <View style={styles.arrow}>
-          <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.95)" />
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.subtitle} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 22,
-    overflow: 'hidden',
-    minHeight: 112,
-    ...softShadow,
-  },
-  pressed: { opacity: 0.95 },
-  gradient: {
     flex: 1,
-    flexDirection: 'row',
+    minWidth: 0,
+  },
+  pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
+  tile: {
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
-    minHeight: 112,
-    position: 'relative',
+    gap: 8,
+    paddingVertical: spacing.sm,
   },
-  decor: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    right: -30,
-    top: -30,
-  },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  iconBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  badge: {
+    ...softShadow,
+  },  badge: {
     position: 'absolute',
     top: -4,
     right: -4,
@@ -107,27 +94,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: colors.accent,
     borderWidth: 2,
-    borderColor: '#FFF',
+    borderColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
   badgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
-  textBlock: { flex: 1 },
-  title: { fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: -0.3 },
-  subtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.88)',
-    marginTop: 4,
-    fontWeight: '500',
-    lineHeight: 18,
+  title: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
-  arrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  subtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 14,
+    paddingHorizontal: 2,
   },
 });

@@ -31,8 +31,6 @@
               Sin horario
             {% endif %}
           </dd>
-          <dt>CLABE</dt>
-          <dd>{% if restaurant.clabe %}••••{{ restaurant.clabe|slice:"-4:" }}{% else %}Pendiente{% endif %}</dd>
         </dl>
         <div class="action-row">
           <form method="post" action="{% url 'dashboard:restaurant-toggle-active' restaurant.pk %}">
@@ -77,7 +75,7 @@
         </div>
         {% elif not setup.complete %}
         <div class="callout callout-info mb-0 py-2">
-          <p class="mb-0">El dueño debe completar en la app: menú, logo, CLABE, horario y ubicación.</p>
+          <p class="mb-0">El dueño debe completar en la app: menú, logo, horario y ubicación.</p>
         </div>
         {% endif %}
       </div>

@@ -3,6 +3,7 @@ import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigat
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { PendingDialogButton } from '../utils/appDialogStore';
+import type { Product } from '../types';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -34,6 +35,7 @@ export type CustomerStackParamList = {
   Comida: undefined;
   Servicios: undefined;
   Menu: { restaurantId: number; restaurantName: string };
+  ProductDetail: { product: Product; restaurantName?: string };
   OrderDetail: { orderId: number; promptReview?: boolean };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
   Ofertas: undefined;
@@ -93,6 +95,10 @@ export type RestaurantReviewsScreenProps = NativeStackScreenProps<
 >;
 
 export type MenuScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Menu'>;
+export type ProductDetailScreenProps = NativeStackScreenProps<
+  CustomerStackParamList,
+  'ProductDetail'
+>;
 export type CartScreenProps = CompositeScreenProps<
   BottomTabScreenProps<CustomerTabParamList, 'Carrito'>,
   NativeStackScreenProps<CustomerStackParamList>
