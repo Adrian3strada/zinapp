@@ -209,8 +209,10 @@ class PublicCatalogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         names = {item['name'] for item in response.data}
         restaurants = {item['restaurant'] for item in response.data}
-        self.assertIn('Taco', names)
+        # Un platillo por restaurante (el más reciente gana sobre "Taco").
+        self.assertIn('Second Taco', names)
         self.assertIn('Pizza', names)
+        self.assertNotIn('Taco', names)
         self.assertEqual(len(restaurants), len(response.data))
         self.assertTrue(all(item.get('restaurant_name') for item in response.data))
 
