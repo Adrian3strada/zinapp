@@ -97,7 +97,7 @@ class PanelUserLoginTests(TestCase):
 class DeliveryProfileApiTests(TestCase):
     def setUp(self):
         self.media_root = tempfile.mkdtemp()
-        self.override = override_settings(MEDIA_ROOT=self.media_root)
+        self.override = override_settings(MEDIA_ROOT=self.media_root, SERVE_MEDIA=True)
         self.override.enable()
         self.client = APIClient()
         self.web_client = Client()

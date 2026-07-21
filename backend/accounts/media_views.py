@@ -13,6 +13,8 @@ def serve_media(request, path):
     storage/CDN and keep this fallback disabled. This view is intentionally
     narrow so a predictable document URL cannot bypass authorization.
     """
+    if not (settings.DEBUG or settings.SERVE_MEDIA):
+        raise Http404
     if path.startswith(PRIVATE_MEDIA_PREFIXES):
         user = request.user
         if not user.is_authenticated or not user.is_admin_user:

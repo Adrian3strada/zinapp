@@ -36,9 +36,8 @@ import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency, parsePriceInput } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
-import { appendImage } from '../../utils/imagePicker';
+import { appendImage, pickProductImage } from '../../utils/imagePicker';
 import { resolveMediaUrl } from '../../utils/media';
-import * as ImagePicker from 'expo-image-picker';
 
 interface ProductDraft {
   id?: number;
@@ -250,17 +249,9 @@ export default function RestaurantManageScreen() {
   }, [editor]);
 
   const pickImage = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      appAlert('Permiso', 'Necesitamos acceso a tus fotos.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (!result.canceled && editor) {
-      setEditor({ ...editor, imageUri: result.assets[0].uri });
+    const uri = await pickProductImage();
+    if (uri && editor) {
+      setEditor({ ...editor, imageUri: uri });
     }
   };
 
@@ -485,7 +476,7 @@ export default function RestaurantManageScreen() {
                     <View style={styles.photoPlaceholder}>
                       <Ionicons name="camera" size={36} color={colors.primary} />
                       <Text style={styles.photoPlaceholderText}>Foto del platillo</Text>
-                      <Text style={styles.photoHint}>Mejora las ventas con una buena foto</Text>
+                      <Text style={styles.photoHint}>Toca para elegir y recortar en cuadrado</Text>
                     </View>
                   )}
                 </Pressable>

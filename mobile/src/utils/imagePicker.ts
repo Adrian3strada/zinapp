@@ -3,6 +3,22 @@ import { Platform } from 'react-native';
 
 import { appAlert } from './appAlert';
 
+export type ImageAspect = [number, number];
+
+/** Cuadrado: avatar, logo, platillos (FoodImage). */
+export const ASPECT_SQUARE: ImageAspect = [1, 1];
+/** Portada de local en menú / listados. */
+export const ASPECT_COVER: ImageAspect = [4, 3];
+/** Documento (INE): un poco más ancho. */
+export const ASPECT_DOCUMENT: ImageAspect = [3, 2];
+
+export interface PickImageOptions {
+  aspect?: ImageAspect;
+  quality?: number;
+  /** Si false, no muestra UI de recorte (solo en plataformas que lo soporten). */
+  allowsEditing?: boolean;
+}
+
 function mimeFromUri(uri: string): string {
   const path = uri.split('?')[0].toLowerCase();
   if (path.endsWith('.png')) return 'image/png';
@@ -18,31 +34,48 @@ function filenameFromUri(uri: string, fallback: string): string {
   return fallback.replace(/\.\w+$/, `.${ext}`);
 }
 
-export async function pickImageFromLibrary(): Promise<string | null> {
-  if (Platform.OS === 'web') {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets[0]) return null;
-    return result.assets[0].uri;
-  }
-
+async function ensureLibraryPermission(): Promise<boolean> {
+  if (Platform.OS === 'web') return true;
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
     appAlert('Permiso', 'Necesitamos acceso a tus fotos para subir la imagen.');
-    return null;
+    return false;
   }
+  return true;
+}
+
+/**
+ * Abre la galería y, si la plataforma lo permite, la UI de recorte
+ * (Android/iOS: editor nativo; web: recorte básico de Expo).
+ */
+export async function pickImageFromLibrary(
+  options: PickImageOptions = {},
+): Promise<string | null> {
+  const {
+    aspect = ASPECT_SQUARE,
+    quality = 0.85,
+    allowsEditing = true,
+  } = options;
+
+  if (!(await ensureLibraryPermission())) return null;
+
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing: true,
-    aspect: [1, 1],
-    quality: 0.85,
+    allowsEditing,
+    aspect: allowsEditing ? aspect : undefined,
+    quality,
   });
+
   if (result.canceled || !result.assets[0]) return null;
   return result.assets[0].uri;
+}
+
+export async function pickProductImage(): Promise<string | null> {
+  return pickImageFromLibrary({ aspect: ASPECT_SQUARE, quality: 0.85 });
+}
+
+export async function pickRestaurantCoverImage(): Promise<string | null> {
+  return pickImageFromLibrary({ aspect: ASPECT_COVER, quality: 0.85 });
 }
 
 export async function appendImage(

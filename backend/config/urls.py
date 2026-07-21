@@ -50,10 +50,12 @@ if settings.API_DOCS_ENABLED:
         path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     ]
 
-if settings.DEBUG or settings.SERVE_MEDIA:
-    urlpatterns += [
-        re_path(
-            r'^media/(?P<path>.*)$',
-            serve_media,
-        ),
-    ]
+# Siempre registrar /media/: el test runner fuerza DEBUG=False tras importar
+# settings, así que condicionar aquí deja la ruta ausente en CI. La vista
+# serve_media decide con settings actuales (DEBUG / SERVE_MEDIA).
+urlpatterns += [
+    re_path(
+        r'^media/(?P<path>.*)$',
+        serve_media,
+    ),
+]

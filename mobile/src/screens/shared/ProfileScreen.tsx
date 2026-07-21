@@ -38,7 +38,7 @@ import type { DeliveryProfile, Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
-import { appendImage, pickImageFromLibrary } from '../../utils/imagePicker';
+import { appendImage, pickImageFromLibrary, pickRestaurantCoverImage, ASPECT_DOCUMENT, ASPECT_SQUARE } from '../../utils/imagePicker';
 import { formatRestaurantHours } from '../../utils/restaurantMeta';
 import type { MapCoordinate } from '../../utils/maps';
 import { toCoordinate } from '../../utils/maps';
@@ -174,17 +174,17 @@ export default function ProfileScreen() {
   const update = (key: keyof typeof form, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handlePickAvatar = async () => {
-    const uri = await pickImageFromLibrary();
+    const uri = await pickImageFromLibrary({ aspect: ASPECT_SQUARE });
     if (uri) setAvatarUri(uri);
   };
 
   const handlePickRestaurantImage = async () => {
-    const uri = await pickImageFromLibrary();
+    const uri = await pickRestaurantCoverImage();
     if (uri) setRestaurantImageUri(uri);
   };
 
   const handlePickIdentityDocument = async () => {
-    const uri = await pickImageFromLibrary();
+    const uri = await pickImageFromLibrary({ aspect: ASPECT_DOCUMENT });
     if (uri) setIdentityDocumentUri(uri);
   };
 
@@ -513,7 +513,7 @@ export default function ProfileScreen() {
                 </View>
               </View>
               <Text style={styles.subsection}>Imagen del local</Text>
-              <Text style={styles.hint}>Logo o foto que verán los clientes en la app.</Text>
+              <Text style={styles.hint}>Logo o foto que verán los clientes. Al elegirla podrás recortarla (4:3).</Text>
               <Pressable style={styles.logoBox} onPress={handlePickRestaurantImage} hitSlop={HIT_SLOP}>
                 {restaurantImageUri || restaurant.image_url ? (
                   <Image
@@ -524,6 +524,7 @@ export default function ProfileScreen() {
                   <View style={styles.logoPlaceholder}>
                     <Ionicons name="storefront-outline" size={40} color={colors.primary} />
                     <Text style={styles.logoPlaceholderText}>Subir foto del local</Text>
+                    <Text style={styles.photoCropHint}>Puedes recortarla al elegirla</Text>
                   </View>
                 )}
               </Pressable>
@@ -821,6 +822,7 @@ const styles = StyleSheet.create({
   logoImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   logoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   logoPlaceholderText: { color: colors.primary, fontWeight: '600' },
+  photoCropHint: { color: colors.textMuted, fontSize: 12, textAlign: 'center' },
   ordersToggle: {
     flexDirection: 'row',
     alignItems: 'center',

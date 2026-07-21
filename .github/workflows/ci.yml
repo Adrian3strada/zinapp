@@ -19,6 +19,7 @@ jobs:
       DEBUG: "True"
       USE_SQLITE: "True"
       ALLOWED_HOSTS: localhost,127.0.0.1
+      SERVE_MEDIA: "True"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v6
