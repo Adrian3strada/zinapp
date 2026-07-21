@@ -182,7 +182,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
         </View>
         <View style={styles.bannerBody}>
           <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
-          {restaurant?.rating_average != null && (
+          {restaurant?.rating_average != null ? (
             <Pressable
               style={styles.reviewsRow}
               onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
@@ -194,6 +194,17 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
                 {restaurant.reviews_count != null ? ` (${restaurant.reviews_count} reseñas)` : ''}
               </Text>
               <Text style={styles.reviewsLink}>Ver reseñas</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+            </Pressable>
+          ) : (
+            <Pressable
+              style={styles.reviewsRow}
+              onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
+              hitSlop={8}
+            >
+              <Ionicons name="star-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.reviewsText, { color: colors.textSecondary }]}>Sin reseñas aún</Text>
+              <Text style={styles.reviewsLink}>Ver</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </Pressable>
           )}

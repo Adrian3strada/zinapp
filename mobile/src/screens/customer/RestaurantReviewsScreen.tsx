@@ -31,8 +31,12 @@ export default function RestaurantReviewsScreen({ route }: RestaurantReviewsScre
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await reviewApi.listByRestaurant(restaurantId);
-    setReviews(data);
+    try {
+      const { data } = await reviewApi.listByRestaurant(restaurantId);
+      setReviews(Array.isArray(data) ? data : []);
+    } catch {
+      setReviews([]);
+    }
   }, [restaurantId]);
 
   useEffect(() => {

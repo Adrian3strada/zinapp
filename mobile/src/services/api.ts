@@ -465,8 +465,13 @@ export const reviewApi = {
     driver_rating?: number;
     comment?: string;
   }) => api.post<Review>('/reviews/', data),
-  listByRestaurant: (restaurantId: number) =>
-    api.get<Review[]>('/reviews/', { params: { restaurant: restaurantId } }),
+  listByRestaurant: async (restaurantId: number) => {
+    const { data } = await api.get<PaginatedResponse<Review> | Review[]>('/reviews/', {
+      params: { restaurant: restaurantId },
+    });
+    const results = Array.isArray(data) ? data : data.results ?? [];
+    return { data: results };
+  },
 };
 
 export const adminApi = {
