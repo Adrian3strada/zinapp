@@ -266,7 +266,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_permissions(self):
-        if self.action in ('list', 'retrieve'):
+        # `featured` lleva permission_classes en @action, pero get_permissions
+        # lo ignora: hay que listarlo aquí o el inicio no carga platillos.
+        if self.action in ('list', 'retrieve', 'featured'):
             return [AllowAny()]
         if getattr(self.request.user, 'is_admin_user', False):
             return [IsAdmin()]
