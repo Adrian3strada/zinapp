@@ -15,6 +15,8 @@ from .username import normalize_username
 
 class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
+    has_usable_password = serializers.SerializerMethodField()
+    auth_provider = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -22,8 +24,12 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'phone', 'address', 'avatar', 'avatar_url',
             'date_joined', 'expo_push_token',
+            'has_usable_password', 'auth_provider',
         )
-        read_only_fields = ('id', 'role', 'date_joined', 'expo_push_token', 'avatar_url')
+        read_only_fields = (
+            'id', 'role', 'date_joined', 'expo_push_token',
+            'avatar_url', 'has_usable_password', 'auth_provider',
+        )
 
     def get_avatar_url(self, obj):
         if not obj.avatar:
@@ -32,6 +38,12 @@ class UserSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(obj.avatar.url)
         return obj.avatar.url
+
+    def get_has_usable_password(self, obj):
+        return obj.has_usable_password()
+
+    def get_auth_provider(self, obj):
+        return 'google' if obj.google_sub else 'password'
 
 
 class OrderParticipantUserSerializer(serializers.ModelSerializer):
@@ -203,7 +215,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class DeleteAccountSerializer(serializers.Serializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     confirmation = serializers.CharField(write_only=True)
 
     def validate_confirmation(self, value):
@@ -213,22 +225,32 @@ class DeleteAccountSerializer(serializers.Serializer):
             )
         return value
 
-    def validate_password(self, value):
+    def validate(self, attrs):
         user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError('Contraseña incorrecta.')
-        return value
+        if user.has_usable_password():
+            password = attrs.get('password') or ''
+            if not password or not user.check_password(password):
+                raise serializers.ValidationError({'password': 'Contraseña incorrecta.'})
+        return attrs
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(write_only=True)
+    old_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
-    def validate_old_password(self, value):
+    def validate(self, attrs):
         user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError('La contraseña actual no es correcta.')
-        return value
+        if user.has_usable_password():
+            old = attrs.get('old_password') or ''
+            if not old:
+                raise serializers.ValidationError(
+                    {'old_password': 'Indica tu contraseña actual.'},
+                )
+            if not user.check_password(old):
+                raise serializers.ValidationError(
+                    {'old_password': 'La contraseña actual no es correcta.'},
+                )
+        return attrs
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
@@ -256,9 +278,9 @@ class ResetPasswordSerializer(serializers.Serializer):
         # iOS Mail a veces pega espacios o caracteres invisibles (zero-width).
         raw = (attrs.get('token') or '').upper()
         code = ''.join(ch for ch in raw if ch.isalnum())
-        if len(code) < 6:
+        if len(code) != 8:
             raise serializers.ValidationError(
-                {'token': 'Código incompleto. Copia solo los 8 caracteres del correo.'}
+                {'token': 'El código tiene 8 caracteres. Copia el del correo más reciente.'}
             )
         try:
             token = PasswordResetToken.objects.select_related('user').get(
@@ -303,14 +325,20 @@ class GoogleLoginSerializer(serializers.Serializer):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
-        username = normalize_username(attrs.get(self.username_field) or '')
-        if not username:
+        raw = (attrs.get(self.username_field) or '').strip()
+        if not raw:
             raise AuthenticationFailed(
                 'Usuario o contraseña incorrectos.',
                 code='authorization',
             )
 
-        existing = User.objects.filter(username__iexact=username).first()
+        username_key = normalize_username(raw)
+        existing = None
+        if username_key:
+            existing = User.objects.filter(username__iexact=username_key).first()
+        if existing is None and '@' in raw:
+            existing = User.objects.filter(email__iexact=raw.lower()).first()
+
         if existing:
             if not existing.is_active:
                 raise AuthenticationFailed(
@@ -318,10 +346,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                     code='account_inactive',
                 )
             attrs[self.username_field] = existing.username
+            throttle_key = existing.username
         else:
-            attrs[self.username_field] = username
+            attrs[self.username_field] = username_key or raw.lower()
+            throttle_key = username_key or raw.lower()
 
-        if not getattr(settings, 'DEMO_ACCOUNTS_ENABLED', True) and username in DEMO_USERNAMES:
+        if not getattr(settings, 'DEMO_ACCOUNTS_ENABLED', True) and throttle_key in DEMO_USERNAMES:
             raise AuthenticationFailed(
                 'Las cuentas de demostración están desactivadas. Crea una cuenta nueva o contacta soporte.',
                 code='demo_disabled',

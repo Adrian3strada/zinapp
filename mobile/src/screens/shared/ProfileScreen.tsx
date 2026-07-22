@@ -318,28 +318,34 @@ export default function ProfileScreen() {
   };
 
   const handleChangePassword = async () => {
-    if (!oldPassword || !newPassword) {
-      appAlert('Completa ambas contraseñas');
+    const needsCurrent = user?.has_usable_password !== false;
+    if ((needsCurrent && !oldPassword) || !newPassword) {
+      appAlert(
+        'Datos incompletos',
+        needsCurrent ? 'Completa ambas contraseñas.' : 'Escribe la nueva contraseña.',
+      );
       return;
     }
     try {
-      await authApi.changePassword(oldPassword, newPassword);
+      await authApi.changePassword(needsCurrent ? oldPassword : null, newPassword);
       setOldPassword('');
       setNewPassword('');
-      appAlert('Contraseña cambiada');
+      appAlert(needsCurrent ? 'Contraseña cambiada' : 'Contraseña creada');
+      await refreshUser();
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err));
     }
   };
 
   const runAccountDeletion = async () => {
-    if (!deletePassword.trim()) {
+    const needsPassword = user?.has_usable_password !== false;
+    if (needsPassword && !deletePassword.trim()) {
       appAlert('Contraseña requerida', 'Ingresa tu contraseña para eliminar la cuenta.');
       return;
     }
     setDeletingAccount(true);
     try {
-      await authApi.deleteAccount(deletePassword.trim());
+      await authApi.deleteAccount(needsPassword ? deletePassword.trim() : null);
       setDeletePassword('');
       appAlert(
         'Cuenta eliminada',
@@ -657,10 +663,23 @@ export default function ProfileScreen() {
           {isRestaurant ? personalDataCard : null}
 
           <View style={styles.card}>
-            <Text style={styles.section}>Cambiar contraseña</Text>
-            <FormField label="Contraseña actual" value={oldPassword} onChangeText={setOldPassword} icon="lock-closed-outline" embedded secureTextEntry autoCorrect={false} required />
+            <Text style={styles.section}>
+              {user.has_usable_password === false ? 'Crear contraseña' : 'Cambiar contraseña'}
+            </Text>
+            {user.has_usable_password === false ? (
+              <Text style={styles.hint}>
+                Entraste con Google. Puedes crear una contraseña para también iniciar sesión con usuario y correo.
+              </Text>
+            ) : null}
+            {user.has_usable_password !== false ? (
+              <FormField label="Contraseña actual" value={oldPassword} onChangeText={setOldPassword} icon="lock-closed-outline" embedded secureTextEntry autoCorrect={false} required />
+            ) : null}
             <FormField label="Nueva contraseña" value={newPassword} onChangeText={setNewPassword} icon="lock-closed-outline" embedded secureTextEntry autoCorrect={false} required hint="Mínimo 6 caracteres." />
-            <Button title="Actualizar contraseña" variant="secondary" onPress={handleChangePassword} />
+            <Button
+              title={user.has_usable_password === false ? 'Crear contraseña' : 'Actualizar contraseña'}
+              variant="secondary"
+              onPress={handleChangePassword}
+            />
           </View>
 
           <View style={[styles.card, styles.dangerCard]}>
@@ -668,17 +687,23 @@ export default function ProfileScreen() {
             <Text style={styles.hint}>
               Borra de forma permanente tu cuenta y datos personales de ZinApp. Esta acción no se puede deshacer.
             </Text>
-            <FormField
-              label="Contraseña"
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              icon="lock-closed-outline"
-              embedded
-              secureTextEntry
-              autoCorrect={false}
-              required
-              hint="Confirma tu identidad antes de eliminar la cuenta."
-            />
+            {user.has_usable_password !== false ? (
+              <FormField
+                label="Contraseña"
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                icon="lock-closed-outline"
+                embedded
+                secureTextEntry
+                autoCorrect={false}
+                required
+                hint="Confirma tu identidad antes de eliminar la cuenta."
+              />
+            ) : (
+              <Text style={styles.hint}>
+                Entraste con Google: confirma dos veces para eliminar. No hace falta contraseña.
+              </Text>
+            )}
             <Button
               title="Eliminar mi cuenta"
               variant="danger"

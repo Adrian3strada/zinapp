@@ -25,6 +25,9 @@ export interface User {
   avatar?: string | null;
   avatar_url?: string | null;
   date_joined: string;
+  /** false for Google-only accounts until they set a password */
+  has_usable_password?: boolean;
+  auth_provider?: 'password' | 'google';
 }
 
 export interface DeliveryProfile {

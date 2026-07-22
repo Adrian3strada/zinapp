@@ -28,6 +28,7 @@ import { restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import type { Restaurant } from '../../types';
+import { resolveMediaUrl } from '../../utils/media';
 import { regionForCoordinates, toCoordinate } from '../../utils/maps';
 import { RESTAURANT_CATEGORIES, restaurantMatchesCategory, type RestaurantCategoryKey } from '../../utils/restaurantCategories';
 import { FLATLIST_TUNING, mapHeight } from '../../utils/responsive';
@@ -149,6 +150,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
       <>
         <HomeHero
           firstName={user?.first_name}
+          avatarUrl={resolveMediaUrl(user?.avatar_url ?? user?.avatar)}
           topInset={insets.top}
           onProfilePress={() => navigation.navigate('Main', { screen: 'Perfil' })}
           style={[styles.hero, { marginHorizontal: -pagePadding }]}

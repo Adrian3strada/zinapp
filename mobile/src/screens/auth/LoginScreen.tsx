@@ -56,7 +56,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
   const handleLogin = async () => {
     if (!username.trim() || !password) {
-      appAlert('Datos incompletos', 'Ingresa usuario y contraseña.');
+      appAlert('Datos incompletos', 'Ingresa usuario o correo y contraseña.');
       return;
     }
     setLoading(true);
@@ -97,15 +97,16 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       <FormSection title="Iniciar sesión" variant="plain" align="center">
         <FormField
           hideLabel
-          label="Usuario"
+          label="Usuario o correo"
           value={username}
           onChangeText={setUsername}
           icon="person-outline"
-          placeholder="Usuario"
+          placeholder="usuario o nombre@correo.com"
           required
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="username"
+          keyboardType="email-address"
         />
         <FormField
           hideLabel

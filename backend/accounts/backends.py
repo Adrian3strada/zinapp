@@ -7,7 +7,7 @@ User = get_user_model()
 
 
 class CaseInsensitiveUsernameBackend(ModelBackend):
-    """Login con usuario sin importar mayúsculas (panel vs app)."""
+    """Login con usuario o correo (sin importar mayúsculas)."""
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         login_field = User.USERNAME_FIELD
@@ -16,13 +16,22 @@ class CaseInsensitiveUsernameBackend(ModelBackend):
         if username is None or password is None:
             return None
 
-        normalized = normalize_username(username)
-        if not normalized:
+        raw = (username or '').strip()
+        if not raw:
             return None
 
-        try:
-            user = User.objects.get(**{f'{login_field}__iexact': normalized})
-        except User.DoesNotExist:
+        normalized = normalize_username(raw)
+        user = None
+        if normalized:
+            try:
+                user = User.objects.get(**{f'{login_field}__iexact': normalized})
+            except User.DoesNotExist:
+                user = None
+
+        if user is None and '@' in raw:
+            user = User.objects.filter(email__iexact=raw.lower()).first()
+
+        if user is None:
             User().set_password(password)
             return None
 

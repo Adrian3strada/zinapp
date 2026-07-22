@@ -20,7 +20,8 @@
         "EXPO_PUBLIC_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://zinapp.com.mx/api",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "470068451846-ru6vr0359ueij7p53l3nquab05hhkaa2.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "470068451846-lrh08ejsbr6i9j0vjibnshqvb5spe81e.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -32,7 +33,8 @@
         "EXPO_PUBLIC_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://zinapp.com.mx/api",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "470068451846-ru6vr0359ueij7p53l3nquab05hhkaa2.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "470068451846-lrh08ejsbr6i9j0vjibnshqvb5spe81e.apps.googleusercontent.com"
       }
     }
   },

@@ -39,6 +39,12 @@ En `app.json`, el `scheme` incluye el reversed client ID
 3. SHA-1 del keystore de EAS (credenciales Android en expo.dev).
 4. Copia el Client ID Android.
 
+Client ID Android actual:
+`470068451846-lrh08ejsbr6i9j0vjibnshqvb5spe81e.apps.googleusercontent.com`
+
+SHA-1 EAS (upload keystore):
+`F8:99:EF:7C:6D:37:20:B0:5B:3B:EB:4C:B1:6B:C5:E5:11:72:58:CB`
+
 La app mantiene `scheme: zinapp` en `app.json` (deep links generales). El login Google nativo usa el scheme del Client ID iOS/Android (`com.googleusercontent.apps.…`), no el Client ID web.
 
 ## 2. Railway (API)

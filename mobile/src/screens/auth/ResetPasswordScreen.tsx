@@ -34,7 +34,7 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
       appAlert('Código requerido', 'Pega el código de 8 caracteres que recibiste por correo.');
       return;
     }
-    if (token.length < 6) {
+    if (token.length !== 8) {
       appAlert('Código incompleto', 'El código del correo tiene 8 caracteres. Pégalo completo.');
       return;
     }

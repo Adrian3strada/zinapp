@@ -242,9 +242,11 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
               colors={['transparent', 'rgba(15,23,42,0.7)']}
               style={styles.bannerGradient}
             />
-            <View style={styles.bannerEmojiBadge}>
-              <Text style={styles.bannerEmoji}>{visual.emoji}</Text>
-            </View>
+            {!imageUri ? (
+              <View style={styles.bannerEmojiBadge}>
+                <Text style={styles.bannerEmoji}>{visual.emoji}</Text>
+              </View>
+            ) : null}
           </View>
           <View style={styles.bannerBody}>
             <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>

@@ -1,6 +1,5 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -123,7 +122,11 @@ export default function GoogleSignInButton({
           <ActivityIndicator color={colors.text} />
         ) : (
           <>
-            <Ionicons name="logo-google" size={20} color="#EA4335" />
+            <Image
+              source={require('../../assets/google-g.png')}
+              style={styles.googleIcon}
+              accessibilityIgnoresInvertColors
+            />
             <Text style={styles.btnText}>{label}</Text>
           </>
         )}
@@ -154,5 +157,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   btnDisabled: { opacity: 0.55 },
+  googleIcon: { width: 20, height: 20, resizeMode: 'contain' },
   btnText: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.1 },
 });

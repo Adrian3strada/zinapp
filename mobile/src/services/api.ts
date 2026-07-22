@@ -236,10 +236,16 @@ export const authApi = {
   me: () => api.get<User>('/auth/me/'),
   updateMe: (data: Partial<User>) => api.patch<User>('/auth/me/', data),
   updateMeForm: (data: FormData) => api.patch<User>('/auth/me/', data),
-  changePassword: (old_password: string, new_password: string) =>
-    api.post('/auth/change-password/', { old_password, new_password }),
-  deleteAccount: (password: string, confirmation = 'ELIMINAR') =>
-    api.post<{ detail: string }>('/auth/delete-account/', { password, confirmation }),
+  changePassword: (old_password: string | null | undefined, new_password: string) =>
+    api.post('/auth/change-password/', {
+      ...(old_password ? { old_password } : {}),
+      new_password,
+    }),
+  deleteAccount: (password: string | null | undefined, confirmation = 'ELIMINAR') =>
+    api.post<{ detail: string }>('/auth/delete-account/', {
+      ...(password ? { password } : { password: '' }),
+      confirmation,
+    }),
   forgotPassword: (identifier: string) =>
     api.post<{
       detail: string;

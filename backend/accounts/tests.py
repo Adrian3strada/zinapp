@@ -291,3 +291,74 @@ class DeleteAccountApiTests(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_active)
         self.assertEqual(self.user.username, 'delete_me')
+
+    def test_delete_account_clears_google_sub(self):
+        self.user.google_sub = 'google-sub-delete-test'
+        self.user.save(update_fields=['google_sub'])
+        login = self.client.post(
+            '/api/auth/login/',
+            {'username': 'delete_me', 'password': 'clave12345'},
+            format='json',
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        response = self.client.post(
+            '/api/auth/delete-account/',
+            {'password': 'clave12345', 'confirmation': 'ELIMINAR'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.google_sub)
+
+    def test_google_user_can_delete_without_password(self):
+        google_user = User.objects.create_user(
+            username='google_only',
+            password='temp-unused-xyz',
+            role=UserRole.CUSTOMER,
+            email='googleonly@test.com',
+            phone='4431000088',
+        )
+        google_user.set_unusable_password()
+        google_user.google_sub = 'google-sub-no-pwd'
+        google_user.save()
+        self.client.force_authenticate(user=google_user)
+        response = self.client.post(
+            '/api/auth/delete-account/',
+            {'password': '', 'confirmation': 'ELIMINAR'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        google_user.refresh_from_db()
+        self.assertFalse(google_user.is_active)
+        self.assertIsNone(google_user.google_sub)
+
+
+class EmailLoginApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='correo_user',
+            password='clave12345',
+            role=UserRole.CUSTOMER,
+            email='correo.user@example.com',
+        )
+
+    def test_login_with_email(self):
+        response = self.client.post(
+            '/api/auth/login/',
+            {'username': 'correo.user@example.com', 'password': 'clave12345'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIn('access', response.data)
+        self.assertEqual(response.data['user']['username'], 'correo_user')
+        self.assertIn('has_usable_password', response.data['user'])
+        self.assertTrue(response.data['user']['has_usable_password'])
+
+    def test_login_with_email_case_insensitive(self):
+        response = self.client.post(
+            '/api/auth/login/',
+            {'username': 'Correo.User@Example.com', 'password': 'clave12345'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200, response.data)

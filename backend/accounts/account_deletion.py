@@ -33,6 +33,7 @@ def delete_user_account(user: User) -> None:
     user.phone = ''
     user.address = ''
     user.expo_push_token = ''
+    user.google_sub = None
     user.is_active = False
     user.set_unusable_password()
     user.save()
