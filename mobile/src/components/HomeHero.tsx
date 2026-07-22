@@ -4,11 +4,13 @@ import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { BrandMark } from './BrandLogo';
 import HeroBackground from './HeroBackground';
+import ProfileAvatarDisplay from './ProfileAvatarDisplay';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
 interface Props {
   firstName?: string | null;
+  avatarUrl?: string | null;
   subtitle?: string;
   onProfilePress?: () => void;
   topInset: number;
@@ -24,6 +26,7 @@ function initials(name?: string | null): string {
 
 export default function HomeHero({
   firstName,
+  avatarUrl,
   subtitle = 'Zinapécuaro, Mich.',
   onProfilePress,
   topInset,
@@ -63,7 +66,12 @@ export default function HomeHero({
             accessibilityRole="button"
             accessibilityLabel="Ir a mi perfil"
           >
-            <Text style={styles.avatarText}>{initials(firstName)}</Text>
+            <ProfileAvatarDisplay
+              remoteUrl={avatarUrl}
+              fallbackLetter={initials(firstName)}
+              size={44}
+              variant="hero"
+            />
           </Pressable>
         ) : null}
       </View>
@@ -92,7 +100,8 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',
-  },  decorA: {
+  },
+  decorA: {
     position: 'absolute',
     width: 180,
     height: 180,
@@ -148,16 +157,9 @@ const styles = StyleSheet.create({
   },
   location: { color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: '600' },
   avatarBtn: {
-    width: 48,
-    height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  avatarText: { color: '#FFF', fontSize: 20, fontWeight: '800' },
   statsRow: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
   statBox: {
     flex: 1,

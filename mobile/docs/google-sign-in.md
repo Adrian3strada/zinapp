@@ -2,44 +2,67 @@
 
 ## 1. Google Cloud Console
 
-1. Abre [Google Cloud Console](https://console.cloud.google.com/) → APIs y servicios → Pantalla de consentimiento OAuth.
-2. Tipo **Externo** (o Interno si es Workspace).
-3. Credenciales → **Crear credenciales** → ID de cliente de OAuth → tipo **Aplicación web**.
-4. Orígenes JavaScript autorizados:
+### Web (obligatorio para `/app`)
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → APIs y servicios → Credenciales.
+2. **Crear credenciales** → ID de cliente OAuth → tipo **Aplicación web**.
+3. Orígenes JavaScript:
    - `https://zinapp.com.mx`
-   - `http://localhost:8081` (dev Expo web)
-5. URI de redirección autorizados (exactos; la app web usa `/app`, no la raíz):
+   - `http://localhost:8081`
+4. URI de redirección:
    - `https://zinapp.com.mx/app`
-   - `https://zinapp.com.mx/app/` (recomendado añadir también)
-   - `http://localhost:8081` (dev Expo web)
-   - **No uses** solo `https://zinapp.com.mx` como redirect: cae en la landing y el login no termina.
-6. En orígenes JavaScript autorizados: `https://zinapp.com.mx` y `http://localhost:8081`.
-7. Copia el **Client ID** (`….apps.googleusercontent.com`).
+   - `https://zinapp.com.mx/app/`
+   - `http://localhost:8081`
+5. Copia el Client ID web (`….apps.googleusercontent.com`).
 
-En web el flujo es redirección completa (no popup): Login → Google → vuelve a `/app#id_token=…` → JWT ZinApp.
+En web: Login → Google → vuelve a `/app#id_token=…` → JWT ZinApp.
 
-Para apps nativas: crea también client IDs iOS/Android con el bundle `com.zinapp.delivery`.
+### iOS (obligatorio para TestFlight / App Store)
+
+Sin esto verás **Error 400: invalid_request** (“doesn't comply with Google's OAuth 2.0 policy”).
+
+1. Credenciales → **Crear** → ID de cliente OAuth → tipo **iOS**.
+2. Nombre: `ZinApp iOS`
+3. Bundle ID: `com.zinapp.delivery` (exacto)
+4. Copia el **Client ID iOS**.
+
+Client ID iOS actual:
+`470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd.apps.googleusercontent.com`
+
+En `app.json`, el `scheme` incluye el reversed client ID
+(`com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd`) para el redirect nativo.
+
+### Android (obligatorio para APK / Play)
+
+1. Tipo **Android**.
+2. Package: `com.zinapp.delivery`
+3. SHA-1 del keystore de EAS (credenciales Android en expo.dev).
+4. Copia el Client ID Android.
+
+La app mantiene `scheme: zinapp` en `app.json` (deep links generales). El login Google nativo usa el scheme del Client ID iOS/Android (`com.googleusercontent.apps.…`), no el Client ID web.
 
 ## 2. Railway (API)
 
 ```
-GOOGLE_OAUTH_CLIENT_IDS=<WEB_CLIENT_ID>
+GOOGLE_OAUTH_CLIENT_IDS=<WEB_CLIENT_ID>,<IOS_CLIENT_ID>,<ANDROID_CLIENT_ID>
 ```
 
-Si tienes varios (Web + Android + iOS), sepáralos por coma. Deben coincidir con el `aud` del `id_token`.
+Separados por coma. Deben coincidir con el `aud` del `id_token`.
 
-## 3. App / web export
+## 3. App / EAS
 
-En `mobile/.env` o secrets EAS / `.env.web`:
+En `eas.json` (preview/production) o secrets EAS:
 
 ```
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<WEB_CLIENT_ID>
-# Opcional nativo:
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=
-EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=<IOS_CLIENT_ID>
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=<ANDROID_CLIENT_ID>
 ```
 
-Luego:
+Sin Client ID web el botón no se muestra en web.  
+Sin Client ID iOS/Android el botón **no se muestra** en esa plataforma nativa (evita el Error 400).
+
+Luego rebuild nativo y, para web:
 
 ```powershell
 cd mobile
@@ -47,9 +70,6 @@ npm run build:web
 cd ..\backend
 railway up --detach
 ```
-
-Sin `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` el botón no se muestra.
-Sin `GOOGLE_OAUTH_CLIENT_IDS` en Railway el endpoint responde 503.
 
 ## Flujo
 

@@ -253,17 +253,33 @@ class ResetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
     def validate(self, attrs):
-        code = (attrs.get('token') or '').strip().upper()
+        # iOS Mail a veces pega espacios o caracteres invisibles (zero-width).
+        raw = (attrs.get('token') or '').upper()
+        code = ''.join(ch for ch in raw if ch.isalnum())
+        if len(code) < 6:
+            raise serializers.ValidationError(
+                {'token': 'Código incompleto. Copia solo los 8 caracteres del correo.'}
+            )
         try:
             token = PasswordResetToken.objects.select_related('user').get(
                 token=code,
                 used=False,
             )
         except PasswordResetToken.DoesNotExist:
-            raise serializers.ValidationError({'token': 'Código inválido o expirado.'})
+            raise serializers.ValidationError(
+                {
+                    'token': (
+                        'Código inválido o ya usado. '
+                        'Solicita uno nuevo en Recuperar contraseña y usa el del correo más reciente.'
+                    )
+                }
+            )
         if token.expires_at < timezone.now():
-            raise serializers.ValidationError({'token': 'Código expirado.'})
+            raise serializers.ValidationError(
+                {'token': 'Código expirado. Solicita uno nuevo en Recuperar contraseña.'}
+            )
         attrs['reset_token'] = token
+        attrs['token'] = code
         return attrs
 
 

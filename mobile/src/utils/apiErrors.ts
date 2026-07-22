@@ -14,7 +14,8 @@ const FIELD_LABELS: Record<string, string> = {
   restaurant_id: 'Restaurante',
   payment_method: 'Método de pago',
   code: 'Cupón',
-  token: 'Token',
+  token: 'Código',
+  new_password: 'Contraseña',
   non_field_errors: 'Error',
 };
 

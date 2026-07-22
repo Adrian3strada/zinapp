@@ -588,7 +588,7 @@ export default function RestaurantManageScreen() {
                             active && styles.categoryChipTextActive,
                           ]}
                         >
-                          {cat.label}
+                          {cat.emoji} {cat.label}
                         </Text>
                       </Pressable>
                     );

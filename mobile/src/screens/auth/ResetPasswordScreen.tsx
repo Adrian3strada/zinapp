@@ -19,7 +19,9 @@ import { clearWebResetTokenFromUrl } from '../../utils/webDeepLink';
 
 export default function ResetPasswordScreen({ navigation, route }: ResetPasswordScreenProps) {
   const insets = useSafeAreaInsets();
-  const initialToken = (route.params?.token || '').trim().toUpperCase();
+  const normalizeCode = (value: string) =>
+    value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const initialToken = normalizeCode(route.params?.token || '');
   const [code, setCode] = useState(initialToken);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -27,9 +29,13 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    const token = code.trim().toUpperCase();
+    const token = normalizeCode(code);
     if (!token) {
-      appAlert('Código requerido', 'Pega el código que recibiste por correo.');
+      appAlert('Código requerido', 'Pega el código de 8 caracteres que recibiste por correo.');
+      return;
+    }
+    if (token.length < 6) {
+      appAlert('Código incompleto', 'El código del correo tiene 8 caracteres. Pégalo completo.');
       return;
     }
     if (password.length < 6) {
@@ -48,7 +54,13 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
         { text: 'Iniciar sesión', onPress: () => navigation.navigate('Login') },
       ]);
     } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'Código inválido o expirado.'));
+      appAlert(
+        'Error',
+        getApiErrorMessage(
+          err,
+          'Código inválido o ya usado. Solicita uno nuevo y usa el correo más reciente.',
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -80,13 +92,13 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
             <FormField
               label="Código del correo"
               value={code}
-              onChangeText={(v) => setCode(v.toUpperCase())}
+              onChangeText={(v) => setCode(normalizeCode(v))}
               icon="key-outline"
               placeholder="Ej. A3F9K2M7"
               required
               autoCapitalize="characters"
               autoCorrect={false}
-              hint="Código de 8 caracteres que enviamos a tu correo."
+              hint="8 caracteres del correo más reciente. Si falló, solicita un código nuevo."
             />
             <FormField
               label="Nueva contraseña"

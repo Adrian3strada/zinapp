@@ -30,57 +30,73 @@ export function getGoogleWebClientId(): string {
   ).trim();
 }
 
+export function getGoogleIosClientId(): string {
+  return (
+    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+    || googleExtra().googleIosClientId
+    || ''
+  ).trim();
+}
+
+export function getGoogleAndroidClientId(): string {
+  return (
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
+    || googleExtra().googleAndroidClientId
+    || ''
+  ).trim();
+}
+
+/** Web: Client ID web. Nativo: hace falta el Client ID iOS/Android (tipo nativo). */
 export function isGoogleSignInConfigured(): boolean {
-  return Boolean(getGoogleWebClientId());
+  const web = getGoogleWebClientId();
+  if (!web) return false;
+  if (Platform.OS === 'ios') return Boolean(getGoogleIosClientId());
+  if (Platform.OS === 'android') return Boolean(getGoogleAndroidClientId());
+  return true;
 }
 
 /**
- * Expo Linking en web usa solo `origin`, así que Google volvía a la landing.
- * Forzamos `/app` (sin slash final: coincide con createURL y con Google Console).
+ * Solo web: Expo Linking usa el origin y Google debe volver a /app.
+ * En iOS/Android NO forzamos redirect: el provider usa el scheme del Client ID nativo
+ * (com.googleusercontent.apps.…:/oauthredirect). Un Client ID web + zinapp:// = Error 400.
  */
-export function getGoogleRedirectUri(): string {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const configured = (
-      process.env.EXPO_PUBLIC_WEB_BASE_PATH
-      || (Constants.expoConfig?.experiments as { baseUrl?: string } | undefined)?.baseUrl
-      || ''
-    ).trim();
-
-    let base = configured;
-    if (!base) {
-      const path = window.location.pathname || '/';
-      base = path.startsWith('/app') ? '/app' : '/';
-    }
-
-    if (!base || base === '/') {
-      return window.location.origin;
-    }
-
-    const normalized = `/${base.replace(/^\/+|\/+$/g, '')}`;
-    return `${window.location.origin}${normalized}`;
+export function getGoogleRedirectUri(): string | undefined {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return undefined;
   }
 
-  return AuthSession.makeRedirectUri();
+  const configured = (
+    process.env.EXPO_PUBLIC_WEB_BASE_PATH
+    || (Constants.expoConfig?.experiments as { baseUrl?: string } | undefined)?.baseUrl
+    || ''
+  ).trim();
+
+  let base = configured;
+  if (!base) {
+    const path = window.location.pathname || '/';
+    base = path.startsWith('/app') ? '/app' : '/';
+  }
+
+  if (!base || base === '/') {
+    return window.location.origin;
+  }
+
+  const normalized = `/${base.replace(/^\/+|\/+$/g, '')}`;
+  return `${window.location.origin}${normalized}`;
 }
 
 /** Hook de Expo AuthSession para obtener id_token de Google. */
 export function useGoogleIdTokenRequest() {
   const webClientId = getGoogleWebClientId();
-  const extra = googleExtra();
-  const iosClientId = (process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || extra.googleIosClientId || '').trim();
-  const androidClientId = (
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID
-    || extra.googleAndroidClientId
-    || ''
-  ).trim();
+  const iosClientId = getGoogleIosClientId();
+  const androidClientId = getGoogleAndroidClientId();
   const redirectUri = getGoogleRedirectUri();
 
   return Google.useIdTokenAuthRequest({
-    clientId: webClientId || undefined,
     webClientId: webClientId || undefined,
     iosClientId: iosClientId || undefined,
     androidClientId: androidClientId || undefined,
-    redirectUri,
+    ...(redirectUri ? { redirectUri } : {}),
   });
 }
 

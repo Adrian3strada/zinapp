@@ -55,9 +55,6 @@ function RestaurantCard({ restaurant, onPress }: Props) {
             <Text style={styles.closedBadge}>Cerrado</Text>
           )}
         </View>
-        <View style={styles.emojiBadge}>
-          <Text style={styles.emoji}>{visual.emoji}</Text>
-        </View>
       </View>
 
       <View style={styles.body}>
@@ -125,18 +122,6 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
   },
-  emojiBadge: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emoji: { fontSize: 22 },
   openBadge: {
     flexDirection: 'row',
     alignItems: 'center',

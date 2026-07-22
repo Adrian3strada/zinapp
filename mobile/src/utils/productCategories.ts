@@ -10,20 +10,21 @@ export type ProductCategoryKey =
 export const PRODUCT_CATEGORIES: ReadonlyArray<{
   key: ProductCategoryKey;
   label: string;
+  emoji: string;
 }> = [
-  { key: 'entradas', label: 'Entradas' },
-  { key: 'comida', label: 'Comida' },
-  { key: 'bebidas', label: 'Bebidas' },
-  { key: 'postres', label: 'Postres' },
-  { key: 'extras', label: 'Extras' },
+  { key: 'entradas', label: 'Entradas', emoji: '🥗' },
+  { key: 'comida', label: 'Comida', emoji: '🍽️' },
+  { key: 'bebidas', label: 'Bebidas', emoji: '🥤' },
+  { key: 'postres', label: 'Postres', emoji: '🍰' },
+  { key: 'extras', label: 'Extras', emoji: '✨' },
 ];
 
-const LABEL_BY_KEY = Object.fromEntries(
-  PRODUCT_CATEGORIES.map((c) => [c.key, c.label]),
-) as Record<ProductCategoryKey, string>;
+const BY_KEY = Object.fromEntries(
+  PRODUCT_CATEGORIES.map((c) => [c.key, c]),
+) as Record<ProductCategoryKey, (typeof PRODUCT_CATEGORIES)[number]>;
 
 export function normalizeProductCategory(value?: string | null): ProductCategoryKey {
-  if (value && value in LABEL_BY_KEY) return value as ProductCategoryKey;
+  if (value && value in BY_KEY) return value as ProductCategoryKey;
   return 'comida';
 }
 
@@ -32,7 +33,11 @@ export function productCategoryLabel(
   display?: string | null,
 ): string {
   if (display?.trim()) return display.trim();
-  return LABEL_BY_KEY[normalizeProductCategory(value)];
+  return BY_KEY[normalizeProductCategory(value)].label;
+}
+
+export function productCategoryEmoji(value?: string | null): string {
+  return BY_KEY[normalizeProductCategory(value)].emoji;
 }
 
 export function sortProductsByCategory<T extends { category?: string | null; name: string }>(
@@ -49,7 +54,7 @@ export function sortProductsByCategory<T extends { category?: string | null; nam
 
 export function groupProductsByCategory<T extends { category?: string | null; name: string }>(
   products: T[],
-): Array<{ key: ProductCategoryKey; title: string; data: T[] }> {
+): Array<{ key: ProductCategoryKey; title: string; emoji: string; data: T[] }> {
   const buckets = new Map<ProductCategoryKey, T[]>();
   for (const product of sortProductsByCategory(products)) {
     const key = normalizeProductCategory(product.category);
@@ -62,6 +67,7 @@ export function groupProductsByCategory<T extends { category?: string | null; na
     .map((c) => ({
       key: c.key,
       title: c.label,
+      emoji: c.emoji,
       data: buckets.get(c.key) ?? [],
     }));
 }

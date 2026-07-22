@@ -499,10 +499,10 @@
     }
     .screenshots {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       align-items: end;
-      gap: clamp(0.75rem, 3vw, 1.5rem);
-      max-width: 470px;
+      gap: clamp(0.5rem, 2vw, 1rem);
+      max-width: 720px;
       margin-inline: auto;
     }
     .screenshot {
@@ -514,8 +514,9 @@
       border: 1px solid rgba(15, 45, 107, 0.18);
       box-shadow: 0 20px 38px rgba(15, 45, 107, 0.16);
     }
-    .screenshot:first-child { transform: rotate(-3deg) translateY(0.4rem); }
-    .screenshot:last-child { transform: rotate(3deg) translateY(-0.4rem); }
+    .screenshot:nth-child(1) { transform: rotate(-3deg) translateY(0.45rem); }
+    .screenshot:nth-child(2) { transform: translateY(-0.35rem); z-index: 1; }
+    .screenshot:nth-child(3) { transform: rotate(3deg) translateY(0.45rem); }
     .screenshot img {
       width: 100%;
       aspect-ratio: 9 / 19.5;
@@ -821,7 +822,7 @@
         gap: 1.1rem;
       }
       .showcase-layout {
-        grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.8fr);
+        grid-template-columns: minmax(0, 0.75fr) minmax(380px, 1.1fr);
         gap: clamp(2rem, 6vw, 5rem);
       }
       .cta-band .wrap {
@@ -864,6 +865,16 @@
 
     @media (max-width: 767px) {
       .nav-links .hide-sm { display: none; }
+      .screenshots {
+        max-width: 100%;
+        gap: 0.45rem;
+      }
+      .screenshot {
+        padding: 4px;
+        border-radius: 14px;
+      }
+      .screenshot img { border-radius: 10px; }
+      .screenshot figcaption { font-size: 0.68rem; padding-top: 0.4rem; }
       .proof {
         grid-template-columns: 1fr;
         margin-top: 0;
@@ -972,12 +983,16 @@
       </div>
       <div class="screenshots">
         <figure class="screenshot">
-          <img src="{% static 'landing/screenshots/home.png' %}" alt="Pantalla de inicio de ZinApp con comida, ofertas y servicios locales" width="480" height="1023" loading="lazy">
-          <figcaption>Inicio y servicios</figcaption>
+          <img src="{% static 'landing/screenshots/home.png' %}" alt="Pantalla de inicio de ZinApp con comida, ofertas y servicios" width="472" height="1024" loading="lazy">
+          <figcaption>Inicio</figcaption>
         </figure>
         <figure class="screenshot">
-          <img src="{% static 'landing/screenshots/login.png' %}" alt="Pantalla de inicio de sesión de ZinApp" width="480" height="1023" loading="lazy">
-          <figcaption>Acceso rápido</figcaption>
+          <img src="{% static 'landing/screenshots/restaurants.png' %}" alt="Pantalla de restaurantes y comida cerca de ti en ZinApp" width="472" height="1024" loading="lazy">
+          <figcaption>Restaurantes</figcaption>
+        </figure>
+        <figure class="screenshot">
+          <img src="{% static 'landing/screenshots/services.png' %}" alt="Pantalla de servicios locales en ZinApp" width="472" height="1024" loading="lazy">
+          <figcaption>Servicios</figcaption>
         </figure>
       </div>
     </div>

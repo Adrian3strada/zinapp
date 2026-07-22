@@ -15,6 +15,7 @@ import { localServiceApi, productApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import type { LocalService, Product } from '../../types';
+import { resolveMediaUrl } from '../../utils/media';
 
 const FEATURED_COUNT = 3;
 const FEATURED_DISHES_COUNT = 8;
@@ -90,6 +91,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     >
       <HomeHero
         firstName={user?.first_name}
+        avatarUrl={resolveMediaUrl(user?.avatar_url ?? user?.avatar)}
         topInset={insets.top}
         onProfilePress={() =>
           navigation.navigate('Main', { screen: 'Perfil' })

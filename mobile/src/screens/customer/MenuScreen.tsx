@@ -205,6 +205,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
           style={[styles.chip, categoryFilter === null && styles.chipActive]}
           onPress={() => setCategoryFilter(null)}
         >
+          <Text style={styles.chipEmoji}>🍽️</Text>
           <Text style={[styles.chipText, categoryFilter === null && styles.chipTextActive]}>
             Todos
           </Text>
@@ -215,6 +216,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
             style={[styles.chip, categoryFilter === cat.key && styles.chipActive]}
             onPress={() => setCategoryFilter(cat.key)}
           >
+            <Text style={styles.chipEmoji}>{cat.emoji}</Text>
             <Text style={[styles.chipText, categoryFilter === cat.key && styles.chipTextActive]}>
               {cat.label}
             </Text>
@@ -321,9 +323,11 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   }, [navigation]);
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: { title: string } }) => (
+    ({ section }: { section: { title: string; emoji?: string } }) => (
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{section.title}</Text>
+        <Text style={styles.sectionTitle}>
+          {section.emoji ? `${section.emoji} ` : ''}{section.title}
+        </Text>
       </View>
     ),
     [],
@@ -379,6 +383,9 @@ const styles = StyleSheet.create({
     paddingRight: spacing.screen,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -390,6 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+  chipEmoji: { fontSize: 14, lineHeight: 18 },
   chipText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   chipTextActive: { color: '#FFF' },
   sectionHeader: {
