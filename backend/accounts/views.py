@@ -3,7 +3,6 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import generics, status, viewsets
@@ -24,7 +23,11 @@ _RESET_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 def _generate_reset_code(length=8):
     return ''.join(secrets.choice(_RESET_CODE_ALPHABET) for _ in range(length))
 
-from config.email_utils import email_reset_enabled, email_smtp_configured
+from config.email_utils import (
+    email_delivery_configured,
+    email_reset_enabled,
+    send_app_email,
+)
 from config.throttling import (
     ForgotPasswordRateThrottle,
     LoginRateThrottle,
@@ -123,8 +126,8 @@ class ForgotPasswordView(APIView):
         }
         whatsapp = getattr(settings, 'SUPPORT_WHATSAPP', '').strip()
         email_ready = email_reset_enabled()
-        smtp_ready = email_smtp_configured()
-        if whatsapp and not smtp_ready:
+        delivery_ready = email_delivery_configured()
+        if whatsapp and not delivery_ready:
             response['password_reset_via_whatsapp'] = True
             response['hint'] = (
                 'Si no llega correo, contacta soporte por WhatsApp para restablecer.'
@@ -168,15 +171,15 @@ class ForgotPasswordView(APIView):
 
         if not email_ready:
             logger.warning(
-                'Forgot-password: SMTP no configurado (EMAIL_HOST/USER/PASSWORD). '
+                'Forgot-password: correo no configurado (RESEND_API_KEY o EMAIL_*). '
                 'No se envió correo user_id=%s',
                 user.pk,
             )
             if settings.DEBUG:
                 response['reset_token'] = reset_token.token
                 response['hint'] = (
-                    'SMTP no configurado. Usa este código o define EMAIL_* en .env '
-                    '(Resend: smtp.resend.com / resend / API_KEY).'
+                    'Correo no configurado. Usa este código o define RESEND_API_KEY '
+                    '(o EMAIL_HOST=smtp.resend.com + EMAIL_HOST_PASSWORD=API_KEY).'
                 )
             elif whatsapp:
                 response['password_reset_via_whatsapp'] = True
@@ -186,7 +189,7 @@ class ForgotPasswordView(APIView):
             return Response(response)
 
         try:
-            send_mail(
+            send_app_email(
                 subject='Restablece tu contraseña - ZinApp',
                 message=(
                     f'Hola {user.first_name or user.username},\n\n'
@@ -197,28 +200,26 @@ class ForgotPasswordView(APIView):
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
-                fail_silently=False,
             )
             logger.info(
-                'Forgot-password: correo enviado user_id=%s to=%s smtp=%s from=%s',
+                'Forgot-password: correo enviado user_id=%s to=%s delivery=%s from=%s',
                 user.pk,
                 user.email,
-                smtp_ready,
+                delivery_ready,
                 settings.DEFAULT_FROM_EMAIL,
             )
             if settings.DEBUG:
-                # Facilita prueba local (consola o SMTP): también devolver el código.
+                # Facilita prueba local (consola o API): también devolver el código.
                 response['reset_token'] = reset_token.token
                 response['hint'] = (
-                    'Correo enviado (en consola si no hay SMTP). '
+                    'Correo enviado (en consola si no hay Resend). '
                     'También puedes usar este código.'
                 )
         except Exception:
             logger.exception(
-                'Forgot-password email failed user_id=%s from=%s host=%s',
+                'Forgot-password email failed user_id=%s from=%s',
                 user.pk,
                 settings.DEFAULT_FROM_EMAIL,
-                settings.EMAIL_HOST,
             )
             if settings.DEBUG:
                 response['reset_token'] = reset_token.token

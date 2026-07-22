@@ -29,7 +29,12 @@
           <tbody>
             {% for item in order.items.all %}
             <tr>
-              <td>{{ item.product.name }}</td>
+              <td>
+                {{ item.product.name }}
+                {% if item.notes %}
+                <div class="text-muted small mt-1">{{ item.notes }}</div>
+                {% endif %}
+              </td>
               <td>{{ item.quantity }}</td>
               <td class="text-right mono">${{ item.unit_price|floatformat:2 }}</td>
               <td class="text-right mono">${{ item.subtotal|floatformat:2 }}</td>

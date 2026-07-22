@@ -110,13 +110,14 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const quantityByProduct = useMemo(() => {
     const map = new Map<number, number>();
     for (const item of items) {
-      map.set(item.product.id, item.quantity);
+      map.set(item.product.id, (map.get(item.product.id) ?? 0) + item.quantity);
     }
     return map;
   }, [items]);
 
   const handleAdd = useCallback((product: Product) => {
     try {
+      // Desde el menú se agrega sin notas; sabor/extras se indican en el detalle.
       addItem(product);
       void impactLight();
     } catch {
@@ -125,14 +126,13 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   }, [addItem]);
 
   const handleDecrease = useCallback((product: Product) => {
-    const current = quantityByProduct.get(product.id) ?? 0;
-    if (current <= 1) {
-      updateQuantity(product.id, 0);
-    } else {
-      updateQuantity(product.id, current - 1);
-    }
+    // Prefiere la línea sin notas; si no, la primera del producto.
+    const plain = items.find((i) => i.product.id === product.id && !(i.notes ?? '').trim());
+    const line = plain ?? items.find((i) => i.product.id === product.id);
+    if (!line) return;
+    updateQuantity(product.id, line.quantity - 1, line.notes);
     void impactLight();
-  }, [quantityByProduct, updateQuantity]);
+  }, [items, updateQuantity]);
 
   const handleOpenDetail = useCallback((product: Product) => {
     navigation.navigate('ProductDetail', {

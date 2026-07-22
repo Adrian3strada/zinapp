@@ -1,13 +1,70 @@
+import json
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APIClient, APITestCase
 
-from accounts.models import DeliveryProfile, UserRole
+from accounts.models import DeliveryProfile, PasswordResetToken, UserRole
 from orders.models import Coupon, Order, OrderStatus
 from restaurants.models import Restaurant
 
 User = get_user_model()
+
+
+class _FakeResendResponse:
+    def __init__(self, payload: dict, status: int = 200):
+        self.status = status
+        self._payload = payload
+
+    def read(self):
+        return json.dumps(self._payload).encode('utf-8')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class ForgotPasswordEmailTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username='reset_user',
+            password='test1234',
+            role=UserRole.CUSTOMER,
+            email='reset.user@example.com',
+        )
+
+    @override_settings(
+        RESEND_API_KEY='re_test_key',
+        DEFAULT_FROM_EMAIL='ZinApp <onboarding@resend.dev>',
+        EMAIL_HOST='',
+        EMAIL_HOST_USER='',
+        EMAIL_HOST_PASSWORD='',
+    )
+    @patch('config.email_utils.urllib.request.urlopen')
+    def test_forgot_password_uses_resend_http(self, mock_urlopen):
+        mock_urlopen.return_value = _FakeResendResponse({'id': 'msg_123'})
+
+        response = self.client.post(
+            '/api/auth/forgot-password/',
+            {'identifier': self.user.email},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(PasswordResetToken.objects.filter(user=self.user, used=False).exists())
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args.args[0]
+        self.assertEqual(req.full_url, 'https://api.resend.com/emails')
+        self.assertEqual(req.get_header('Authorization'), 'Bearer re_test_key')
+        body = json.loads(req.data.decode('utf-8'))
+        self.assertEqual(body['to'], ['reset.user@example.com'])
+        self.assertIn('Restablece tu contraseña', body['subject'])
+        token = PasswordResetToken.objects.filter(user=self.user, used=False).latest('created_at')
+        self.assertIn(token.token, body['text'])
 
 
 class HardeningApiTests(APITestCase):
@@ -59,6 +116,13 @@ class HardeningApiTests(APITestCase):
             is_active=True,
         )
 
+    @override_settings(
+        RESEND_API_KEY='',
+        EMAIL_HOST='',
+        EMAIL_HOST_USER='',
+        EMAIL_HOST_PASSWORD='',
+        EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend',
+    )
     def test_forgot_password_does_not_enumerate_users(self):
         missing = self.client.post('/api/auth/forgot-password/', {'identifier': 'no_existe_xyz'})
         existing = self.client.post('/api/auth/forgot-password/', {'username': 'hard_customer'})

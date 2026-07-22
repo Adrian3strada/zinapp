@@ -131,8 +131,8 @@ class OrderAdmin(PanelModelAdmin):
 
 
 class OrderItemAdmin(PanelModelAdmin):
-    list_display = ('order', 'product', 'quantity', 'unit_price')
-    search_fields = ('order__id', 'product__name')
+    list_display = ('order', 'product', 'quantity', 'unit_price', 'notes')
+    search_fields = ('order__id', 'product__name', 'notes')
 
 
 class OrderDisputeAdmin(PanelModelAdmin):

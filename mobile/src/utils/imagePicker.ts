@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
 import { appAlert } from './appAlert';
+import { requestImageCrop } from './imageCropStore';
 
 export type ImageAspect = [number, number];
 
@@ -15,8 +16,9 @@ export const ASPECT_DOCUMENT: ImageAspect = [3, 2];
 export interface PickImageOptions {
   aspect?: ImageAspect;
   quality?: number;
-  /** Si false, no muestra UI de recorte (solo en plataformas que lo soporten). */
+  /** Si false, no muestra UI de recorte. */
   allowsEditing?: boolean;
+  cropTitle?: string;
 }
 
 export interface PickedImage {
@@ -36,8 +38,9 @@ async function ensureLibraryPermission(): Promise<boolean> {
 }
 
 /**
- * Abre la galería y, si la plataforma lo permite, la UI de recorte
- * (Android/iOS: editor nativo; web: recorte básico de Expo).
+ * Abre la galería.
+ * - iOS/Android: cropper nativo si allowsEditing.
+ * - Web: Expo no soporta crop nativo → modal propio (ImageCropHost).
  */
 export async function pickImageFromLibrary(
   options: PickImageOptions = {},
@@ -53,20 +56,31 @@ export async function pickImageAsset(
     aspect = ASPECT_SQUARE,
     quality = 0.85,
     allowsEditing = true,
+    cropTitle,
   } = options;
 
   if (!(await ensureLibraryPermission())) return null;
 
+  // allowsEditing solo funciona en iOS/Android (docs Expo).
+  const useNativeCrop = allowsEditing && Platform.OS !== 'web';
+
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    allowsEditing,
-    aspect: allowsEditing ? aspect : undefined,
+    allowsEditing: useNativeCrop,
+    aspect: useNativeCrop ? aspect : undefined,
     quality,
     exif: false,
   });
 
   if (result.canceled || !result.assets[0]) return null;
   const asset = result.assets[0];
+
+  if (allowsEditing && Platform.OS === 'web') {
+    const croppedUri = await requestImageCrop(asset.uri, aspect, cropTitle);
+    if (!croppedUri) return null;
+    return { uri: croppedUri, mimeType: 'image/jpeg', fileName: 'crop.jpg' };
+  }
+
   return {
     uri: asset.uri,
     mimeType: asset.mimeType,
@@ -75,11 +89,19 @@ export async function pickImageAsset(
 }
 
 export async function pickProductImage(): Promise<string | null> {
-  return pickImageFromLibrary({ aspect: ASPECT_SQUARE, quality: 0.85 });
+  return pickImageFromLibrary({
+    aspect: ASPECT_SQUARE,
+    quality: 0.85,
+    cropTitle: 'Recortar platillo',
+  });
 }
 
 export async function pickRestaurantCoverImage(): Promise<string | null> {
-  return pickImageFromLibrary({ aspect: ASPECT_COVER, quality: 0.85 });
+  return pickImageFromLibrary({
+    aspect: ASPECT_COVER,
+    quality: 0.85,
+    cropTitle: 'Recortar foto del local',
+  });
 }
 
 function safeJpegName(fallback: string): string {
@@ -132,8 +154,6 @@ export async function appendImage(
   const name = safeJpegName(filename);
 
   if (Platform.OS === 'web') {
-    // El recorte de Expo en web a veces entrega blob sin tipo o formato raro;
-    // Pillow lo rechaza. Re-encodeamos siempre a JPEG desde la URI.
     const file = await blobToJpegFile(uri, name);
     formData.append(field, file);
     return;

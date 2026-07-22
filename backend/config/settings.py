@@ -260,22 +260,33 @@ MERCADOPAGO_WEBHOOK_SECRET = config('MERCADOPAGO_WEBHOOK_SECRET', default='')
 
 CRON_SECRET = config('CRON_SECRET', default='')
 
+# Resend: preferir API HTTP (RESEND_API_KEY). SMTP a smtp.resend.com se cuelga en Railway.
+RESEND_API_KEY = config('RESEND_API_KEY', default='').strip()
 EMAIL_HOST = config('EMAIL_HOST', default='').strip()
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='').strip()
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+# Evita workers colgados si alguien usa SMTP como respaldo.
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=15, cast=int)
 _default_from = config('DEFAULT_FROM_EMAIL', default='').strip()
+_resend_ready = bool(
+    RESEND_API_KEY
+    or (EMAIL_HOST_PASSWORD and 'resend.com' in EMAIL_HOST.lower())
+)
 if _default_from:
     DEFAULT_FROM_EMAIL = _default_from
-elif EMAIL_HOST and 'resend.com' in EMAIL_HOST.lower():
+elif _resend_ready or (EMAIL_HOST and 'resend.com' in EMAIL_HOST.lower()):
     # Resend rechaza from="resend"; sin dominio verificado usa onboarding@resend.dev
     DEFAULT_FROM_EMAIL = 'ZinApp <onboarding@resend.dev>'
 else:
     DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or 'noreply@zinapp.mx'
 
 _email_smtp_ready = bool(EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
-if _email_smtp_ready:
+# Con Resend HTTP no hace falta SMTP; consola solo en DEBUG local.
+if _resend_ready:
+    EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
+elif _email_smtp_ready:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 elif DEBUG:
     # Local sin Resend: el correo se imprime en la consola del runserver.

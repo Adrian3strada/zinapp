@@ -476,7 +476,7 @@ export default function RestaurantManageScreen() {
                     <View style={styles.photoPlaceholder}>
                       <Ionicons name="camera" size={36} color={colors.primary} />
                       <Text style={styles.photoPlaceholderText}>Foto del platillo</Text>
-                      <Text style={styles.photoHint}>Toca para elegir y recortar en cuadrado</Text>
+                      <Text style={styles.photoHint}>Toca para elegir y recortar</Text>
                     </View>
                   )}
                 </Pressable>

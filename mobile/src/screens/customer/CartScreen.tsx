@@ -40,7 +40,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const { user, refreshUser, requestLogin } = useAuth();
   const { keyboardWithHeader, tabBottomPadding } = useTabScreenInsets();
   const { config: appConfig } = useAppConfig();
-  const { items, total, updateQuantity, clearCart, restaurantId } = useCart();
+  const { items, total, updateQuantity, updateItemNotes, clearCart, restaurantId } = useCart();
   const [address, setAddress] = useState(user?.address ?? '');
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'online'>('cash');
@@ -319,6 +319,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
         items: items.map((i) => ({
           product_id: i.product.id,
           quantity: i.quantity,
+          notes: i.notes?.trim() || undefined,
         })),
       }, { idempotencyKey: checkoutIdempotencyKey.current });
       if (paymentMethod === 'online') {
@@ -369,12 +370,14 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   ]);
 
   const handleDecrease = useCallback(
-    (productId: number, quantity: number) => updateQuantity(productId, quantity - 1),
+    (productId: number, quantity: number, notes?: string) =>
+      updateQuantity(productId, quantity - 1, notes),
     [updateQuantity],
   );
 
   const handleIncrease = useCallback(
-    (productId: number, quantity: number) => updateQuantity(productId, quantity + 1),
+    (productId: number, quantity: number, notes?: string) =>
+      updateQuantity(productId, quantity + 1, notes),
     [updateQuantity],
   );
 
@@ -437,10 +440,11 @@ export default function CartScreen({ navigation }: CartScreenProps) {
           </View>
           {items.map((item) => (
             <CartLineItem
-              key={item.product.id}
+              key={`${item.product.id}:${item.notes ?? ''}`}
               item={item}
               onDecrease={handleDecrease}
               onIncrease={handleIncrease}
+              onNotesChange={updateItemNotes}
             />
           ))}
           <CartCheckoutSection

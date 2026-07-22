@@ -38,7 +38,13 @@ function itemsSummary(order: Order): string {
   if (!order.items?.length) return 'Sin platillos';
   const preview = order.items
     .slice(0, 3)
-    .map((item) => `${item.quantity}× ${item.product_detail?.name ?? 'Producto'}`)
+    .map((item) => {
+      const name = item.product_detail?.name ?? 'Producto';
+      const notes = item.notes?.trim();
+      return notes
+        ? `${item.quantity}× ${name} (${notes})`
+        : `${item.quantity}× ${name}`;
+    })
     .join(' · ');
   const extra = order.items.length > 3 ? ` +${order.items.length - 3} más` : '';
   return preview + extra;

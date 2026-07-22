@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
 import FoodImage from '../../components/FoodImage';
+import FormField from '../../components/FormField';
 import ScreenContainer from '../../components/ScreenContainer';
-import { useCart } from '../../context/CartContext';
+import { normalizeCartNotes, useCart } from '../../context/CartContext';
 import type { ProductDetailScreenProps } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
@@ -21,10 +22,17 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   const { product, restaurantName } = route.params;
   const { addItem, updateQuantity, items } = useCart();
   const insets = useSafeAreaInsets();
+  const [notes, setNotes] = useState('');
+
+  const lineNotes = normalizeCartNotes(notes);
 
   const quantity = useMemo(
-    () => items.find((item) => item.product.id === product.id)?.quantity ?? 0,
-    [items, product.id],
+    () =>
+      items.find(
+        (item) =>
+          item.product.id === product.id && normalizeCartNotes(item.notes) === lineNotes,
+      )?.quantity ?? 0,
+    [items, lineNotes, product.id],
   );
 
   const emoji = getProductEmoji(product.name);
@@ -40,27 +48,28 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   const handleAdd = useCallback(() => {
     if (!available) return;
     try {
-      addItem(product);
+      addItem(product, 1, notes);
       void impactLight();
     } catch {
       // Evita cierre nativo si algo falla al agregar
     }
-  }, [addItem, available, product]);
+  }, [addItem, available, notes, product]);
 
   const handleDecrease = useCallback(() => {
     if (quantity <= 1) {
-      updateQuantity(product.id, 0);
+      updateQuantity(product.id, 0, lineNotes);
     } else {
-      updateQuantity(product.id, quantity - 1);
+      updateQuantity(product.id, quantity - 1, lineNotes);
     }
     void impactLight();
-  }, [product.id, quantity, updateQuantity]);
+  }, [lineNotes, product.id, quantity, updateQuantity]);
 
   return (
     <ScreenContainer>
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: spacing.xxl + insets.bottom }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.heroWrap}>
           <FoodImage
@@ -106,6 +115,26 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
                 : 'Este platillo aún no tiene descripción.'}
             </Text>
           </View>
+
+          {available ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Sabor o extras</Text>
+              <Text style={styles.notesIntro}>
+                Indica el sabor, sin cebolla, toppings u otras preferencias para la cocina.
+              </Text>
+              <FormField
+                label="Instrucciones"
+                hideLabel
+                value={notes}
+                onChangeText={setNotes}
+                icon="restaurant-outline"
+                placeholder="Ej. pastor, extra queso, sin cebolla"
+                hint="Opcional · máx. 255 caracteres"
+                autoCapitalize="sentences"
+                multiline
+              />
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -239,6 +268,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.textSecondary,
+  },
+  notesIntro: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+    marginBottom: 10,
   },
   footer: {
     paddingHorizontal: spacing.screen,

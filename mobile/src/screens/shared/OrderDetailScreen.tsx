@@ -396,9 +396,14 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <Text style={styles.section}>Resumen</Text>
             {order.items.map((item) => (
               <View key={item.id} style={styles.item}>
-                <Text style={styles.itemName}>
-                  {item.quantity}x {item.product_detail.name}
-                </Text>
+                <View style={styles.itemMain}>
+                  <Text style={styles.itemName}>
+                    {item.quantity}x {item.product_detail.name}
+                  </Text>
+                  {item.notes?.trim() ? (
+                    <Text style={styles.itemNotes}>{item.notes.trim()}</Text>
+                  ) : null}
+                </View>
                 <Text style={styles.itemPrice}>{formatCurrency(item.subtotal)}</Text>
               </View>
             ))}
@@ -588,11 +593,15 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  itemName: { fontSize: 15, color: colors.text },
+  itemMain: { flex: 1, gap: 2 },
+  itemName: { fontSize: 15, color: colors.text, fontWeight: '600' },
+  itemNotes: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   itemPrice: { fontWeight: '600', color: colors.text },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   rowLabel: { color: colors.textSecondary },
