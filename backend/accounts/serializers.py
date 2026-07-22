@@ -281,6 +281,10 @@ DEMO_USERNAMES = frozenset({
 })
 
 
+class GoogleLoginSerializer(serializers.Serializer):
+    id_token = serializers.CharField(trim_whitespace=True, allow_blank=False)
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         username = normalize_username(attrs.get(self.username_field) or '')

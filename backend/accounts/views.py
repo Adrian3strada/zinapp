@@ -5,13 +5,14 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import IntegrityError
 from django.utils import timezone
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ from config.throttling import (
     TokenRefreshRateThrottle,
 )
 from .account_deletion import delete_user_account
+from .google_auth import google_sign_in_enabled, verify_google_id_token
+from .google_users import get_or_create_user_from_google
 from .models import DeliveryProfile, PasswordResetToken, User
 from .permissions import IsAdmin, IsDriver
 from .serializers import (
@@ -44,6 +47,7 @@ from .serializers import (
     DeleteAccountSerializer,
     DeliveryProfileSerializer,
     ForgotPasswordSerializer,
+    GoogleLoginSerializer,
     PushTokenSerializer,
     RegisterSerializer,
     ResetPasswordSerializer,
@@ -62,6 +66,59 @@ class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
+
+
+@extend_schema(exclude=True)
+class GoogleLoginView(APIView):
+    """Intercambia un id_token de Google por JWT de la app (clientes)."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        if not google_sign_in_enabled():
+            return Response(
+                {'detail': 'Inicio con Google no está disponible.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            claims = verify_google_id_token(serializer.validated_data['id_token'])
+            user = get_or_create_user_from_google(claims)
+        except serializers.ValidationError:
+            raise
+        except ValueError as exc:
+            code = str(exc)
+            if code == 'account_inactive':
+                return Response(
+                    {
+                        'detail': (
+                            'Tu cuenta está desactivada. '
+                            'Contacta soporte o al administrador de ZinApp.'
+                        ),
+                        'code': 'account_inactive',
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            if code == 'google_conflict':
+                return Response(
+                    {
+                        'detail': (
+                            'Este correo ya está vinculado a otra cuenta Google. '
+                            'Inicia sesión con tu método habitual o contacta soporte.'
+                        ),
+                        'code': 'google_conflict',
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            raise
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user, context={'request': request}).data,
+        })
 
 
 class ThrottledTokenRefreshView(TokenRefreshView):

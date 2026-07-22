@@ -19,6 +19,14 @@ class User(AbstractUser):
     address = models.TextField(blank=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     expo_push_token = models.CharField(max_length=255, blank=True)
+    # Subject de Google OAuth (vincula «Continuar con Google»).
+    google_sub = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text='ID estable de la cuenta Google (sub del id_token).',
+    )
 
     class Meta:
         verbose_name = 'Usuario'

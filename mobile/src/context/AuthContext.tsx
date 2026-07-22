@@ -14,6 +14,7 @@ interface AuthContextValue {
   isGuest: boolean;
   isLoading: boolean;
   login: (data: LoginPayload) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (data: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -128,12 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [logout]);
 
-  const login = async (data: LoginPayload) => {
-    const { data: response } = await authApi.login({
-      ...data,
-      username: data.username.trim().toLowerCase(),
-    });
-
+  const applyAuthResponse = async (response: {
+    access: string;
+    refresh: string;
+    user: User;
+  }) => {
     if (Platform.OS === 'web' && response.user.role === 'admin') {
       await tokenStorage.clear();
       await userCache.clear();
@@ -147,6 +147,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user);
     await userCache.set(response.user);
     void registerPushNotifications();
+  };
+
+  const login = async (data: LoginPayload) => {
+    const { data: response } = await authApi.login({
+      ...data,
+      username: data.username.trim().toLowerCase(),
+    });
+    await applyAuthResponse(response);
+  };
+
+  const loginWithGoogle = async (idToken: string) => {
+    const { data: response } = await authApi.googleLogin(idToken);
+    await applyAuthResponse(response);
   };
 
   const register = async (data: RegisterPayload) => {
@@ -171,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isGuest,
         isLoading,
         login,
+        loginWithGoogle,
         register,
         logout,
         refreshUser,

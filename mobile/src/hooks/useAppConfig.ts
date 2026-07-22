@@ -6,6 +6,7 @@ const DEFAULT_CONFIG: AppConfig = {
   online_payments_enabled: false,
   support_whatsapp: '',
   password_reset_via_whatsapp: false,
+  google_sign_in_enabled: false,
   coverage_label: 'Zinapécuaro, Michoacán',
 };
 

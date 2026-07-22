@@ -231,6 +231,8 @@ export interface CreateShipmentPayload {
 export const authApi = {
   register: (data: RegisterPayload) => api.post<User>('/auth/register/', data),
   login: (data: LoginPayload) => api.post<AuthResponse>('/auth/login/', data),
+  googleLogin: (id_token: string) =>
+    api.post<AuthResponse>('/auth/google/', { id_token }),
   me: () => api.get<User>('/auth/me/'),
   updateMe: (data: Partial<User>) => api.patch<User>('/auth/me/', data),
   updateMeForm: (data: FormData) => api.patch<User>('/auth/me/', data),
@@ -493,6 +495,7 @@ export interface AppConfig {
   support_whatsapp: string;
   password_reset_via_whatsapp: boolean;
   password_reset_email_enabled?: boolean;
+  google_sign_in_enabled?: boolean;
   coverage_label: string;
 }
 

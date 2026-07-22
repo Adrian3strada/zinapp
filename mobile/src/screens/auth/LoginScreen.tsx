@@ -19,6 +19,7 @@ import HeroBackground from '../../components/HeroBackground';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
+import GoogleSignInButton from '../../components/GoogleSignInButton';
 import { useAuth } from '../../context/AuthContext';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import type { LoginScreenProps } from '../../navigation/types';
@@ -37,7 +38,7 @@ const PRIVACY_URL =
   ?? 'https://zinapp.com.mx/privacidad/';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
-  const { login, enterGuestMode } = useAuth();
+  const { login, loginWithGoogle, enterGuestMode } = useAuth();
   const insets = useSafeAreaInsets();
   const { isDesktopWeb } = useResponsiveLayout();
   const [username, setUsername] = useState('');
@@ -45,6 +46,21 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [loading, setLoading] = useState(false);
   const [statusHint, setStatusHint] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleGoogle = async (idToken: string) => {
+    setLoading(true);
+    setStatusHint('Verificando con Google…');
+    try {
+      await wakeBackend(true);
+      await loginWithGoogle(idToken);
+    } catch (err: unknown) {
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo iniciar sesión con Google'));
+      throw err;
+    } finally {
+      setLoading(false);
+      setStatusHint('');
+    }
+  };
 
   const handleLogin = async () => {
     if (!username.trim() || !password) {
@@ -132,6 +148,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           size="lg"
           style={styles.btn}
         />
+        <GoogleSignInButton onIdToken={handleGoogle} disabled={loading} />
         <Button
           title="Explorar sin cuenta"
           variant="ghost"

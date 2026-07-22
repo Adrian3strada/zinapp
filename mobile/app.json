@@ -132,7 +132,8 @@
           "cameraPermission": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

@@ -181,6 +181,9 @@ APP_STORE_URL = config('APP_STORE_URL', default='').strip()
 PLAY_STORE_URL = config('PLAY_STORE_URL', default='').strip()
 DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)
 
+# Google Sign-In: Client IDs OAuth (Web y/o Android/iOS), separados por coma.
+GOOGLE_OAUTH_CLIENT_IDS = config('GOOGLE_OAUTH_CLIENT_IDS', default='', cast=Csv())
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = config(

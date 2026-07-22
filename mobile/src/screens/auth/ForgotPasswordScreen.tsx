@@ -25,6 +25,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [viaWhatsApp, setViaWhatsApp] = useState(false);
+  const [submitHint, setSubmitHint] = useState<string | null>(null);
 
   const supportPhone = config.support_whatsapp?.trim();
   const configWhatsAppHelp = !__DEV__ && config.password_reset_via_whatsapp && Boolean(supportPhone);
@@ -44,6 +45,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
         return;
       }
       setViaWhatsApp(Boolean(data.password_reset_via_whatsapp) || configWhatsAppHelp);
+      setSubmitHint(typeof data.hint === 'string' && data.hint.trim() ? data.hint.trim() : null);
       setSubmitted(true);
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo procesar la solicitud.'));
@@ -111,10 +113,14 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
             </>
           ) : (
             <View style={styles.successBlock}>
-              <Text style={styles.successTitle}>Revisa tu correo</Text>
+              <Text style={styles.successTitle}>
+                {viaWhatsApp ? 'Siguiente paso' : 'Revisa tu correo'}
+              </Text>
               <Text style={styles.successBody}>
-                Si la cuenta existe y tiene correo, te enviamos un código válido por 2 horas.
-                Ábrelo y continúa con el botón de abajo.
+                {submitHint
+                  || (viaWhatsApp
+                    ? 'Si el correo no llega, restablece por WhatsApp con soporte. Si ya tienes el código, continúa abajo.'
+                    : 'Si la cuenta existe y tiene correo, te enviamos un código válido por 2 horas. Ábrelo y continúa con el botón de abajo.')}
               </Text>
               <Button
                 title="Ya tengo el código"

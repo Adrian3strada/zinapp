@@ -17,10 +17,12 @@ import BrandLogo from '../../components/BrandLogo';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
+import GoogleSignInButton from '../../components/GoogleSignInButton';
 import VehicleTypePicker from '../../components/VehicleTypePicker';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
 import type { RegisterScreenProps } from '../../navigation/types';
+import { wakeBackend } from '../../services/apiWake';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
@@ -36,7 +38,7 @@ const ROLES: { value: UserRole; label: string; icon: keyof typeof Ionicons.glyph
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterScreen({ navigation }: RegisterScreenProps) {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
     username: '',
@@ -68,6 +70,19 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     if (form.role === 'driver') return 'Dirección personal (opcional)';
     return 'Tu dirección';
   }, [form.role]);
+
+  const handleGoogle = async (idToken: string) => {
+    setLoading(true);
+    try {
+      await wakeBackend(true);
+      await loginWithGoogle(idToken);
+    } catch (err: unknown) {
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo crear la cuenta con Google'));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRegister = async () => {
     const username = form.username.trim().toLowerCase();
@@ -209,6 +224,14 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             ))}
           </View>
         </FormSection>
+
+        {form.role === 'customer' ? (
+          <GoogleSignInButton
+            onIdToken={handleGoogle}
+            disabled={loading}
+            label="Registrarme con Google"
+          />
+        ) : null}
 
         <FormSection title="2. Tus datos">
           <FormField

@@ -2,6 +2,7 @@
 
 from django.conf import settings
 
+from accounts.google_auth import google_sign_in_enabled
 from orders.mercadopago import mercadopago_enabled
 
 from .email_utils import email_delivery_configured, email_reset_enabled
@@ -16,6 +17,7 @@ def get_public_app_config() -> dict:
             bool(settings.SUPPORT_WHATSAPP) and not email_delivery_configured()
         ),
         'password_reset_email_enabled': email_reset_enabled(),
+        'google_sign_in_enabled': google_sign_in_enabled(),
         'coverage_label': 'Zinapécuaro, Michoacán',
     }
 
