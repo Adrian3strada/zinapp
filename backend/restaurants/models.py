@@ -10,6 +10,24 @@ class RestaurantCategory(models.TextChoices):
     MEXICANA = 'mexicana', 'Mexicana'
 
 
+class ProductCategory(models.TextChoices):
+    ENTRADAS = 'entradas', 'Entradas'
+    COMIDA = 'comida', 'Comida'
+    BEBIDAS = 'bebidas', 'Bebidas'
+    POSTRES = 'postres', 'Postres'
+    EXTRAS = 'extras', 'Extras'
+
+
+# Orden de secciones en el menú del cliente
+PRODUCT_CATEGORY_ORDER = (
+    ProductCategory.ENTRADAS,
+    ProductCategory.COMIDA,
+    ProductCategory.BEBIDAS,
+    ProductCategory.POSTRES,
+    ProductCategory.EXTRAS,
+)
+
+
 class Restaurant(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -102,6 +120,12 @@ class Product(models.Model):
     )
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
+    category = models.CharField(
+        max_length=20,
+        choices=ProductCategory.choices,
+        default=ProductCategory.COMIDA,
+        help_text='Sección del menú (comida, bebidas, postres, etc.).',
+    )
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     is_available = models.BooleanField(default=True)

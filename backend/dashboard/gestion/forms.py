@@ -44,8 +44,11 @@ class CouponForm(PanelFormMixin, forms.ModelForm):
 class ProductForm(PanelFormMixin, forms.ModelForm):
     class Meta:
         model = Product
-        fields = ('restaurant', 'name', 'description', 'price', 'image', 'is_available')
-        widgets = {'description': forms.Textarea(attrs={'rows': 3})}
+        fields = ('restaurant', 'name', 'description', 'category', 'price', 'image', 'is_available')
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'category': forms.Select(),
+        }
 
 
 class ProductPromotionForm(PanelFormMixin, forms.ModelForm):

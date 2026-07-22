@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { Suspense } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppErrorBoundary from '../components/AppErrorBoundary';
@@ -14,13 +14,17 @@ import DriverMapScreen from '../screens/driver/DriverMapScreen';
 import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
+import ProfileScreenEager from '../screens/shared/ProfileScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
 import { useDriverPendingNavigation } from './useDriverPendingNavigation';
 import type { DriverStackParamList, DriverTabParamList } from './types';
 
-const ProfileScreen = React.lazy(() => import('../screens/shared/ProfileScreen'));
+const ProfileScreen =
+  Platform.OS === 'web'
+    ? ProfileScreenEager
+    : React.lazy(() => import('../screens/shared/ProfileScreen'));
 
 function TabFallback() {
   return (

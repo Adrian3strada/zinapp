@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { Suspense, useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomerActiveDeliveriesProvider, useCustomerActiveDeliveries } from '../context/CustomerActiveDeliveriesContext';
@@ -15,6 +15,12 @@ import { useTabScreenInsets } from '../hooks/useTabScreenInsets';
 import CartScreen from '../screens/customer/CartScreen';
 import MenuScreen from '../screens/customer/MenuScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
+import MyOrdersScreenEager from '../screens/customer/MyOrdersScreen';
+import RestaurantsScreenEager from '../screens/customer/RestaurantsScreen';
+import ServicesScreenEager from '../screens/customer/ServicesScreen';
+import OffersScreenEager from '../screens/customer/OffersScreen';
+import ProductDetailScreenEager from '../screens/customer/ProductDetailScreen';
+import RestaurantReviewsScreenEager from '../screens/customer/RestaurantReviewsScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
@@ -37,10 +43,31 @@ import type {
   ServicesScreenProps,
 } from './types';
 
-const MyOrdersScreen = React.lazy(() => import('../screens/customer/MyOrdersScreen'));
-const RestaurantsScreen = React.lazy(() => import('../screens/customer/RestaurantsScreen'));
-const ServicesScreen = React.lazy(() => import('../screens/customer/ServicesScreen'));
-const OffersScreen = React.lazy(() => import('../screens/customer/OffersScreen'));
+/** En web evitamos React.lazy (chunks Metro inestables). En nativo sí code-split. */
+const MyOrdersScreen =
+  Platform.OS === 'web'
+    ? MyOrdersScreenEager
+    : React.lazy(() => import('../screens/customer/MyOrdersScreen'));
+const RestaurantsScreen =
+  Platform.OS === 'web'
+    ? RestaurantsScreenEager
+    : React.lazy(() => import('../screens/customer/RestaurantsScreen'));
+const ServicesScreen =
+  Platform.OS === 'web'
+    ? ServicesScreenEager
+    : React.lazy(() => import('../screens/customer/ServicesScreen'));
+const OffersScreen =
+  Platform.OS === 'web'
+    ? OffersScreenEager
+    : React.lazy(() => import('../screens/customer/OffersScreen'));
+const ProductDetailScreen =
+  Platform.OS === 'web'
+    ? ProductDetailScreenEager
+    : React.lazy(() => import('../screens/customer/ProductDetailScreen'));
+const RestaurantReviewsScreen =
+  Platform.OS === 'web'
+    ? RestaurantReviewsScreenEager
+    : React.lazy(() => import('../screens/customer/RestaurantReviewsScreen'));
 
 const Tab = createBottomTabNavigator<CustomerTabParamList>();
 const Stack = createNativeStackNavigator<CustomerStackParamList>();
@@ -112,9 +139,14 @@ function MenuScreenWithBoundary(props: MenuScreenProps) {
   );
 }
 
-const ProductDetailScreen = React.lazy(() => import('../screens/customer/ProductDetailScreen'));
-
 function LazyProductDetailScreen(props: ProductDetailScreenProps) {
+  if (Platform.OS === 'web') {
+    return (
+      <AppErrorBoundary>
+        <ProductDetailScreen {...props} />
+      </AppErrorBoundary>
+    );
+  }
   return (
     <Suspense fallback={<TabFallback />}>
       <AppErrorBoundary>
@@ -210,9 +242,10 @@ function LazyOffersScreen(props: import('./types').OffersScreenProps) {
   );
 }
 
-const RestaurantReviewsScreen = React.lazy(() => import('../screens/customer/RestaurantReviewsScreen'));
-
 function LazyRestaurantReviewsScreen(props: import('./types').RestaurantReviewsScreenProps) {
+  if (Platform.OS === 'web') {
+    return <RestaurantReviewsScreen {...props} />;
+  }
   return (
     <Suspense fallback={<TabFallback />}>
       <RestaurantReviewsScreen {...props} />

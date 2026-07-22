@@ -2,6 +2,7 @@ node_modules/
 .expo/
 .env
 .env.local
+.env.web
 dist/
 npm-debug.*
 *.jks

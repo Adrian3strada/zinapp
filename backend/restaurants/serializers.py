@@ -124,17 +124,19 @@ class ProductSerializer(serializers.ModelSerializer):
     active_promotion = serializers.SerializerMethodField()
     restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
     option_groups = ProductOptionGroupSerializer(many=True, read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
 
     class Meta:
         model = Product
         fields = (
-            'id', 'restaurant', 'restaurant_name', 'name', 'description', 'price',
+            'id', 'restaurant', 'restaurant_name', 'name', 'description', 'category',
+            'category_display', 'price',
             'image', 'image_url', 'is_available', 'active_promotion', 'option_groups',
             'created_at', 'updated_at',
         )
         read_only_fields = (
             'id', 'created_at', 'updated_at', 'active_promotion',
-            'restaurant_name', 'option_groups',
+            'restaurant_name', 'option_groups', 'category_display',
         )
 
     def validate_price(self, value):

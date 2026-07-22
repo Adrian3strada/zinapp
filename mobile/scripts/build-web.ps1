@@ -64,9 +64,22 @@ $env:EXPO_PUBLIC_ENV = 'production'
 $env:EXPO_PUBLIC_API_URL = $resolvedApi
 $env:EXPO_PUBLIC_WEB_BASE_PATH = $resolvedBase
 
+# Pass through Google (and any other EXPO_PUBLIC_*) from .env.web into the export.
+foreach ($key in $envFile.Keys) {
+    if ($key -like 'EXPO_PUBLIC_*' -and $key -ne 'EXPO_PUBLIC_API_URL' -and $key -ne 'EXPO_PUBLIC_WEB_BASE_PATH') {
+        Set-Item -Path "Env:$key" -Value $envFile[$key]
+    }
+}
+
+$googleWebId = $env:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
 Write-Host "API:       $resolvedApi" -ForegroundColor Green
 Write-Host "Base path: $resolvedBase" -ForegroundColor Green
 Write-Host "Public URL: $publicUrl$resolvedBase/" -ForegroundColor Green
+if ($googleWebId) {
+    Write-Host "Google:    Client ID configurado" -ForegroundColor Green
+} else {
+    Write-Host "Google:    sin EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID (boton oculto)" -ForegroundColor Yellow
+}
 Write-Host ''
 
 if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {

@@ -38,8 +38,8 @@ export default function HomeHero({
       colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
       style={[styles.hero, { paddingTop: topInset + spacing.lg }, style]}
     >
-      <View style={styles.decorA} />
-      <View style={styles.decorB} />
+      <View style={styles.decorA} pointerEvents="none" />
+      <View style={styles.decorB} pointerEvents="none" />
 
       <View style={styles.row}>
         <View style={styles.textBlock}>
@@ -59,6 +59,8 @@ export default function HomeHero({
           <Pressable
             onPress={onProfilePress}
             style={styles.avatarBtn}
+            hitSlop={8}
+            accessibilityRole="button"
             accessibilityLabel="Ir a mi perfil"
           >
             <Text style={styles.avatarText}>{initials(firstName)}</Text>

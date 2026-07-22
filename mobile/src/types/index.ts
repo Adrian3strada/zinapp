@@ -132,6 +132,8 @@ export interface Product {
   restaurant_name?: string;
   name: string;
   description: string;
+  category?: string;
+  category_display?: string;
   price: string;
   image: string | null;
   image_url?: string | null;

@@ -29,6 +29,16 @@
   <meta name="twitter:image" content="https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png">
   <meta name="twitter:image:alt" content="Logo de ZinApp">
   <title>ZinApp — Pedidos en Zinapécuaro</title>
+  <script>
+    /* Si Google OAuth vuelve a la landing (redirect mal configurado), reenvía al SPA. */
+    (function () {
+      var h = location.hash || '';
+      if (!h) return;
+      if (/[#&](id_token|access_token|code)=/.test(h) || (/[#&]state=/.test(h) && /[#&]iss=/.test(h))) {
+        location.replace('/app/' + h);
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">

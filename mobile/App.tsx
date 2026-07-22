@@ -1,4 +1,4 @@
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+﻿import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +17,7 @@ import { prefetchAppConfig } from './src/hooks/useAppConfig';
 import { navigationRef } from './src/navigation/navigationRef';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme/colors';
+import './src/utils/googleAuth';
 import { loadWebFonts } from './src/utils/loadWebFonts';
 import { configureNativeChrome } from './src/utils/nativeChrome';
 import { isWebPlatform, webNavigationRootStyle } from './src/utils/webPlatform';
@@ -121,3 +122,4 @@ export default function App() {
     </AppErrorBoundary>
   );
 }
+

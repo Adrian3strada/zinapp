@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +23,12 @@ import type { Product, Restaurant } from '../../types';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
 import { impactLight } from '../../utils/haptics';
 import { resolveMediaUrl } from '../../utils/media';
+import {
+  groupProductsByCategory,
+  normalizeProductCategory,
+  PRODUCT_CATEGORIES,
+  type ProductCategoryKey,
+} from '../../utils/productCategories';
 import { buildMenuBannerMeta } from '../../utils/restaurantMeta';
 import { FLATLIST_TUNING } from '../../utils/responsive';
 import FoodImage from '../../components/FoodImage';
@@ -60,6 +66,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [favorited, setFavorited] = useState(false);
   const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<ProductCategoryKey | null>(null);
 
   const visual = getRestaurantVisual(restaurant?.name ?? restaurantName);
   const imageUri = resolveMediaUrl(restaurant?.image_url ?? restaurant?.image);
@@ -167,6 +174,18 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     [handleAdd, handleDecrease, handleOpenDetail, quantityByProduct],
   );
 
+  const availableCategoryKeys = useMemo(() => {
+    const keys = new Set(products.map((p) => normalizeProductCategory(p.category)));
+    return PRODUCT_CATEGORIES.filter((c) => keys.has(c.key)).map((c) => c.key);
+  }, [products]);
+
+  const sections = useMemo(() => {
+    const source = categoryFilter
+      ? products.filter((p) => normalizeProductCategory(p.category) === categoryFilter)
+      : products;
+    return groupProductsByCategory(source);
+  }, [categoryFilter, products]);
+
   const listPaddingBottom = useMemo(
     () => (isCustomer ? spacing.floatingBar + insets.bottom + spacing.xxl : spacing.xxl),
     [isCustomer, insets.bottom],
@@ -174,84 +193,118 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
 
   const bannerMeta = restaurant ? buildMenuBannerMeta(restaurant) : null;
 
+  const categoryChips = useMemo(() => {
+    if (availableCategoryKeys.length <= 1) return null;
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryChips}
+      >
+        <Pressable
+          style={[styles.chip, categoryFilter === null && styles.chipActive]}
+          onPress={() => setCategoryFilter(null)}
+        >
+          <Text style={[styles.chipText, categoryFilter === null && styles.chipTextActive]}>
+            Todos
+          </Text>
+        </Pressable>
+        {PRODUCT_CATEGORIES.filter((c) => availableCategoryKeys.includes(c.key)).map((cat) => (
+          <Pressable
+            key={cat.key}
+            style={[styles.chip, categoryFilter === cat.key && styles.chipActive]}
+            onPress={() => setCategoryFilter(cat.key)}
+          >
+            <Text style={[styles.chipText, categoryFilter === cat.key && styles.chipTextActive]}>
+              {cat.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    );
+  }, [availableCategoryKeys, categoryFilter]);
+
   const banner = useMemo(
     () => (
-      <View style={styles.bannerWrap}>
-        <View style={styles.bannerImageWrap}>
-          <FoodImage
-            emoji={visual.emoji}
-            color={visual.color}
-            size="lg"
-            imageUri={imageUri}
-            style={styles.bannerImage}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(15,23,42,0.7)']}
-            style={styles.bannerGradient}
-          />
-          <View style={styles.bannerEmojiBadge}>
-            <Text style={styles.bannerEmoji}>{visual.emoji}</Text>
+      <View>
+        <View style={styles.bannerWrap}>
+          <View style={styles.bannerImageWrap}>
+            <FoodImage
+              emoji={visual.emoji}
+              color={visual.color}
+              size="lg"
+              imageUri={imageUri}
+              style={styles.bannerImage}
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(15,23,42,0.7)']}
+              style={styles.bannerGradient}
+            />
+            <View style={styles.bannerEmojiBadge}>
+              <Text style={styles.bannerEmoji}>{visual.emoji}</Text>
+            </View>
+          </View>
+          <View style={styles.bannerBody}>
+            <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
+            {restaurant?.rating_average != null ? (
+              <Pressable
+                style={styles.reviewsRow}
+                onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
+                hitSlop={8}
+              >
+                <Ionicons name="star" size={16} color="#F59E0B" />
+                <Text style={styles.reviewsText}>
+                  {restaurant.rating_average}
+                  {restaurant.reviews_count != null ? ` (${restaurant.reviews_count} reseñas)` : ''}
+                </Text>
+                <Text style={styles.reviewsLink}>Ver reseñas</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+              </Pressable>
+            ) : (
+              <Pressable
+                style={styles.reviewsRow}
+                onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
+                hitSlop={8}
+              >
+                <Ionicons name="star-outline" size={16} color={colors.textMuted} />
+                <Text style={[styles.reviewsText, { color: colors.textSecondary }]}>Sin reseñas aún</Text>
+                <Text style={styles.reviewsLink}>Ver</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+              </Pressable>
+            )}
+            {bannerMeta ? (
+              <View style={styles.bannerMeta}>
+                <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.bannerMetaText}>{bannerMeta}</Text>
+              </View>
+            ) : null}
+            {restaurant?.is_open === false && (
+              <View style={styles.closedBanner}>
+                <Text style={styles.closedBannerText}>Cerrado — no recibe pedidos ahora</Text>
+              </View>
+            )}
+            {isCustomer && (
+              <Pressable
+                style={[styles.notifyRow, favorited && styles.notifyRowActive]}
+                onPress={handleToggleFavorite}
+                disabled={togglingFavorite}
+              >
+                <Ionicons
+                  name={favorited ? 'notifications' : 'notifications-outline'}
+                  size={16}
+                  color={favorited ? colors.primary : colors.textSecondary}
+                />
+                <Text style={[styles.notifyText, favorited && styles.notifyTextActive]}>
+                  {favorited ? 'Te avisamos cuando abra' : 'Avísame cuando abra'}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </View>
-        <View style={styles.bannerBody}>
-          <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
-          {restaurant?.rating_average != null ? (
-            <Pressable
-              style={styles.reviewsRow}
-              onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
-              hitSlop={8}
-            >
-              <Ionicons name="star" size={16} color="#F59E0B" />
-              <Text style={styles.reviewsText}>
-                {restaurant.rating_average}
-                {restaurant.reviews_count != null ? ` (${restaurant.reviews_count} reseñas)` : ''}
-              </Text>
-              <Text style={styles.reviewsLink}>Ver reseñas</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-            </Pressable>
-          ) : (
-            <Pressable
-              style={styles.reviewsRow}
-              onPress={() => navigation.navigate('RestaurantReviews', { restaurantId, restaurantName: restaurant?.name ?? restaurantName })}
-              hitSlop={8}
-            >
-              <Ionicons name="star-outline" size={16} color={colors.textMuted} />
-              <Text style={[styles.reviewsText, { color: colors.textSecondary }]}>Sin reseñas aún</Text>
-              <Text style={styles.reviewsLink}>Ver</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-            </Pressable>
-          )}
-          {bannerMeta ? (
-            <View style={styles.bannerMeta}>
-              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.bannerMetaText}>{bannerMeta}</Text>
-            </View>
-          ) : null}
-          {restaurant?.is_open === false && (
-            <View style={styles.closedBanner}>
-              <Text style={styles.closedBannerText}>Cerrado — no recibe pedidos ahora</Text>
-            </View>
-          )}
-          {isCustomer && (
-            <Pressable
-              style={[styles.notifyRow, favorited && styles.notifyRowActive]}
-              onPress={handleToggleFavorite}
-              disabled={togglingFavorite}
-            >
-              <Ionicons
-                name={favorited ? 'notifications' : 'notifications-outline'}
-                size={16}
-                color={favorited ? colors.primary : colors.textSecondary}
-              />
-              <Text style={[styles.notifyText, favorited && styles.notifyTextActive]}>
-                {favorited ? 'Te avisamos cuando abra' : 'Avísame cuando abra'}
-              </Text>
-            </Pressable>
-          )}
-        </View>
+        {categoryChips}
       </View>
     ),
-    [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta, isCustomer, favorited, togglingFavorite, handleToggleFavorite, restaurantId, navigation],
+    [visual.color, visual.emoji, restaurantName, restaurant, imageUri, bannerMeta, isCustomer, favorited, togglingFavorite, handleToggleFavorite, restaurantId, navigation, categoryChips],
   );
 
   const listFooter = useMemo(
@@ -267,6 +320,15 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     });
   }, [navigation]);
 
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: { title: string } }) => (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{section.title}</Text>
+      </View>
+    ),
+    [],
+  );
+
   return (
     <ScreenContainer
       loading={loading && products.length === 0}
@@ -278,8 +340,8 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
       error={error}
       onRetry={refresh}
     >
-      <FlatList
-        data={products}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[
           styles.list,
@@ -291,6 +353,8 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
         ListFooterComponent={listFooter}
         ListHeaderComponent={banner}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        stickySectionHeadersEnabled={false}
         ListEmptyComponent={
           !loading ? (
             <EmptyState emoji="🍽️" title="Menú vacío" subtitle="Este restaurante aún no tiene platillos publicados." />
@@ -309,6 +373,36 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
 const styles = StyleSheet.create({
   list: { padding: spacing.screen, paddingTop: 0 },
   listEmpty: { flexGrow: 1, justifyContent: 'center' },
+  categoryChips: {
+    gap: spacing.sm,
+    paddingBottom: spacing.md,
+    paddingRight: spacing.screen,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  chipTextActive: { color: '#FFF' },
+  sectionHeader: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.2,
+  },
   bannerWrap: {
     marginHorizontal: -spacing.screen,
     marginBottom: spacing.lg,

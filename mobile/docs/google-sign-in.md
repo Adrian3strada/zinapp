@@ -8,11 +8,15 @@
 4. Orígenes JavaScript autorizados:
    - `https://zinapp.com.mx`
    - `http://localhost:8081` (dev Expo web)
-5. URI de redirección autorizados:
+5. URI de redirección autorizados (exactos; la app web usa `/app`, no la raíz):
    - `https://zinapp.com.mx/app`
-   - `https://auth.expo.io/@g2adriaans-team/zinapp` (si usas Expo Go / proxy)
-   - El que muestre Expo en consola al probar (`makeRedirectUri`)
-6. Copia el **Client ID** (`….apps.googleusercontent.com`).
+   - `https://zinapp.com.mx/app/` (recomendado añadir también)
+   - `http://localhost:8081` (dev Expo web)
+   - **No uses** solo `https://zinapp.com.mx` como redirect: cae en la landing y el login no termina.
+6. En orígenes JavaScript autorizados: `https://zinapp.com.mx` y `http://localhost:8081`.
+7. Copia el **Client ID** (`….apps.googleusercontent.com`).
+
+En web el flujo es redirección completa (no popup): Login → Google → vuelve a `/app#id_token=…` → JWT ZinApp.
 
 Para apps nativas: crea también client IDs iOS/Android con el bundle `com.zinapp.delivery`.
 

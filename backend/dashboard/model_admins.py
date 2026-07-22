@@ -99,8 +99,8 @@ class RestaurantAdmin(PanelModelAdmin):
 
 
 class ProductAdmin(PanelModelAdmin):
-    list_display = ('name', 'restaurant', 'price', 'is_available')
-    list_filter = ('is_available', 'restaurant')
+    list_display = ('name', 'restaurant', 'category', 'price', 'is_available')
+    list_filter = ('is_available', 'category', 'restaurant')
     search_fields = ('name', 'restaurant__name')
 
 

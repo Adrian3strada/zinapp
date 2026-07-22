@@ -37,6 +37,22 @@ class RestaurantProductFlowTests(APITestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.owner)
 
+    def test_create_product_with_category(self):
+        response = self.client.post(
+            '/api/products/',
+            {
+                'restaurant': self.restaurant.id,
+                'name': 'Refresco',
+                'price': '20.00',
+                'category': 'bebidas',
+                'is_available': True,
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['category'], 'bebidas')
+        self.assertEqual(response.data['category_display'], 'Bebidas')
+
     def test_mine_includes_all_products_for_owner(self):
         response = self.client.get('/api/restaurants/mine/')
         self.assertEqual(response.status_code, 200)

@@ -38,6 +38,13 @@ import { formatCurrency, parsePriceInput } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { appendImage, pickProductImage } from '../../utils/imagePicker';
 import { resolveMediaUrl } from '../../utils/media';
+import {
+  normalizeProductCategory,
+  PRODUCT_CATEGORIES,
+  productCategoryLabel,
+  sortProductsByCategory,
+  type ProductCategoryKey,
+} from '../../utils/productCategories';
 
 interface OptionDraft {
   name: string;
@@ -57,6 +64,7 @@ interface ProductDraft {
   id?: number;
   name: string;
   description: string;
+  category: ProductCategoryKey;
   price: string;
   is_available: boolean;
   imageUri?: string | null;
@@ -142,6 +150,9 @@ const ProductManageRow = React.memo(function ProductManageRow({
               {product.description}
             </Text>
           )}
+          <Text style={styles.productCategory}>
+            {productCategoryLabel(product.category, product.category_display)}
+          </Text>
           <Text style={styles.productPrice}>{formatCurrency(product.price)}</Text>
         </View>
       </Pressable>
@@ -197,7 +208,7 @@ export default function RestaurantManageScreen() {
     try {
       const { data } = await restaurantApi.mine();
       setRestaurant(data);
-      setProducts(data.products ?? []);
+      setProducts(sortProductsByCategory(data.products ?? []));
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudo cargar tu menú'));
     } finally {
@@ -234,6 +245,7 @@ export default function RestaurantManageScreen() {
     setEditor({
       name: '',
       description: '',
+      category: 'comida',
       price: '',
       is_available: true,
       imageUri: null,
@@ -246,6 +258,7 @@ export default function RestaurantManageScreen() {
       id: product.id,
       name: product.name,
       description: product.description,
+      category: normalizeProductCategory(product.category),
       price: product.price,
       is_available: product.is_available,
       image_url: product.image_url,
@@ -301,6 +314,7 @@ export default function RestaurantManageScreen() {
       const fd = new FormData();
       fd.append('name', editor.name.trim());
       fd.append('description', editor.description.trim());
+      fd.append('category', editor.category);
       fd.append('price', parsedPrice.toFixed(2));
       fd.append('is_available', editor.is_available ? 'true' : 'false');
       if (editor.imageUri) {
@@ -339,7 +353,7 @@ export default function RestaurantManageScreen() {
       );
       setProducts((prev) => {
         const others = prev.filter((p) => p.id !== withOptions.id);
-        return [...others, withOptions].sort((a, b) => a.name.localeCompare(b.name));
+        return sortProductsByCategory([...others, withOptions]);
       });
       setEditor(null);
       await refreshRestaurant();
@@ -556,6 +570,30 @@ export default function RestaurantManageScreen() {
                   required
                   keyboardType="decimal-pad"
                 />
+                <Text style={styles.categoryLabel}>Categoría del menú</Text>
+                <View style={styles.categoryChips}>
+                  {PRODUCT_CATEGORIES.map((cat) => {
+                    const active = (editor?.category ?? 'comida') === cat.key;
+                    return (
+                      <Pressable
+                        key={cat.key}
+                        style={[styles.categoryChip, active && styles.categoryChipActive]}
+                        onPress={() =>
+                          setEditor((e) => (e ? { ...e, category: cat.key } : e))
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            active && styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {cat.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 <FormField
                   label="Descripción"
                   value={editor?.description ?? ''}
@@ -879,7 +917,42 @@ const styles = StyleSheet.create({
   },
   availableText: { fontSize: 10, fontWeight: '700', color: colors.success },
   productDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
+  productCategory: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textMuted,
+    marginTop: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   productPrice: { color: colors.primary, fontWeight: '800', fontSize: 16, marginTop: 6 },
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  categoryChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: spacing.md,
+  },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  categoryChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  categoryChipTextActive: { color: '#FFF' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalOverlayDesktop: {
     justifyContent: 'center',
@@ -969,15 +1042,16 @@ const styles = StyleSheet.create({
   groupActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   groupActionBtn: { flex: 1 },
   modalFooter: {
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+    gap: 10,
   },
   modalActions: {
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 10,
   },
-  modalActionBtn: { flex: 1, minWidth: 0 },
-  deleteBtn: { marginTop: 10, alignSelf: 'stretch' },
+  modalActionBtn: { flex: 1, minWidth: 0, height: 50 },
+  deleteBtn: { alignSelf: 'stretch', height: 50 },
 });

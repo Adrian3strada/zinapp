@@ -45,11 +45,13 @@ def webapp_serve(request, path=''):
         raise Http404()
 
     if target.is_file():
-        cache = (
-            'public, max-age=31536000, immutable'
-            if '/_expo/' in clean or clean.endswith(('.ico', '.ttf', '.woff', '.woff2', '.png', '.jpg', '.jpeg', '.webp'))
-            else 'public, max-age=3600'
-        )
+        # index.html must not be cached long: it references hashed JS bundles.
+        if clean == 'index.html' or clean.endswith('/index.html'):
+            cache = 'no-cache'
+        elif '/_expo/' in clean or clean.endswith(('.ico', '.ttf', '.woff', '.woff2', '.png', '.jpg', '.jpeg', '.webp')):
+            cache = 'public, max-age=31536000, immutable'
+        else:
+            cache = 'public, max-age=3600'
         return _open_file_response(target, cache)
 
     # Solo rutas de la SPA vuelven a index.html; assets faltantes -> 404 real

@@ -1,10 +1,7 @@
-import Constants from 'expo-constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,7 +21,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import type { LoginScreenProps } from '../../navigation/types';
 import { API_URL } from '../../config/api';
-import { getPanelLoginUrl } from '../../utils/panelUrl';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { wakeBackend } from '../../services/apiWake';
 import { colors } from '../../theme/colors';
@@ -32,10 +28,6 @@ import { spacing } from '../../theme/spacing';
 import { contentWidth } from '../../utils/responsive';
 import { cardShadow } from '../../theme/shadows';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
-
-const PRIVACY_URL =
-  (Constants.expoConfig?.extra as { privacyPolicyUrl?: string } | undefined)?.privacyPolicyUrl
-  ?? 'https://zinapp.com.mx/privacidad/';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { login, loginWithGoogle, enterGuestMode } = useAuth();
@@ -171,30 +163,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       </Pressable>
 
       {__DEV__ && <Text style={styles.apiHint}>Servidor: {API_URL}</Text>}
-      {Platform.OS === 'web' && (
-        <Pressable
-          onPress={() => {
-            if (typeof window !== 'undefined') {
-              window.location.assign(getPanelLoginUrl());
-            } else {
-              void Linking.openURL(getPanelLoginUrl());
-            }
-          }}
-          style={styles.panelLink}
-        >
-          <Text style={styles.panelText}>¿Administras ZinApp? Panel de operaciones →</Text>
-        </Pressable>
-      )}
-      {Platform.OS === 'web' && (
-        <Pressable
-          onPress={() => {
-            void Linking.openURL(PRIVACY_URL);
-          }}
-          style={styles.privacyLink}
-        >
-          <Text style={styles.privacyText}>Política de privacidad</Text>
-        </Pressable>
-      )}
     </View>
   );
 
@@ -371,8 +339,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 16,
   },
-  privacyLink: { alignItems: 'center', marginTop: 14 },
-  privacyText: { color: colors.textMuted, fontSize: 12, textDecorationLine: 'underline' },
-  panelLink: { alignItems: 'center', marginTop: 16 },
-  panelText: { color: colors.primary, fontSize: 13, fontWeight: '700', textAlign: 'center' },
 });

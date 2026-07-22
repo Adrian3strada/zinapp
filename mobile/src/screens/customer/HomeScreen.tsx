@@ -91,7 +91,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <HomeHero
         firstName={user?.first_name}
         topInset={insets.top}
-        onProfilePress={() => navigation.navigate('Perfil')}
+        onProfilePress={() =>
+          navigation.navigate('Main', { screen: 'Perfil' })
+        }
         style={[styles.hero, { marginHorizontal: -pagePadding }]}
       />
 

@@ -46,9 +46,12 @@ export function webTabBarStyleLegacy(): ViewStyle {
   return webTabBarStyle(false);
 }
 
-/** Evita que capas decorativas (gradientes) intercepten clics en web. */
-export function webPassThroughPointerEvents(): 'none' | undefined {
-  return isWebPlatform() ? 'none' : undefined;
+/**
+ * Evita que capas decorativas (gradientes) intercepten clics en web,
+ * sin bloquear los toques de los hijos (botones, links).
+ */
+export function webPassThroughPointerEvents(): 'box-none' | undefined {
+  return isWebPlatform() ? 'box-none' : undefined;
 }
 
 /** Quita bordes/outline del navegador en inputs nativos (RN Web). */

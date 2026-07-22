@@ -1,13 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { appAlert } from '../utils/appAlert';
 import {
+  consumeGoogleWebRedirect,
   extractGoogleIdToken,
   isGoogleSignInConfigured,
+  startGoogleWebRedirect,
   useGoogleIdTokenRequest,
 } from '../utils/googleAuth';
 
@@ -24,9 +26,35 @@ export default function GoogleSignInButton({
 }: Props) {
   const [busy, setBusy] = useState(false);
   const handledRef = useRef<string | null>(null);
+  const webReturnHandled = useRef(false);
   const [request, response, promptAsync] = useGoogleIdTokenRequest();
 
   useEffect(() => {
+    if (Platform.OS !== 'web' || webReturnHandled.current) return;
+    const result = consumeGoogleWebRedirect();
+    if (!result) return;
+    webReturnHandled.current = true;
+
+    if (result.type === 'error') {
+      appAlert('Google', result.message);
+      return;
+    }
+    if (handledRef.current === result.idToken) return;
+    handledRef.current = result.idToken;
+    setBusy(true);
+    (async () => {
+      try {
+        await onIdToken(result.idToken);
+      } catch {
+        // El caller muestra el error.
+      } finally {
+        setBusy(false);
+      }
+    })();
+  }, [onIdToken]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
     if (!response || response.type !== 'success') {
       if (response?.type === 'error') {
         appAlert('Google', 'No se pudo completar el inicio con Google.');
@@ -66,6 +94,10 @@ export default function GoogleSignInButton({
     setBusy(true);
     handledRef.current = null;
     try {
+      if (Platform.OS === 'web') {
+        startGoogleWebRedirect(request);
+        return;
+      }
       await promptAsync();
     } catch {
       setBusy(false);
@@ -114,13 +146,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    minHeight: 50,
+    height: 50,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 18,
   },
   btnDisabled: { opacity: 0.55 },
-  btnText: { fontSize: 15, fontWeight: '700', color: colors.text },
+  btnText: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.1 },
 });

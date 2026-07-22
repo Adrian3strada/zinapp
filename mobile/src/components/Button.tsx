@@ -11,7 +11,7 @@ import {
 
 import { colors } from '../theme/colors';
 import { HIT_SLOP } from '../theme/spacing';
-import { cardShadow, softShadow } from '../theme/shadows';
+import { softShadow } from '../theme/shadows';
 import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
@@ -44,11 +44,13 @@ export default function Button({
 }: Props) {
   const isDisabled = disabled || loading;
   const rowChild = flexChildStyle(style);
+  const heightStyle = size === 'lg' ? styles.heightLg : styles.heightMd;
 
-  const inner = loading ? (
-    <ActivityIndicator
-      color={variant === 'secondary' || variant === 'ghost' ? colors.primary : '#FFF'}
-    />
+  const spinnerColor =
+    variant === 'secondary' || variant === 'ghost' ? colors.primary : '#FFF';
+
+  const label = loading ? (
+    <ActivityIndicator color={spinnerColor} />
   ) : (
     <Text
       style={[
@@ -70,15 +72,15 @@ export default function Button({
         onPress={onPress}
         disabled={isDisabled}
         hitSlop={HIT_SLOP}
+        accessibilityRole="button"
         android_ripple={{ color: 'rgba(255,255,255,0.25)' }}
         style={({ pressed }) => [
           styles.base,
-          styles[size],
+          heightStyle,
           styles.primaryWrap,
           rowChild,
           softShadow,
           pressed && styles.pressed,
-          isDisabled && styles.disabled,
           style,
         ]}
       >
@@ -87,13 +89,9 @@ export default function Button({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           pointerEvents={webPassThroughPointerEvents()}
-          style={[
-            styles.primaryGradient,
-            size === 'lg' && styles.primaryGradientLg,
-            rowChild.flex === 1 && styles.primaryGradientFlex,
-          ]}
+          style={styles.primaryFill}
         >
-          {inner}
+          {label}
         </LinearGradient>
       </Pressable>
     );
@@ -104,14 +102,15 @@ export default function Button({
       onPress={onPress}
       disabled={isDisabled}
       hitSlop={HIT_SLOP}
+      accessibilityRole="button"
       android_ripple={
         variant === 'ghost'
           ? { color: colors.primaryLight }
-          : { color: 'rgba(255,255,255,0.25)' }
+          : { color: 'rgba(255,255,255,0.2)' }
       }
       style={({ pressed }) => [
         styles.base,
-        styles[size],
+        heightStyle,
         styles[variant],
         rowChild,
         variant === 'primary' && softShadow,
@@ -120,44 +119,45 @@ export default function Button({
         style,
       ]}
     >
-      {inner}
+      {label}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    paddingHorizontal: 18,
     ...(Platform.OS === 'android' ? { overflow: 'hidden' as const } : {}),
   },
-  md: { paddingVertical: 14, paddingHorizontal: 20 },
-  lg: { paddingVertical: 18, paddingHorizontal: 24 },
-  primaryWrap: { padding: 0, backgroundColor: 'transparent', overflow: 'hidden' },
-  primaryGradient: {
-    alignSelf: 'stretch',
+  heightMd: { height: 50 },
+  heightLg: { height: 54 },
+  primaryWrap: {
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  primaryFill: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    minHeight: 48,
+    borderRadius: 14,
+    paddingHorizontal: 18,
   },
-  primaryGradientFlex: {
-    width: '100%',
-    flex: 1,
-  },
-  primaryGradientLg: { paddingVertical: 18, paddingHorizontal: 24 },
   primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.primaryLight, borderWidth: 1.5, borderColor: colors.primary },
+  secondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
   danger: { backgroundColor: colors.error },
   ghost: { backgroundColor: 'transparent' },
-  pressed: { opacity: 0.9 },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.985 }] },
   disabled: { opacity: 0.5 },
-  text: { fontWeight: '700', fontSize: 16 },
-  textLg: { fontSize: 17 },
+  text: { fontWeight: '700', fontSize: 15, letterSpacing: -0.1 },
+  textLg: { fontSize: 16 },
   text_primary: { color: '#FFF' },
   text_secondary: { color: colors.primary },
   text_danger: { color: '#FFF' },
