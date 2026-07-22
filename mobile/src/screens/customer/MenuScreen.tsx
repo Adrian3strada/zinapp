@@ -115,31 +115,44 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     return map;
   }, [items]);
 
-  const handleAdd = useCallback((product: Product) => {
-    try {
-      // Desde el menú se agrega sin notas; sabor/extras se indican en el detalle.
-      addItem(product);
-      void impactLight();
-    } catch {
-      // Evita cierre nativo si algo falla al agregar
-    }
-  }, [addItem]);
-
-  const handleDecrease = useCallback((product: Product) => {
-    // Prefiere la línea sin notas; si no, la primera del producto.
-    const plain = items.find((i) => i.product.id === product.id && !(i.notes ?? '').trim());
-    const line = plain ?? items.find((i) => i.product.id === product.id);
-    if (!line) return;
-    updateQuantity(product.id, line.quantity - 1, line.notes);
-    void impactLight();
-  }, [items, updateQuantity]);
-
   const handleOpenDetail = useCallback((product: Product) => {
     navigation.navigate('ProductDetail', {
       product,
       restaurantName: restaurant?.name ?? restaurantName,
     });
   }, [navigation, restaurant?.name, restaurantName]);
+
+  const productNeedsOptions = useCallback((product: Product) => {
+    return (product.option_groups ?? []).some((g) => g.min_select > 0);
+  }, []);
+
+  const handleAdd = useCallback((product: Product) => {
+    // Si hay opciones obligatorias, abrir detalle para elegir sabor/toppings.
+    if (productNeedsOptions(product)) {
+      handleOpenDetail(product);
+      return;
+    }
+    try {
+      addItem(product);
+      void impactLight();
+    } catch {
+      // Evita cierre nativo si algo falla al agregar
+    }
+  }, [addItem, handleOpenDetail, productNeedsOptions]);
+
+  const handleDecrease = useCallback((product: Product) => {
+    // Prefiere la línea sin notas/opciones; si no, la primera del producto.
+    const plain = items.find(
+      (i) =>
+        i.product.id === product.id
+        && !(i.notes ?? '').trim()
+        && !(i.selectedOptions?.length),
+    );
+    const line = plain ?? items.find((i) => i.product.id === product.id);
+    if (!line) return;
+    updateQuantity(product.id, line.quantity - 1, line.notes, line.selectedOptions);
+    void impactLight();
+  }, [items, updateQuantity]);
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (

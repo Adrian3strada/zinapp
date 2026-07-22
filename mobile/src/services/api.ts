@@ -211,7 +211,7 @@ export interface CreateOrderPayload {
   coupon_code?: string;
   tip_amount?: number | string;
   scheduled_for?: string;
-  items: { product_id: number; quantity: number; notes?: string }[];
+  items: { product_id: number; quantity: number; notes?: string; option_ids?: number[] }[];
 }
 
 export interface CreateShipmentPayload {
@@ -301,6 +301,15 @@ export const productApi = {
   update: (id: number, data: FormData) => api.patch<Product>(`/products/${id}/`, data),
   create: (data: FormData) => api.post<Product>('/products/', data),
   delete: (id: number) => api.delete(`/products/${id}/`),
+  replaceOptionGroups: (
+    id: number,
+    groups: Array<{
+      name: string;
+      min_select: number;
+      max_select: number;
+      options: Array<{ name: string; price_delta: string; is_available?: boolean }>;
+    }>,
+  ) => api.put<Product>(`/products/${id}/option-groups/`, { groups }),
 };
 
 export interface CreatePromotionPayload {

@@ -1,12 +1,19 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { appAlert } from '../utils/appAlert';
 
-import type { CartItem, Product } from '../types';
-import { calculatePromoLineTotal } from '../utils/promo';
+import type { CartItem, Product, SelectedProductOption } from '../types';
+import { calculateCartLineTotal } from '../utils/promo';
 
-/** Notas de sabor/toppings; alinea con OrderItem.notes (max 255). */
+/** Notas de sabor libre; alinea con OrderItem.notes (max 255). */
 export function normalizeCartNotes(notes?: string | null): string {
   return (notes ?? '').trim().slice(0, 255);
+}
+
+export function optionsKey(options?: SelectedProductOption[] | null): string {
+  return (options ?? [])
+    .map((o) => o.id)
+    .sort((a, b) => a - b)
+    .join(',');
 }
 
 function resolveRestaurantId(product: Product): number {
@@ -16,17 +23,45 @@ function resolveRestaurantId(product: Product): number {
   return 0;
 }
 
-function sameLine(item: CartItem, productId: number, notes?: string | null): boolean {
-  return item.product.id === productId && normalizeCartNotes(item.notes) === normalizeCartNotes(notes);
+function sameLine(
+  item: CartItem,
+  productId: number,
+  notes?: string | null,
+  selectedOptions?: SelectedProductOption[] | null,
+): boolean {
+  return (
+    item.product.id === productId
+    && normalizeCartNotes(item.notes) === normalizeCartNotes(notes)
+    && optionsKey(item.selectedOptions) === optionsKey(selectedOptions)
+  );
 }
 
 interface CartContextValue {
   items: CartItem[];
   restaurantId: number | null;
-  addItem: (product: Product, quantity?: number, notes?: string) => void;
-  removeItem: (productId: number, notes?: string) => void;
-  updateQuantity: (productId: number, quantity: number, notes?: string) => void;
-  updateItemNotes: (productId: number, notes: string, nextNotes: string) => void;
+  addItem: (
+    product: Product,
+    quantity?: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
+  removeItem: (
+    productId: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
+  updateQuantity: (
+    productId: number,
+    quantity: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
+  updateItemNotes: (
+    productId: number,
+    notes: string,
+    nextNotes: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
   clearCart: () => void;
   total: number;
   itemCount: number;
@@ -38,7 +73,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [restaurantId, setRestaurantId] = useState<number | null>(null);
 
-  const addItem = useCallback((product: Product, quantity = 1, notes?: string) => {
+  const addItem = useCallback((
+    product: Product,
+    quantity = 1,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => {
     const productRestaurantId = resolveRestaurantId(product);
     if (!product?.id || !productRestaurantId) {
       appAlert('Error', 'No se pudo agregar este producto. Intenta de nuevo.');
@@ -47,6 +87,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     const safeQty = Math.max(1, Math.floor(quantity) || 1);
     const lineNotes = normalizeCartNotes(notes);
+    const opts = selectedOptions?.length ? selectedOptions : undefined;
+    const nextLine: CartItem = {
+      product,
+      quantity: safeQty,
+      notes: lineNotes || undefined,
+      selectedOptions: opts,
+    };
 
     if (restaurantId && restaurantId !== productRestaurantId) {
       appAlert(
@@ -57,7 +104,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           {
             text: 'Vaciar y agregar',
             onPress: () => {
-              setItems([{ product, quantity: safeQty, notes: lineNotes || undefined }]);
+              setItems([nextLine]);
               setRestaurantId(productRestaurantId);
             },
           },
@@ -68,63 +115,76 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     setRestaurantId(productRestaurantId);
     setItems((prev) => {
-      const existing = prev.find((i) => sameLine(i, product.id, lineNotes));
+      const existing = prev.find((i) => sameLine(i, product.id, lineNotes, opts));
       if (existing) {
         return prev.map((i) =>
-          sameLine(i, product.id, lineNotes)
+          sameLine(i, product.id, lineNotes, opts)
             ? { ...i, quantity: i.quantity + safeQty }
             : i,
         );
       }
-      return [...prev, { product, quantity: safeQty, notes: lineNotes || undefined }];
+      return [...prev, nextLine];
     });
   }, [restaurantId]);
 
-  const removeItem = useCallback((productId: number, notes?: string) => {
+  const removeItem = useCallback((
+    productId: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => {
     const lineNotes = normalizeCartNotes(notes);
     setItems((prev) => {
-      const next = prev.filter((i) => !sameLine(i, productId, lineNotes));
+      const next = prev.filter((i) => !sameLine(i, productId, lineNotes, selectedOptions));
       if (next.length === 0) setRestaurantId(null);
       return next;
     });
   }, []);
 
-  const updateQuantity = useCallback((productId: number, quantity: number, notes?: string) => {
+  const updateQuantity = useCallback((
+    productId: number,
+    quantity: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => {
     if (quantity <= 0) {
-      removeItem(productId, notes);
+      removeItem(productId, notes, selectedOptions);
       return;
     }
     const lineNotes = normalizeCartNotes(notes);
     setItems((prev) =>
       prev.map((i) =>
-        sameLine(i, productId, lineNotes) ? { ...i, quantity } : i,
+        sameLine(i, productId, lineNotes, selectedOptions) ? { ...i, quantity } : i,
       ),
     );
   }, [removeItem]);
 
-  const updateItemNotes = useCallback((productId: number, notes: string, nextNotes: string) => {
+  const updateItemNotes = useCallback((
+    productId: number,
+    notes: string,
+    nextNotes: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => {
     const from = normalizeCartNotes(notes);
     const to = normalizeCartNotes(nextNotes);
     if (from === to) return;
 
     setItems((prev) => {
-      const source = prev.find((i) => sameLine(i, productId, from));
+      const source = prev.find((i) => sameLine(i, productId, from, selectedOptions));
       if (!source) return prev;
 
-      const target = prev.find((i) => sameLine(i, productId, to));
+      const target = prev.find((i) => sameLine(i, productId, to, selectedOptions));
       if (target) {
-        // Fusiona líneas si ya existe el mismo producto+notas.
         return prev
-          .filter((i) => !sameLine(i, productId, from))
+          .filter((i) => !sameLine(i, productId, from, selectedOptions))
           .map((i) =>
-            sameLine(i, productId, to)
+            sameLine(i, productId, to, selectedOptions)
               ? { ...i, quantity: i.quantity + source.quantity }
               : i,
           );
       }
 
       return prev.map((i) =>
-        sameLine(i, productId, from)
+        sameLine(i, productId, from, selectedOptions)
           ? { ...i, notes: to || undefined }
           : i,
       );
@@ -137,11 +197,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const total = useMemo(
-    () =>
-      items.reduce((sum, i) => {
-        const { total: lineTotal } = calculatePromoLineTotal(i.product, i.quantity);
-        return sum + lineTotal;
-      }, 0),
+    () => items.reduce((sum, i) => sum + calculateCartLineTotal(i), 0),
     [items],
   );
 

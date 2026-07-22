@@ -100,6 +100,32 @@ export interface Restaurant {
   setup_status?: RestaurantSetupStatus;
 }
 
+export interface ProductOption {
+  id: number;
+  name: string;
+  price_delta: string;
+  is_available: boolean;
+  sort_order: number;
+}
+
+export interface ProductOptionGroup {
+  id: number;
+  name: string;
+  min_select: number;
+  max_select: number;
+  sort_order: number;
+  options: ProductOption[];
+}
+
+/** Snapshot elegido en carrito / pedido. */
+export interface SelectedProductOption {
+  id: number;
+  group_id: number;
+  group: string;
+  name: string;
+  price_delta: string;
+}
+
 export interface Product {
   id: number;
   restaurant: number;
@@ -111,6 +137,7 @@ export interface Product {
   image_url?: string | null;
   is_available: boolean;
   active_promotion?: ProductPromotion | null;
+  option_groups?: ProductOptionGroup[];
 }
 
 export type PromoType = 'two_for_one' | 'percent_off' | 'special_price';
@@ -137,6 +164,7 @@ export interface CartItem {
   product: Product;
   quantity: number;
   notes?: string;
+  selectedOptions?: SelectedProductOption[];
 }
 
 export interface OrderItem {
@@ -147,6 +175,7 @@ export interface OrderItem {
   unit_price: string;
   subtotal: string;
   notes: string;
+  selected_options?: SelectedProductOption[];
 }
 
 export interface Review {

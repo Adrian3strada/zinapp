@@ -40,9 +40,11 @@ function itemsSummary(order: Order): string {
     .slice(0, 3)
     .map((item) => {
       const name = item.product_detail?.name ?? 'Producto';
+      const opts = (item.selected_options ?? []).map((o) => o.name).join(', ');
       const notes = item.notes?.trim();
-      return notes
-        ? `${item.quantity}× ${name} (${notes})`
+      const detail = [opts, notes].filter(Boolean).join(' · ');
+      return detail
+        ? `${item.quantity}× ${name} (${detail})`
         : `${item.quantity}× ${name}`;
     })
     .join(' · ');

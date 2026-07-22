@@ -6,26 +6,44 @@ import { normalizeCartNotes } from '../context/CartContext';
 import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
-import type { CartItem } from '../types';
+import type { CartItem, SelectedProductOption } from '../types';
 import { formatCurrency } from '../utils/format';
 import { getProductEmoji } from '../utils/foodVisuals';
 import { resolveMediaUrl } from '../utils/media';
-import { calculatePromoLineTotal } from '../utils/promo';
+import { calculateCartLineTotal } from '../utils/promo';
 import { webTextInputStyle } from '../utils/webPlatform';
 import FoodImage from './FoodImage';
 
 interface Props {
   item: CartItem;
-  onDecrease: (productId: number, quantity: number, notes?: string) => void;
-  onIncrease: (productId: number, quantity: number, notes?: string) => void;
-  onNotesChange?: (productId: number, notes: string, nextNotes: string) => void;
+  onDecrease: (
+    productId: number,
+    quantity: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
+  onIncrease: (
+    productId: number,
+    quantity: number,
+    notes?: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
+  onNotesChange?: (
+    productId: number,
+    notes: string,
+    nextNotes: string,
+    selectedOptions?: SelectedProductOption[],
+  ) => void;
 }
 
 function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
-  const { product, quantity, notes } = item;
+  const { product, quantity, notes, selectedOptions } = item;
   const [draftNotes, setDraftNotes] = useState(notes ?? '');
-  const { total: lineTotal } = calculatePromoLineTotal(product, quantity);
+  const lineTotal = calculateCartLineTotal(item);
   const lineNotes = normalizeCartNotes(notes);
+  const optionsLabel = (selectedOptions ?? [])
+    .map((o) => (parseFloat(o.price_delta) > 0 ? `${o.name} (+$${o.price_delta})` : o.name))
+    .join(' · ');
 
   useEffect(() => {
     setDraftNotes(notes ?? '');
@@ -35,7 +53,7 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
     if (!onNotesChange) return;
     const next = normalizeCartNotes(draftNotes);
     if (next === lineNotes) return;
-    onNotesChange(product.id, lineNotes, next);
+    onNotesChange(product.id, lineNotes, next, selectedOptions);
   };
 
   return (
@@ -51,13 +69,18 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
           <Text style={styles.name} numberOfLines={2}>
             {product.name}
           </Text>
-          <Text style={styles.unitPrice}>{formatCurrency(product.price)} c/u</Text>
+          {optionsLabel ? (
+            <Text style={styles.options} numberOfLines={2}>
+              {optionsLabel}
+            </Text>
+          ) : null}
+          <Text style={styles.unitPrice}>{formatCurrency(product.price)} c/u base</Text>
           <Text style={styles.lineTotal}>{formatCurrency(lineTotal)}</Text>
         </View>
         <View style={styles.qtyRow}>
           <Pressable
             style={styles.qtyBtn}
-            onPress={() => onDecrease(product.id, quantity, lineNotes)}
+            onPress={() => onDecrease(product.id, quantity, lineNotes, selectedOptions)}
             hitSlop={HIT_SLOP}
           >
             <Ionicons name="remove" size={18} color={colors.primary} />
@@ -65,7 +88,7 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
           <Text style={styles.qty}>{quantity}</Text>
           <Pressable
             style={[styles.qtyBtn, styles.qtyBtnAdd]}
-            onPress={() => onIncrease(product.id, quantity, lineNotes)}
+            onPress={() => onIncrease(product.id, quantity, lineNotes, selectedOptions)}
             hitSlop={HIT_SLOP}
           >
             <Ionicons name="add" size={18} color="#FFF" />
@@ -74,14 +97,14 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
       </View>
 
       <View style={styles.notesRow}>
-        <Ionicons name="restaurant-outline" size={16} color={colors.textMuted} />
+        <Ionicons name="create-outline" size={16} color={colors.textMuted} />
         <TextInput
           style={[styles.notesInput, webTextInputStyle()]}
           value={draftNotes}
           onChangeText={setDraftNotes}
           onBlur={commitNotes}
           onSubmitEditing={commitNotes}
-          placeholder="Sabor o extras (opcional)"
+          placeholder="Notas para cocina (opcional)"
           placeholderTextColor={colors.textMuted}
           maxLength={255}
           returnKeyType="done"
@@ -111,6 +134,7 @@ const styles = StyleSheet.create({
   },
   itemInfo: { flex: 1 },
   name: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  options: { color: colors.textSecondary, marginTop: 2, fontSize: 12, lineHeight: 16 },
   unitPrice: { color: colors.textMuted, marginTop: 2, fontSize: 12, fontWeight: '500' },
   lineTotal: { color: colors.primary, marginTop: 4, fontWeight: '800', fontSize: 15 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

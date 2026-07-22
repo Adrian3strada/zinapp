@@ -43,15 +43,21 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = (
             'id', 'product', 'product_detail', 'quantity',
-            'unit_price', 'subtotal', 'notes',
+            'unit_price', 'subtotal', 'notes', 'selected_options',
         )
-        read_only_fields = ('id', 'unit_price')
+        read_only_fields = ('id', 'unit_price', 'selected_options')
 
 
 class OrderItemCreateSerializer(serializers.Serializer):
     product_id = serializers.IntegerField()
     quantity = serializers.IntegerField(min_value=1, default=1)
     notes = serializers.CharField(required=False, allow_blank=True, default='')
+    option_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        allow_empty=True,
+        default=list,
+    )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -358,11 +364,16 @@ class OrderCreateSerializer(serializers.Serializer):
                 'restaurant_id': 'Este local aún no tiene menú disponible.',
             })
 
+        from restaurants.options import resolve_selected_options
+        from restaurants.promotions import calculate_promo_line_total
+
         line_items = []
         subtotal = Decimal('0')
         for item_data in validated_data['items']:
             try:
-                product = Product.objects.get(
+                product = Product.objects.prefetch_related(
+                    'option_groups__options',
+                ).get(
                     id=item_data['product_id'],
                     restaurant=restaurant,
                     is_available=True,
@@ -371,10 +382,22 @@ class OrderCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({
                     'items': f'Producto {item_data["product_id"]} no disponible.',
                 })
-            line_items.append((product, item_data))
-            from restaurants.promotions import calculate_promo_line_total
-
-            line_total, _promo = calculate_promo_line_total(product, item_data['quantity'])
+            try:
+                options_snapshot, options_extra = resolve_selected_options(
+                    product,
+                    item_data.get('option_ids') or [],
+                )
+            except serializers.ValidationError as exc:
+                detail = exc.detail
+                if isinstance(detail, dict) and 'option_ids' in detail:
+                    raise serializers.ValidationError({
+                        'items': detail['option_ids'],
+                    }) from exc
+                raise
+            qty = item_data['quantity']
+            line_total, _promo = calculate_promo_line_total(product, qty)
+            line_total = (line_total + options_extra * qty).quantize(Decimal('0.01'))
+            line_items.append((product, item_data, options_snapshot, line_total))
             subtotal += line_total
 
         coupon_data = None
@@ -399,10 +422,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 scheduled_for=scheduled_for,
             )
 
-            for product, item_data in line_items:
-                from restaurants.promotions import calculate_promo_line_total
-
-                line_total, _promo = calculate_promo_line_total(product, item_data['quantity'])
+            for product, item_data, options_snapshot, line_total in line_items:
                 qty = item_data['quantity']
                 effective_unit = (line_total / qty).quantize(Decimal('0.01')) if qty else product.price
                 OrderItem.objects.create(
@@ -411,6 +431,7 @@ class OrderCreateSerializer(serializers.Serializer):
                     quantity=qty,
                     unit_price=effective_unit,
                     notes=item_data.get('notes', ''),
+                    selected_options=options_snapshot,
                 )
 
             order.recalculate_totals()

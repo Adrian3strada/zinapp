@@ -31,6 +31,13 @@
             <tr>
               <td>
                 {{ item.product.name }}
+                {% if item.selected_options %}
+                <div class="text-muted small mt-1">
+                  {% for opt in item.selected_options %}
+                    {{ opt.group }}: {{ opt.name }}{% if not forloop.last %} · {% endif %}
+                  {% endfor %}
+                </div>
+                {% endif %}
                 {% if item.notes %}
                 <div class="text-muted small mt-1">{{ item.notes }}</div>
                 {% endif %}

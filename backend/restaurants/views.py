@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import BooleanField, Case, Count, F, Prefetch, Q, Value, When
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -11,8 +12,10 @@ from drf_spectacular.utils import extend_schema
 from accounts.permissions import IsAdmin, IsRestaurantOwner
 
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
-from .models import Product, ProductPromotion, Restaurant
+from .models import Product, ProductOption, ProductOptionGroup, ProductPromotion, Restaurant
+from .options import replace_product_option_groups
 from .serializers import (
+    ProductOptionGroupsReplaceSerializer,
     ProductPromotionSerializer,
     ProductSerializer,
     RestaurantDetailSerializer,
@@ -228,6 +231,15 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                             ).order_by('-valid_until', '-id'),
                             to_attr='active_promotions',
                         ),
+                        Prefetch(
+                            'option_groups',
+                            queryset=ProductOptionGroup.objects.prefetch_related(
+                                Prefetch(
+                                    'options',
+                                    queryset=ProductOption.objects.order_by('sort_order', 'id'),
+                                )
+                            ).order_by('sort_order', 'id'),
+                        ),
                     ),
                 ),
             )
@@ -260,7 +272,17 @@ class RestaurantViewSet(viewsets.ModelViewSet):
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.select_related('restaurant', 'restaurant__owner')
+    queryset = Product.objects.select_related('restaurant', 'restaurant__owner').prefetch_related(
+        Prefetch(
+            'option_groups',
+            queryset=ProductOptionGroup.objects.prefetch_related(
+                Prefetch(
+                    'options',
+                    queryset=ProductOption.objects.order_by('sort_order', 'id'),
+                )
+            ).order_by('sort_order', 'id'),
+        ),
+    )
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -307,6 +329,17 @@ class ProductViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('No puedes agregar productos a este restaurante.')
         serializer.save()
+
+    @action(detail=True, methods=['put'], url_path='option-groups')
+    def replace_option_groups(self, request, pk=None):
+        """Reemplaza sabores/toppings del platillo (dueño del local)."""
+        product = self.get_object()
+        serializer = ProductOptionGroupsReplaceSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            replace_product_option_groups(product, serializer.validated_data['groups'])
+        product = self.get_queryset().get(pk=product.pk)
+        return Response(ProductSerializer(product, context={'request': request}).data)
 
     @action(detail=False, methods=['get'], url_path='featured', permission_classes=[AllowAny])
     def featured(self, request):

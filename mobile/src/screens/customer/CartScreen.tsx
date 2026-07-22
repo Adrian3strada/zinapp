@@ -27,7 +27,7 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { DELIVERY_FEE } from '../../config/delivery';
 import { resolveTransferInfo } from '../../config/payments';
-import type { Restaurant } from '../../types';
+import type { Restaurant, SelectedProductOption } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { isInCoverage } from '../../utils/coverage';
@@ -320,6 +320,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
           product_id: i.product.id,
           quantity: i.quantity,
           notes: i.notes?.trim() || undefined,
+          option_ids: i.selectedOptions?.map((o) => o.id),
         })),
       }, { idempotencyKey: checkoutIdempotencyKey.current });
       if (paymentMethod === 'online') {
@@ -370,14 +371,14 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   ]);
 
   const handleDecrease = useCallback(
-    (productId: number, quantity: number, notes?: string) =>
-      updateQuantity(productId, quantity - 1, notes),
+    (productId: number, quantity: number, notes?: string, selectedOptions?: SelectedProductOption[]) =>
+      updateQuantity(productId, quantity - 1, notes, selectedOptions),
     [updateQuantity],
   );
 
   const handleIncrease = useCallback(
-    (productId: number, quantity: number, notes?: string) =>
-      updateQuantity(productId, quantity + 1, notes),
+    (productId: number, quantity: number, notes?: string, selectedOptions?: SelectedProductOption[]) =>
+      updateQuantity(productId, quantity + 1, notes, selectedOptions),
     [updateQuantity],
   );
 
@@ -440,7 +441,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
           </View>
           {items.map((item) => (
             <CartLineItem
-              key={`${item.product.id}:${item.notes ?? ''}`}
+              key={`${item.product.id}:${item.notes ?? ''}:${(item.selectedOptions ?? []).map((o) => o.id).join(',')}`}
               item={item}
               onDecrease={handleDecrease}
               onIncrease={handleIncrease}

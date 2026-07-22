@@ -5,7 +5,7 @@ from accounts.serializers import UserSerializer
 
 from .fields import CoordinateField
 from .geo import geocode_address, is_in_coverage
-from .models import Product, ProductPromotion, PromoType, Restaurant
+from .models import Product, ProductOption, ProductOptionGroup, ProductPromotion, PromoType, Restaurant
 from .promotions import get_active_promotion, promo_label
 from .setup import restaurant_setup_status
 
@@ -16,6 +16,26 @@ def build_image_url(obj, request):
     if request:
         return request.build_absolute_uri(obj.image.url)
     return obj.image.url
+
+
+class ProductOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductOption
+        fields = ('id', 'name', 'price_delta', 'is_available', 'sort_order')
+        read_only_fields = ('id',)
+
+
+class ProductOptionGroupSerializer(serializers.ModelSerializer):
+    options = ProductOptionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ProductOptionGroup
+        fields = ('id', 'name', 'min_select', 'max_select', 'sort_order', 'options')
+        read_only_fields = ('id',)
+
+
+class ProductOptionGroupsReplaceSerializer(serializers.Serializer):
+    groups = serializers.ListField(child=serializers.DictField(), allow_empty=True)
 
 
 class ProductPromotionSerializer(serializers.ModelSerializer):
@@ -103,15 +123,19 @@ class ProductSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     active_promotion = serializers.SerializerMethodField()
     restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
+    option_groups = ProductOptionGroupSerializer(many=True, read_only=True)
 
     class Meta:
         model = Product
         fields = (
             'id', 'restaurant', 'restaurant_name', 'name', 'description', 'price',
-            'image', 'image_url', 'is_available', 'active_promotion',
+            'image', 'image_url', 'is_available', 'active_promotion', 'option_groups',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'created_at', 'updated_at', 'active_promotion', 'restaurant_name')
+        read_only_fields = (
+            'id', 'created_at', 'updated_at', 'active_promotion',
+            'restaurant_name', 'option_groups',
+        )
 
     def validate_price(self, value):
         if value is None or value <= 0:

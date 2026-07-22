@@ -1,4 +1,16 @@
-import type { Product, ProductPromotion, PromoType } from '../types';
+import type { CartItem, Product, ProductPromotion, PromoType, SelectedProductOption } from '../types';
+
+export function optionsExtraPerUnit(options?: SelectedProductOption[] | null): number {
+  return (options ?? []).reduce((sum, opt) => {
+    const delta = parseFloat(opt.price_delta);
+    return sum + (Number.isFinite(delta) ? delta : 0);
+  }, 0);
+}
+
+export function calculateCartLineTotal(item: CartItem): number {
+  const { total } = calculatePromoLineTotal(item.product, item.quantity);
+  return total + optionsExtraPerUnit(item.selectedOptions) * item.quantity;
+}
 
 export function isPromotionActive(promo: ProductPromotion | null | undefined): boolean {
   if (!promo) return false;

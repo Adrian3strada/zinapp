@@ -397,6 +397,8 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.CharField(max_length=255, blank=True)
+    # Snapshot de sabores/toppings elegidos: [{id, group, name, price_delta}, ...]
+    selected_options = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = 'Item de pedido'

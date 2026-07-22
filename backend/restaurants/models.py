@@ -117,6 +117,54 @@ class Product(models.Model):
         return f'{self.name} - {self.restaurant.name}'
 
 
+class ProductOptionGroup(models.Model):
+    """Grupo de opciones de un platillo (Sabor, Tamaño, Toppings…)."""
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='option_groups',
+    )
+    name = models.CharField(max_length=80)
+    min_select = models.PositiveSmallIntegerField(
+        default=1,
+        help_text='Mínimo de opciones a elegir (0 = opcional).',
+    )
+    max_select = models.PositiveSmallIntegerField(
+        default=1,
+        help_text='Máximo de opciones (1 = una sola).',
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Grupo de opciones'
+        verbose_name_plural = 'Grupos de opciones'
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f'{self.product.name} / {self.name}'
+
+
+class ProductOption(models.Model):
+    group = models.ForeignKey(
+        ProductOptionGroup,
+        on_delete=models.CASCADE,
+        related_name='options',
+    )
+    name = models.CharField(max_length=80)
+    price_delta = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_available = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Opción de producto'
+        verbose_name_plural = 'Opciones de producto'
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f'{self.group.name}: {self.name}'
+
+
 class PromoType(models.TextChoices):
     TWO_FOR_ONE = 'two_for_one', '2x1'
     PERCENT_OFF = 'percent_off', 'Porcentaje de descuento'

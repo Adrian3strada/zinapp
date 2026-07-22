@@ -7,32 +7,77 @@ import Button from '../../components/Button';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
 import ScreenContainer from '../../components/ScreenContainer';
-import { normalizeCartNotes, useCart } from '../../context/CartContext';
+import { normalizeCartNotes, optionsKey, useCart } from '../../context/CartContext';
 import type { ProductDetailScreenProps } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
+import type { ProductOption, ProductOptionGroup, SelectedProductOption } from '../../types';
+import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { impactLight } from '../../utils/haptics';
 import { resolveMediaUrl } from '../../utils/media';
-import { promoDisplayLabel, promoPriceHint } from '../../utils/promo';
+import { optionsExtraPerUnit, promoDisplayLabel, promoPriceHint } from '../../utils/promo';
+
+function buildSnapshot(
+  groups: ProductOptionGroup[],
+  selectedIds: Set<number>,
+): SelectedProductOption[] {
+  const rows: SelectedProductOption[] = [];
+  for (const group of groups) {
+    for (const opt of group.options) {
+      if (!selectedIds.has(opt.id) || !opt.is_available) continue;
+      rows.push({
+        id: opt.id,
+        group_id: group.id,
+        group: group.name,
+        name: opt.name,
+        price_delta: opt.price_delta,
+      });
+    }
+  }
+  return rows;
+}
+
+function validateSelection(groups: ProductOptionGroup[], selectedIds: Set<number>): string | null {
+  for (const group of groups) {
+    const count = group.options.filter((o) => selectedIds.has(o.id) && o.is_available).length;
+    if (count < group.min_select) {
+      return `Elige al menos ${group.min_select} en «${group.name}».`;
+    }
+    if (count > group.max_select) {
+      return `Máximo ${group.max_select} en «${group.name}».`;
+    }
+  }
+  return null;
+}
 
 export default function ProductDetailScreen({ route, navigation }: ProductDetailScreenProps) {
   const { product, restaurantName } = route.params;
   const { addItem, updateQuantity, items } = useCart();
   const insets = useSafeAreaInsets();
   const [notes, setNotes] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+
+  const groups = useMemo(
+    () => (product.option_groups ?? []).filter((g) => g.options?.some((o) => o.is_available)),
+    [product.option_groups],
+  );
 
   const lineNotes = normalizeCartNotes(notes);
+  const snapshot = useMemo(() => buildSnapshot(groups, selectedIds), [groups, selectedIds]);
+  const lineKey = optionsKey(snapshot);
 
   const quantity = useMemo(
     () =>
       items.find(
         (item) =>
-          item.product.id === product.id && normalizeCartNotes(item.notes) === lineNotes,
+          item.product.id === product.id
+          && normalizeCartNotes(item.notes) === lineNotes
+          && optionsKey(item.selectedOptions) === lineKey,
       )?.quantity ?? 0,
-    [items, lineNotes, product.id],
+    [items, lineKey, lineNotes, product.id],
   );
 
   const emoji = getProductEmoji(product.name);
@@ -40,29 +85,60 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   const promoHint = promoPriceHint(product);
   const promoLabel = product.active_promotion ? promoDisplayLabel(product.active_promotion) : null;
   const available = product.is_available !== false;
+  const extras = optionsExtraPerUnit(snapshot);
+  const basePrice = parseFloat(product.price);
+  const unitWithExtras = (Number.isFinite(basePrice) ? basePrice : 0) + extras;
 
   useEffect(() => {
     navigation.setOptions({ title: product.name });
   }, [navigation, product.name]);
 
+  const toggleOption = useCallback((group: ProductOptionGroup, opt: ProductOption) => {
+    if (!opt.is_available) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const selectedInGroup = group.options.filter((o) => next.has(o.id));
+      if (next.has(opt.id)) {
+        next.delete(opt.id);
+        return next;
+      }
+      if (group.max_select <= 1) {
+        selectedInGroup.forEach((o) => next.delete(o.id));
+        next.add(opt.id);
+        return next;
+      }
+      if (selectedInGroup.length >= group.max_select) {
+        appAlert('Límite', `Máximo ${group.max_select} en «${group.name}».`);
+        return prev;
+      }
+      next.add(opt.id);
+      return next;
+    });
+  }, []);
+
   const handleAdd = useCallback(() => {
     if (!available) return;
+    const err = validateSelection(groups, selectedIds);
+    if (err) {
+      appAlert('Opciones', err);
+      return;
+    }
     try {
-      addItem(product, 1, notes);
+      addItem(product, 1, notes, snapshot.length ? snapshot : undefined);
       void impactLight();
     } catch {
       // Evita cierre nativo si algo falla al agregar
     }
-  }, [addItem, available, notes, product]);
+  }, [addItem, available, groups, notes, product, selectedIds, snapshot]);
 
   const handleDecrease = useCallback(() => {
     if (quantity <= 1) {
-      updateQuantity(product.id, 0, lineNotes);
+      updateQuantity(product.id, 0, lineNotes, snapshot);
     } else {
-      updateQuantity(product.id, quantity - 1, lineNotes);
+      updateQuantity(product.id, quantity - 1, lineNotes, snapshot);
     }
     void impactLight();
-  }, [lineNotes, product.id, quantity, updateQuantity]);
+  }, [lineNotes, product.id, quantity, snapshot, updateQuantity]);
 
   return (
     <ScreenContainer>
@@ -95,8 +171,16 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             ) : null}
           </View>
 
-          <Text style={styles.price}>{promoHint ?? formatCurrency(product.price)}</Text>
-          {promoHint ? (
+          <Text style={styles.price}>
+            {extras > 0
+              ? formatCurrency(unitWithExtras)
+              : (promoHint ?? formatCurrency(product.price))}
+          </Text>
+          {extras > 0 ? (
+            <Text style={styles.priceOriginal}>
+              Base {formatCurrency(product.price)} + extras
+            </Text>
+          ) : promoHint ? (
             <Text style={styles.priceOriginal}>Precio regular {formatCurrency(product.price)}</Text>
           ) : null}
 
@@ -116,20 +200,58 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             </Text>
           </View>
 
+          {available && groups.map((group) => (
+            <View key={group.id} style={styles.section}>
+              <Text style={styles.sectionTitle}>{group.name}</Text>
+              <Text style={styles.notesIntro}>
+                {group.min_select > 0
+                  ? `Elige ${group.min_select === group.max_select ? group.min_select : `${group.min_select}–${group.max_select}`}`
+                  : `Opcional · hasta ${group.max_select}`}
+              </Text>
+              <View style={styles.optionList}>
+                {group.options.filter((o) => o.is_available).map((opt) => {
+                  const on = selectedIds.has(opt.id);
+                  const delta = parseFloat(opt.price_delta);
+                  return (
+                    <Pressable
+                      key={opt.id}
+                      style={[styles.optionRow, on && styles.optionRowOn]}
+                      onPress={() => toggleOption(group, opt)}
+                    >
+                      <Ionicons
+                        name={
+                          group.max_select <= 1
+                            ? (on ? 'radio-button-on' : 'radio-button-off')
+                            : (on ? 'checkbox' : 'square-outline')
+                        }
+                        size={20}
+                        color={on ? colors.primary : colors.textMuted}
+                      />
+                      <Text style={styles.optionName}>{opt.name}</Text>
+                      <Text style={styles.optionPrice}>
+                        {delta > 0 ? `+${formatCurrency(delta)}` : 'Incluido'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+
           {available ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Sabor o extras</Text>
+              <Text style={styles.sectionTitle}>Notas para cocina</Text>
               <Text style={styles.notesIntro}>
-                Indica el sabor, sin cebolla, toppings u otras preferencias para la cocina.
+                Instrucciones libres (sin cebolla, poco picante…).
               </Text>
               <FormField
                 label="Instrucciones"
                 hideLabel
                 value={notes}
                 onChangeText={setNotes}
-                icon="restaurant-outline"
-                placeholder="Ej. pastor, extra queso, sin cebolla"
-                hint="Opcional · máx. 255 caracteres"
+                icon="create-outline"
+                placeholder="Opcional"
+                hint="Máx. 255 caracteres"
                 autoCapitalize="sentences"
                 multiline
               />
@@ -275,6 +397,24 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 10,
   },
+  optionList: { gap: 8 },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  optionRowOn: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  optionName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+  optionPrice: { fontSize: 13, fontWeight: '700', color: colors.primary },
   footer: {
     paddingHorizontal: spacing.screen,
     paddingTop: spacing.md,

@@ -39,6 +39,20 @@ import { getProductEmoji } from '../../utils/foodVisuals';
 import { appendImage, pickProductImage } from '../../utils/imagePicker';
 import { resolveMediaUrl } from '../../utils/media';
 
+interface OptionDraft {
+  name: string;
+  price_delta: string;
+}
+
+interface GroupDraft {
+  name: string;
+  /** true = el cliente debe elegir al menos 1 */
+  required: boolean;
+  /** true = puede elegir varias */
+  multiple: boolean;
+  options: OptionDraft[];
+}
+
 interface ProductDraft {
   id?: number;
   name: string;
@@ -47,6 +61,19 @@ interface ProductDraft {
   is_available: boolean;
   imageUri?: string | null;
   image_url?: string | null;
+  optionGroups: GroupDraft[];
+}
+
+function groupsFromProduct(product: Product): GroupDraft[] {
+  return (product.option_groups ?? []).map((g) => ({
+    name: g.name,
+    required: g.min_select > 0,
+    multiple: g.max_select > 1,
+    options: g.options.map((o) => ({
+      name: o.name,
+      price_delta: o.price_delta,
+    })),
+  }));
 }
 
 const ProductManageRow = React.memo(function ProductManageRow({
@@ -210,6 +237,7 @@ export default function RestaurantManageScreen() {
       price: '',
       is_available: true,
       imageUri: null,
+      optionGroups: [],
     });
   };
 
@@ -222,6 +250,7 @@ export default function RestaurantManageScreen() {
       is_available: product.is_available,
       image_url: product.image_url,
       imageUri: null,
+      optionGroups: groupsFromProduct(product),
     });
   };
 
@@ -277,14 +306,41 @@ export default function RestaurantManageScreen() {
       if (editor.imageUri) {
         await appendImage(fd, 'image', editor.imageUri, 'product.jpg');
       }
+      let saved: Product;
       if (editor.id) {
         const { data } = await productApi.update(editor.id, fd);
-        setProducts((prev) => prev.map((p) => (p.id === data.id ? data : p)));
+        saved = data;
       } else {
         fd.append('restaurant', String(restaurant.id));
         const { data } = await productApi.create(fd);
-        setProducts((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+        saved = data;
       }
+
+      const groupsPayload = editor.optionGroups
+        .filter((g) => g.name.trim() && g.options.some((o) => o.name.trim()))
+        .map((g) => {
+          const options = g.options
+            .filter((o) => o.name.trim())
+            .map((o) => ({
+              name: o.name.trim(),
+              price_delta: (parsePriceInput(o.price_delta) ?? 0).toFixed(2),
+            }));
+          return {
+            name: g.name.trim(),
+            min_select: g.required ? 1 : 0,
+            max_select: g.multiple ? Math.max(options.length, 1) : 1,
+            options,
+          };
+        });
+
+      const { data: withOptions } = await productApi.replaceOptionGroups(
+        saved.id,
+        groupsPayload,
+      );
+      setProducts((prev) => {
+        const others = prev.filter((p) => p.id !== withOptions.id);
+        return [...others, withOptions].sort((a, b) => a.name.localeCompare(b.name));
+      });
       setEditor(null);
       await refreshRestaurant();
       appAlert('Listo', wasEdit ? 'Producto actualizado' : 'Producto agregado');
@@ -510,6 +566,182 @@ export default function RestaurantManageScreen() {
                   placeholder="Ingredientes, porción, etc."
                 />
 
+                <View style={styles.optionsBlock}>
+                  <Text style={styles.optionsTitle}>Sabores / extras</Text>
+                  <Text style={styles.optionsHint}>
+                    El cliente elige al pedir. Puedes poner precio extra por opción.
+                  </Text>
+                  {(editor?.optionGroups ?? []).map((group, gIdx) => (
+                    <View key={`g-${gIdx}`} style={styles.groupCard}>
+                      <FormField
+                        label="Nombre del grupo"
+                        value={group.name}
+                        onChangeText={(v) =>
+                          setEditor((e) => {
+                            if (!e) return e;
+                            const optionGroups = [...e.optionGroups];
+                            optionGroups[gIdx] = { ...optionGroups[gIdx], name: v };
+                            return { ...e, optionGroups };
+                          })
+                        }
+                        icon="list-outline"
+                        embedded
+                        placeholder="Ej. Sabor, Toppings"
+                      />
+                      <View style={styles.groupToggles}>
+                        <Pressable
+                          style={styles.toggleChip}
+                          onPress={() =>
+                            setEditor((e) => {
+                              if (!e) return e;
+                              const optionGroups = [...e.optionGroups];
+                              optionGroups[gIdx] = {
+                                ...optionGroups[gIdx],
+                                required: !optionGroups[gIdx].required,
+                              };
+                              return { ...e, optionGroups };
+                            })
+                          }
+                        >
+                          <Ionicons
+                            name={group.required ? 'checkbox' : 'square-outline'}
+                            size={18}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.toggleChipText}>Obligatorio</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.toggleChip}
+                          onPress={() =>
+                            setEditor((e) => {
+                              if (!e) return e;
+                              const optionGroups = [...e.optionGroups];
+                              optionGroups[gIdx] = {
+                                ...optionGroups[gIdx],
+                                multiple: !optionGroups[gIdx].multiple,
+                              };
+                              return { ...e, optionGroups };
+                            })
+                          }
+                        >
+                          <Ionicons
+                            name={group.multiple ? 'checkbox' : 'square-outline'}
+                            size={18}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.toggleChipText}>Varias opciones</Text>
+                        </Pressable>
+                      </View>
+                      {group.options.map((opt, oIdx) => (
+                        <View key={`o-${gIdx}-${oIdx}`} style={styles.optionEditRow}>
+                          <View style={styles.optionNameField}>
+                            <FormField
+                              label={oIdx === 0 ? 'Opción' : undefined}
+                              hideLabel={oIdx > 0}
+                              value={opt.name}
+                              onChangeText={(v) =>
+                                setEditor((e) => {
+                                  if (!e) return e;
+                                  const optionGroups = [...e.optionGroups];
+                                  const options = [...optionGroups[gIdx].options];
+                                  options[oIdx] = { ...options[oIdx], name: v };
+                                  optionGroups[gIdx] = { ...optionGroups[gIdx], options };
+                                  return { ...e, optionGroups };
+                                })
+                              }
+                              icon="ellipse-outline"
+                              embedded
+                              placeholder="Ej. Pastor"
+                            />
+                          </View>
+                          <View style={styles.optionPriceField}>
+                            <FormField
+                              label={oIdx === 0 ? 'Extra $' : undefined}
+                              hideLabel={oIdx > 0}
+                              value={opt.price_delta}
+                              onChangeText={(v) =>
+                                setEditor((e) => {
+                                  if (!e) return e;
+                                  const optionGroups = [...e.optionGroups];
+                                  const options = [...optionGroups[gIdx].options];
+                                  options[oIdx] = { ...options[oIdx], price_delta: v };
+                                  optionGroups[gIdx] = { ...optionGroups[gIdx], options };
+                                  return { ...e, optionGroups };
+                                })
+                              }
+                              icon="cash-outline"
+                              embedded
+                              placeholder="0"
+                              keyboardType="decimal-pad"
+                            />
+                          </View>
+                        </View>
+                      ))}
+                      <View style={styles.groupActions}>
+                        <Button
+                          title="Agregar opción"
+                          variant="ghost"
+                          onPress={() =>
+                            setEditor((e) => {
+                              if (!e) return e;
+                              const optionGroups = [...e.optionGroups];
+                              optionGroups[gIdx] = {
+                                ...optionGroups[gIdx],
+                                options: [
+                                  ...optionGroups[gIdx].options,
+                                  { name: '', price_delta: '0' },
+                                ],
+                              };
+                              return { ...e, optionGroups };
+                            })
+                          }
+                          style={styles.groupActionBtn}
+                        />
+                        <Button
+                          title="Quitar grupo"
+                          variant="ghost"
+                          onPress={() =>
+                            setEditor((e) =>
+                              e
+                                ? {
+                                    ...e,
+                                    optionGroups: e.optionGroups.filter((_, i) => i !== gIdx),
+                                  }
+                                : e,
+                            )
+                          }
+                          style={styles.groupActionBtn}
+                        />
+                      </View>
+                    </View>
+                  ))}
+                  <Button
+                    title="Agregar grupo (sabor / toppings)"
+                    variant="secondary"
+                    onPress={() =>
+                      setEditor((e) =>
+                        e
+                          ? {
+                              ...e,
+                              optionGroups: [
+                                ...e.optionGroups,
+                                {
+                                  name: '',
+                                  required: true,
+                                  multiple: false,
+                                  options: [
+                                    { name: '', price_delta: '0' },
+                                    { name: '', price_delta: '0' },
+                                  ],
+                                },
+                              ],
+                            }
+                          : e,
+                      )
+                    }
+                  />
+                </View>
+
                 <View style={styles.availabilityRow}>
                   <View style={styles.availabilityInfo}>
                     <Text style={styles.availabilityLabel}>Disponible en menú</Text>
@@ -716,6 +948,26 @@ const styles = StyleSheet.create({
   availabilityInfo: { flex: 1, paddingRight: 12 },
   availabilityLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   availabilityHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  optionsBlock: { marginTop: spacing.md, gap: spacing.sm },
+  optionsTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+  optionsHint: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginBottom: 4 },
+  groupCard: {
+    backgroundColor: colors.background,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    gap: 4,
+    marginBottom: 8,
+  },
+  groupToggles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
+  toggleChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  toggleChipText: { fontSize: 13, fontWeight: '600', color: colors.text },
+  optionEditRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  optionNameField: { flex: 1.4 },
+  optionPriceField: { flex: 1 },
+  groupActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  groupActionBtn: { flex: 1 },
   modalFooter: {
     paddingTop: spacing.lg,
     borderTopWidth: 1,

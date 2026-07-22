@@ -400,6 +400,17 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                   <Text style={styles.itemName}>
                     {item.quantity}x {item.product_detail.name}
                   </Text>
+                  {(item.selected_options?.length ?? 0) > 0 ? (
+                    <Text style={styles.itemNotes}>
+                      {item.selected_options!
+                        .map((o) =>
+                          parseFloat(o.price_delta) > 0
+                            ? `${o.name} (+$${o.price_delta})`
+                            : o.name,
+                        )
+                        .join(' · ')}
+                    </Text>
+                  ) : null}
                   {item.notes?.trim() ? (
                     <Text style={styles.itemNotes}>{item.notes.trim()}</Text>
                   ) : null}
