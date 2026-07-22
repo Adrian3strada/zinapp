@@ -1,6 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
@@ -19,6 +28,7 @@ import { getProductEmoji } from '../../utils/foodVisuals';
 import { impactLight } from '../../utils/haptics';
 import { resolveMediaUrl } from '../../utils/media';
 import { optionsExtraPerUnit, promoDisplayLabel, promoPriceHint } from '../../utils/promo';
+import { webPassThroughPointerEvents } from '../../utils/webPlatform';
 
 function buildSnapshot(
   groups: ProductOptionGroup[],
@@ -57,8 +67,10 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   const { product, restaurantName } = route.params;
   const { addItem, updateQuantity, items } = useCart();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [notes, setNotes] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [imageOpen, setImageOpen] = useState(false);
 
   const groups = useMemo(
     () => (product.option_groups ?? []).filter((g) => g.options?.some((o) => o.is_available)),
@@ -82,6 +94,7 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
 
   const emoji = getProductEmoji(product.name);
   const imageUri = resolveMediaUrl(product.image_url ?? product.image);
+  const canOpenImage = Boolean(imageUri);
   const promoHint = promoPriceHint(product);
   const promoLabel = product.active_promotion ? promoDisplayLabel(product.active_promotion) : null;
   const available = product.is_available !== false;
@@ -147,7 +160,13 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroWrap}>
+        <Pressable
+          style={styles.heroWrap}
+          onPress={canOpenImage ? () => setImageOpen(true) : undefined}
+          disabled={!canOpenImage}
+          accessibilityRole={canOpenImage ? 'imagebutton' : undefined}
+          accessibilityLabel={canOpenImage ? 'Ver foto del platillo' : undefined}
+        >
           <FoodImage
             emoji={emoji}
             color={colors.primary}
@@ -155,7 +174,13 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             imageUri={imageUri}
             style={styles.heroImage}
           />
-        </View>
+          {canOpenImage ? (
+            <View style={styles.zoomHint} pointerEvents="none">
+              <Ionicons name="expand-outline" size={16} color="#FFF" />
+              <Text style={styles.zoomHintText}>Toca para ampliar</Text>
+            </View>
+          ) : null}
+        </Pressable>
 
         <View style={styles.body}>
           {restaurantName ? (
@@ -301,6 +326,45 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
           />
         )}
       </View>
+
+      <Modal
+        visible={imageOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageOpen(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.lightbox} pointerEvents={webPassThroughPointerEvents()}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setImageOpen(false)}
+            accessibilityLabel="Cerrar foto"
+          />
+          <Pressable
+            style={[styles.lightboxClose, { top: insets.top + 8 }]}
+            onPress={() => setImageOpen(false)}
+            hitSlop={HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
+          >
+            <Ionicons name="close" size={24} color="#FFF" />
+          </Pressable>
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              style={{
+                width: windowWidth,
+                height: Math.min(windowHeight * 0.78, windowWidth * 1.15),
+              }}
+              resizeMode="contain"
+              accessibilityLabel={product.name}
+            />
+          ) : null}
+          <Text style={[styles.lightboxCaption, { marginBottom: insets.bottom + 16 }]}>
+            {product.name}
+          </Text>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -316,6 +380,48 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 240,
     borderRadius: 0,
+  },
+  zoomHint: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.62)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  zoomHintText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  lightbox: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxClose: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxCaption: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   body: {
     padding: spacing.screen,
