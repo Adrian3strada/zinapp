@@ -9,7 +9,7 @@ import AppErrorBoundary from '../components/AppErrorBoundary';
 import { DriverProfileProvider, useDriverProfileContext } from '../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../hooks/useDriverHasActiveDelivery';
 import { useDriverLocationSharing } from '../hooks/useDriverLocationSharing';
-import AvailableOrdersScreen from '../screens/driver/AvailableOrdersScreen';
+import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
 import DriverMapScreen from '../screens/driver/DriverMapScreen';
 import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
@@ -57,15 +57,20 @@ function DriverLocationSync() {
 function DriverTabs() {
   const insets = useSafeAreaInsets();
   const { activeCount } = useDriverActiveDeliveries(2500);
+  const options = {
+    ...tabBarScreenOptions(insets),
+    tabBarActiveTintColor: colors.accent,
+  };
 
   return (
-    <Tab.Navigator screenOptions={tabBarScreenOptions(insets)}>
+    <Tab.Navigator screenOptions={options}>
       <Tab.Screen
-        name="Disponibles"
-        component={AvailableOrdersScreen}
+        name="Inicio"
+        component={DriverHomeScreen}
         options={{
-          title: 'Disponibles',
-          tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} />,
+          title: 'Inicio',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tab.Screen
@@ -73,6 +78,7 @@ function DriverTabs() {
         component={MyDeliveriesScreen}
         options={{
           title: 'Mis entregas',
+          headerShown: false,
           tabBarBadge: activeCount > 0 ? activeCount : undefined,
           tabBarIcon: ({ color, size }) => <Ionicons name="bicycle" size={size} color={color} />,
         }}

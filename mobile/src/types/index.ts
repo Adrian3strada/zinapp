@@ -287,6 +287,11 @@ export interface Order {
   dispute?: OrderDispute | null;
   created_at: string;
   updated_at: string;
+  accepted_at?: string | null;
+  ready_at?: string | null;
+  delivered_at?: string | null;
+  prep_minutes?: number | null;
+  estimated_ready_at?: string | null;
 }
 
 export type ShipmentStatus = 'pending' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';

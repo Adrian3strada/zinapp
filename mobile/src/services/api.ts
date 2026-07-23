@@ -372,7 +372,8 @@ export const orderApi = {
         ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
         : undefined,
     ),
-  accept: (id: number) => api.post<Order>(`/orders/${id}/accept/`),
+  accept: (id: number, prepMinutes = 15) =>
+    api.post<Order>(`/orders/${id}/accept/`, { prep_minutes: prepMinutes }),
   reject: (id: number) => api.post<Order>(`/orders/${id}/reject/`),
   cancel: (id: number) => api.post<Order>(`/orders/${id}/cancel/`),
   updateStatus: (id: number, status: string) =>
@@ -381,6 +382,19 @@ export const orderApi = {
   acceptDelivery: (id: number) => api.post<Order>(`/orders/${id}/accept-delivery/`),
   markDelivered: (id: number) => api.post<Order>(`/orders/${id}/mark-delivered/`),
   restaurantPending: () => api.get<Order[]>('/orders/restaurant-pending/'),
+  restaurantToday: () =>
+    api.get<{
+      date: string;
+      orders_created: number;
+      orders_active: number;
+      orders_delivered: number;
+      orders_cancelled: number;
+      food_sales: string;
+      discounts: string;
+      net_sales: string;
+      accepting_orders: boolean;
+      is_active: boolean;
+    }>('/orders/restaurant-today/'),
   myDeliveries: () => api.get<Order[]>('/orders/my-deliveries/'),
   driverEarnings: () =>
     api.get<{

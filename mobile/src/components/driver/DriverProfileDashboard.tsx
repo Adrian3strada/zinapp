@@ -43,7 +43,7 @@ export default function DriverProfileDashboard({
     <View style={[styles.card, overlap && styles.cardOverlap]}>
       <View style={styles.topRow}>
         <View style={styles.avatar}>
-          <Ionicons name="bicycle" size={28} color={colors.shipmentStart} />
+          <Ionicons name="bicycle" size={28} color={colors.accentDark} />
         </View>
         <View style={styles.info}>
           <Text style={styles.title}>Tu panel de entregas</Text>
@@ -59,14 +59,14 @@ export default function DriverProfileDashboard({
           value={isAvailable}
           onValueChange={onToggleAvailability}
           disabled={updating || !isApproved}
-          trackColor={{ false: colors.border, true: colors.shipmentStart + '55' }}
-          thumbColor={isAvailable ? colors.shipmentStart : colors.textMuted}
+          trackColor={{ false: colors.border, true: colors.accent + '55' }}
+          thumbColor={isAvailable ? colors.accent : colors.textMuted}
         />
       </View>
 
       <View style={styles.metrics}>
         <View style={styles.metric}>
-          <Ionicons name="wallet-outline" size={18} color={colors.shipmentStart} />
+          <Ionicons name="wallet-outline" size={18} color={colors.accentDark} />
           <Text style={styles.metricValue}>
             {earnings ? formatCurrency(earnings.week_earnings) : '$0.00'}
           </Text>
@@ -74,13 +74,13 @@ export default function DriverProfileDashboard({
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metric}>
-          <Ionicons name="checkmark-done-outline" size={18} color={colors.shipmentStart} />
+          <Ionicons name="checkmark-done-outline" size={18} color={colors.accentDark} />
           <Text style={styles.metricValue}>{earnings?.week_deliveries ?? 0}</Text>
           <Text style={styles.metricLabel}>Entregas</Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metric}>
-          <Ionicons name="navigate-outline" size={18} color={colors.shipmentStart} />
+          <Ionicons name="navigate-outline" size={18} color={colors.accentDark} />
           <Text style={styles.metricValue}>{isAvailable ? 'ON' : 'OFF'}</Text>
           <Text style={styles.metricLabel}>GPS activo</Text>
         </View>
@@ -89,11 +89,11 @@ export default function DriverProfileDashboard({
       <View style={styles.actions}>
         <Pressable
           style={styles.actionBtn}
-          onPress={() => navigation.navigate('Disponibles')}
+          onPress={() => navigation.navigate('Inicio')}
           hitSlop={HIT_SLOP}
         >
-          <Ionicons name="list-outline" size={18} color={colors.shipmentStart} />
-          <Text style={styles.actionText}>Disponibles</Text>
+          <Ionicons name="map-outline" size={18} color={colors.accentDark} />
+          <Text style={styles.actionText}>Inicio</Text>
         </Pressable>
         <Pressable
           style={[styles.actionBtn, styles.actionBtnPrimary]}
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -167,11 +167,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.accentLight,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: colors.accent + '55',
   },
-  actionBtnPrimary: { backgroundColor: colors.shipmentStart, borderColor: colors.shipmentStart },
-  actionText: { fontSize: 13, fontWeight: '800', color: colors.shipmentStart },
+  actionBtnPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
+  actionText: { fontSize: 13, fontWeight: '800', color: colors.accentDark },
   actionTextPrimary: { color: '#FFF' },
 });

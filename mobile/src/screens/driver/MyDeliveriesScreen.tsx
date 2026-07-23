@@ -1,27 +1,25 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert, appConfirm } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
-import DriverHeroHeader from '../../components/driver/DriverHeroHeader';
+import DeliveriesHeader from '../../components/driver/DeliveriesHeader';
 import DriverJobCard from '../../components/DriverJobCard';
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
-import SectionHeader from '../../components/SectionHeader';
-import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { orderApi } from '../../services/api';
+import { colors } from '../../theme/colors';
 import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { formatCurrency } from '../../utils/format';
 
 type DeliveryItem = { kind: 'order'; id: string; order: Order };
 
 type DeliveryListRow =
-  | { type: 'header'; id: string; label: string; subtitle?: string }
+  | { type: 'header'; id: string; label: string; count: number }
   | ({ type: 'item' } & DeliveryItem);
 
 function isActiveOrder(order: Order): boolean {
@@ -29,7 +27,6 @@ function isActiveOrder(order: Order): boolean {
 }
 
 export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenProps) {
-  const { user } = useAuth();
   const { insets, listPaddingBottom } = useTabScreenInsets();
   const { isAvailable } = useDriverProfileContext();
   const [items, setItems] = useState<DeliveryItem[]>([]);
@@ -69,10 +66,15 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     return { activeItems: active, pastItems: past };
   }, [items]);
 
-  const activeEarnings = useMemo(
-    () => activeItems.reduce((sum, item) => sum + parseFloat(item.order.total || '0'), 0),
-    [activeItems],
-  );
+  const activeEarnings = useMemo(() => {
+    return activeItems.reduce((sum, item) => {
+      const fee = parseFloat(item.order.delivery_fee || '0');
+      const tip = parseFloat(item.order.tip_amount || '0');
+      const earn =
+        (Number.isFinite(fee) ? fee : 0) + (Number.isFinite(tip) ? tip : 0);
+      return sum + (earn > 0 ? earn : parseFloat(item.order.total || '0') || 0);
+    }, 0);
+  }, [activeItems]);
 
   useEffect(() => {
     load();
@@ -88,11 +90,11 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
   const listData = useMemo<DeliveryListRow[]>(
     () => [
       ...(activeItems.length
-        ? [{ type: 'header' as const, id: 'h-active', label: 'En curso', subtitle: 'Entregas activas ahora' }]
+        ? [{ type: 'header' as const, id: 'h-active', label: 'En curso', count: activeItems.length }]
         : []),
       ...activeItems.map((item) => ({ type: 'item' as const, ...item })),
       ...(pastItems.length
-        ? [{ type: 'header' as const, id: 'h-past', label: 'Anteriores', subtitle: 'Historial reciente' }]
+        ? [{ type: 'header' as const, id: 'h-past', label: 'Anteriores', count: pastItems.length }]
         : []),
       ...pastItems.map((item) => ({ type: 'item' as const, ...item })),
     ],
@@ -118,6 +120,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 
   const renderJob = (item: DeliveryItem) => {
     const order = item.order;
+    const isActive = isActiveOrder(order);
     return (
       <DriverJobCard
         kind="order"
@@ -138,11 +141,12 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
             ? [{ icon: 'chatbubble-outline' as const, text: order.delivery_notes }]
             : []),
         ]}
-        total={order.total}
+        total={order.delivery_fee || order.total}
         onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
-        showActions={order.status === 'on_the_way'}
-        onNavigate={() => navigation.navigate('DriverMap', { orderId: order.id })}
-        onDelivered={() => handleDelivered(item)}
+        showActions={isActive}
+        onNavigate={() => navigation.navigate('Inicio')}
+        onDelivered={order.status === 'on_the_way' ? () => handleDelivered(item) : undefined}
+        navigateLabel="Continuar"
       />
     );
   };
@@ -165,26 +169,27 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
         onRefresh={() => load(true)}
         refreshing={refreshing}
         ListHeaderComponent={
-          <DriverHeroHeader
+          <DeliveriesHeader
             topInset={insets.top}
-            firstName={user?.first_name}
-            eyebrow="Mis entregas"
-            subtitle={
-              activeItems.length
-                ? `${activeItems.length} entrega${activeItems.length === 1 ? '' : 's'} en curso`
-                : 'Acepta pedidos en Disponibles'
-            }
+            activeCount={activeItems.length}
+            historyCount={pastItems.length}
             isAvailable={isAvailable}
-            stats={[
-              { label: 'Activas', value: activeItems.length, icon: 'bicycle-outline' },
-              { label: 'En curso', value: formatCurrency(String(activeEarnings)), icon: 'cash-outline' },
-              { label: 'Historial', value: pastItems.length, icon: 'time-outline' },
-            ]}
+            activeEarnings={activeEarnings}
+            onContinue={
+              activeItems.length > 0 ? () => navigation.navigate('Inicio') : undefined
+            }
           />
         }
         renderItem={({ item: row }) => {
           if (row.type === 'header') {
-            return <SectionHeader title={row.label} subtitle={row.subtitle} />;
+            return (
+              <View style={styles.sectionHead}>
+                <Text style={styles.sectionTitle}>{row.label}</Text>
+                <View style={styles.sectionCount}>
+                  <Text style={styles.sectionCountText}>{row.count}</Text>
+                </View>
+              </View>
+            );
           }
           const { type: _t, ...item } = row;
           return renderJob(item as DeliveryItem);
@@ -193,10 +198,10 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
           !loading ? (
             <EmptyState
               emoji="🛵"
-              title="Sin entregas asignadas"
-              subtitle="Acepta pedidos en la pestaña Disponibles."
-              actionLabel="Ver disponibles"
-              onAction={() => navigation.navigate('Disponibles')}
+              title="Aún no tienes entregas"
+              subtitle="Conéctate en Inicio, acepta un pedido del mapa y aparecerá aquí."
+              actionLabel="Ir a Inicio"
+              onAction={() => navigation.navigate('Inicio')}
             />
           ) : null
         }
@@ -206,6 +211,24 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 16, flexGrow: 1 },
+  list: { paddingHorizontal: 16, flexGrow: 1 },
   skeletonWrap: { flex: 1, padding: 16 },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+  sectionCount: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    backgroundColor: colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionCountText: { fontSize: 12, fontWeight: '800', color: colors.accentDark },
 });

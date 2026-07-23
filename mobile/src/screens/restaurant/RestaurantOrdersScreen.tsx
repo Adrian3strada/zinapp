@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert, appConfirm } from '../../utils/appAlert';
@@ -6,12 +5,15 @@ import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
+import NewOrderAlert from '../../components/restaurant/NewOrderAlert';
 import RestaurantFilterChips, {
   type RestaurantOrderFilter,
 } from '../../components/restaurant/RestaurantFilterChips';
-import RestaurantHeroHeader from '../../components/restaurant/RestaurantHeroHeader';
 import RestaurantOrderCard from '../../components/restaurant/RestaurantOrderCard';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
+import StoreHomeHeader, {
+  type RestaurantTodaySummary,
+} from '../../components/restaurant/StoreHomeHeader';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useRestaurantContext } from '../../context/RestaurantContext';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -31,7 +33,7 @@ type Props = CompositeScreenProps<
 >;
 
 const NEXT_STATUS: Record<string, { status: string; label: string }> = {
-  accepted: { status: 'preparing', label: 'Marcar preparando' },
+  accepted: { status: 'preparing', label: 'Empezar a preparar' },
   preparing: { status: 'ready', label: 'Listo para recoger' },
 };
 
@@ -48,19 +50,25 @@ function matchesFilter(order: Order, filter: RestaurantOrderFilter): boolean {
     case 'delivery':
       return order.status === 'on_the_way';
     default:
-      return true;
+      return order.status !== 'pending';
   }
 }
 
 export default function RestaurantOrdersScreen({ navigation }: Props) {
   const { insets, listPaddingBottom } = useTabScreenInsets();
-  const { restaurant, refresh: refreshRestaurant } = useRestaurantContext();
+  const {
+    restaurant,
+    refresh: refreshRestaurant,
+    togglingOrders,
+    toggleAcceptingOrders,
+  } = useRestaurantContext();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [today, setToday] = useState<RestaurantTodaySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null);
-  const [filter, setFilter] = useState<RestaurantOrderFilter>('all');
+  const [filter, setFilter] = useState<RestaurantOrderFilter>('kitchen');
 
   const load = React.useCallback(async () => {
     const isRefresh = orders.length > 0;
@@ -68,8 +76,20 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     else setLoading(true);
     setError(null);
     try {
-      const { data } = await orderApi.restaurantPending();
-      setOrders(data);
+      const [pendingRes, todayRes] = await Promise.all([
+        orderApi.restaurantPending(),
+        orderApi.restaurantToday().catch(() => null),
+      ]);
+      setOrders(pendingRes.data);
+      if (todayRes) {
+        setToday({
+          orders_created: todayRes.data.orders_created,
+          orders_active: todayRes.data.orders_active,
+          orders_delivered: todayRes.data.orders_delivered,
+          orders_cancelled: todayRes.data.orders_cancelled,
+          net_sales: todayRes.data.net_sales,
+        });
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudieron cargar los pedidos'));
     } finally {
@@ -80,19 +100,33 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   React.useEffect(() => {
     load();
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
   }, [load]);
 
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      void load();
+      void refreshRestaurant();
+    });
+    return unsubscribe;
+  }, [navigation, load, refreshRestaurant]);
+
+  const pendingOrders = useMemo(
+    () => orders.filter((o) => o.status === 'pending'),
+    [orders],
+  );
+  const alertOrder = pendingOrders[0] ?? null;
+
   const counts = useMemo(
     () => ({
-      all: orders.length,
-      pending: orders.filter((o) => o.status === 'pending').length,
+      all: orders.filter((o) => o.status !== 'pending').length,
+      pending: pendingOrders.length,
       kitchen: orders.filter((o) => KITCHEN_STATUSES.includes(o.status)).length,
       ready: orders.filter((o) => o.status === 'ready').length,
       delivery: orders.filter((o) => o.status === 'on_the_way').length,
     }),
-    [orders],
+    [orders, pendingOrders.length],
   );
 
   const filteredOrders = useMemo(
@@ -102,21 +136,25 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   const filterOptions = useMemo(
     () => [
-      { key: 'all' as const, label: 'Todos', count: counts.all },
-      { key: 'pending' as const, label: 'Nuevos', count: counts.pending },
       { key: 'kitchen' as const, label: 'Cocina', count: counts.kitchen },
       { key: 'ready' as const, label: 'Listos', count: counts.ready },
       { key: 'delivery' as const, label: 'En camino', count: counts.delivery },
+      { key: 'all' as const, label: 'Todos', count: counts.all },
     ],
     [counts],
   );
 
-  const handleAccept = async (order: Order) => {
+  const isOpen =
+    !!restaurant?.is_active
+    && restaurant.accepting_orders !== false;
+
+  const handleAccept = async (order: Order, prepMinutes: number) => {
     if (busyOrderId != null) return;
     setBusyOrderId(order.id);
     try {
-      await orderApi.accept(order.id);
+      await orderApi.accept(order.id, prepMinutes);
       await load();
+      setFilter('kitchen');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
     } finally {
@@ -151,6 +189,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     try {
       await orderApi.updateStatus(order.id, next.status);
       await load();
+      if (next.status === 'ready') setFilter('ready');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar'));
     } finally {
@@ -165,13 +204,26 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
       loading={initialLoading}
       loadingSkeleton={
         <View style={[styles.skeletonWrap, { paddingTop: insets.top + spacing.sm }, listPaddingBottom()]}>
-          <View style={styles.skeletonHero} />
+          <View style={styles.skeletonHeader} />
           <ListSkeleton count={3} variant="order" />
         </View>
       }
       error={error}
       onRetry={load}
     >
+      {alertOrder ? (
+        <NewOrderAlert
+          order={alertOrder}
+          busy={busyOrderId === alertOrder.id}
+          queueCount={pendingOrders.length}
+          onAccept={(prepMinutes) => handleAccept(alertOrder, prepMinutes)}
+          onReject={() => handleReject(alertOrder)}
+          onDetails={() =>
+            navigation.navigate('OrderDetail', { orderId: alertOrder.id })
+          }
+        />
+      ) : null}
+
       <FlatList
         data={filteredOrders}
         keyExtractor={(item) => String(item.id)}
@@ -184,23 +236,26 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <>
-            <RestaurantHeroHeader
-              restaurant={restaurant}
+            <StoreHomeHeader
               topInset={insets.top}
-              eyebrow="Pedidos"
-              title={restaurant?.name}
-              subtitle={
-                counts.pending > 0
-                  ? `${counts.pending} pedido${counts.pending === 1 ? '' : 's'} esperando respuesta`
-                  : 'Gestiona pedidos en tiempo real'
-              }
-              stats={[
-                { label: 'Activos', value: counts.all, icon: 'receipt-outline' },
-                { label: 'Nuevos', value: counts.pending, icon: 'notifications-outline' },
-                { label: 'Cocina', value: counts.kitchen, icon: 'flame-outline' },
-              ]}
+              restaurant={restaurant}
+              today={today}
+              kitchenCount={counts.kitchen}
+              readyCount={counts.ready}
+              deliveryCount={counts.delivery}
+              toggling={togglingOrders}
+              onToggleOpen={(open) => {
+                void toggleAcceptingOrders(open);
+              }}
             />
 
+            {!isOpen && restaurant?.is_active ? (
+              <View style={styles.closedBanner}>
+                <Text style={styles.closedText}>
+                  Estás cerrado. Desliza para abrir y recibir pedidos.
+                </Text>
+              </View>
+            ) : null}
             {restaurant?.setup_status ? (
               <RestaurantSetupBanner
                 restaurant={restaurant}
@@ -208,12 +263,14 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
               />
             ) : null}
 
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Bandeja de pedidos</Text>
-              <Text style={styles.sectionSub}>
-                {filteredOrders.length} de {orders.length} pedido{orders.length === 1 ? '' : 's'}
-              </Text>
-            </View>
+            {pendingOrders.length > 0 ? (
+              <View style={styles.pendingHint}>
+                <Text style={styles.pendingHintText}>
+                  {pendingOrders.length} pedido{pendingOrders.length === 1 ? '' : 's'} nuevo
+                  {pendingOrders.length === 1 ? '' : 's'} esperando respuesta
+                </Text>
+              </View>
+            ) : null}
 
             <RestaurantFilterChips
               options={filterOptions}
@@ -228,8 +285,6 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
             <RestaurantOrderCard
               order={item}
               onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
-              onAccept={item.status === 'pending' ? () => handleAccept(item) : undefined}
-              onReject={item.status === 'pending' ? () => handleReject(item) : undefined}
               onAdvance={next ? () => handleAdvance(item) : undefined}
               advanceLabel={next?.label}
               busy={busyOrderId === item.id}
@@ -239,16 +294,18 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
         ListEmptyComponent={
           !loading ? (
             <EmptyState
-              emoji={filter === 'pending' ? '🔔' : '✨'}
+              emoji={filter === 'kitchen' ? '👨‍🍳' : '✨'}
               title={
-                filter === 'all'
-                  ? 'Sin pedidos activos'
-                  : 'Nada en esta bandeja'
+                filter === 'kitchen'
+                  ? 'Cocina libre'
+                  : filter === 'ready'
+                    ? 'Nada listo por ahora'
+                    : 'Sin pedidos activos'
               }
               subtitle={
-                filter === 'all'
-                  ? 'Cuando llegue un pedido nuevo, aparecerá aquí al instante.'
-                  : 'Prueba otro filtro o espera nuevos pedidos.'
+                filter === 'kitchen'
+                  ? 'Cuando aceptes un pedido nuevo, aparecerá aquí para prepararlo.'
+                  : 'Los pedidos de esta bandeja aparecerán automáticamente.'
               }
             />
           ) : null
@@ -267,25 +324,38 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.screen,
   },
-  skeletonHero: {
-    height: 200,
-    borderRadius: 28,
+  skeletonHeader: {
+    height: 120,
+    borderRadius: 18,
     backgroundColor: colors.borderLight,
     marginBottom: spacing.lg,
   },
-  sectionHeader: {
+  pendingHint: {
+    backgroundColor: colors.accentLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     marginBottom: spacing.sm,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
-  sectionSub: {
+  pendingHintText: {
     fontSize: 13,
+    fontWeight: '700',
+    color: colors.accentDark,
+    textAlign: 'center',
+  },
+  closedBanner: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  closedText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textSecondary,
-    marginTop: 2,
-    fontWeight: '500',
+    textAlign: 'center',
   },
 });

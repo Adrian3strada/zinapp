@@ -23,13 +23,36 @@ export function formatRatingLabel(restaurant: Restaurant): string | null {
     : String(restaurant.rating_average);
 }
 
+/** ETA aproximado de entrega en Zinapécuaro (prep + traslado local). */
+export function estimateDeliveryEta(restaurant: Restaurant): {
+  min: number;
+  max: number;
+  label: string;
+} {
+  const category = (restaurant.category ?? 'general').toLowerCase();
+  const base: Record<string, [number, number]> = {
+    pizzas: [35, 50],
+    makis: [30, 45],
+    mexicana: [25, 40],
+    general: [30, 45],
+  };
+  const [minBase, maxBase] = base[category] ?? base.general;
+  const jitter = restaurant.id % 5;
+  const min = minBase + jitter;
+  const max = maxBase + jitter;
+  return { min, max, label: `${min}–${max} min` };
+}
+
+export function formatDeliveryFeeLabel(): string {
+  return `Envío ${formatCurrency(DELIVERY_FEE)}`;
+}
+
 export function buildMenuBannerMeta(restaurant: Restaurant): string {
   const parts: string[] = [];
   const rating = formatRatingLabel(restaurant);
   if (rating) parts.push(`★ ${rating}`);
-  const hours = formatRestaurantHours(restaurant.opening_time, restaurant.closing_time);
-  if (hours) parts.push(hours);
-  parts.push(`Envío ${formatCurrency(DELIVERY_FEE)}`);
+  parts.push(estimateDeliveryEta(restaurant).label);
+  parts.push(formatDeliveryFeeLabel());
   if (restaurant.is_open === false) parts.push('Cerrado ahora');
   return parts.join(' · ');
 }
@@ -37,17 +60,17 @@ export function buildMenuBannerMeta(restaurant: Restaurant): string {
 export type RestaurantMetaChip = {
   icon: 'star' | 'time-outline' | 'bicycle-outline' | 'fast-food-outline';
   text: string;
+  emphasize?: boolean;
 };
 
+/** Señales de comercio para listados (rating · ETA · fee). */
 export function buildRestaurantMetaChips(restaurant: Restaurant): RestaurantMetaChip[] {
   const chips: RestaurantMetaChip[] = [];
   const rating = formatRatingLabel(restaurant);
-  if (rating) chips.push({ icon: 'star', text: rating });
-  const hours = formatRestaurantHours(restaurant.opening_time, restaurant.closing_time);
-  if (hours) chips.push({ icon: 'time-outline', text: hours });
-  chips.push({ icon: 'bicycle-outline', text: formatCurrency(DELIVERY_FEE) });
-  if (restaurant.products_count > 0) {
-    chips.push({ icon: 'fast-food-outline', text: String(restaurant.products_count) });
+  if (rating) {
+    chips.push({ icon: 'star', text: rating, emphasize: true });
   }
+  chips.push({ icon: 'time-outline', text: estimateDeliveryEta(restaurant).label });
+  chips.push({ icon: 'bicycle-outline', text: formatDeliveryFeeLabel() });
   return chips;
 }

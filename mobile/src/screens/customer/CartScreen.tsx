@@ -36,7 +36,7 @@ import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { toCoordinate } from '../../utils/maps';
 import { runWithRetry } from '../../utils/runWithRetry';
 
-export default function CartScreen({ navigation }: CartScreenProps) {
+export default function CartScreen({ navigation, route }: CartScreenProps) {
   const { user, refreshUser, requestLogin } = useAuth();
   const { keyboardWithHeader, tabBottomPadding } = useTabScreenInsets();
   const { config: appConfig } = useAppConfig();
@@ -62,8 +62,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const [cartRestaurant, setCartRestaurant] = useState<Restaurant | null>(null);
   const checkoutInFlight = useRef(false);
   const checkoutIdempotencyKey = useRef<string | null>(null);
+  const pendingCouponApply = useRef<string | null>(null);
   const { getCurrentPosition, loading: locating } = useLocation();
-
   const transferInfo = useMemo(
     () =>
       resolveTransferInfo({
@@ -95,6 +95,45 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       setAddress(user.address);
     }
   }, [user?.address]);
+
+  useEffect(() => {
+    const code = route.params?.couponCode?.trim();
+    if (!code) return;
+    setCouponCode(code.toUpperCase());
+    setCouponApplied(false);
+    setDiscount(0);
+    setCouponError(null);
+    pendingCouponApply.current = code.toUpperCase();
+    navigation.setParams({ couponCode: undefined });
+  }, [route.params?.couponCode, navigation]);
+
+  useEffect(() => {
+    const pending = pendingCouponApply.current;
+    if (!pending || items.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      setCouponValidating(true);
+      try {
+        const { data } = await couponApi.validate(pending, total);
+        if (cancelled) return;
+        setDiscount(parseFloat(data.discount_amount));
+        setCouponApplied(true);
+        setCouponError(null);
+        pendingCouponApply.current = null;
+      } catch (err) {
+        if (cancelled) return;
+        setDiscount(0);
+        setCouponApplied(false);
+        setCouponError(getApiErrorMessage(err, 'Código inválido o no aplicable.'));
+        pendingCouponApply.current = null;
+      } finally {
+        if (!cancelled) setCouponValidating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [items.length, total]);
 
   useEffect(() => {
     if (!couponApplied || !couponCode.trim()) return;
@@ -475,6 +514,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             onPaymentMethodChange={setPaymentMethod}
             onCouponChange={handleCouponChange}
             onApplyCoupon={handleApplyCoupon}
+            onBrowseOffers={() => navigation.navigate('Ofertas')}
             onUseLocation={handleUseMyLocation}
             onGeocode={handleGeocodeAddress}
             onPinChange={handlePinChange}

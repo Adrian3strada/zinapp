@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import CustomerOrdersHero from '../../components/customer/CustomerOrdersHero';
@@ -10,6 +10,7 @@ import LiveBadge from '../../components/LiveBadge';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import ScreenContainer from '../../components/ScreenContainer';
 import SectionHeader from '../../components/SectionHeader';
+import { useCart } from '../../context/CartContext';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { MyOrdersScreenProps } from '../../navigation/types';
@@ -19,7 +20,10 @@ import { colors, statusColors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Order } from '../../types';
+import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
+import { getApiErrorMessage } from '../../utils/apiErrors';
+import { buildReorderCartItems } from '../../utils/reorderFromOrder';
 import { FLATLIST_TUNING } from '../../utils/responsive';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
 import FoodImage from '../../components/FoodImage';
@@ -29,14 +33,19 @@ const ACTIVE_STATUSES = ['pending', 'accepted', 'preparing', 'ready', 'on_the_wa
 function OrderCard({
   item,
   onPress,
+  onReorder,
+  reordering,
 }: {
   item: Order;
   onPress: () => void;
+  onReorder?: () => void;
+  reordering?: boolean;
 }) {
   const visual = getRestaurantVisual(item.restaurant_detail?.name ?? '');
   const isActive = ACTIVE_STATUSES.includes(item.status);
   const isLive = item.status === 'on_the_way';
   const accent = statusColors[item.status] ?? colors.primary;
+  const canReorder = item.status === 'delivered' && !!onReorder;
 
   return (
     <Pressable
@@ -70,6 +79,22 @@ function OrderCard({
         {isLive && (
           <Text style={styles.trackHint}>Toca para ver el mapa en vivo</Text>
         )}
+        {canReorder ? (
+          <Pressable
+            style={styles.reorderBtn}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onReorder();
+            }}
+            disabled={reordering}
+            hitSlop={8}
+          >
+            <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+            <Text style={styles.reorderText}>
+              {reordering ? 'Agregando…' : 'Pedir de nuevo'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
       <View style={styles.right}>
         <Text style={styles.total}>{formatCurrency(item.total)}</Text>
@@ -83,6 +108,9 @@ function OrderCard({
 
 export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
   const { insets, listPaddingBottom } = useTabScreenInsets();
+  const { replaceCart } = useCart();
+  const [reorderingId, setReorderingId] = useState<number | null>(null);
+
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await orderApi.list(page);
     return data;
@@ -109,14 +137,56 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
     [orders],
   );
 
+  const handleReorder = useCallback(
+    async (order: Order) => {
+      if (reorderingId) return;
+      setReorderingId(order.id);
+      try {
+        let full = order;
+        if (!order.items?.length) {
+          const { data } = await orderApi.get(order.id);
+          full = data;
+        }
+        const result = buildReorderCartItems(full);
+        if (result.added === 0) {
+          appAlert(
+            'Pedir de nuevo',
+            'Ningún platillo está disponible. Abre el menú del restaurante.',
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Ver menú',
+                onPress: () =>
+                  navigation.navigate('Menu', {
+                    restaurantId: result.restaurantId ?? order.restaurant,
+                    restaurantName: result.restaurantName,
+                  }),
+              },
+            ],
+          );
+          return;
+        }
+        replaceCart(result.items);
+        navigation.navigate('Carrito');
+      } catch (err) {
+        appAlert('Error', getApiErrorMessage(err, 'No se pudo reordenar.'));
+      } finally {
+        setReorderingId(null);
+      }
+    },
+    [reorderingId, replaceCart, navigation],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: Order }) => (
       <OrderCard
         item={item}
         onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
+        onReorder={item.status === 'delivered' ? () => { void handleReorder(item); } : undefined}
+        reordering={reorderingId === item.id}
       />
     ),
-    [navigation],
+    [navigation, handleReorder, reorderingId],
   );
 
   const header = useMemo(
@@ -216,6 +286,18 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
   date: { fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
   trackHint: { fontSize: 11, color: colors.primary, fontWeight: '700', marginTop: 2 },
+  reorderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+  },
+  reorderText: { fontSize: 12, fontWeight: '800', color: colors.primary },
   right: { alignItems: 'flex-end', gap: 8 },
   total: { fontSize: 16, fontWeight: '800', color: colors.primary },
   chevron: {

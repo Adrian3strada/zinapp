@@ -26,7 +26,7 @@ export type AuthStackParamList = {
 export type CustomerTabParamList = {
   Inicio: undefined;
   Pedidos: undefined;
-  Carrito: undefined;
+  Carrito: { couponCode?: string } | undefined;
   Perfil: undefined;
 };
 
@@ -55,7 +55,7 @@ export type RestaurantStackParamList = {
 };
 
 export type DriverTabParamList = {
-  Disponibles: undefined;
+  Inicio: undefined;
   Entregas: undefined;
   Perfil: undefined;
 };
@@ -77,9 +77,10 @@ export type MyDeliveriesScreenProps = CompositeScreenProps<
   NativeStackScreenProps<DriverStackParamList>
 >;
 export type AvailableOrdersScreenProps = CompositeScreenProps<
-  BottomTabScreenProps<DriverTabParamList, 'Disponibles'>,
+  BottomTabScreenProps<DriverTabParamList, 'Inicio'>,
   NativeStackScreenProps<DriverStackParamList>
 >;
+export type DriverHomeScreenProps = AvailableOrdersScreenProps;
 export type RestaurantsScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Comida'>;
 
 export type HomeScreenProps = CompositeScreenProps<

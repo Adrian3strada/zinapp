@@ -125,7 +125,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return [IsCustomer()]
         if self.action in ('accept', 'reject', 'update_status'):
             return [IsRestaurantOwnerOrAdmin()]
-        if self.action == 'restaurant_pending':
+        if self.action in ('restaurant_pending', 'restaurant_today'):
             return [IsRestaurantOwner()]
         if self.action in (
             'available', 'accept_delivery', 'mark_delivered',
@@ -183,6 +183,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
+        ALLOWED_PREP = {10, 15, 20, 25, 30, 40, 45, 60}
+        raw_prep = request.data.get('prep_minutes', 15)
+        try:
+            prep_minutes = int(raw_prep)
+        except (TypeError, ValueError):
+            prep_minutes = 15
+        if prep_minutes not in ALLOWED_PREP:
+            return Response(
+                {'detail': 'Tiempo de preparación no válido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         with transaction.atomic():
             order = Order.objects.select_for_update().get(pk=self.get_object().pk)
             if order.status != OrderStatus.PENDING:
@@ -198,9 +210,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                     {'detail': 'El pago en línea aún no está confirmado.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            # Aceptar = pasar directo a preparando (flujo tipo DiDi tienda).
             serializer = OrderStatusUpdateSerializer(
-                data={'status': OrderStatus.ACCEPTED},
-                context={'order': order},
+                data={'status': OrderStatus.PREPARING},
+                context={'order': order, 'prep_minutes': prep_minutes},
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -208,7 +221,10 @@ class OrderViewSet(viewsets.ModelViewSet):
                 action=AuditLog.Action.ORDER_ACCEPTED,
                 obj=order,
                 request=request,
-                metadata={'status': OrderStatus.ACCEPTED},
+                metadata={
+                    'status': OrderStatus.PREPARING,
+                    'prep_minutes': prep_minutes,
+                },
             )
         order.refresh_from_db()
         return Response(OrderSerializer(order).data)
@@ -568,6 +584,39 @@ class OrderViewSet(viewsets.ModelViewSet):
         ).exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED])
         serializer = OrderSerializer(orders, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='restaurant-today')
+    def restaurant_today(self, request):
+        """Resumen del día para el panel del restaurante."""
+        from django.db.models import Sum
+
+        from restaurants.models import Restaurant
+
+        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        if not restaurant:
+            return Response({'detail': 'No tienes restaurante.'}, status=status.HTTP_404_NOT_FOUND)
+
+        now = timezone.now()
+        day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        qs = Order.objects.filter(restaurant=restaurant, created_at__gte=day_start)
+        delivered = qs.filter(status=OrderStatus.DELIVERED)
+        cancelled = qs.filter(status=OrderStatus.CANCELLED)
+        active = qs.exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED])
+        sales = delivered.aggregate(total=Sum('subtotal'))['total'] or Decimal('0')
+        discounts = delivered.aggregate(total=Sum('discount_amount'))['total'] or Decimal('0')
+
+        return Response({
+            'date': day_start.date().isoformat(),
+            'orders_created': qs.count(),
+            'orders_active': active.count(),
+            'orders_delivered': delivered.count(),
+            'orders_cancelled': cancelled.count(),
+            'food_sales': str(sales),
+            'discounts': str(discounts),
+            'net_sales': str(sales - discounts),
+            'accepting_orders': restaurant.accepting_orders,
+            'is_active': restaurant.is_active,
+        })
 
     @action(detail=True, methods=['post'], url_path='initiate-payment')
     def initiate_payment(self, request, pk=None):

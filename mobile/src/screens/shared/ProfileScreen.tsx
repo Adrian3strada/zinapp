@@ -189,6 +189,11 @@ export default function ProfileScreen() {
   };
 
   const handleToggleAcceptingOrders = async (value: boolean) => {
+    if (restaurantCtx?.toggleAcceptingOrders) {
+      await restaurantCtx.toggleAcceptingOrders(value);
+      setAcceptingOrders(value);
+      return;
+    }
     if (!restaurant || togglingOrders) return;
     if (!restaurant.is_active) {
       appAlert(
@@ -423,7 +428,7 @@ export default function ProfileScreen() {
           <LinearGradient
             colors={
               isDriver
-                ? [colors.shipmentStart, colors.shipmentEnd, '#312E81']
+                ? [colors.accent, colors.accentDark, '#9A3412']
                 : [colors.gradientStart, colors.gradientEnd]
             }
             style={[
@@ -454,8 +459,12 @@ export default function ProfileScreen() {
           {isRestaurant && restaurant ? (
             <RestaurantProfileDashboard
               restaurant={restaurant}
-              acceptingOrders={acceptingOrders}
-              togglingOrders={togglingOrders}
+              acceptingOrders={
+                restaurantCtx?.restaurant
+                  ? restaurantCtx.restaurant.accepting_orders !== false
+                  : acceptingOrders
+              }
+              togglingOrders={restaurantCtx?.togglingOrders ?? togglingOrders}
               onToggleAcceptingOrders={handleToggleAcceptingOrders}
               overlap
             />

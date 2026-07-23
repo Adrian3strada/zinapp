@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appAlert, appConfirm } from '../../utils/appAlert';
@@ -24,9 +24,10 @@ import OnlinePaymentBanner from '../../components/OnlinePaymentBanner';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { resolveTransferInfo } from '../../config/payments';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import { useAppConfig } from '../../hooks/useAppConfig';
-import type { DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
+import type { CustomerStackParamList, DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -34,6 +35,7 @@ import { cardShadow } from '../../theme/shadows';
 import type { Order, OrderStatus } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
+import { buildReorderCartItems } from '../../utils/reorderFromOrder';
 import {
   customerContactMessage,
   driverContactMessage,
@@ -57,7 +59,7 @@ const TRACKING_POLL_MS = 2000;
 const DEFAULT_POLL_MS = 6000;
 
 const RESTAURANT_NEXT_STATUS: Record<string, { status: string; label: string }> = {
-  accepted: { status: 'preparing', label: 'Marcar preparando' },
+  accepted: { status: 'preparing', label: 'Empezar a preparar' },
   preparing: { status: 'ready', label: 'Listo para recoger' },
 };
 
@@ -65,6 +67,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const { orderId } = route.params;
   const promptReview = 'promptReview' in route.params ? route.params.promptReview : false;
   const { user } = useAuth();
+  const { replaceCart } = useCart();
   const insets = useSafeAreaInsets();
   const activeDeliveries = useOptionalCustomerActiveDeliveries();
   const { config: appConfig } = useAppConfig();
@@ -72,6 +75,8 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [prepMinutes, setPrepMinutes] = useState(15);
+  const [reordering, setReordering] = useState(false);
 
   const load = useCallback(async (isMounted: () => boolean) => {
     try {
@@ -139,6 +144,52 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     );
   }, [order, actionBusy, activeDeliveries]);
 
+  const handleReorder = useCallback(() => {
+    if (!order || reordering || user?.role !== 'customer') return;
+    const result = buildReorderCartItems(order);
+    if (result.added === 0) {
+      appAlert(
+        'Pedir de nuevo',
+        'Ningún platillo de este pedido está disponible ahora. Abre el menú del restaurante.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Ver menú',
+            onPress: () => {
+              const customerNav = navigation as NativeStackNavigationProp<CustomerStackParamList>;
+              customerNav.navigate('Menu', {
+                restaurantId: result.restaurantId ?? order.restaurant,
+                restaurantName: result.restaurantName,
+              });
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    setReordering(true);
+    replaceCart(result.items);
+    const skipNote =
+      result.skipped > 0
+        ? ` (${result.skipped} ya no disponible${result.skipped > 1 ? 's' : ''})`
+        : '';
+    appAlert(
+      'Listo',
+      `Agregamos ${result.added} artículo${result.added > 1 ? 's' : ''} de ${result.restaurantName}${skipNote}.`,
+      [
+        {
+          text: 'Ir al carrito',
+          onPress: () => {
+            const customerNav = navigation as NativeStackNavigationProp<CustomerStackParamList>;
+            customerNav.navigate('Main', { screen: 'Carrito' });
+          },
+        },
+      ],
+    );
+    setReordering(false);
+  }, [order, reordering, user?.role, replaceCart, navigation]);
+
   const reloadOrder = useCallback(() => {
     load(() => true);
   }, [load]);
@@ -147,14 +198,14 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     if (!order || actionBusy) return;
     setActionBusy(true);
     try {
-      await orderApi.accept(order.id);
+      await orderApi.accept(order.id, prepMinutes);
       reloadOrder();
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
     } finally {
       setActionBusy(false);
     }
-  }, [order, actionBusy, reloadOrder]);
+  }, [order, actionBusy, reloadOrder, prepMinutes]);
 
   const handleRestaurantReject = useCallback(() => {
     if (!order || actionBusy) return;
@@ -459,9 +510,40 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
             <View style={styles.card}>
               <Text style={styles.section}>Gestionar pedido</Text>
               {order.status === 'pending' && (
-                <View style={styles.restaurantActions}>
-                  <Button title="Aceptar pedido" onPress={handleRestaurantAccept} loading={actionBusy} style={styles.restaurantBtn} />
-                  <Button title="Rechazar" variant="danger" onPress={handleRestaurantReject} loading={actionBusy} style={styles.restaurantBtn} />
+                <View style={styles.restaurantActionsCol}>
+                  <Text style={styles.prepLabel}>Tiempo de preparación</Text>
+                  <View style={styles.prepRow}>
+                    {[10, 15, 20, 30, 45].map((mins) => {
+                      const active = prepMinutes === mins;
+                      return (
+                        <Pressable
+                          key={mins}
+                          style={[styles.prepChip, active && styles.prepChipActive]}
+                          onPress={() => setPrepMinutes(mins)}
+                          disabled={actionBusy}
+                        >
+                          <Text style={[styles.prepChipText, active && styles.prepChipTextActive]}>
+                            {mins} min
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.restaurantActions}>
+                    <Button
+                      title={`Aceptar · ${prepMinutes} min`}
+                      onPress={handleRestaurantAccept}
+                      loading={actionBusy}
+                      style={styles.restaurantBtn}
+                    />
+                    <Button
+                      title="Rechazar"
+                      variant="danger"
+                      onPress={handleRestaurantReject}
+                      loading={actionBusy}
+                      style={styles.restaurantBtn}
+                    />
+                  </View>
                 </View>
               )}
               {RESTAURANT_NEXT_STATUS[order.status] && (
@@ -505,6 +587,16 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                   const driverNav = navigation as NativeStackNavigationProp<DriverStackParamList>;
                   driverNav.navigate('DriverMap', { orderId: order.id });
                 }}
+              />
+            </View>
+          )}
+
+          {user?.role === 'customer' && order.status === 'delivered' && (
+            <View style={styles.card}>
+              <Button
+                title="Pedir de nuevo"
+                onPress={handleReorder}
+                loading={reordering}
               />
             </View>
           )}
@@ -620,6 +712,20 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 18, fontWeight: '800' },
   totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
   restaurantActions: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  restaurantActionsCol: { gap: 10, marginBottom: 12 },
+  prepLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  prepRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  prepChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  prepChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  prepChipText: { fontSize: 13, fontWeight: '800', color: colors.textSecondary },
+  prepChipTextActive: { color: '#FFF' },
   restaurantBtn: { flex: 1 },
   reviewPrompt: { fontSize: 14, color: colors.textSecondary, marginBottom: 12, lineHeight: 20 },
   cancelHint: { fontSize: 14, color: colors.textSecondary, lineHeight: 21, marginBottom: 12 },

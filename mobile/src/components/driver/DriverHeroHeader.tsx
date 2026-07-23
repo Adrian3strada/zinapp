@@ -43,7 +43,7 @@ export default function DriverHeroHeader({
 
   return (
     <LinearGradient
-      colors={[colors.shipmentStart, colors.shipmentEnd, '#312E81']}
+      colors={[colors.accent, colors.accentDark, '#9A3412']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.hero, { paddingTop: topInset + spacing.md }]}

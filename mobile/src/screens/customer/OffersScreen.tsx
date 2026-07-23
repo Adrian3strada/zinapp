@@ -54,6 +54,16 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
     setRefreshing(false);
   };
 
+  const useInCart = useCallback(
+    (coupon: PublicCoupon) => {
+      navigation.navigate('Main', {
+        screen: 'Carrito',
+        params: { couponCode: coupon.code },
+      });
+    },
+    [navigation],
+  );
+
   return (
     <ScreenContainer>
       <FlatList
@@ -65,7 +75,7 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
         }
         ListHeaderComponent={
           <Text style={styles.subtitle}>
-            Copia el código y úsalo en el carrito al confirmar tu pedido.
+            Elige un cupón y lo llevamos al carrito listo para aplicar.
           </Text>
         }
         ListEmptyComponent={
@@ -90,12 +100,7 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
           ) : null
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={[styles.card, cardShadow]}
-            onPress={() => {
-              appAlert('Cupón', `Usa el código ${item.code.toUpperCase()} en tu carrito.`);
-            }}
-          >
+          <View style={[styles.card, cardShadow]}>
             <View style={styles.cardTop}>
               <Text style={styles.code}>{item.code.toUpperCase()}</Text>
               <Ionicons name="pricetag" size={22} color={colors.primary} />
@@ -109,7 +114,11 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
                 Mínimo de pedido: {formatCurrency(item.min_order_amount)}
               </Text>
             )}
-          </Pressable>
+            <Pressable style={styles.useBtn} onPress={() => useInCart(item)}>
+              <Text style={styles.useBtnText}>Usar en el carrito</Text>
+              <Ionicons name="cart-outline" size={16} color="#FFF" />
+            </Pressable>
+          </View>
         )}
       />
     </ScreenContainer>
@@ -137,4 +146,15 @@ const styles = StyleSheet.create({
   discount: { fontSize: 15, fontWeight: '700', color: colors.text },
   desc: { fontSize: 13, color: colors.textSecondary },
   min: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  useBtn: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  useBtnText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
 });

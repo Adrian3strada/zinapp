@@ -52,6 +52,7 @@ class OrderApiTests(TestCase):
     def test_register_restaurant_creates_restaurant(self):
         response = self.client.post('/api/auth/register/', {
             'username': 'newrest',
+            'email': 'newrest@example.com',
             'password': 'test1234',
             'password_confirm': 'test1234',
             'role': 'restaurant',
@@ -189,7 +190,6 @@ class OrderApiTests(TestCase):
 
         self.client.force_authenticate(self.owner)
         self.client.post(f'/api/orders/{order_id}/accept/')
-        self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'preparing'})
         self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'ready'})
 
         self.client.force_authenticate(driver)
@@ -236,7 +236,6 @@ class OrderApiTests(TestCase):
 
         self.client.force_authenticate(self.owner)
         self.client.post(f'/api/orders/{order_id}/accept/')
-        self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'preparing'})
         self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'ready'})
 
         self.client.force_authenticate(driver)
@@ -317,7 +316,6 @@ class OrderApiTests(TestCase):
 
         self.client.force_authenticate(self.owner)
         self.client.post(f'/api/orders/{order_id}/accept/')
-        self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'preparing'})
         self.client.post(f'/api/orders/{order_id}/update-status/', {'status': 'ready'})
 
         self.client.force_authenticate(self.customer)

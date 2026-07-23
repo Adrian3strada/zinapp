@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import Button from '../Button';
@@ -11,17 +11,9 @@ import type { Order } from '../../types';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 import { formatCurrency, formatTimeAgo } from '../../utils/format';
 
-const PAYMENT_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  cash: 'cash-outline',
-  transfer: 'card-outline',
-  online: 'globe-outline',
-};
-
 interface Props {
   order: Order;
   onPress: () => void;
-  onAccept?: () => void;
-  onReject?: () => void;
   onAdvance?: () => void;
   advanceLabel?: string;
   busy?: boolean;
@@ -34,134 +26,140 @@ function customerName(order: Order): string {
   return full || c.username;
 }
 
-function itemsSummary(order: Order): string {
-  if (!order.items?.length) return 'Sin platillos';
-  const preview = order.items
-    .slice(0, 3)
-    .map((item) => {
-      const name = item.product_detail?.name ?? 'Producto';
-      const opts = (item.selected_options ?? []).map((o) => o.name).join(', ');
-      const notes = item.notes?.trim();
-      const detail = [opts, notes].filter(Boolean).join(' · ');
-      return detail
-        ? `${item.quantity}× ${name} (${detail})`
-        : `${item.quantity}× ${name}`;
-    })
-    .join(' · ');
-  const extra = order.items.length > 3 ? ` +${order.items.length - 3} más` : '';
-  return preview + extra;
+function usePrepCountdown(estimatedReadyAt?: string | null): {
+  label: string;
+  overdue: boolean;
+} | null {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!estimatedReadyAt) return undefined;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [estimatedReadyAt]);
+
+  if (!estimatedReadyAt) return null;
+  const target = new Date(estimatedReadyAt).getTime();
+  if (!Number.isFinite(target)) return null;
+  const diffSec = Math.round((target - now) / 1000);
+  if (diffSec >= 0) {
+    const mins = Math.floor(diffSec / 60);
+    const secs = diffSec % 60;
+    return {
+      label: mins > 0 ? `${mins}m ${String(secs).padStart(2, '0')}s` : `${secs}s`,
+      overdue: false,
+    };
+  }
+  const late = Math.abs(diffSec);
+  const mins = Math.floor(late / 60);
+  return {
+    label: mins > 0 ? `+${mins} min` : `+${late}s`,
+    overdue: true,
+  };
 }
 
+/** Card de cocina: platillos grandes + countdown + CTA Listo. */
 export default function RestaurantOrderCard({
   order,
   onPress,
-  onAccept,
-  onReject,
   onAdvance,
   advanceLabel,
   busy,
 }: Props) {
   const accent = statusColors[order.status] ?? colors.primary;
-  const isPending = order.status === 'pending';
-  const isUrgent = isPending;
   const timeAgo = formatTimeAgo(order.created_at);
-  const paymentIcon = PAYMENT_ICONS[order.payment_method] ?? 'wallet-outline';
-  const itemCount = order.items?.reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+  const items = order.items ?? [];
+  const isReady = order.status === 'ready';
+  const isKitchen = order.status === 'accepted' || order.status === 'preparing';
+  const prep = usePrepCountdown(isKitchen ? order.estimated_ready_at : null);
 
   return (
     <Pressable
       style={({ pressed }) => [
         styles.card,
         { borderLeftColor: accent },
-        isUrgent && styles.cardUrgent,
+        isKitchen && styles.cardKitchen,
+        isReady && styles.cardReady,
+        prep?.overdue && styles.cardOverdue,
         pressed && styles.cardPressed,
       ]}
       onPress={onPress}
     >
-      {isUrgent ? (
-        <View style={styles.urgentStrip}>
-          <Ionicons name="notifications" size={14} color="#FFF" />
-          <Text style={styles.urgentText}>Nuevo pedido — responde pronto</Text>
-        </View>
-      ) : null}
-
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.orderRef}>{formatOrderLabel(order)}</Text>
-          {timeAgo ? <Text style={styles.timeAgo}>{timeAgo}</Text> : null}
-        </View>
-        <OrderStatusBadge status={order.status} label={order.status_display} />
-      </View>
-
-      <View style={styles.customerRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{customerName(order).charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={styles.customerInfo}>
-          <Text style={styles.customerName}>{customerName(order)}</Text>
-          <Text style={styles.itemsLine} numberOfLines={2}>
-            {itemsSummary(order)}
+          <Text style={styles.customer}>
+            {customerName(order)}
+            {timeAgo ? ` · ${timeAgo}` : ''}
           </Text>
         </View>
-        <View style={styles.totalBlock}>
-          <Text style={styles.total}>{formatCurrency(order.total)}</Text>
-          <Text style={styles.itemCount}>
-            {itemCount} platillo{itemCount === 1 ? '' : 's'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.metaRow}>
-        <View style={styles.metaChip}>
-          <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-          <Text style={styles.metaChipText} numberOfLines={1}>
-            {order.delivery_address}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.footerRow}>
-        <View style={styles.paymentChip}>
-          <Ionicons name={paymentIcon} size={14} color={colors.primary} />
-          <Text style={styles.paymentText}>{order.payment_method_display}</Text>
-        </View>
-        {order.payment_method === 'online' && order.payment_status !== 'paid' && (
-          <View style={styles.paymentWarn}>
-            <Text style={styles.paymentWarnText}>Pago pendiente</Text>
+        {prep ? (
+          <View style={[styles.prepPill, prep.overdue && styles.prepPillOverdue]}>
+            <Ionicons
+              name={prep.overdue ? 'warning-outline' : 'timer-outline'}
+              size={14}
+              color={prep.overdue ? '#FFF' : colors.accentDark}
+            />
+            <Text style={[styles.prepPillText, prep.overdue && styles.prepPillTextOverdue]}>
+              {prep.overdue ? `Retraso ${prep.label}` : prep.label}
+            </Text>
           </View>
+        ) : (
+          <OrderStatusBadge status={order.status} label={order.status_display} />
         )}
-        {order.driver_detail ? (
-          <View style={styles.driverChip}>
-            <Ionicons name="bicycle-outline" size={14} color={colors.success} />
-            <Text style={styles.driverText}>Repartidor asignado</Text>
-          </View>
-        ) : order.status === 'ready' ? (
-          <View style={styles.driverChip}>
-            <Ionicons name="hourglass-outline" size={14} color={colors.warning} />
-            <Text style={[styles.driverText, { color: colors.warning }]}>Esperando repartidor</Text>
-          </View>
+      </View>
+
+      {order.prep_minutes && isKitchen ? (
+        <Text style={styles.prepHint}>Prep. estimada: {order.prep_minutes} min</Text>
+      ) : null}
+
+      <View style={styles.itemsBlock}>
+        {items.slice(0, 5).map((item) => {
+          const name = item.product_detail?.name ?? 'Producto';
+          const opts = (item.selected_options ?? []).map((o) => o.name).join(', ');
+          return (
+            <View key={item.id} style={styles.itemRow}>
+              <Text style={styles.qty}>{item.quantity}×</Text>
+              <View style={styles.itemText}>
+                <Text style={styles.itemName}>{name}</Text>
+                {opts ? <Text style={styles.itemOpts}>{opts}</Text> : null}
+                {item.notes?.trim() ? (
+                  <Text style={styles.itemNotes}>{item.notes.trim()}</Text>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+        {items.length > 5 ? (
+          <Text style={styles.moreItems}>+{items.length - 5} más</Text>
         ) : null}
       </View>
 
-      {order.delivery_notes ? (
+      <View style={styles.footer}>
+        <Text style={styles.total}>{formatCurrency(order.total)}</Text>
+        <View style={styles.footerMeta}>
+          {order.driver_detail ? (
+            <View style={styles.metaChip}>
+              <Ionicons name="bicycle-outline" size={13} color={colors.success} />
+              <Text style={[styles.metaText, { color: colors.success }]}>Repartidor</Text>
+            </View>
+          ) : isReady ? (
+            <View style={styles.metaChip}>
+              <Ionicons name="hourglass-outline" size={13} color={colors.warning} />
+              <Text style={[styles.metaText, { color: colors.warning }]}>Esperando</Text>
+            </View>
+          ) : (
+            <Text style={styles.payment}>{order.payment_method_display}</Text>
+          )}
+        </View>
+      </View>
+
+      {order.delivery_notes?.trim() ? (
         <View style={styles.notesBox}>
           <Ionicons name="chatbox-ellipses-outline" size={14} color={colors.textSecondary} />
           <Text style={styles.notesText} numberOfLines={2}>
-            {order.delivery_notes}
+            {order.delivery_notes.trim()}
           </Text>
-        </View>
-      ) : null}
-
-      {isPending && onAccept && onReject ? (
-        <View style={styles.actions}>
-          <Button title="Aceptar" onPress={onAccept} loading={busy} style={styles.actionBtn} />
-          <Button
-            title="Rechazar"
-            variant="danger"
-            onPress={onReject}
-            loading={busy}
-            style={styles.actionBtn}
-          />
         </View>
       ) : null}
 
@@ -173,11 +171,6 @@ export default function RestaurantOrderCard({
           style={styles.advanceBtn}
         />
       ) : null}
-
-      <View style={styles.detailHint}>
-        <Text style={styles.detailHintText}>Ver detalle completo</Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-      </View>
     </Pressable>
   );
 }
@@ -185,27 +178,28 @@ export default function RestaurantOrderCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 18,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     borderLeftWidth: 4,
     overflow: 'hidden',
+    paddingBottom: spacing.md,
     ...cardShadow,
   },
-  cardUrgent: {
-    borderColor: colors.warning + '55',
+  cardKitchen: {
+    borderColor: colors.accent + '44',
+    backgroundColor: '#FFFBF7',
+  },
+  cardReady: {
+    borderColor: colors.success + '44',
+    backgroundColor: '#F0FDF4',
+  },
+  cardOverdue: {
+    borderColor: colors.error + '66',
+    backgroundColor: '#FEF2F2',
   },
   cardPressed: { opacity: 0.96 },
-  urgentStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.warning,
-    paddingVertical: 8,
-  },
-  urgentText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -214,76 +208,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
   },
-  headerLeft: { flex: 1 },
-  orderRef: { fontSize: 17, fontWeight: '800', color: colors.text },
-  timeAgo: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '600' },
-  customerRow: {
+  headerLeft: { flex: 1, minWidth: 0 },
+  orderRef: { fontSize: 17, fontWeight: '900', color: colors.text },
+  customer: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '600' },
+  prepPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 17, fontWeight: '800', color: colors.primary },
-  customerInfo: { flex: 1, minWidth: 0 },
-  customerName: { fontSize: 15, fontWeight: '700', color: colors.text },
-  itemsLine: { fontSize: 13, color: colors.textSecondary, marginTop: 2, lineHeight: 18 },
-  totalBlock: { alignItems: 'flex-end' },
-  total: { fontSize: 20, fontWeight: '800', color: colors.primary },
-  itemCount: { fontSize: 11, color: colors.textMuted, fontWeight: '600', marginTop: 2 },
-  metaRow: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-  metaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.background,
-    borderRadius: 10,
+    gap: 4,
+    backgroundColor: colors.accentLight,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
-  metaChipText: { flex: 1, fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
-  footerRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  prepPillOverdue: { backgroundColor: colors.error },
+  prepPillText: { fontSize: 12, fontWeight: '900', color: colors.accentDark },
+  prepPillTextOverdue: { color: '#FFF' },
+  prepHint: {
+    marginTop: 6,
+    paddingHorizontal: spacing.lg,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  itemsBlock: {
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
     gap: 8,
+  },
+  itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  qty: { fontSize: 16, fontWeight: '900', color: colors.accentDark, minWidth: 28 },
+  itemText: { flex: 1, gap: 1 },
+  itemName: { fontSize: 16, fontWeight: '800', color: colors.text },
+  itemOpts: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  itemNotes: { fontSize: 12, color: colors.accentDark, fontWeight: '700' },
+  moreItems: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    marginTop: spacing.md,
   },
-  paymentChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  paymentText: { fontSize: 11, fontWeight: '700', color: colors.primary },
-  paymentWarn: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  paymentWarnText: { fontSize: 10, fontWeight: '700', color: '#E65100' },
-  driverChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.background,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  driverText: { fontSize: 11, fontWeight: '700', color: colors.success },
+  total: { fontSize: 18, fontWeight: '900', color: colors.text },
+  footerMeta: { flexDirection: 'row', alignItems: 'center' },
+  payment: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 12, fontWeight: '700' },
   notesBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -295,23 +265,5 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   notesText: { flex: 1, fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  actionBtn: { flex: 1, minWidth: 0 },
   advanceBtn: { marginHorizontal: spacing.lg, marginTop: spacing.md },
-  detailHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 12,
-    marginTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  detailHintText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
 });

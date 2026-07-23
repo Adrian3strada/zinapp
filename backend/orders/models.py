@@ -190,6 +190,16 @@ class Order(models.Model):
     accepted_at = models.DateTimeField(null=True, blank=True)
     ready_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    prep_minutes = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text='Minutos de preparación estimados al aceptar el pedido.',
+    )
+    estimated_ready_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Hora estimada en que el pedido estará listo.',
+    )
     driver_nearby_notified = models.BooleanField(default=False)
 
     class Meta:

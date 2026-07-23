@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
@@ -155,6 +156,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'scheduled_for', 'total',
             'items', 'review', 'dispute',
             'created_at', 'updated_at', 'accepted_at', 'ready_at', 'delivered_at',
+            'prep_minutes', 'estimated_ready_at',
         )
         read_only_fields = (
             'id', 'code', 'customer', 'restaurant', 'driver', 'status', 'subtotal',
@@ -163,7 +165,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'delivery_longitude', 'coupon',
             'created_at', 'updated_at', 'accepted_at', 'ready_at',
             'delivered_at', 'driver_latitude', 'driver_longitude',
-            'driver_location_updated_at',
+            'driver_location_updated_at', 'prep_minutes', 'estimated_ready_at',
         )
 
     def _driver_profile(self, obj):
@@ -507,7 +509,7 @@ class OrderStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=OrderStatus.choices)
 
     VALID_TRANSITIONS = {
-        OrderStatus.PENDING: [OrderStatus.ACCEPTED, OrderStatus.CANCELLED],
+        OrderStatus.PENDING: [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.CANCELLED],
         OrderStatus.ACCEPTED: [OrderStatus.PREPARING, OrderStatus.CANCELLED],
         OrderStatus.PREPARING: [OrderStatus.READY, OrderStatus.CANCELLED],
         OrderStatus.READY: [OrderStatus.CANCELLED],
@@ -538,6 +540,13 @@ class OrderStatusUpdateSerializer(serializers.Serializer):
                 order.cancellation_source = source
         if new_status == OrderStatus.ACCEPTED:
             order.accepted_at = now
+        elif new_status == OrderStatus.PREPARING:
+            if not order.accepted_at:
+                order.accepted_at = now
+            prep_minutes = self.context.get('prep_minutes')
+            if prep_minutes is not None:
+                order.prep_minutes = prep_minutes
+                order.estimated_ready_at = now + timedelta(minutes=int(prep_minutes))
         elif new_status == OrderStatus.READY:
             order.ready_at = now
         elif new_status == OrderStatus.DELIVERED:

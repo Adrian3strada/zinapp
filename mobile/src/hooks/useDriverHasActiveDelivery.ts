@@ -10,16 +10,26 @@ const ACTIVE_ORDER_STATUSES: Order['status'][] = [
   'on_the_way',
 ];
 
+function pickActiveOrder(orders: Order[]): Order | null {
+  const active = orders
+    .filter((order) => ACTIVE_ORDER_STATUSES.includes(order.status))
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  return active[0] ?? null;
+}
+
 export function useDriverActiveDeliveries(pollMs = 5000) {
   const [activeCount, setActiveCount] = useState(0);
   const [hasActiveDelivery, setHasActiveDelivery] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
 
   const check = useCallback(async () => {
     try {
       const { data } = await orderApi.myDeliveries();
+      const active = pickActiveOrder(data);
       const count = data.filter((order) =>
         ACTIVE_ORDER_STATUSES.includes(order.status),
       ).length;
+      setActiveOrder(active);
       setActiveCount(count);
       setHasActiveDelivery(count > 0);
     } catch {
@@ -33,7 +43,7 @@ export function useDriverActiveDeliveries(pollMs = 5000) {
     return () => clearInterval(interval);
   }, [check, pollMs]);
 
-  return { hasActiveDelivery, activeCount };
+  return { hasActiveDelivery, activeCount, activeOrder, refreshActive: check };
 }
 
 /** @deprecated use useDriverActiveDeliveries */

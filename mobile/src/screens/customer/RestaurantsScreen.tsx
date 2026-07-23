@@ -9,7 +9,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
 
 import type { MapMarker } from '../../components/AppMap';
 import EmptyState from '../../components/EmptyState';
@@ -102,10 +101,6 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 
   const openRestaurant = useCallback(
     (restaurant: Restaurant) => {
-      if (restaurant.is_open === false) {
-        appAlert('Cerrado', `${restaurant.name} no está recibiendo pedidos en este momento.`);
-        return;
-      }
       navigation.navigate('Menu', {
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
@@ -132,16 +127,29 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
   );
 
   const renderMapListItem = useCallback(
-    ({ item }: { item: Restaurant }) => (
-      <Pressable style={styles.mapListItem} onPress={() => openRestaurant(item)}>
-        <Ionicons name="restaurant" size={18} color={colors.primary} />
-        <View style={styles.mapListContent}>
-          <Text style={styles.mapListName}>{item.name}</Text>
-          <Text style={styles.mapListAddr} numberOfLines={1}>{item.address}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-      </Pressable>
-    ),
+    ({ item }: { item: Restaurant }) => {
+      const open = item.is_open !== false;
+      const rating = item.rating_average != null ? String(item.rating_average) : null;
+      return (
+        <Pressable
+          style={[styles.mapListItem, !open && styles.mapListItemClosed]}
+          onPress={() => openRestaurant(item)}
+        >
+          <Ionicons name="restaurant" size={18} color={open ? colors.primary : colors.textMuted} />
+          <View style={styles.mapListContent}>
+            <Text style={styles.mapListName}>{item.name}</Text>
+            <Text style={styles.mapListAddr} numberOfLines={1}>
+              {[
+                open ? 'Abierto' : 'Cerrado',
+                rating ? `★ ${rating}` : null,
+                item.address,
+              ].filter(Boolean).join(' · ')}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Pressable>
+      );
+    },
     [openRestaurant],
   );
 
@@ -394,6 +402,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: spacing.sm,
   },
+  mapListItemClosed: { opacity: 0.72 },
   mapListContent: { flex: 1 },
   mapListName: { fontSize: 15, fontWeight: '700', color: colors.text },
   mapListAddr: { fontSize: 12, color: colors.textMuted, marginTop: 2 },

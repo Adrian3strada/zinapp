@@ -38,6 +38,7 @@ interface Props {
   onDelivered?: () => void;
   onPickedUp?: () => void;
   showActions?: boolean;
+  navigateLabel?: string;
 }
 
 export default function DriverJobCard({
@@ -58,6 +59,7 @@ export default function DriverJobCard({
   onDelivered,
   onPickedUp,
   showActions,
+  navigateLabel = 'Navegar',
 }: Props) {
   const isFood = kind === 'order';
   const visual = getRestaurantVisual(restaurantName ?? '');
@@ -103,7 +105,7 @@ export default function DriverJobCard({
               {lines.map((line, i) => (
                 <View key={i} style={styles.lineRow}>
                   <View style={styles.lineIcon}>
-                    <Ionicons name={line.icon} size={13} color={line.iconColor ?? colors.shipmentStart} />
+                    <Ionicons name={line.icon} size={13} color={line.iconColor ?? colors.accentDark} />
                   </View>
                   <Text style={styles.lineText} numberOfLines={2}>
                     {line.text}
@@ -113,7 +115,7 @@ export default function DriverJobCard({
             </View>
           </View>
           <View style={styles.totalWrap}>
-            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalLabel}>Ganar</Text>
             <Text style={styles.total}>{formatCurrency(total)}</Text>
           </View>
         </View>
@@ -132,9 +134,9 @@ export default function DriverJobCard({
       {showActions ? (
         <View style={styles.actions}>
           {onNavigate ? (
-            <Pressable style={styles.actionChip} onPress={onNavigate}>
-              <Ionicons name="navigate" size={16} color={colors.shipmentStart} />
-              <Text style={styles.actionChipText}>Navegar</Text>
+            <Pressable style={[styles.actionChip, styles.actionChipPrimary]} onPress={onNavigate}>
+              <Ionicons name="navigate" size={16} color="#FFF" />
+              <Text style={[styles.actionChipText, styles.actionChipTextPrimary]}>{navigateLabel}</Text>
             </Pressable>
           ) : null}
           {onPickedUp ? (
@@ -166,8 +168,8 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   cardLive: {
-    borderColor: colors.shipmentStart + '55',
-    backgroundColor: '#EEF2FF88',
+    borderColor: colors.accent + '55',
+    backgroundColor: colors.accentLight,
   },
   cardReady: {
     borderColor: colors.warning + '55',
@@ -222,7 +224,7 @@ const styles = StyleSheet.create({
   lineText: { flex: 1, fontSize: 12, color: colors.textMuted, lineHeight: 17, fontWeight: '500' },
   totalWrap: { alignItems: 'flex-end', gap: 2 },
   totalLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
-  total: { fontSize: 17, fontWeight: '800', color: colors.shipmentStart },
+  total: { fontSize: 17, fontWeight: '800', color: colors.accentDark },
   actionBtn: { marginTop: 12 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   actionChip: {
@@ -234,12 +236,12 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.accentLight,
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: colors.accent + '55',
   },
-  actionChipPrimary: { backgroundColor: colors.shipmentStart, borderColor: colors.shipmentStart },
+  actionChipPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
   actionChipSuccess: { backgroundColor: colors.success, borderColor: colors.success },
-  actionChipText: { fontSize: 13, fontWeight: '800', color: colors.shipmentStart },
+  actionChipText: { fontSize: 13, fontWeight: '800', color: colors.accentDark },
   actionChipTextPrimary: { color: '#FFF' },
 });

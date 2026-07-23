@@ -46,6 +46,7 @@ interface Props {
   onPaymentMethodChange: (method: 'cash' | 'transfer' | 'online') => void;
   onCouponChange: (text: string) => void;
   onApplyCoupon: () => void;
+  onBrowseOffers?: () => void;
   onUseLocation: () => void;
   onGeocode: () => void;
   onPinChange: (coord: { latitude: number; longitude: number }) => void;
@@ -106,6 +107,7 @@ function CartCheckoutSection({
   onPaymentMethodChange,
   onCouponChange,
   onApplyCoupon,
+  onBrowseOffers,
   onUseLocation,
   onGeocode,
   onPinChange,
@@ -174,7 +176,14 @@ function CartCheckoutSection({
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Cupón de descuento</Text>
+        <View style={styles.couponHeader}>
+          <Text style={styles.cardTitle}>Cupón de descuento</Text>
+          {onBrowseOffers ? (
+            <Pressable onPress={onBrowseOffers} hitSlop={HIT_SLOP}>
+              <Text style={styles.offersLink}>Ver ofertas</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <View style={styles.couponRow}>
           <View style={styles.couponField}>
             <FormField
@@ -368,6 +377,13 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
   cardTitle: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   couponRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+  couponHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  offersLink: { fontSize: 13, fontWeight: '800', color: colors.primary },
   couponField: { flex: 1 },
   couponFormField: { marginBottom: 0 },
   locationBtn: {

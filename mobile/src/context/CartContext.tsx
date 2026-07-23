@@ -63,6 +63,8 @@ interface CartContextValue {
     selectedOptions?: SelectedProductOption[],
   ) => void;
   clearCart: () => void;
+  /** Sustituye el carrito de golpe (reordenar pedido). */
+  replaceCart: (nextItems: CartItem[]) => void;
   total: number;
   itemCount: number;
 }
@@ -196,6 +198,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setRestaurantId(null);
   }, []);
 
+  const replaceCart = useCallback((nextItems: CartItem[]) => {
+    if (nextItems.length === 0) {
+      setItems([]);
+      setRestaurantId(null);
+      return;
+    }
+    const rid = resolveRestaurantId(nextItems[0].product);
+    setRestaurantId(rid || null);
+    setItems(
+      nextItems.map((line) => ({
+        product: line.product,
+        quantity: Math.max(1, Math.floor(line.quantity) || 1),
+        notes: normalizeCartNotes(line.notes) || undefined,
+        selectedOptions: line.selectedOptions?.length ? line.selectedOptions : undefined,
+      })),
+    );
+  }, []);
+
   const total = useMemo(
     () => items.reduce((sum, i) => sum + calculateCartLineTotal(i), 0),
     [items],
@@ -215,10 +235,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       updateQuantity,
       updateItemNotes,
       clearCart,
+      replaceCart,
       total,
       itemCount,
     }),
-    [items, restaurantId, addItem, removeItem, updateQuantity, updateItemNotes, clearCart, total, itemCount],
+    [
+      items,
+      restaurantId,
+      addItem,
+      removeItem,
+      updateQuantity,
+      updateItemNotes,
+      clearCart,
+      replaceCart,
+      total,
+      itemCount,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
