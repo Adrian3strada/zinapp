@@ -44,7 +44,7 @@ export default function OsmWebMap({
   onCoordinateChange,
   onMarkerPress,
 }: Props) {
-  const mapCenter = useMemo(() => {
+  const resolveCenter = useCallback((): MapCoordinate => {
     if (isValidCoordinate(center)) return center;
     if (isValidCoordinate(pinCoordinate)) return pinCoordinate;
     if (markers.length > 0 && isValidCoordinate(markers[0].coordinate)) {
@@ -56,20 +56,27 @@ export default function OsmWebMap({
     };
   }, [center, pinCoordinate, markers]);
 
+  // Congela el centro del shell HTML: si cambia en cada GPS, el WebView se remonta.
+  const shellCenterRef = useRef<MapCoordinate | null>(null);
+  if (!shellCenterRef.current) {
+    shellCenterRef.current = resolveCenter();
+  }
+  const shellCenter = shellCenterRef.current;
+
   const html = useMemo(
     () =>
       buildOsmMapHtml({
-        center: mapCenter,
+        center: shellCenter,
         zoom,
-        markers,
-        polylines,
+        markers: [],
+        polylines: [],
         interactive,
         pinCoordinate,
         pinType,
-        followMarkerId,
+        followMarkerId: null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mapCenter, zoom, interactive, pinType, pinCoordinate?.latitude, pinCoordinate?.longitude],
+    [shellCenter.latitude, shellCenter.longitude, zoom, interactive, pinType, pinCoordinate?.latitude, pinCoordinate?.longitude],
   );
 
   const webRef = useRef<WebView>(null);

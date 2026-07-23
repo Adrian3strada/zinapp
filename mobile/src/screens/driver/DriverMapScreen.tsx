@@ -15,8 +15,17 @@ import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import type { Order } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { regionForCoordinates, toCoordinate, type MapCoordinate } from '../../utils/maps';
-import type { StreetRouteSegment } from '../../utils/routing';
+import {
+  regionForCoordinates,
+  toCoordinate,
+  type MapCoordinate,
+  type MapRegion,
+} from '../../utils/maps';
+import {
+  haversineMeters,
+  trimRouteAhead,
+  type StreetRouteSegment,
+} from '../../utils/routing';
 import {
   getGoogleMapsNavUrl,
   openExternalUrl,
@@ -73,6 +82,13 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const hasDataRef = useRef(false);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
+  const [frozenRegion, setFrozenRegion] = useState<MapRegion | null>(null);
+  const [routeFrom, setRouteFrom] = useState<MapCoordinate | null>(null);
+  const routeFromRef = useRef<MapCoordinate | null>(null);
+  const fullRouteRef = useRef<MapCoordinate[]>([]);
+  const routeProgressRef = useRef(0);
+  const [remainingCoords, setRemainingCoords] = useState<MapCoordinate[]>([]);
+  const navPhaseRef = useRef<string>('');
 
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
@@ -82,15 +98,35 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       if (status !== 'granted') return;
       subscription = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: 3,
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 8,
           timeInterval: 2000,
         },
         (position) => {
-          setUserLocation({
+          const next = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          });
+          };
+          setUserLocation(next);
+
+          if (!routeFromRef.current) {
+            routeFromRef.current = next;
+            setRouteFrom(next);
+          } else if (haversineMeters(routeFromRef.current, next) > 400) {
+            routeFromRef.current = next;
+            setRouteFrom(next);
+            routeProgressRef.current = 0;
+          }
+
+          if (fullRouteRef.current.length >= 2) {
+            const trimmed = trimRouteAhead(
+              fullRouteRef.current,
+              next,
+              routeProgressRef.current,
+            );
+            routeProgressRef.current = trimmed.progressIndex;
+            setRemainingCoords(trimmed.coordinates);
+          }
         },
       );
     })();
@@ -138,10 +174,10 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
   } = useMemo(() => {
     if (!order) {
       return {
-        markers: [],
-        routeSegments: [],
-        primaryCoord: null,
-        secondaryCoord: null,
+        markers: [] as MapMarker[],
+        routeSegments: [] as StreetRouteSegment[],
+        primaryCoord: null as MapCoordinate | null,
+        secondaryCoord: null as MapCoordinate | null,
         nextStopLabel: '',
         title: '',
         subtitle: '',
@@ -185,14 +221,14 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     }
 
     const nextStop = goToDelivery ? delivery : restaurant;
-    if (userLocation && nextStop) {
+    if (routeFrom && nextStop) {
       segments.push({
         id: 'to-next-stop',
-        from: userLocation,
+        from: routeFrom,
         to: nextStop,
         strokeColor: colors.primary,
         strokeWidth: 4,
-        dynamic: true,
+        dynamic: false,
       });
     }
 
@@ -205,27 +241,65 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       title: `Navegación · ${formatOrderLabel(order)}`,
       subtitle: goToDelivery ? order.delivery_address : (order.restaurant_detail?.name ?? ''),
     };
-  }, [order, userLocation]);
+  }, [order, routeFrom]);
 
   const { polylines, stats, loading: routesLoading } = useStreetRoutes(routeSegments);
 
-  const mapMarkers = useMemo(() => {
-    const list = [...markers];
-    if (userLocation) {
-      list.push({
-        id: 'me',
-        coordinate: userLocation,
-        title: 'Tú',
-        pinType: 'me',
-      });
+  useEffect(() => {
+    const phase = order?.status === 'on_the_way' ? 'dropoff' : 'pickup';
+    if (navPhaseRef.current && navPhaseRef.current !== phase) {
+      routeFromRef.current = userLocation;
+      setRouteFrom(userLocation);
+      routeProgressRef.current = 0;
+      fullRouteRef.current = [];
+      setRemainingCoords([]);
     }
-    return list;
-  }, [markers, userLocation]);
+    navPhaseRef.current = phase;
+  }, [order?.status, userLocation]);
 
-  const region = useMemo(
-    () => regionForCoordinates(mapMarkers.map((m) => m.coordinate)),
-    [mapMarkers],
-  );
+  useEffect(() => {
+    const line = polylines.find((p) => p.id === 'to-next-stop');
+    if (!line?.coordinates || line.coordinates.length < 2) return;
+    fullRouteRef.current = line.coordinates;
+    routeProgressRef.current = 0;
+    const origin = userLocation ?? routeFrom;
+    if (origin) {
+      const trimmed = trimRouteAhead(line.coordinates, origin, 0);
+      routeProgressRef.current = trimmed.progressIndex;
+      setRemainingCoords(trimmed.coordinates);
+    } else {
+      setRemainingCoords(line.coordinates);
+    }
+  }, [polylines, routeFrom]);
+
+  const remainingPolylines = useMemo(() => {
+    if (remainingCoords.length < 2) return [];
+    return [
+      {
+        id: 'to-next-stop',
+        coordinates: remainingCoords,
+        strokeColor: colors.primary,
+        strokeWidth: 4,
+      },
+    ];
+  }, [remainingCoords]);
+
+  // Paradas fijas solamente; el pin GPS en movimiento hace parecer bug.
+  const mapMarkers = markers;
+
+  useEffect(() => {
+    if (!order) {
+      setFrozenRegion(null);
+      return;
+    }
+    setFrozenRegion((prev) => {
+      if (prev) return prev;
+      const coords = markers.map((m) => m.coordinate);
+      return coords.length ? regionForCoordinates(coords) : null;
+    });
+  }, [order?.id, markers]);
+
+  const region = frozenRegion ?? regionForCoordinates(mapMarkers.map((m) => m.coordinate));
 
   const routeStatItems = useMemo(() => {
     const items = [];
@@ -293,16 +367,17 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       </View>
       <View style={styles.mapWrap}>
         <AppMap
+          key={`nav-${orderId}`}
           markers={mapMarkers}
-          polylines={polylines}
+          polylines={remainingPolylines}
           region={region}
           height={mapHeight(0.52)}
-          followMarkerId={userLocation ? 'me' : null}
+          followMarkerId={null}
           emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
         />
       </View>
       <Text style={styles.hint}>
-        El pin azul eres tú. La línea sólida es tu ruta a la siguiente parada. Toca los botones para abrir Google Maps o Waze.
+        La línea azul es la ruta que te falta. Toca los botones para abrir Google Maps o Waze.
       </Text>
     </ScreenContainer>
   );

@@ -13,6 +13,7 @@ export interface OsmMapMarker {
 }
 
 export interface OsmMapPolyline {
+  id?: string;
   coordinates: MapCoordinate[];
   color?: string;
 }
@@ -140,10 +141,13 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
 
     var pinMarker = null;
     var markerLayers = {};
-    var polylineLayers = [];
+    var polylineLayers = {};
     var hasInitialFit = false;
     var lastFollowId = null;
     var followPaused = false;
+    var lastFollowPanAt = 0;
+    var lastFollowLat = null;
+    var lastFollowLng = null;
 
     map.on('dragstart', function() { followPaused = true; });
     map.on('zoomstart', function(e) {
@@ -181,8 +185,22 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         map.removeLayer(markerLayers[id]);
         delete markerLayers[id];
       });
-      polylineLayers.forEach(function(layer) { map.removeLayer(layer); });
-      polylineLayers = [];
+      Object.keys(polylineLayers).forEach(function(id) {
+        map.removeLayer(polylineLayers[id]);
+        delete polylineLayers[id];
+      });
+    }
+
+    function metersBetween(a, b) {
+      var R = 6371000;
+      var toRad = function(d) { return d * Math.PI / 180; };
+      var dLat = toRad(b.lat - a.lat);
+      var dLng = toRad(b.lng - a.lng);
+      var lat1 = toRad(a.lat);
+      var lat2 = toRad(b.lat);
+      var h = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+        + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
     }
 
     function pinStyleFor(m) {
@@ -222,39 +240,92 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
 
     window.setMapData = function(raw) {
       var data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      clearDynamicLayers();
-
+      var nextMarkers = {};
       (data.markers || []).forEach(function(m) {
         if (!m || !m.id || !m.coordinate) return;
         if (shell.pinCoordinate && m.id === 'pin') return;
-        var layer = L.marker(
-          [m.coordinate.latitude, m.coordinate.longitude],
-          { icon: createPinIcon(m), zIndexOffset: m.id === 'driver' || m.id === 'me' ? 500 : 100 }
-        ).addTo(map);
+        nextMarkers[m.id] = m;
+      });
+
+      Object.keys(markerLayers).forEach(function(id) {
+        if (!nextMarkers[id]) {
+          map.removeLayer(markerLayers[id]);
+          delete markerLayers[id];
+        }
+      });
+
+      Object.keys(nextMarkers).forEach(function(id) {
+        var m = nextMarkers[id];
+        var latlng = L.latLng(m.coordinate.latitude, m.coordinate.longitude);
+        var existing = markerLayers[id];
+        if (existing) {
+          existing.setLatLng(latlng);
+          return;
+        }
+        var layer = L.marker(latlng, {
+          icon: createPinIcon(m),
+          zIndexOffset: m.id === 'driver' || m.id === 'me' ? 500 : 100
+        }).addTo(map);
         if (m.label) layer.bindPopup(m.label);
         layer.on('click', function() {
           postMessage({ type: 'markerPress', id: m.id });
         });
-        markerLayers[m.id] = layer;
+        markerLayers[id] = layer;
       });
 
-      (data.polylines || []).forEach(function(line) {
+      var nextLines = {};
+      (data.polylines || []).forEach(function(line, index) {
         if (!line.coordinates || line.coordinates.length < 2) return;
-        var layer = L.polyline(
-          line.coordinates.map(function(c) { return [c.latitude, c.longitude]; }),
-          { color: line.color || '#1A56DB', weight: 4, opacity: 0.85 }
-        ).addTo(map);
-        polylineLayers.push(layer);
+        var id = line.id || ('line-' + index);
+        nextLines[id] = line;
+      });
+
+      Object.keys(polylineLayers).forEach(function(id) {
+        if (!nextLines[id]) {
+          map.removeLayer(polylineLayers[id]);
+          delete polylineLayers[id];
+        }
+      });
+
+      Object.keys(nextLines).forEach(function(id) {
+        var line = nextLines[id];
+        var latlngs = line.coordinates.map(function(c) {
+          return [c.latitude, c.longitude];
+        });
+        var existing = polylineLayers[id];
+        if (existing) {
+          existing.setLatLngs(latlngs);
+          if (line.color) existing.setStyle({ color: line.color });
+          return;
+        }
+        polylineLayers[id] = L.polyline(latlngs, {
+          color: line.color || '#1A56DB',
+          weight: 4,
+          opacity: 0.85
+        }).addTo(map);
       });
 
       var followId = data.followMarkerId || null;
       if (followId && markerLayers[followId] && !followPaused) {
         var ll = markerLayers[followId].getLatLng();
+        var now = Date.now();
         if (!hasInitialFit || followId !== lastFollowId) {
           map.setView(ll, Math.max(map.getZoom(), 15));
           hasInitialFit = true;
+          lastFollowPanAt = now;
+          lastFollowLat = ll.lat;
+          lastFollowLng = ll.lng;
         } else {
-          map.panTo(ll, { animate: true, duration: 0.45 });
+          var moved = (lastFollowLat == null || lastFollowLng == null)
+            ? 999
+            : metersBetween({ lat: lastFollowLat, lng: lastFollowLng }, ll);
+          // Solo recentrar si se movió bastante y pasó un rato (evita el "temblor").
+          if (moved > 45 && now - lastFollowPanAt > 6000) {
+            map.panTo(ll, { animate: true, duration: 0.6 });
+            lastFollowPanAt = now;
+            lastFollowLat = ll.lat;
+            lastFollowLng = ll.lng;
+          }
         }
         lastFollowId = followId;
         return;
@@ -265,7 +336,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         return;
       }
 
-      if (data.fitAll) {
+      if (data.fitAll && !hasInitialFit) {
         var allCoords = [];
         (data.markers || []).forEach(function(m) {
           if (m && m.coordinate) allCoords.push([m.coordinate.latitude, m.coordinate.longitude]);

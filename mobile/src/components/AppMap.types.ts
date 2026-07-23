@@ -12,6 +12,7 @@ export interface MapMarker {
 }
 
 export interface MapPolyline {
+  id?: string;
   coordinates: MapCoordinate[];
   strokeColor?: string;
   strokeWidth?: number;

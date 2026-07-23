@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -46,8 +46,13 @@ import {
   toCoordinate,
   ZINAPECUARO_REGION,
   type MapCoordinate,
+  type MapRegion,
 } from '../../utils/maps';
-import type { StreetRouteSegment } from '../../utils/routing';
+import {
+  haversineMeters,
+  trimRouteAhead,
+  type StreetRouteSegment,
+} from '../../utils/routing';
 
 export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
@@ -97,6 +102,29 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     return unsubscribe;
   }, [navigation, loadOrders, refreshActive]);
 
+  const deliveryStep: ActiveDeliveryStep | null = useMemo(() => {
+    if (!activeOrder) return null;
+    void pickupTick;
+    return getActiveDeliveryStep(activeOrder.id);
+  }, [activeOrder, pickupTick]);
+
+  const lastMapLocationAt = useRef(0);
+  const lastMapLocation = useRef<MapCoordinate | null>(null);
+  /** Origen estable para pedir la ruta (no en cada GPS). */
+  const [routeFrom, setRouteFrom] = useState<MapCoordinate | null>(null);
+  const routeFromRef = useRef<MapCoordinate | null>(null);
+  const fullRouteRef = useRef<MapCoordinate[]>([]);
+  const routeProgressRef = useRef(0);
+  const [remainingCoords, setRemainingCoords] = useState<MapCoordinate[]>([]);
+
+  useEffect(() => {
+    routeFromRef.current = null;
+    setRouteFrom(null);
+    fullRouteRef.current = [];
+    routeProgressRef.current = 0;
+    setRemainingCoords([]);
+  }, [activeOrder?.id, deliveryStep]);
+
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
     (async () => {
@@ -106,38 +134,76 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         const initial = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        setUserLocation({
+        const coord = {
           latitude: initial.coords.latitude,
           longitude: initial.coords.longitude,
-        });
+        };
+        setUserLocation(coord);
+        lastMapLocation.current = coord;
+        lastMapLocationAt.current = Date.now();
+        if (hasActiveDelivery && !routeFromRef.current) {
+          routeFromRef.current = coord;
+          setRouteFrom(coord);
+        }
       } catch {
         // keep default region
       }
       subscription = await Location.watchPositionAsync(
         {
           accuracy: hasActiveDelivery
-            ? Location.Accuracy.BestForNavigation
+            ? Location.Accuracy.High
             : Location.Accuracy.Balanced,
-          distanceInterval: hasActiveDelivery ? 5 : 12,
-          timeInterval: hasActiveDelivery ? 2500 : 5000,
+          // En entrega: ticks frecuentes para ir “comiendo” la línea azul.
+          distanceInterval: hasActiveDelivery ? 8 : 20,
+          timeInterval: hasActiveDelivery ? 2000 : 8000,
         },
         (position) => {
-          setUserLocation({
+          const next = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          });
+          };
+          const prev = lastMapLocation.current;
+          const now = Date.now();
+          if (prev && !hasActiveDelivery) {
+            const dLat = (next.latitude - prev.latitude) * 111_320;
+            const cos = Math.max(Math.abs(Math.cos((next.latitude * Math.PI) / 180)), 0.01);
+            const dLng = (next.longitude - prev.longitude) * 111_320 * cos;
+            const meters = Math.sqrt(dLat * dLat + dLng * dLng);
+            if (meters < 20 && now - lastMapLocationAt.current < 5000) return;
+          }
+          lastMapLocation.current = next;
+          lastMapLocationAt.current = now;
+          setUserLocation(next);
+
+          if (!hasActiveDelivery) return;
+
+          if (!routeFromRef.current) {
+            routeFromRef.current = next;
+            setRouteFrom(next);
+          } else {
+            // Si se desvía mucho, pide ruta nueva; si no, solo recorta.
+            const drift = haversineMeters(routeFromRef.current, next);
+            if (drift > 400) {
+              routeFromRef.current = next;
+              setRouteFrom(next);
+              routeProgressRef.current = 0;
+            }
+          }
+
+          if (fullRouteRef.current.length >= 2) {
+            const trimmed = trimRouteAhead(
+              fullRouteRef.current,
+              next,
+              routeProgressRef.current,
+            );
+            routeProgressRef.current = trimmed.progressIndex;
+            setRemainingCoords(trimmed.coordinates);
+          }
         },
       );
     })();
     return () => subscription?.remove();
   }, [hasActiveDelivery]);
-
-  const deliveryStep: ActiveDeliveryStep | null = useMemo(() => {
-    if (!activeOrder) return null;
-    // force re-read when pickupTick changes
-    void pickupTick;
-    return getActiveDeliveryStep(activeOrder.id);
-  }, [activeOrder, pickupTick]);
 
   const visibleOrders = useMemo(
     () => orders.filter((o) => !skippedIds.has(o.id)),
@@ -174,35 +240,56 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   }, [activeOrder, deliveryStep, restaurantCoord, deliveryCoord]);
 
   const routeSegments = useMemo((): StreetRouteSegment[] => {
-    if (!activeOrder || !nextStopCoord || !userLocation) return [];
+    if (!activeOrder || !nextStopCoord || !routeFrom) return [];
     return [
       {
         id: 'to-next-stop',
-        from: userLocation,
+        from: routeFrom,
         to: nextStopCoord,
         strokeColor: colors.primary,
         strokeWidth: 4,
-        dynamic: true,
+        // Ruta fija; el recorte local va “comiendo” la línea al avanzar.
+        dynamic: false,
       },
     ];
-  }, [activeOrder, nextStopCoord, userLocation]);
+  }, [activeOrder, nextStopCoord, routeFrom]);
 
   const { polylines, stats } = useStreetRoutes(routeSegments);
   const nextStopStats = stats['to-next-stop'] ?? null;
 
+  useEffect(() => {
+    const line = polylines.find((p) => p.id === 'to-next-stop') ?? polylines[0];
+    if (!line?.coordinates || line.coordinates.length < 2) return;
+    fullRouteRef.current = line.coordinates;
+    routeProgressRef.current = 0;
+    const origin = userLocation ?? routeFrom;
+    if (origin) {
+      const trimmed = trimRouteAhead(line.coordinates, origin, 0);
+      routeProgressRef.current = trimmed.progressIndex;
+      setRemainingCoords(trimmed.coordinates);
+    } else {
+      setRemainingCoords(line.coordinates);
+    }
+  }, [polylines, routeFrom]);
+
+  const remainingPolylines = useMemo(() => {
+    if (!activeOrder || remainingCoords.length < 2) return [];
+    return [
+      {
+        id: 'to-next-stop',
+        coordinates: remainingCoords,
+        strokeColor: colors.primary,
+        strokeWidth: 4,
+      },
+    ];
+  }, [activeOrder, remainingCoords]);
+
   const markers = useMemo((): MapMarker[] => {
     const list: MapMarker[] = [];
-    if (isValidCoordinate(userLocation)) {
-      list.push({
-        id: 'me',
-        coordinate: userLocation,
-        title: 'Tú',
-        pinType: 'driver',
-      });
-    }
 
     if (activeOrder) {
-      if (restaurantCoord) {
+      // Entrega activa: solo paradas fijas + ruta restante (sin pin GPS que tiembla).
+      if (deliveryStep === 'pickup' && restaurantCoord) {
         list.push({
           id: 'restaurant',
           coordinate: restaurantCoord,
@@ -220,6 +307,15 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         });
       }
       return list;
+    }
+
+    if (isValidCoordinate(userLocation)) {
+      list.push({
+        id: 'me',
+        coordinate: userLocation,
+        title: 'Tú',
+        pinType: 'driver',
+      });
     }
 
     for (const order of visibleOrders.slice(0, 8)) {
@@ -248,14 +344,25 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       }
     }
     return list;
-  }, [userLocation, activeOrder, restaurantCoord, deliveryCoord, visibleOrders]);
+  }, [userLocation, activeOrder, deliveryStep, restaurantCoord, deliveryCoord, visibleOrders]);
+
+  const [deliveryMapRegion, setDeliveryMapRegion] = useState<MapRegion | null>(null);
+
+  useEffect(() => {
+    if (!activeOrder) {
+      setDeliveryMapRegion(null);
+      return;
+    }
+    setDeliveryMapRegion((prev) => {
+      if (prev) return prev;
+      const coords = [restaurantCoord, deliveryCoord, userLocation].filter(isValidCoordinate);
+      return coords.length ? regionForCoordinates(coords) : null;
+    });
+  }, [activeOrder?.id, restaurantCoord, deliveryCoord, userLocation]);
 
   const mapRegion = useMemo(() => {
     if (activeOrder) {
-      const coords = [userLocation, restaurantCoord, deliveryCoord, nextStopCoord].filter(
-        isValidCoordinate,
-      );
-      if (coords.length) return regionForCoordinates(coords);
+      return deliveryMapRegion ?? ZINAPECUARO_REGION;
     }
     if (offerOrder) {
       const coords = [
@@ -276,7 +383,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       };
     }
     return ZINAPECUARO_REGION;
-  }, [activeOrder, offerOrder, userLocation, restaurantCoord, deliveryCoord, nextStopCoord]);
+  }, [activeOrder, deliveryMapRegion, offerOrder, userLocation]);
 
   const handleConnect = useCallback(async () => {
     if (!isApproved) {
@@ -390,11 +497,12 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       onLayout={(e) => setMapHeight(e.nativeEvent.layout.height)}
     >
       <AppMap
+        key={activeOrder ? `delivery-${activeOrder.id}` : 'idle'}
         height={mapHeight}
         region={mapRegion}
         markers={markers}
-        polylines={activeOrder ? polylines : []}
-        followMarkerId={activeOrder && userLocation ? 'me' : offerOrder ? null : 'me'}
+        polylines={activeOrder ? remainingPolylines : []}
+        followMarkerId={null}
         style={styles.map}
       />
 

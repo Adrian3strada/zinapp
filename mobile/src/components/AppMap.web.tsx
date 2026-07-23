@@ -54,7 +54,8 @@ export default function AppMap({
       style={style}
       center={initialRegion}
       markers={toOsmMapMarkers(safeMarkers, followMarkerId)}
-      polylines={safePolylines.map((line) => ({
+      polylines={safePolylines.map((line, index) => ({
+        id: line.id ?? `line-${index}`,
         coordinates: line.coordinates,
         color: line.strokeColor,
       }))}

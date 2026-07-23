@@ -42,7 +42,7 @@ export default function CustomerHomeHeader({
             {greeting}
           </Text>
           <View style={styles.locationRow}>
-            <Ionicons name="location" size={14} color={colors.accentDark} />
+            <Ionicons name="location" size={14} color={colors.text} />
             <Text style={styles.location}>Zinapécuaro, Mich.</Text>
           </View>
         </View>
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  location: { fontSize: 13, fontWeight: '700', color: colors.accentDark },
+  location: { fontSize: 13, fontWeight: '700', color: colors.text },
   seeAll: {
     flexDirection: 'row',
     alignItems: 'center',
