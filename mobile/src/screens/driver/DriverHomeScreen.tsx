@@ -13,11 +13,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppMap, { type MapMarker } from '../../components/AppMap';
+import { BrandMark } from '../../components/BrandLogo';
 import ActiveDeliverySheet from '../../components/driver/ActiveDeliverySheet';
 import DriverSideMenu from '../../components/driver/DriverSideMenu';
 import OrderRequestSheet from '../../components/driver/OrderRequestSheet';
 import SheetEnter from '../../components/driver/SheetEnter';
 import SlideAction from '../../components/driver/SlideAction';
+import HeroBackground from '../../components/HeroBackground';
 import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
@@ -25,6 +27,7 @@ import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
 import { deliveryApi, orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
+import { HIT_SLOP } from '../../theme/spacing';
 import type { Order } from '../../types';
 import { appAlert } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
@@ -526,119 +529,132 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   // El contenido del tab ya termina arriba de la barra; no sumar tabBar otra vez.
   const bottomPad = { paddingBottom: 8 };
 
+  const online = !!(activeOrder || (isAvailable && isApproved));
+
   return (
-    <View
-      style={styles.root}
-      onLayout={(e) => setMapHeight(e.nativeEvent.layout.height)}
-    >
-      <AppMap
-        key={activeOrder ? `delivery-${activeOrder.id}` : 'idle'}
-        height={mapHeight}
-        region={mapRegion}
-        markers={markers}
-        polylines={activeOrder ? remainingPolylines : []}
-        followMarkerId={null}
-        style={styles.map}
-      />
+    <View style={styles.root}>
+      {/* Header azul fijo arriba — no flota sobre el mapa. */}
+      <HeroBackground
+        colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]}
+        style={[styles.topChrome, { paddingTop: insets.top + 10 }]}
+      >
+        <View style={styles.decorA} pointerEvents="none" />
+        <View style={styles.decorB} pointerEvents="none" />
 
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
-        <Pressable
-          style={styles.menuBtn}
-          onPress={() => setMenuOpen(true)}
-          accessibilityLabel="Abrir menú"
-        >
-          <Ionicons name="menu" size={22} color={colors.text} />
-        </Pressable>
+        <View style={styles.chromeTopRow}>
+          <View style={styles.brandRow}>
+            <BrandMark size={28} variant="light" />
+            <Text style={styles.brandLabel}>ZinApp</Text>
+          </View>
+          <Pressable
+            style={styles.menuBtn}
+            onPress={() => setMenuOpen(true)}
+            hitSlop={HIT_SLOP}
+            accessibilityLabel="Abrir menú"
+          >
+            <Ionicons name="menu" size={22} color="#FFF" />
+          </Pressable>
+        </View>
 
-        <View style={styles.statusCard}>
-          <View
-            style={[
-              styles.statusDot,
-              activeOrder || (isAvailable && isApproved)
-                ? styles.statusDotOn
-                : styles.statusDotOff,
-            ]}
-          />
+        <View style={styles.chromeMainRow}>
           <View style={styles.statusTextWrap}>
             <Text style={styles.greeting} numberOfLines={1}>
               {greeting}
             </Text>
-            <Text style={styles.statusLabel} numberOfLines={1}>
-              {statusLabel}
-            </Text>
+            <View style={styles.locationPill}>
+              <View style={[styles.statusDot, online ? styles.statusDotOn : styles.statusDotOff]} />
+              <Text style={styles.statusLabel} numberOfLines={1}>
+                {statusLabel}
+              </Text>
+            </View>
           </View>
           {loadingOrders && isAvailable && !activeOrder ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color="#FFF" />
           ) : isAvailable && !activeOrder && visibleOrders.length > 0 ? (
             <View style={styles.countPill}>
               <Text style={styles.countText}>{visibleOrders.length}</Text>
             </View>
           ) : null}
         </View>
-      </View>
+      </HeroBackground>
 
-      <View style={[styles.bottomStack, bottomPad]} pointerEvents="box-none">
-        {!isApproved && !activeOrder ? (
-          <View style={styles.tipBanner}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={colors.primaryDark} />
-            <Text style={styles.tipText}>
-              Completa foto e INE en Mi perfil para poder conectarte.
-            </Text>
-          </View>
-        ) : null}
+      <View
+        style={styles.mapWrap}
+        onLayout={(e) => setMapHeight(e.nativeEvent.layout.height)}
+      >
+        <AppMap
+          key={activeOrder ? `delivery-${activeOrder.id}` : 'idle'}
+          height={mapHeight}
+          region={mapRegion}
+          markers={markers}
+          polylines={activeOrder ? remainingPolylines : []}
+          followMarkerId={null}
+          style={styles.map}
+        />
 
-        {activeOrder && deliveryStep ? (
-          <SheetEnter animKey={`active-${activeOrder.id}-${deliveryStep}`}>
-            <ActiveDeliverySheet
-              order={activeOrder}
-              step={deliveryStep}
-              delivering={delivering}
-              routeStats={nextStopStats}
-              onNavigate={openNavToNextStop}
-              onConfirmPickup={handleConfirmPickup}
-              onMarkDelivered={handleMarkDelivered}
-              onDetails={() =>
-                navigation.navigate('OrderDetail', { orderId: activeOrder.id })
-              }
-            />
-          </SheetEnter>
-        ) : offerOrder ? (
-          <SheetEnter animKey={`offer-${offerOrder.id}`}>
-            <OrderRequestSheet
-              order={offerOrder}
-              accepting={accepting}
-              acceptDisabled={!isApproved || !isAvailable || hasActiveDelivery}
-              onAccept={handleAccept}
-              onSkip={handleSkip}
-              onDetails={() =>
-                navigation.navigate('OrderDetail', { orderId: offerOrder.id })
-              }
-            />
-          </SheetEnter>
-        ) : (
-          <SheetEnter animKey={`connect-${isAvailable ? 'on' : 'off'}`}>
-            <View style={styles.connectCard}>
-              <Text style={styles.connectHint}>
-                {!isApproved
-                  ? 'Tu cuenta aún no está aprobada'
-                  : isAvailable
-                    ? visibleOrders.length === 0
-                      ? 'Buscando pedidos cerca de ti…'
-                      : 'Pedidos cerca en el mapa'
-                    : 'Conéctate para recibir pedidos'}
+        <View style={[styles.bottomStack, bottomPad]} pointerEvents="box-none">
+          {!isApproved && !activeOrder ? (
+            <View style={styles.tipBanner}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primaryDark} />
+              <Text style={styles.tipText}>
+                Completa foto e INE en Mi perfil para poder conectarte.
               </Text>
-              <SlideAction
-                label={isAvailable ? 'Desliza para desconectar' : 'Desliza para conectar'}
-                completeLabel={isAvailable ? 'Desconectando…' : 'Conectando…'}
-                icon={isAvailable ? 'pause' : 'flash'}
-                color={isAvailable ? colors.textSecondary : colors.primary}
-                disabled={!isApproved || updating}
-                loading={updating}
-                onComplete={handleConnect}
-              />
             </View>
-          </SheetEnter>
-        )}
+          ) : null}
+
+          {activeOrder && deliveryStep ? (
+            <SheetEnter animKey={`active-${activeOrder.id}-${deliveryStep}`}>
+              <ActiveDeliverySheet
+                order={activeOrder}
+                step={deliveryStep}
+                delivering={delivering}
+                routeStats={nextStopStats}
+                onNavigate={openNavToNextStop}
+                onConfirmPickup={handleConfirmPickup}
+                onMarkDelivered={handleMarkDelivered}
+                onDetails={() =>
+                  navigation.navigate('OrderDetail', { orderId: activeOrder.id })
+                }
+              />
+            </SheetEnter>
+          ) : offerOrder ? (
+            <SheetEnter animKey={`offer-${offerOrder.id}`}>
+              <OrderRequestSheet
+                order={offerOrder}
+                accepting={accepting}
+                acceptDisabled={!isApproved || !isAvailable || hasActiveDelivery}
+                onAccept={handleAccept}
+                onSkip={handleSkip}
+                onDetails={() =>
+                  navigation.navigate('OrderDetail', { orderId: offerOrder.id })
+                }
+              />
+            </SheetEnter>
+          ) : (
+            <SheetEnter animKey={`connect-${isAvailable ? 'on' : 'off'}`}>
+              <View style={styles.connectCard}>
+                <Text style={styles.connectHint}>
+                  {!isApproved
+                    ? 'Tu cuenta aún no está aprobada'
+                    : isAvailable
+                      ? visibleOrders.length === 0
+                        ? 'Buscando pedidos cerca de ti…'
+                        : 'Pedidos cerca en el mapa'
+                      : 'Conéctate para recibir pedidos'}
+                </Text>
+                <SlideAction
+                  label={isAvailable ? 'Desliza para desconectar' : 'Desliza para conectar'}
+                  completeLabel={isAvailable ? 'Desconectando…' : 'Conectando…'}
+                  icon={isAvailable ? 'pause' : 'flash'}
+                  color={isAvailable ? colors.textSecondary : colors.primary}
+                  disabled={!isApproved || updating}
+                  loading={updating}
+                  onComplete={handleConnect}
+                />
+              </View>
+            </SheetEnter>
+          )}
+        </View>
       </View>
 
       <DriverSideMenu
@@ -659,61 +675,106 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
+  topChrome: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden',
+    zIndex: 4,
+  },
+  decorA: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: -40,
+    right: -40,
+  },
+  decorB: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    bottom: 8,
+    left: -24,
+  },
+  chromeTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.95)',
+    letterSpacing: 0.3,
+  },
+  menuBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  chromeMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusTextWrap: { flex: 1, minWidth: 0, gap: 6 },
+  greeting: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: -0.4,
+  },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    maxWidth: '100%',
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusDotOn: { backgroundColor: '#6EE7B7' },
+  statusDotOff: { backgroundColor: 'rgba(255,255,255,0.55)' },
+  statusLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.95)',
+    flexShrink: 1,
+  },
+  countPill: {
+    minWidth: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  countText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
+  mapWrap: { flex: 1, position: 'relative' },
   map: {
     borderRadius: 0,
     elevation: 0,
     shadowOpacity: 0,
     shadowRadius: 0,
   },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-  },
-  menuBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  statusCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    minHeight: 44,
-  },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  statusDotOn: { backgroundColor: colors.success },
-  statusDotOff: { backgroundColor: colors.textMuted },
-  statusTextWrap: { flex: 1, minWidth: 0 },
-  greeting: { fontSize: 13, fontWeight: '800', color: colors.text },
-  statusLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
-  countPill: {
-    minWidth: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 7,
-  },
-  countText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
   bottomStack: {
     position: 'absolute',
     left: 0,
