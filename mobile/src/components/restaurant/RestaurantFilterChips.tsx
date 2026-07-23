@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   chipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   chipLabel: {
     fontSize: 13,
@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 5,
   },
   badgeActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  badgeText: { fontSize: 11, fontWeight: '800', color: colors.accentDark },
+  badgeText: { fontSize: 11, fontWeight: '800', color: colors.primaryDark },
   badgeTextActive: { color: '#FFF' },
 });

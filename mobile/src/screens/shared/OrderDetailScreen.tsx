@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  prepChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  prepChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   prepChipText: { fontSize: 13, fontWeight: '800', color: colors.textSecondary },
   prepChipTextActive: { color: '#FFF' },
   restaurantBtn: { flex: 1 },

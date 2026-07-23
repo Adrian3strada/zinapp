@@ -226,9 +226,9 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     paddingHorizontal: 8,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionCountText: { fontSize: 12, fontWeight: '800', color: colors.accentDark },
+  sectionCountText: { fontSize: 12, fontWeight: '800', color: colors.primaryDark },
 });

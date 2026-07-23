@@ -45,7 +45,7 @@ export default function OrderRequestSheet({
 
       <View style={styles.topRow}>
         <View style={styles.badge}>
-          <Ionicons name="fast-food" size={14} color={colors.accentDark} />
+          <Ionicons name="fast-food" size={14} color={colors.primaryDark} />
           <Text style={styles.badgeText}>Nuevo pedido</Text>
         </View>
         <Pressable onPress={onSkip} hitSlop={12} accessibilityLabel="Omitir pedido">
@@ -99,7 +99,7 @@ export default function OrderRequestSheet({
         label="Desliza para aceptar"
         completeLabel="¡Aceptando!"
         icon="bicycle"
-        color={colors.accent}
+        color={colors.primary}
         disabled={acceptDisabled}
         loading={accepting}
         onComplete={onAccept}
@@ -135,12 +135,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
   },
-  badgeText: { fontSize: 12, fontWeight: '800', color: colors.accentDark },
+  badgeText: { fontSize: 12, fontWeight: '800', color: colors.primaryDark },
   skip: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   headerPress: { gap: 2 },
   orderLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   earnLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  earnValue: { fontSize: 28, fontWeight: '900', color: colors.accentDark, letterSpacing: -0.5 },
+  earnValue: { fontSize: 28, fontWeight: '900', color: colors.primaryDark, letterSpacing: -0.5 },
   cashPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   routeSub: { fontSize: 14, fontWeight: '600', color: colors.text, lineHeight: 19 },
   dot: { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
   dotPickup: { backgroundColor: colors.primary },
-  dotDrop: { backgroundColor: colors.accent },
+  dotDrop: { backgroundColor: colors.primary },
   routeLine: {
     width: 2,
     height: 14,

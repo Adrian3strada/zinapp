@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     borderRadius: 18,
     paddingVertical: 14,
     paddingHorizontal: 16,

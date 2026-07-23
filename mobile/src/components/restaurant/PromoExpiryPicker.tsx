@@ -249,7 +249,7 @@ export default function PromoExpiryPicker({ endDate, endTime, onChange }: Props)
       ) : null}
 
       <View style={styles.summary}>
-        <Ionicons name="calendar" size={16} color={colors.accentDark} />
+        <Ionicons name="calendar" size={16} color={colors.primaryDark} />
         <Text style={styles.summaryText}>Termina el {summary}</Text>
       </View>
     </View>
@@ -325,8 +325,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayHitSelected: { backgroundColor: colors.accent },
-  dayHitToday: { borderWidth: 1.5, borderColor: colors.accent },
+  dayHitSelected: { backgroundColor: colors.primary },
+  dayHitToday: { borderWidth: 1.5, borderColor: colors.primary },
   dayHitDisabled: { opacity: 0.35 },
   dayText: { fontSize: 14, fontWeight: '700', color: colors.text },
   dayTextCompact: { fontSize: 12 },
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     lineHeight: 18,
     textTransform: 'capitalize',
   },

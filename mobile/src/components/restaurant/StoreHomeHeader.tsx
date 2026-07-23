@@ -77,7 +77,7 @@ export default function StoreHomeHeader({
           label={isOpen ? 'Desliza para cerrar' : 'Desliza para abrir'}
           completeLabel={isOpen ? 'Cerrando…' : 'Abriendo…'}
           icon={isOpen ? 'pause' : 'storefront'}
-          color={isOpen ? colors.textSecondary : colors.accent}
+          color={isOpen ? colors.textSecondary : colors.primary}
           disabled={!isActive || toggling}
           loading={toggling}
           onComplete={() => onToggleOpen(!isOpen)}
@@ -90,7 +90,7 @@ export default function StoreHomeHeader({
           <DayMetric
             label="Ventas"
             value={formatCurrency(today?.net_sales ?? '0')}
-            accent={colors.accentDark}
+            accent={colors.primaryDark}
           />
           <View style={styles.dayDivider} />
           <DayMetric
@@ -118,7 +118,7 @@ export default function StoreHomeHeader({
           onPress={() => navigation.navigate('MiNegocio')}
           hitSlop={HIT_SLOP}
         >
-          <Ionicons name="restaurant-outline" size={18} color={colors.accentDark} />
+          <Ionicons name="restaurant-outline" size={18} color={colors.primaryDark} />
           <Text style={styles.shortcutText}>Menú</Text>
         </Pressable>
         <Pressable
@@ -164,7 +164,7 @@ function PipeChip({
 }) {
   return (
     <View style={styles.pipeChip}>
-      <Ionicons name={icon} size={14} color={colors.accentDark} />
+      <Ionicons name={icon} size={14} color={colors.primaryDark} />
       <Text style={styles.pipeLabel}>{label}</Text>
       <View style={styles.pipeBadge}>
         <Text style={styles.pipeCount}>{count}</Text>
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
@@ -217,17 +217,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   dayCard: {
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 18,
     padding: 14,
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.accent + '33',
+    borderColor: colors.primary + '33',
   },
   dayTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   dayMetric: { flex: 1, alignItems: 'center', gap: 2 },
   dayValue: { fontSize: 16, fontWeight: '900' },
   dayLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
-  dayDivider: { width: 1, height: 28, backgroundColor: colors.accent + '44' },
+  dayDivider: { width: 1, height: 28, backgroundColor: colors.primary + '44' },
   pipeline: { flexDirection: 'row', gap: 8 },
   pipeChip: {
     flex: 1,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
@@ -268,11 +268,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: colors.accent + '55',
+    borderColor: colors.primary + '55',
   },
-  shortcutPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
-  shortcutText: { fontSize: 13, fontWeight: '800', color: colors.accentDark },
+  shortcutPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
+  shortcutText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
   shortcutTextPrimary: { color: '#FFF' },
 });

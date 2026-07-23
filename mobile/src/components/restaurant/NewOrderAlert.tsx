@@ -71,7 +71,7 @@ export default function NewOrderAlert({
       <View style={[styles.root, { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.topBar}>
           <View style={[styles.timerPill, urgent && styles.timerUrgent]}>
-            <Ionicons name="alarm-outline" size={16} color={urgent ? '#FFF' : colors.accentDark} />
+            <Ionicons name="alarm-outline" size={16} color={urgent ? '#FFF' : colors.primaryDark} />
             <Text style={[styles.timerText, urgent && styles.timerTextUrgent]}>
               {secondsLeft}s
             </Text>
@@ -145,7 +145,7 @@ export default function NewOrderAlert({
           })}
           {order.delivery_notes?.trim() ? (
             <View style={styles.notesBox}>
-              <Ionicons name="chatbox-ellipses-outline" size={16} color={colors.accentDark} />
+              <Ionicons name="chatbox-ellipses-outline" size={16} color={colors.primaryDark} />
               <Text style={styles.notesText}>{order.delivery_notes.trim()}</Text>
             </View>
           ) : null}
@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
   },
   timerUrgent: { backgroundColor: colors.error },
-  timerText: { fontSize: 15, fontWeight: '900', color: colors.accentDark },
+  timerText: { fontSize: 15, fontWeight: '900', color: colors.primaryDark },
   timerTextUrgent: { color: '#FFF' },
   queuePill: {
     backgroundColor: colors.background,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
@@ -219,17 +219,17 @@ const styles = StyleSheet.create({
   customer: { fontSize: 15, fontWeight: '600', color: colors.textSecondary, marginTop: 4 },
   totalCard: {
     marginTop: 16,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 18,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.accent + '33',
+    borderColor: colors.primary + '33',
   },
-  totalLabel: { fontSize: 12, fontWeight: '700', color: colors.accentDark },
-  totalValue: { flex: 1, fontSize: 26, fontWeight: '900', color: colors.accentDark },
+  totalLabel: { fontSize: 12, fontWeight: '700', color: colors.primaryDark },
+  totalValue: { flex: 1, fontSize: 26, fontWeight: '900', color: colors.primaryDark },
   payment: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
   prepBlock: { marginTop: 14, gap: 6 },
   prepTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   prepChipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   prepChipText: { fontSize: 14, fontWeight: '800', color: colors.textSecondary },
   prepChipTextActive: { color: '#FFF' },
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   itemInfo: { flex: 1, gap: 2 },
   itemName: { fontSize: 16, fontWeight: '800', color: colors.text },
   itemOpts: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  itemNotes: { fontSize: 12, color: colors.accentDark, fontWeight: '600' },
+  itemNotes: { fontSize: 12, color: colors.primaryDark, fontWeight: '600' },
   itemPrice: { fontSize: 14, fontWeight: '800', color: colors.text },
   notesBox: {
     flexDirection: 'row',

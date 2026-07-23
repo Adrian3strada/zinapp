@@ -180,7 +180,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         id: 'to-next-stop',
         from: userLocation,
         to: nextStopCoord,
-        strokeColor: colors.accent,
+        strokeColor: colors.primary,
         strokeWidth: 4,
         dynamic: true,
       },
@@ -425,7 +425,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
             </Text>
           </View>
           {loadingOrders && isAvailable && !activeOrder ? (
-            <ActivityIndicator size="small" color={colors.accent} />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : isAvailable && !activeOrder && visibleOrders.length > 0 ? (
             <View style={styles.countPill}>
               <Text style={styles.countText}>{visibleOrders.length}</Text>
@@ -437,7 +437,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       <View style={[styles.bottomStack, bottomPad]} pointerEvents="box-none">
         {!isApproved && !activeOrder ? (
           <View style={styles.tipBanner}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={colors.accentDark} />
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.primaryDark} />
             <Text style={styles.tipText}>
               Completa foto e INE en Mi perfil para poder conectarte.
             </Text>
@@ -488,7 +488,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
                 label={isAvailable ? 'Desliza para desconectar' : 'Desliza para conectar'}
                 completeLabel={isAvailable ? 'Desconectando…' : 'Conectando…'}
                 icon={isAvailable ? 'pause' : 'flash'}
-                color={isAvailable ? colors.textSecondary : colors.accent}
+                color={isAvailable ? colors.textSecondary : colors.primary}
                 disabled={!isApproved || updating}
                 loading={updating}
                 onComplete={handleConnect}
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     minWidth: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 7,
@@ -583,11 +583,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     alignItems: 'flex-start',
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 16,
     padding: 12,
   },
-  tipText: { flex: 1, fontSize: 13, color: colors.accentDark, fontWeight: '600', lineHeight: 18 },
+  tipText: { flex: 1, fontSize: 13, color: colors.primaryDark, fontWeight: '600', lineHeight: 18 },
   connectCard: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,

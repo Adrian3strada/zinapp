@@ -428,7 +428,7 @@ export default function ProfileScreen() {
           <LinearGradient
             colors={
               isDriver
-                ? [colors.accent, colors.accentDark, '#9A3412']
+                ? [colors.primary, colors.primaryDark, colors.gradientEnd]
                 : [colors.gradientStart, colors.gradientEnd]
             }
             style={[

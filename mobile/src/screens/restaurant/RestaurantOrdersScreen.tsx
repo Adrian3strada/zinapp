@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   pendingHint: {
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   pendingHintText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textAlign: 'center',
   },
   closedBanner: {

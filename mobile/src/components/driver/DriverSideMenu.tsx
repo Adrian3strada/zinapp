@@ -166,7 +166,7 @@ export default function DriverSideMenu({
                   <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatarFallback}>
-                    <Ionicons name="bicycle" size={28} color={colors.accentDark} />
+                    <Ionicons name="bicycle" size={28} color={colors.primaryDark} />
                   </View>
                 )}
               </View>
@@ -195,8 +195,8 @@ export default function DriverSideMenu({
                   value={isAvailable}
                   onValueChange={onToggleAvailability}
                   disabled={updating || !isApproved}
-                  trackColor={{ false: colors.border, true: colors.accent + '66' }}
-                  thumbColor={isAvailable ? colors.accent : colors.textMuted}
+                  trackColor={{ false: colors.border, true: colors.primary + '66' }}
+                  thumbColor={isAvailable ? colors.primary : colors.textMuted}
                 />
               </View>
             </View>
@@ -204,7 +204,7 @@ export default function DriverSideMenu({
             <View style={styles.earnCard}>
               <Text style={styles.earnEyebrow}>Ganancias · 7 días</Text>
               {loadingMoney && !earnings ? (
-                <ActivityIndicator color={colors.accent} style={{ marginVertical: 12 }} />
+                <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />
               ) : (
                 <>
                   <Text style={styles.earnValue}>
@@ -245,7 +245,7 @@ export default function DriverSideMenu({
                 hitSlop={HIT_SLOP}
               >
                 <Text style={styles.earnLinkText}>Ver detalle en Mi perfil</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.accentDark} />
+                <Ionicons name="chevron-forward" size={16} color={colors.primaryDark} />
               </Pressable>
             </View>
 
@@ -313,7 +313,7 @@ function MenuItem({
         <Ionicons
           name={icon}
           size={20}
-          color={danger ? colors.error : colors.accentDark}
+          color={danger ? colors.error : colors.primaryDark}
         />
       </View>
       <View style={styles.menuText}>
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -368,28 +368,28 @@ const styles = StyleSheet.create({
   onlineTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
   onlineSub: { fontSize: 11, color: colors.textSecondary, fontWeight: '500', lineHeight: 15 },
   earnCard: {
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderRadius: 20,
     padding: 16,
     gap: 6,
     borderWidth: 1,
-    borderColor: colors.accent + '33',
+    borderColor: colors.primary + '33',
   },
   earnEyebrow: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  earnValue: { fontSize: 32, fontWeight: '900', color: colors.accentDark, letterSpacing: -0.8 },
+  earnValue: { fontSize: 32, fontWeight: '900', color: colors.primaryDark, letterSpacing: -0.8 },
   earnHint: { fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 },
   dayRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 4,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.accent + '33',
+    borderTopColor: colors.primary + '33',
   },
   dayDate: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   dayVal: { fontSize: 12, fontWeight: '800', color: colors.text },
@@ -402,14 +402,14 @@ const styles = StyleSheet.create({
   },
   settleTitle: { fontSize: 12, fontWeight: '800', color: colors.textMuted },
   settleRow: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
-  settleTotal: { fontSize: 16, fontWeight: '900', color: colors.accentDark, marginTop: 2 },
+  settleTotal: { fontSize: 16, fontWeight: '900', color: colors.primaryDark, marginTop: 2 },
   earnLink: {
     marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  earnLinkText: { fontSize: 13, fontWeight: '800', color: colors.accentDark },
+  earnLinkText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
   menuBlock: { gap: 4 },
   menuItem: {
     flexDirection: 'row',
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },

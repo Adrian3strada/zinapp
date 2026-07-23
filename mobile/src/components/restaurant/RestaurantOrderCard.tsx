@@ -98,7 +98,7 @@ export default function RestaurantOrderCard({
             <Ionicons
               name={prep.overdue ? 'warning-outline' : 'timer-outline'}
               size={14}
-              color={prep.overdue ? '#FFF' : colors.accentDark}
+              color={prep.overdue ? '#FFF' : colors.primaryDark}
             />
             <Text style={[styles.prepPillText, prep.overdue && styles.prepPillTextOverdue]}>
               {prep.overdue ? `Retraso ${prep.label}` : prep.label}
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   cardKitchen: {
-    borderColor: colors.accent + '44',
+    borderColor: colors.primary + '44',
     backgroundColor: '#FFFBF7',
   },
   cardReady: {
@@ -215,13 +215,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 14,
   },
   prepPillOverdue: { backgroundColor: colors.error },
-  prepPillText: { fontSize: 12, fontWeight: '900', color: colors.accentDark },
+  prepPillText: { fontSize: 12, fontWeight: '900', color: colors.primaryDark },
   prepPillTextOverdue: { color: '#FFF' },
   prepHint: {
     marginTop: 6,
@@ -236,11 +236,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  qty: { fontSize: 16, fontWeight: '900', color: colors.accentDark, minWidth: 28 },
+  qty: { fontSize: 16, fontWeight: '900', color: colors.primaryDark, minWidth: 28 },
   itemText: { flex: 1, gap: 1 },
   itemName: { fontSize: 16, fontWeight: '800', color: colors.text },
   itemOpts: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  itemNotes: { fontSize: 12, color: colors.accentDark, fontWeight: '700' },
+  itemNotes: { fontSize: 12, color: colors.primaryDark, fontWeight: '700' },
   moreItems: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   footer: {
     flexDirection: 'row',

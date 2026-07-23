@@ -33,7 +33,7 @@ export default function SlideAction({
   label,
   completeLabel,
   icon = 'chevron-forward',
-  color = colors.accent,
+  color = colors.primary,
   disabled = false,
   loading = false,
   onComplete,

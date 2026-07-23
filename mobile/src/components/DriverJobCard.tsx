@@ -75,7 +75,7 @@ export default function DriverJobCard({
             <Ionicons
               name={isFood ? 'restaurant' : 'cube'}
               size={12}
-              color={isFood ? colors.primary : colors.accent}
+              color={colors.primary}
             />
             <Text style={[styles.typeBadgeText, isFood ? styles.typeFoodText : styles.typeShipmentText]}>
               {isFood ? 'Comida' : 'Envío'}
@@ -105,7 +105,7 @@ export default function DriverJobCard({
               {lines.map((line, i) => (
                 <View key={i} style={styles.lineRow}>
                   <View style={styles.lineIcon}>
-                    <Ionicons name={line.icon} size={13} color={line.iconColor ?? colors.accentDark} />
+                    <Ionicons name={line.icon} size={13} color={line.iconColor ?? colors.primaryDark} />
                   </View>
                   <Text style={styles.lineText} numberOfLines={2}>
                     {line.text}
@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   cardLive: {
-    borderColor: colors.accent + '55',
-    backgroundColor: colors.accentLight,
+    borderColor: colors.primary + '55',
+    backgroundColor: colors.primaryLight,
   },
   cardReady: {
     borderColor: colors.warning + '55',
@@ -192,10 +192,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   typeFood: { backgroundColor: colors.primaryLight },
-  typeShipment: { backgroundColor: colors.accentLight },
+  typeShipment: { backgroundColor: colors.primaryLight },
   typeBadgeText: { fontSize: 11, fontWeight: '800' },
   typeFoodText: { color: colors.primary },
-  typeShipmentText: { color: colors.accentDark },
+  typeShipmentText: { color: colors.primaryDark },
   badgeRow: { flexDirection: 'row', gap: 6, flexShrink: 1 },
   mainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   shipmentIcon: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   lineText: { flex: 1, fontSize: 12, color: colors.textMuted, lineHeight: 17, fontWeight: '500' },
   totalWrap: { alignItems: 'flex-end', gap: 2 },
   totalLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
-  total: { fontSize: 17, fontWeight: '800', color: colors.accentDark },
+  total: { fontSize: 17, fontWeight: '800', color: colors.primaryDark },
   actionBtn: { marginTop: 12 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   actionChip: {
@@ -236,12 +236,12 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderRadius: 14,
-    backgroundColor: colors.accentLight,
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: colors.accent + '55',
+    borderColor: colors.primary + '55',
   },
-  actionChipPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
+  actionChipPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
   actionChipSuccess: { backgroundColor: colors.success, borderColor: colors.success },
-  actionChipText: { fontSize: 13, fontWeight: '800', color: colors.accentDark },
+  actionChipText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
   actionChipTextPrimary: { color: '#FFF' },
 });

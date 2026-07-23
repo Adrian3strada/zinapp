@@ -59,7 +59,7 @@ function DriverTabs() {
   const { activeCount } = useDriverActiveDeliveries(2500);
   const options = {
     ...tabBarScreenOptions(insets),
-    tabBarActiveTintColor: colors.accent,
+    tabBarActiveTintColor: colors.primary,
   };
 
   return (

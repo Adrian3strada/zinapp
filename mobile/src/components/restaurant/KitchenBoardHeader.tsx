@@ -47,7 +47,7 @@ export default function KitchenBoardHeader({
       </View>
 
       <View style={styles.metrics}>
-        <Metric icon="flame-outline" value={counts.kitchen} label="Cocina" accent={colors.accent} />
+        <Metric icon="flame-outline" value={counts.kitchen} label="Cocina" accent={colors.primary} />
         <View style={styles.divider} />
         <Metric icon="bag-check-outline" value={counts.ready} label="Listos" accent={colors.success} />
         <View style={styles.divider} />
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.accentDark,
+    color: colors.primaryDark,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },

@@ -74,7 +74,7 @@ export default function ActiveDeliverySheet({
       <View style={styles.metaRow}>
         {routeStats?.distanceMeters != null && routeStats.durationSeconds != null ? (
           <View style={styles.metaChip}>
-            <Ionicons name="navigate-outline" size={14} color={colors.accentDark} />
+            <Ionicons name="navigate-outline" size={14} color={colors.primaryDark} />
             <Text style={styles.metaText}>
               {formatRouteDistance(routeStats.distanceMeters)} ·{' '}
               {formatRouteDuration(routeStats.durationSeconds)}
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepDotActive: { backgroundColor: colors.accent },
+  stepDotActive: { backgroundColor: colors.primary },
   stepDotDone: { backgroundColor: colors.success },
   stepDotIdle: { backgroundColor: colors.border },
   stepNum: { fontSize: 11, fontWeight: '800', color: '#FFF' },
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     borderRadius: 16,
     paddingVertical: 14,
   },
