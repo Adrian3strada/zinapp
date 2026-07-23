@@ -3,7 +3,7 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.16",
+    "version": "1.1.17",
     "scheme": [
       "zinapp",
       "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd"
@@ -37,7 +37,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zinapp.delivery",
-      "buildNumber": "19",
+      "buildNumber": "20",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
@@ -52,7 +52,7 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 136,
+      "versionCode": 137,
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "navigationBar": {
