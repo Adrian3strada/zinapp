@@ -4,38 +4,58 @@
       <p class="section-kicker">En tu celular</p>
       <h2 class="section-title" id="install-title">Instala ZinApp en tu celular</h2>
       <p class="section-lead">
-        ZinApp funciona desde la web. Puedes agregarla a tu pantalla de inicio y abrirla como cualquier otra aplicación.
+        Descarga ZinApp desde Google Play o App Store y empieza a pedir en Zinapécuaro.
       </p>
     </div>
 
     <div class="install-actions">
-      <a class="btn btn-primary" href="{{ app_url }}">Abrir ZinApp</a>
-      <a class="btn btn-secondary" href="#instalar-android">Ver instrucciones para Android</a>
-      <a class="btn btn-ghost" href="#instalar-iphone">Ver instrucciones para iPhone</a>
+      {% if play_store_url %}
+        <a class="btn btn-primary" href="{{ play_store_url }}" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.7c-.3.2-.5.6-.5 1.1v16.4c0 .5.2.9.5 1.1l.1.1 9.1-9.1v-.2L3.7 2.6l-.1.1zm11.3 6.5L12.1 12l2.8 2.8 3.5-2c.6-.3.6-1.2 0-1.6l-3.5-2zm-1.5 3.6-9.4 9.4c.2 0 .4 0 .6-.1l10.6-6.1-1.8-3.2zm0-1.6 1.8-3.2L5.6 2.1c-.2-.1-.4-.1-.6-.1l9.4 9.2z"/></svg>
+          Google Play
+        </a>
+      {% endif %}
+      {% if app_store_url %}
+        <a class="btn btn-secondary" href="{{ app_store_url }}" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.22-1.98 1.08-3.13-1.05.05-2.31.72-3.05 1.6-.66.78-1.24 2.03-1.08 3.18 1.14.09 2.31-.66 3.05-1.65z"/></svg>
+          App Store
+        </a>
+      {% endif %}
+      <a class="btn btn-ghost" href="{{ app_url }}">Abrir en el navegador</a>
     </div>
 
     <div class="accordion">
-      <details id="instalar-android">
+      <details id="instalar-android" {% if not play_store_url %}open{% endif %}>
         <summary>Instrucciones para Android</summary>
         <div class="acc-body">
           <ol>
-            <li>Abre ZinApp desde tu navegador (Chrome u otro).</li>
-            <li>Toca el menú del navegador (los tres puntos).</li>
-            <li>Selecciona <strong>Agregar a pantalla de inicio</strong> o <strong>Instalar aplicación</strong>.</li>
-            <li>Confirma. Después podrás abrir ZinApp desde el ícono en tu pantalla de inicio.</li>
+            <li>Abre la app <strong>Google Play Store</strong> en tu celular.</li>
+            <li>Busca <strong>ZinApp</strong>.</li>
+            <li>Toca <strong>Instalar</strong> y espera a que termine la descarga.</li>
+            <li>Abre ZinApp desde tu pantalla de inicio y crea tu cuenta o inicia sesión.</li>
           </ol>
+          {% if play_store_url %}
+            <p style="margin: 0.85rem 0 0;">
+              <a class="btn btn-primary btn-sm" href="{{ play_store_url }}" rel="noopener noreferrer" target="_blank">Descargar en Google Play</a>
+            </p>
+          {% endif %}
         </div>
       </details>
 
-      <details id="instalar-iphone">
+      <details id="instalar-iphone" {% if not app_store_url %}open{% endif %}>
         <summary>Instrucciones para iPhone</summary>
         <div class="acc-body">
           <ol>
-            <li>Abre ZinApp en Safari.</li>
-            <li>Pulsa el botón <strong>Compartir</strong>.</li>
-            <li>Elige <strong>Agregar a inicio</strong>.</li>
-            <li>Confirma el nombre y pulsa Agregar. Ya podrás abrir ZinApp como cualquier otra app.</li>
+            <li>Abre la app <strong>App Store</strong> en tu iPhone.</li>
+            <li>Busca <strong>ZinApp</strong>.</li>
+            <li>Toca <strong>Obtener</strong> o el ícono de descarga e inicia sesión con tu Apple ID si te lo pide.</li>
+            <li>Abre ZinApp desde tu pantalla de inicio y crea tu cuenta o inicia sesión.</li>
           </ol>
+          {% if app_store_url %}
+            <p style="margin: 0.85rem 0 0;">
+              <a class="btn btn-secondary btn-sm" href="{{ app_store_url }}" rel="noopener noreferrer" target="_blank">Descargar en App Store</a>
+            </p>
+          {% endif %}
         </div>
       </details>
     </div>
