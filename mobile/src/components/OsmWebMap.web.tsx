@@ -5,12 +5,13 @@ import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
 import type { MapCoordinate } from '../utils/maps';
 import { isValidCoordinate, ZINAPECUARO_REGION } from '../utils/maps';
-import type { OsmPinType } from '../utils/osmMapHtml';
 import {
   buildOsmMapHtml,
   buildOsmMapLivePayload,
+  type OsmMapFitPadding,
   type OsmMapMarker,
   type OsmMapPolyline,
+  type OsmPinType,
 } from '../utils/osmMapHtml';
 
 interface Props {
@@ -24,6 +25,7 @@ interface Props {
   pinCoordinate?: MapCoordinate | null;
   pinType?: OsmPinType;
   followMarkerId?: string | null;
+  fitPadding?: OsmMapFitPadding | null;
   onCoordinateChange?: (coord: MapCoordinate) => void;
   onMarkerPress?: (markerId: string) => void;
 }
@@ -40,6 +42,7 @@ export default function OsmWebMap({
   pinCoordinate = null,
   pinType = 'delivery',
   followMarkerId = null,
+  fitPadding = null,
   onCoordinateChange,
   onMarkerPress,
 }: Props) {
@@ -81,8 +84,15 @@ export default function OsmWebMap({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const livePayload = useMemo(
-    () => buildOsmMapLivePayload({ markers, polylines, followMarkerId, fitAll: !followMarkerId }),
-    [markers, polylines, followMarkerId],
+    () =>
+      buildOsmMapLivePayload({
+        markers,
+        polylines,
+        followMarkerId,
+        fitAll: !followMarkerId,
+        fitPadding,
+      }),
+    [markers, polylines, followMarkerId, fitPadding],
   );
 
   const pushLiveData = useCallback((payload: string) => {

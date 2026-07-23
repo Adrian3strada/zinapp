@@ -380,6 +380,8 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   }, [userLocation, activeOrder, deliveryStep, restaurantCoord, deliveryCoord, visibleOrders]);
 
   const [deliveryMapRegion, setDeliveryMapRegion] = useState<MapRegion | null>(null);
+  /** Altura del sheet inferior: el mapa deja ese hueco libre al encuadrar la ruta. */
+  const [sheetHeight, setSheetHeight] = useState(160);
 
   useEffect(() => {
     if (!activeOrder) {
@@ -393,7 +395,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       lastMapLocation.current,
     ].filter(isValidCoordinate);
     if (coords.length) {
-      setDeliveryMapRegion(regionForCoordinates(coords));
+      setDeliveryMapRegion(regionForCoordinates(coords, { bottomBias: 0.28 }));
     }
   }, [activeOrder?.id, deliveryStep, restaurantCoord, deliveryCoord, routeFrom]);
 
@@ -410,7 +412,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         toCoordinate(offerOrder.delivery_latitude, offerOrder.delivery_longitude),
         userLocation,
       ].filter(isValidCoordinate);
-      if (coords.length) return regionForCoordinates(coords);
+      if (coords.length) return regionForCoordinates(coords, { bottomBias: 0.28 });
     }
     if (isValidCoordinate(userLocation)) {
       return {
@@ -531,6 +533,17 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
 
   const online = !!(activeOrder || (isAvailable && isApproved));
 
+  const mapFitPadding = useMemo(
+    () => ({
+      top: 28,
+      right: 28,
+      left: 28,
+      // Sheet + margen para que la ruta no se meta debajo del panel blanco.
+      bottom: Math.max(140, sheetHeight + 28),
+    }),
+    [sheetHeight],
+  );
+
   return (
     <View style={styles.root}>
       {/* Header azul fijo arriba — no flota sobre el mapa. */}
@@ -589,10 +602,18 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
           markers={markers}
           polylines={activeOrder ? remainingPolylines : []}
           followMarkerId={null}
+          fitPadding={mapFitPadding}
           style={styles.map}
         />
 
-        <View style={[styles.bottomStack, bottomPad]} pointerEvents="box-none">
+        <View
+          style={[styles.bottomStack, bottomPad]}
+          pointerEvents="box-none"
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height);
+            if (h > 0 && Math.abs(h - sheetHeight) > 8) setSheetHeight(h);
+          }}
+        >
           {!isApproved && !activeOrder ? (
             <View style={styles.tipBanner}>
               <Ionicons name="shield-checkmark-outline" size={20} color={colors.primaryDark} />

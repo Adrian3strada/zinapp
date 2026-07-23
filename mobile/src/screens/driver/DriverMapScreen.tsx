@@ -373,6 +373,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
           region={region}
           height={mapHeight(0.52)}
           followMarkerId={null}
+          fitPadding={{ top: 36, right: 36, bottom: 48, left: 36 }}
           emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
         />
       </View>

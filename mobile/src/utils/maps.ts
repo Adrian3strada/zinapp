@@ -57,7 +57,10 @@ export function toCoordinate(
   return isValidCoordinate(coord) ? coord : null;
 }
 
-export function regionForCoordinates(coords: MapCoordinate[]) {
+export function regionForCoordinates(
+  coords: MapCoordinate[],
+  options?: { bottomBias?: number },
+) {
   if (coords.length === 0) return ZINAPECUARO_REGION;
 
   const lats = coords.map((c) => c.latitude);
@@ -67,10 +70,14 @@ export function regionForCoordinates(coords: MapCoordinate[]) {
   const minLng = Math.min(...lngs);
   const maxLng = Math.max(...lngs);
 
-  const latitude = (minLat + maxLat) / 2;
+  const latSpan = Math.max(maxLat - minLat, 0.006);
+  const lngSpan = Math.max(maxLng - minLng, 0.006);
+  // Empuja el centro hacia arriba para dejar aire donde va el sheet inferior.
+  const bias = Math.min(Math.max(options?.bottomBias ?? 0.2, 0), 0.45);
+  const latitude = (minLat + maxLat) / 2 + latSpan * bias;
   const longitude = (minLng + maxLng) / 2;
-  const latitudeDelta = Math.max((maxLat - minLat) * 1.6, 0.01);
-  const longitudeDelta = Math.max((maxLng - minLng) * 1.6, 0.01);
+  const latitudeDelta = Math.max(latSpan * (1.7 + bias), 0.012);
+  const longitudeDelta = Math.max(lngSpan * 1.7, 0.012);
 
   return { latitude, longitude, latitudeDelta, longitudeDelta };
 }

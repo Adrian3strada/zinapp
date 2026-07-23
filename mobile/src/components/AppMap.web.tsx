@@ -20,6 +20,7 @@ export default function AppMap({
   emptyMessage,
   onMarkerPress,
   followMarkerId = null,
+  fitPadding = null,
 }: AppMapProps) {
   const initialRegion = region ?? ZINAPECUARO_REGION;
 
@@ -61,6 +62,7 @@ export default function AppMap({
         weight: line.strokeWidth || 6,
       }))}
       followMarkerId={followMarkerId}
+      fitPadding={fitPadding}
       onMarkerPress={
         onMarkerPress
           ? (markerId) => {

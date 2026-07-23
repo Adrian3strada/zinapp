@@ -19,11 +19,20 @@ export interface OsmMapPolyline {
   weight?: number;
 }
 
+export interface OsmMapFitPadding {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
 export interface OsmMapLiveData {
   markers?: OsmMapMarker[];
   polylines?: OsmMapPolyline[];
   followMarkerId?: string | null;
   fitAll?: boolean;
+  /** Padding del encuadre (px) para no tapar rutas con sheets/headers. */
+  fitPadding?: OsmMapFitPadding | null;
 }
 
 interface BuildOsmMapHtmlOptions {
@@ -43,6 +52,7 @@ export function buildOsmMapLivePayload(data: OsmMapLiveData): string {
     polylines: data.polylines ?? [],
     followMarkerId: data.followMarkerId ?? null,
     fitAll: data.fitAll ?? false,
+    fitPadding: data.fitPadding ?? null,
   });
 }
 
@@ -145,6 +155,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     var polylineLayers = {};
     var hasInitialFit = false;
     var hadPolylines = false;
+    var lastFitPadKey = '';
     var lastFollowId = null;
     var followPaused = false;
     var lastFollowPanAt = 0;
@@ -316,6 +327,18 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       }
       hadPolylines = hasLinesNow;
 
+      var pad = data.fitPadding || {};
+      var padTop = Math.max(16, Number(pad.top) || 36);
+      var padRight = Math.max(16, Number(pad.right) || 36);
+      var padBottom = Math.max(16, Number(pad.bottom) || 36);
+      var padLeft = Math.max(16, Number(pad.left) || 36);
+      var padKey = [padTop, padRight, padBottom, padLeft].join(',');
+      // Si el sheet crece, vuelve a encuadrar con más aire abajo.
+      if (hasInitialFit && padKey !== lastFitPadKey && padBottom > 80) {
+        hasInitialFit = false;
+      }
+      lastFitPadKey = padKey;
+
       var followId = data.followMarkerId || null;
       if (followId && markerLayers[followId] && !followPaused) {
         var ll = markerLayers[followId].getLatLng();
@@ -361,7 +384,11 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
           allCoords.push([shell.pinCoordinate.latitude, shell.pinCoordinate.longitude]);
         }
         if (allCoords.length > 1) {
-          map.fitBounds(allCoords, { padding: [36, 36] });
+          map.fitBounds(allCoords, {
+            paddingTopLeft: [padLeft, padTop],
+            paddingBottomRight: [padRight, padBottom],
+            maxZoom: 16
+          });
           hasInitialFit = true;
         } else if (allCoords.length === 1) {
           map.setView(allCoords[0], shell.zoom);

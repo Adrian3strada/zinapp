@@ -19,6 +19,13 @@ export interface MapPolyline {
   lineDashPattern?: number[];
 }
 
+export interface MapFitPadding {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
 export interface AppMapProps {
   markers?: MapMarker[];
   polylines?: MapPolyline[];
@@ -30,4 +37,6 @@ export interface AppMapProps {
   emptyMessage?: string;
   onMarkerPress?: (marker: MapMarker) => void;
   followMarkerId?: string | null;
+  /** Evita que sheets/overlays tapen la ruta al hacer fitBounds. */
+  fitPadding?: MapFitPadding | null;
 }

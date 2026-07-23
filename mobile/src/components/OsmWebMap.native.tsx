@@ -9,6 +9,7 @@ import { isValidCoordinate, ZINAPECUARO_REGION } from '../utils/maps';
 import {
   buildOsmMapHtml,
   buildOsmMapLivePayload,
+  type OsmMapFitPadding,
   type OsmMapMarker,
   type OsmMapPolyline,
   type OsmPinType,
@@ -25,6 +26,7 @@ interface Props {
   pinCoordinate?: MapCoordinate | null;
   pinType?: OsmPinType;
   followMarkerId?: string | null;
+  fitPadding?: OsmMapFitPadding | null;
   onCoordinateChange?: (coord: MapCoordinate) => void;
   onMarkerPress?: (markerId: string) => void;
 }
@@ -41,6 +43,7 @@ export default function OsmWebMap({
   pinCoordinate = null,
   pinType = 'delivery',
   followMarkerId = null,
+  fitPadding = null,
   onCoordinateChange,
   onMarkerPress,
 }: Props) {
@@ -82,8 +85,15 @@ export default function OsmWebMap({
   const webRef = useRef<WebView>(null);
   const [mapReady, setMapReady] = useState(false);
   const livePayload = useMemo(
-    () => buildOsmMapLivePayload({ markers, polylines, followMarkerId, fitAll: !followMarkerId }),
-    [markers, polylines, followMarkerId],
+    () =>
+      buildOsmMapLivePayload({
+        markers,
+        polylines,
+        followMarkerId,
+        fitAll: !followMarkerId,
+        fitPadding,
+      }),
+    [markers, polylines, followMarkerId, fitPadding],
   );
 
   const pushLiveData = useCallback((payload: string) => {
