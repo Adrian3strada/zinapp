@@ -1,0 +1,40 @@
+{% load static %}
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="36" height="36" alt="">
+      <span>ZinApp</span>
+    </a>
+
+    <nav class="nav-desktop" aria-label="Principal">
+      <a href="/">Inicio</a>
+      <a href="#comida">Comida</a>
+      <a href="#servicios">Servicios</a>
+      <a href="#promociones">Promociones</a>
+      <a href="#negocios">Registrar negocio</a>
+      <a class="btn btn-primary btn-sm nav-cta" href="{{ app_url }}">Abrir ZinApp</a>
+    </nav>
+
+    <button
+      type="button"
+      class="menu-toggle"
+      id="menu-toggle"
+      aria-controls="nav-mobile"
+      aria-expanded="false"
+      aria-label="Abrir menú"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16"/>
+      </svg>
+    </button>
+  </div>
+
+  <nav class="nav-mobile" id="nav-mobile" aria-label="Menú móvil" hidden>
+    <a href="/">Inicio</a>
+    <a href="#comida">Comida</a>
+    <a href="#servicios">Servicios</a>
+    <a href="#promociones">Promociones</a>
+    <a href="#negocios">Registrar negocio</a>
+    <a class="btn btn-primary btn-block" href="{{ app_url }}">Abrir ZinApp</a>
+  </nav>
+</header>

@@ -1,0 +1,66 @@
+{% load static %}
+<footer class="site-footer">
+  <div class="wrap footer-main">
+    <div class="footer-brand">
+      <a href="/">
+        <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="40" height="40" alt="">
+        ZinApp
+      </a>
+      <p>Todo Zinapécuaro en una sola app. Comida, servicios y negocios locales.</p>
+    </div>
+
+    <div class="footer-grid">
+      <div class="footer-group">
+        <h3>Explorar</h3>
+        <nav aria-label="Explorar">
+          <a href="/">Inicio</a>
+          <a href="#comida">Comida</a>
+          <a href="#servicios">Servicios</a>
+          <a href="#promociones">Promociones</a>
+          <a href="{{ app_url }}">Abrir ZinApp</a>
+        </nav>
+      </div>
+
+      <div class="footer-group">
+        <h3>Negocios</h3>
+        <nav aria-label="Negocios">
+          <a href="#negocios">Registrar negocio</a>
+          <a href="#como">Cómo funciona</a>
+          <a href="#instalar">Instalar ZinApp</a>
+          <a href="#faq">Preguntas frecuentes</a>
+        </nav>
+      </div>
+
+      <div class="footer-group">
+        <h3>Legal</h3>
+        <nav aria-label="Legal">
+          <a href="{% url 'privacy-policy' %}">Aviso de privacidad</a>
+          {% if terms_url %}
+            <a href="{{ terms_url }}">Términos y condiciones</a>
+          {% else %}
+            <a href="#faq" title="Configura TERMS_URL cuando exista la página">Términos y condiciones</a>
+          {% endif %}
+          <a href="#contacto">Contacto</a>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap footer-bottom">
+    <span>© {% now "Y" %} ZinApp. Todos los derechos reservados.</span>
+    <span>ZinApp Zinapécuaro</span>
+  </div>
+</footer>
+
+<div class="mobile-bar" aria-label="Acciones rápidas">
+  <a class="btn btn-primary" href="{{ app_url }}">Abrir ZinApp</a>
+  {% if whatsapp_url %}
+    <a
+      class="btn btn-secondary"
+      href="{{ whatsapp_url }}?text={{ register_whatsapp_text|urlencode }}"
+      rel="noopener noreferrer"
+    >Registrar</a>
+  {% else %}
+    <a class="btn btn-secondary" href="#negocios">Registrar</a>
+  {% endif %}
+</div>

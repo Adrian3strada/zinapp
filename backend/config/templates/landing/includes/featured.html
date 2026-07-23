@@ -1,0 +1,41 @@
+<section class="section" id="destacados" aria-labelledby="feat-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="section-kicker">Cerca de ti</p>
+      <h2 class="section-title" id="feat-title">Negocios destacados</h2>
+      <p class="section-lead">Locales de Zinapécuaro disponibles en ZinApp.</p>
+    </div>
+
+    <div class="biz-grid">
+      {% for biz in featured_businesses %}
+        <article class="biz-card">
+          <div class="biz-media">
+            {% if biz.is_demo %}
+              <span class="biz-demo">Ejemplo</span>
+            {% endif %}
+            {% if biz.image_url %}
+              <img src="{{ biz.image_url }}" alt="{{ biz.name }}" loading="lazy" decoding="async" width="640" height="400">
+            {% else %}
+              <span aria-hidden="true">ZinApp</span>
+            {% endif %}
+          </div>
+          <div class="biz-body">
+            <span class="biz-cat">{{ biz.category }}</span>
+            <h3>{{ biz.name }}</h3>
+            <div class="biz-meta">
+              <span>Horario: {{ biz.schedule }}</span>
+              <span>Ubicación: {{ biz.location }}</span>
+            </div>
+            <a class="btn btn-primary btn-sm" href="{{ biz.cta_url }}">{{ biz.cta_label }}</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if featured_is_demo %}
+      <p class="demo-note">
+        Estos son datos de ejemplo. Cuando haya restaurantes o servicios activos en el backend, se mostrarán aquí automáticamente.
+      </p>
+    {% endif %}
+  </div>
+</section>

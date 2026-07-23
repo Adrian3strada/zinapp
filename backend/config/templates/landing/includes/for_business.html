@@ -1,0 +1,52 @@
+<section class="section section-alt" id="negocios" aria-labelledby="biz-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="section-kicker">Para negocios</p>
+      <h2 class="section-title" id="biz-title">Haz crecer tu negocio con ZinApp</h2>
+      <p class="section-lead">Elige la modalidad que mejor se adapte a tu local.</p>
+    </div>
+
+    <div class="plan-grid">
+      <article class="plan-card">
+        <h3>Modalidad Servicios</h3>
+        <p class="plan-price">$150 MXN <span>/ mensuales</span></p>
+        <ul class="plan-list">
+          <li>Publicación del nombre del negocio</li>
+          <li>Giro o categoría</li>
+          <li>Teléfono y WhatsApp</li>
+          <li>Horario</li>
+          <li>Dirección</li>
+          <li>Ubicación en Google Maps</li>
+        </ul>
+      </article>
+
+      <article class="plan-card">
+        <h3>Modalidad Restaurantes y pedidos</h3>
+        <p class="plan-price">Sin mensualidad</p>
+        <ul class="plan-list">
+          <li>Publicación del menú</li>
+          <li>Recepción de pedidos desde ZinApp</li>
+          <li>Apoyo con entrega mediante repartidores</li>
+        </ul>
+        <p class="plan-note">
+          Los precios publicados en ZinApp incluyen un 10% adicional.
+          El restaurante recibe el precio original de sus productos;
+          ZinApp conserva el 10% adicional como comisión.
+        </p>
+      </article>
+    </div>
+
+    <div style="margin-top: 1.5rem;">
+      {% if whatsapp_url %}
+        <a
+          class="btn btn-primary"
+          href="{{ whatsapp_url }}?text={{ register_whatsapp_text|urlencode }}"
+          rel="noopener noreferrer"
+        >Registrar mi negocio</a>
+      {% else %}
+        <a class="btn btn-primary" href="#contacto">Registrar mi negocio</a>
+        <p class="demo-note">Configura SUPPORT_WHATSAPP en el entorno para activar el registro por WhatsApp.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>

@@ -1,0 +1,41 @@
+{% load static %}
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="hero-badge" role="note">Compra local. Apoya a Zinapécuaro.</p>
+      <p class="hero-brand">ZinApp</p>
+      <h1 id="hero-title">Todo Zinapécuaro en una sola app.</h1>
+      <p class="hero-lead">Pide comida, encuentra servicios y descubre negocios locales desde un solo lugar.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ app_url }}">Abrir ZinApp</a>
+        {% if whatsapp_url %}
+          <a
+            class="btn btn-secondary"
+            href="{{ whatsapp_url }}?text={{ register_whatsapp_text|urlencode }}"
+            rel="noopener noreferrer"
+          >Registrar mi negocio</a>
+        {% else %}
+          <a class="btn btn-secondary" href="#negocios">Registrar mi negocio</a>
+        {% endif %}
+      </div>
+      <p class="hero-note">Funciona desde el navegador. Sin necesidad de tienda de aplicaciones.</p>
+    </div>
+
+    <div class="hero-visual">
+      <div class="phone" aria-hidden="true">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <img
+            src="{% static 'landing/screenshots/home.png' %}"
+            alt=""
+            width="472"
+            height="1024"
+            loading="eager"
+            decoding="async"
+          >
+        </div>
+      </div>
+      <span class="sr-only">Vista previa de ZinApp en un teléfono</span>
+    </div>
+  </div>
+</section>

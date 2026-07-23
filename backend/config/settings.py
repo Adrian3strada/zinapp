@@ -179,6 +179,13 @@ API_DOCS_ENABLED = config('API_DOCS_ENABLED', default=DEBUG, cast=bool)
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
 APP_STORE_URL = config('APP_STORE_URL', default='').strip()
 PLAY_STORE_URL = config('PLAY_STORE_URL', default='').strip()
+# Landing: URL pública de la app web y contacto opcional (vacío = no mostrar)
+LANDING_APP_URL = config('LANDING_APP_URL', default='https://zinapp.com.mx/app/').strip()
+SUPPORT_EMAIL = config('SUPPORT_EMAIL', default='').strip()
+SUPPORT_PHONE = config('SUPPORT_PHONE', default='').strip()
+SOCIAL_INSTAGRAM = config('SOCIAL_INSTAGRAM', default='').strip()
+SOCIAL_FACEBOOK = config('SOCIAL_FACEBOOK', default='').strip()
+TERMS_URL = config('TERMS_URL', default='').strip()
 DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)
 
 # Google Sign-In: Client IDs OAuth (Web y/o Android/iOS), separados por coma.
