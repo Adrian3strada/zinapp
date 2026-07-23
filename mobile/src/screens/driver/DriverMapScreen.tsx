@@ -226,8 +226,8 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
         id: 'to-next-stop',
         from: routeFrom,
         to: nextStop,
-        strokeColor: colors.primary,
-        strokeWidth: 4,
+        strokeColor: colors.text,
+        strokeWidth: 6,
         dynamic: false,
       });
     }
@@ -278,8 +278,8 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       {
         id: 'to-next-stop',
         coordinates: remainingCoords,
-        strokeColor: colors.primary,
-        strokeWidth: 4,
+        strokeColor: colors.text,
+        strokeWidth: 6,
       },
     ];
   }, [remainingCoords]);

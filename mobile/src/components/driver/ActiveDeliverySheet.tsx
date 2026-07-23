@@ -39,9 +39,9 @@ export default function ActiveDeliverySheet({
     ? (order.restaurant_detail?.address || restaurant)
     : order.delivery_address;
   const cash = order.payment_method === 'cash';
-  const fee = parseFloat(order.delivery_fee || '0');
-  const tip = parseFloat(order.tip_amount || '0');
-  const earn = (Number.isFinite(fee) ? fee : 0) + (Number.isFinite(tip) ? tip : 0);
+  const totalLabel = formatCurrency(order.total);
+  const hasEta =
+    routeStats?.distanceMeters != null && routeStats.durationSeconds != null;
 
   return (
     <View style={[styles.sheet, cardShadow]}>
@@ -72,25 +72,27 @@ export default function ActiveDeliverySheet({
       </Pressable>
 
       <View style={styles.metaRow}>
-        {routeStats?.distanceMeters != null && routeStats.durationSeconds != null ? (
+        {hasEta ? (
           <View style={styles.metaChip}>
-            <Ionicons name="navigate-outline" size={14} color={colors.primaryDark} />
-            <Text style={styles.metaText}>
-              {formatRouteDistance(routeStats.distanceMeters)} ·{' '}
-              {formatRouteDuration(routeStats.durationSeconds)}
+            <Ionicons name="navigate-outline" size={13} color={colors.primaryDark} />
+            <Text style={styles.metaText} numberOfLines={1}>
+              {formatRouteDistance(routeStats!.distanceMeters!)} ·{' '}
+              {formatRouteDuration(routeStats!.durationSeconds!)}
             </Text>
           </View>
         ) : null}
-        {earn > 0 ? (
-          <View style={styles.metaChip}>
-            <Ionicons name="cash-outline" size={14} color={colors.success} />
-            <Text style={styles.metaText}>{formatCurrency(earn)}</Text>
-          </View>
-        ) : null}
+        <View style={styles.metaChip}>
+          <Ionicons name="cash-outline" size={13} color={colors.success} />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {totalLabel}
+          </Text>
+        </View>
         {cash && !isPickup ? (
           <View style={styles.metaChip}>
-            <Ionicons name="wallet-outline" size={14} color={colors.warning} />
-            <Text style={styles.metaText}>Cobrar efectivo</Text>
+            <Ionicons name="wallet-outline" size={13} color={colors.warning} />
+            <Text style={styles.metaText} numberOfLines={1}>
+              Efectivo
+            </Text>
           </View>
         ) : null}
       </View>
@@ -134,10 +136,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 14,
-    gap: 14,
+    paddingBottom: 6,
+    gap: 12,
   },
   handle: {
     alignSelf: 'center',
@@ -179,17 +181,25 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '900', color: colors.text, letterSpacing: -0.3 },
   address: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, lineHeight: 20 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: 6,
+  },
   metaChip: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: colors.background,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
   },
-  metaText: { fontSize: 12, fontWeight: '700', color: colors.text },
+  metaText: { fontSize: 11, fontWeight: '700', color: colors.text, flexShrink: 1 },
   navBtn: {
     flexDirection: 'row',
     alignItems: 'center',

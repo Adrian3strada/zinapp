@@ -57,7 +57,8 @@ export default function AppMap({
       polylines={safePolylines.map((line, index) => ({
         id: line.id ?? `line-${index}`,
         coordinates: line.coordinates,
-        color: line.strokeColor,
+        color: line.strokeColor || '#111827',
+        weight: line.strokeWidth || 6,
       }))}
       followMarkerId={followMarkerId}
       onMarkerPress={

@@ -17,6 +17,7 @@ import ListFooter from '../../components/ListFooter';
 import ListSkeleton from '../../components/ListSkeleton';
 import RestaurantCard from '../../components/RestaurantCard';
 import ScreenContainer from '../../components/ScreenContainer';
+import SearchField from '../../components/SearchField';
 import { useAuth } from '../../context/AuthContext';
 import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesContext';
 import { useCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
@@ -141,6 +142,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         void refreshRestaurants();
       }}
     >
+      <CustomerHomeHeader
+        topInset={insets.top}
+        firstName={user?.first_name}
+        avatarUrl={resolveMediaUrl(user?.avatar_url ?? user?.avatar)}
+        onProfilePress={() => navigation.navigate('Perfil')}
+      />
+
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
@@ -159,15 +167,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onEndReachedThreshold={0.4}
         ListHeaderComponent={
           <>
-            <CustomerHomeHeader
-              topInset={insets.top}
-              firstName={user?.first_name}
-              avatarUrl={resolveMediaUrl(user?.avatar_url ?? user?.avatar)}
-              search={search}
-              onSearchChange={setSearch}
-              onProfilePress={() => navigation.navigate('Perfil')}
-              onSeeAllPress={() => navigation.navigate('Comida')}
-            />
+            <View style={styles.searchBlock}>
+              <SearchField
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Buscar restaurantes o comida…"
+              />
+              <Pressable
+                style={styles.seeAll}
+                onPress={() => navigation.navigate('Comida')}
+                hitSlop={8}
+              >
+                <Text style={styles.seeAllText}>Ver mapa y filtros</Text>
+                <Ionicons name="map-outline" size={16} color={colors.primary} />
+              </Pressable>
+            </View>
 
             {stripItems.length > 0 ? (
               <ActiveDeliveryStrip items={stripItems} onPress={handleDeliveryPress} />
@@ -299,7 +313,15 @@ function ScrollCategories({
 }
 
 const styles = StyleSheet.create({
-  list: { flexGrow: 1, backgroundColor: colors.background },
+  list: { flexGrow: 1, backgroundColor: colors.background, paddingTop: spacing.md },
+  searchBlock: { gap: 10, marginBottom: spacing.sm },
+  seeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  seeAllText: { fontSize: 13, fontWeight: '700', color: colors.primary },
   skeleton: { flex: 1, paddingHorizontal: spacing.screen },
   refreshError: {
     backgroundColor: colors.primaryLight,

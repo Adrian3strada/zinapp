@@ -22,7 +22,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
 import { useStreetRoutes } from '../../hooks/useStreetRoutes';
-import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
 import { deliveryApi, orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -57,7 +56,6 @@ import {
 export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const { listPaddingBottom } = useTabScreenInsets();
   const { isAvailable, profile, updating, toggleAvailability } = useDriverProfileContext();
   const isApproved = profile?.verification_status === 'approved';
   const {
@@ -118,11 +116,18 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   const [remainingCoords, setRemainingCoords] = useState<MapCoordinate[]>([]);
 
   useEffect(() => {
-    routeFromRef.current = null;
-    setRouteFrom(null);
     fullRouteRef.current = [];
     routeProgressRef.current = 0;
     setRemainingCoords([]);
+    // Al cambiar de paso, pide ruta nueva desde el GPS actual (sin esperar al watch).
+    const seed = lastMapLocation.current;
+    if (seed) {
+      routeFromRef.current = seed;
+      setRouteFrom(seed);
+    } else {
+      routeFromRef.current = null;
+      setRouteFrom(null);
+    }
   }, [activeOrder?.id, deliveryStep]);
 
   useEffect(() => {
@@ -246,8 +251,8 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         id: 'to-next-stop',
         from: routeFrom,
         to: nextStopCoord,
-        strokeColor: colors.primary,
-        strokeWidth: 4,
+        strokeColor: colors.text,
+        strokeWidth: 6,
         // Ruta fija; el recorte local va “comiendo” la línea al avanzar.
         dynamic: false,
       },
@@ -262,7 +267,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     if (!line?.coordinates || line.coordinates.length < 2) return;
     fullRouteRef.current = line.coordinates;
     routeProgressRef.current = 0;
-    const origin = userLocation ?? routeFrom;
+    const origin = lastMapLocation.current ?? userLocation ?? routeFrom;
     if (origin) {
       const trimmed = trimRouteAhead(line.coordinates, origin, 0);
       routeProgressRef.current = trimmed.progressIndex;
@@ -270,19 +275,44 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     } else {
       setRemainingCoords(line.coordinates);
     }
-  }, [polylines, routeFrom]);
+  }, [polylines, routeFrom, userLocation]);
 
   const remainingPolylines = useMemo(() => {
-    if (!activeOrder || remainingCoords.length < 2) return [];
-    return [
-      {
-        id: 'to-next-stop',
-        coordinates: remainingCoords,
-        strokeColor: colors.primary,
-        strokeWidth: 4,
-      },
-    ];
-  }, [activeOrder, remainingCoords]);
+    if (!activeOrder) return [];
+    if (remainingCoords.length >= 2) {
+      return [
+        {
+          id: 'to-next-stop',
+          coordinates: remainingCoords,
+          strokeColor: colors.text,
+          strokeWidth: 6,
+        },
+      ];
+    }
+    // Mientras recorta o espera GPS, muestra la ruta completa para que no “desaparezca”.
+    const full = polylines.find((p) => p.id === 'to-next-stop') ?? polylines[0];
+    if (full?.coordinates && full.coordinates.length >= 2) {
+      return [
+        {
+          id: 'to-next-stop',
+          coordinates: full.coordinates,
+          strokeColor: colors.text,
+          strokeWidth: 6,
+        },
+      ];
+    }
+    if (routeFrom && nextStopCoord) {
+      return [
+        {
+          id: 'to-next-stop',
+          coordinates: [routeFrom, nextStopCoord],
+          strokeColor: colors.text,
+          strokeWidth: 6,
+        },
+      ];
+    }
+    return [];
+  }, [activeOrder, remainingCoords, polylines, routeFrom, nextStopCoord]);
 
   const markers = useMemo((): MapMarker[] => {
     const list: MapMarker[] = [];
@@ -353,12 +383,16 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       setDeliveryMapRegion(null);
       return;
     }
-    setDeliveryMapRegion((prev) => {
-      if (prev) return prev;
-      const coords = [restaurantCoord, deliveryCoord, userLocation].filter(isValidCoordinate);
-      return coords.length ? regionForCoordinates(coords) : null;
-    });
-  }, [activeOrder?.id, restaurantCoord, deliveryCoord, userLocation]);
+    const coords = [
+      deliveryStep === 'pickup' ? restaurantCoord : null,
+      deliveryCoord,
+      routeFrom,
+      lastMapLocation.current,
+    ].filter(isValidCoordinate);
+    if (coords.length) {
+      setDeliveryMapRegion(regionForCoordinates(coords));
+    }
+  }, [activeOrder?.id, deliveryStep, restaurantCoord, deliveryCoord, routeFrom]);
 
   const mapRegion = useMemo(() => {
     if (activeOrder) {
@@ -489,7 +523,8 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         ? 'Conectado · recibiendo pedidos'
         : 'Desconectado';
 
-  const bottomPad = listPaddingBottom(18);
+  // El contenido del tab ya termina arriba de la barra; no sumar tabBar otra vez.
+  const bottomPad = { paddingBottom: 8 };
 
   return (
     <View

@@ -16,6 +16,7 @@ export interface OsmMapPolyline {
   id?: string;
   coordinates: MapCoordinate[];
   color?: string;
+  weight?: number;
 }
 
 export interface OsmMapLiveData {
@@ -143,6 +144,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     var markerLayers = {};
     var polylineLayers = {};
     var hasInitialFit = false;
+    var hadPolylines = false;
     var lastFollowId = null;
     var followPaused = false;
     var lastFollowPanAt = 0;
@@ -293,17 +295,26 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
           return [c.latitude, c.longitude];
         });
         var existing = polylineLayers[id];
+        var lineColor = line.color || '#111827';
+        var lineWeight = line.weight || 6;
         if (existing) {
           existing.setLatLngs(latlngs);
-          if (line.color) existing.setStyle({ color: line.color });
+          existing.setStyle({ color: lineColor, weight: lineWeight, opacity: 0.95 });
           return;
         }
         polylineLayers[id] = L.polyline(latlngs, {
-          color: line.color || '#1A56DB',
-          weight: 4,
-          opacity: 0.85
+          color: lineColor,
+          weight: lineWeight,
+          opacity: 0.95
         }).addTo(map);
       });
+
+      var hasLinesNow = Object.keys(nextLines).length > 0;
+      // Si la ruta llega después de los pines, recentrar para que se vea.
+      if (hasLinesNow && !hadPolylines) {
+        hasInitialFit = false;
+      }
+      hadPolylines = hasLinesNow;
 
       var followId = data.followMarkerId || null;
       if (followId && markerLayers[followId] && !followPaused) {
@@ -350,7 +361,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
           allCoords.push([shell.pinCoordinate.latitude, shell.pinCoordinate.longitude]);
         }
         if (allCoords.length > 1) {
-          map.fitBounds(allCoords, { padding: [28, 28] });
+          map.fitBounds(allCoords, { padding: [36, 36] });
           hasInitialFit = true;
         } else if (allCoords.length === 1) {
           map.setView(allCoords[0], shell.zoom);
