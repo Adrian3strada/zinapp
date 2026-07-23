@@ -59,20 +59,29 @@ export default function OsmWebMap({
     };
   }, [center, pinCoordinate, markers]);
 
-  // Congela el centro del shell HTML: si cambia en cada GPS, el WebView se remonta.
+  // Congela centro + datos iniciales del shell (evita remount por GPS).
   const shellCenterRef = useRef<MapCoordinate | null>(null);
   if (!shellCenterRef.current) {
     shellCenterRef.current = resolveCenter();
   }
   const shellCenter = shellCenterRef.current;
 
+  const seedMarkersRef = useRef(markers);
+  const seedPolylinesRef = useRef(polylines);
+  if (seedMarkersRef.current.length === 0 && markers.length > 0) {
+    seedMarkersRef.current = markers;
+  }
+  if (seedPolylinesRef.current.length === 0 && polylines.length > 0) {
+    seedPolylinesRef.current = polylines;
+  }
+
   const html = useMemo(
     () =>
       buildOsmMapHtml({
         center: shellCenter,
         zoom,
-        markers: [],
-        polylines: [],
+        markers: seedMarkersRef.current,
+        polylines: seedPolylinesRef.current,
         interactive,
         pinCoordinate,
         pinType,
@@ -97,8 +106,9 @@ export default function OsmWebMap({
   );
 
   const pushLiveData = useCallback((payload: string) => {
+    // JSON.stringify del string → literal seguro para injectJavaScript.
     webRef.current?.injectJavaScript(
-      `window.setMapData && window.setMapData(${payload}); true;`,
+      `try{window.setMapData&&window.setMapData(JSON.parse(${JSON.stringify(payload)}));}catch(e){} true;`,
     );
   }, []);
 
@@ -168,6 +178,11 @@ export default function OsmWebMap({
         domStorageEnabled
         mixedContentMode="always"
         setSupportMultipleWindows={false}
+        onLoadEnd={() => {
+          // Fallback si el postMessage "ready" se pierde en Android.
+          setMapReady(true);
+          pushLiveData(livePayload);
+        }}
         onMessage={(event) => handleMessage(event.nativeEvent.data)}
         {...(Platform.OS === 'android' ? { androidLayerType: 'hardware' as const } : {})}
       />

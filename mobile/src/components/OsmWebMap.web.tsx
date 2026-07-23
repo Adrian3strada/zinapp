@@ -65,13 +65,22 @@ export default function OsmWebMap({
   }
   const shellCenter = shellCenterRef.current;
 
+  const seedMarkersRef = useRef(markers);
+  const seedPolylinesRef = useRef(polylines);
+  if (seedMarkersRef.current.length === 0 && markers.length > 0) {
+    seedMarkersRef.current = markers;
+  }
+  if (seedPolylinesRef.current.length === 0 && polylines.length > 0) {
+    seedPolylinesRef.current = polylines;
+  }
+
   const html = useMemo(
     () =>
       buildOsmMapHtml({
         center: shellCenter,
         zoom,
-        markers: [],
-        polylines: [],
+        markers: seedMarkersRef.current,
+        polylines: seedPolylinesRef.current,
         interactive,
         pinCoordinate,
         pinType,

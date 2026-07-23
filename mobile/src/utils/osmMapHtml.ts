@@ -155,6 +155,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
     var polylineLayers = {};
     var hasInitialFit = false;
     var hadPolylines = false;
+    var hadMarkers = false;
     var lastFitPadKey = '';
     var lastFollowId = null;
     var followPaused = false;
@@ -321,11 +322,13 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       });
 
       var hasLinesNow = Object.keys(nextLines).length > 0;
-      // Si la ruta llega después de los pines, recentrar para que se vea.
-      if (hasLinesNow && !hadPolylines) {
+      var markerCount = Object.keys(nextMarkers).length;
+      // Si pines o ruta llegan después del primer paint vacío, recentrar.
+      if ((hasLinesNow && !hadPolylines) || (markerCount > 0 && !hadMarkers)) {
         hasInitialFit = false;
       }
       hadPolylines = hasLinesNow;
+      hadMarkers = markerCount > 0;
 
       var pad = data.fitPadding || {};
       var padTop = Math.max(16, Number(pad.top) || 36);

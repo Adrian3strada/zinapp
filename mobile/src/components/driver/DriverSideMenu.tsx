@@ -38,6 +38,8 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   profile: DeliveryProfile | null;
+  /** Estado en vivo del contexto (debe coincidir con el slide de Inicio). */
+  isAvailable: boolean;
   updating: boolean;
   onToggleAvailability: (value: boolean) => void;
   onNavigateInicio: () => void;
@@ -51,6 +53,7 @@ export default function DriverSideMenu({
   visible,
   onClose,
   profile,
+  isAvailable,
   updating,
   onToggleAvailability,
   onNavigateInicio,
@@ -65,7 +68,6 @@ export default function DriverSideMenu({
   const [settlement, setSettlement] = useState<SettlementData | null>(null);
   const [loadingMoney, setLoadingMoney] = useState(false);
 
-  const isAvailable = profile?.is_available ?? false;
   const isApproved = profile?.verification_status === 'approved';
 
   useEffect(() => {

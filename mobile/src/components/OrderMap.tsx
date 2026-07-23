@@ -8,7 +8,7 @@ import { useStreetRoutes } from '../hooks/useStreetRoutes';
 import type { Order, OrderStatus } from '../types';
 import { formatTimeAgo } from '../utils/format';
 import type { StreetRouteSegment } from '../utils/routing';
-import { regionForCoordinates, toCoordinate } from '../utils/maps';
+import { regionForCoordinates, toCoordinate, type MapCoordinate } from '../utils/maps';
 import { mapHeight } from '../utils/responsive';
 import AppMap, { MapMarker } from './AppMap';
 
@@ -31,11 +31,13 @@ export default function OrderMap({
 }: Props) {
   const mapHeightValue = height ?? mapHeight(0.34);
 
-  const { markers, routeSegments, missing, driverNote, locationAgo, isTracking } = useMemo(() => {
+  const { markers, routeSegments, missing, driverNote, locationAgo, isTracking, fallbackLine } =
+    useMemo(() => {
     const list: MapMarker[] = [];
     const segments: StreetRouteSegment[] = [];
     const absent: string[] = [];
     let note: string | null = null;
+    let fallback: MapCoordinate[] | null = null;
 
     const restaurant = toCoordinate(
       order.restaurant_detail?.latitude,
@@ -74,10 +76,10 @@ export default function OrderMap({
         id: 'restaurant-delivery',
         from: restaurant,
         to: delivery,
-        strokeColor: colors.primary,
-        strokeWidth: 4,
-        lineDashPattern: [6, 4],
+        strokeColor: colors.text,
+        strokeWidth: 5,
       });
+      fallback = [restaurant, delivery];
     }
 
     const tracking = trackDriver && driverOnRoute;
@@ -135,10 +137,27 @@ export default function OrderMap({
       driverNote: note,
       locationAgo: ago,
       isTracking: tracking && !!list.find((m) => m.id === 'driver'),
+      fallbackLine: fallback,
     };
   }, [order, showDriver, trackDriver]);
 
   const { polylines, stats, loading } = useStreetRoutes(routeSegments);
+
+  // Mientras llega la ruta de calles, muestra al menos la línea recta.
+  const displayPolylines = useMemo(() => {
+    if (polylines.length > 0) return polylines;
+    if (fallbackLine && fallbackLine.length >= 2) {
+      return [
+        {
+          id: 'restaurant-delivery',
+          coordinates: fallbackLine,
+          strokeColor: colors.text,
+          strokeWidth: 5,
+        },
+      ];
+    }
+    return [];
+  }, [polylines, fallbackLine]);
 
   const routeStatItems = useMemo(() => {
     const items = [];
@@ -193,10 +212,11 @@ export default function OrderMap({
       )}
       <AppMap
         markers={markers}
-        polylines={polylines}
+        polylines={displayPolylines}
         region={region}
         height={mapHeightValue}
         followMarkerId={isTracking ? 'driver' : null}
+        fitPadding={{ top: 36, right: 36, bottom: 36, left: 36 }}
       />
       <RouteStatsBar items={routeStatItems} loading={loading} />
       <View style={styles.legend}>

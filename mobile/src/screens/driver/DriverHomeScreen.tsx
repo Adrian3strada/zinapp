@@ -682,6 +682,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         profile={profile}
+        isAvailable={isAvailable}
         updating={updating}
         onToggleAvailability={(value) => {
           void toggleAvailability(value);

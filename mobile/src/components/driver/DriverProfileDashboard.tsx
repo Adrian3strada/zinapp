@@ -22,6 +22,8 @@ interface Props {
   earnings: EarningsSummary | null;
   updating: boolean;
   onToggleAvailability: (value: boolean) => void;
+  /** Si se pasa, manda sobre profile.is_available (fuente de verdad del contexto). */
+  isAvailable?: boolean;
   overlap?: boolean;
 }
 
@@ -30,10 +32,11 @@ export default function DriverProfileDashboard({
   earnings,
   updating,
   onToggleAvailability,
+  isAvailable: isAvailableProp,
   overlap,
 }: Props) {
   const navigation = useNavigation<BottomTabNavigationProp<DriverTabParamList>>();
-  const isAvailable = profile?.is_available ?? false;
+  const isAvailable = isAvailableProp ?? profile?.is_available ?? false;
   const isApproved = profile?.verification_status === 'approved';
   const vehicleLabel = profile?.vehicle_type
     ? VEHICLE_OPTIONS.find((v) => v.value === profile.vehicle_type)?.label ?? profile.vehicle_type

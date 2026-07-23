@@ -29,6 +29,7 @@ import { useOptionalRestaurantContext } from '../../context/RestaurantContext';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
 import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
+import { useOptionalDriverProfileContext } from '../../context/DriverProfileContext';
 import { RESTAURANT_CATEGORIES, RESTAURANT_CATEGORY_LABELS } from '../../utils/restaurantCategories';
 import { authApi, deliveryApi, orderApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -70,6 +71,7 @@ export default function ProfileScreen() {
   const customerDeliveries = useOptionalCustomerActiveDeliveries();
   const activeOrderCount = customerDeliveries?.activeOrderCount ?? 0;
   const restaurantCtx = useOptionalRestaurantContext();
+  const driverCtx = useOptionalDriverProfileContext();
   const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
   const [form, setForm] = useState({
     first_name: '',
@@ -171,6 +173,11 @@ export default function ProfileScreen() {
     }
   }, [user, loadRoleData]);
 
+  useEffect(() => {
+    if (!driverCtx?.profile) return;
+    setDriverProfile(driverCtx.profile);
+  }, [driverCtx?.profile, driverCtx?.isAvailable]);
+
   const update = (key: keyof typeof form, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handlePickAvatar = async () => {
@@ -263,6 +270,11 @@ export default function ProfileScreen() {
   };
 
   const handleToggleDriverAvailability = async (value: boolean) => {
+    // Misma fuente de verdad que el slide “Conectar” del Inicio.
+    if (driverCtx) {
+      await driverCtx.toggleAvailability(value);
+      return;
+    }
     if (driverUpdating) return;
     const previous = driverProfile?.is_available ?? false;
     setDriverProfile((prev) => (prev ? { ...prev, is_available: value } : prev));
@@ -472,9 +484,10 @@ export default function ProfileScreen() {
 
           {isDriver ? (
             <DriverProfileDashboard
-              profile={driverProfile}
+              profile={driverCtx?.profile ?? driverProfile}
               earnings={driverEarnings}
-              updating={driverUpdating}
+              updating={driverCtx?.updating ?? driverUpdating}
+              isAvailable={driverCtx?.isAvailable ?? driverProfile?.is_available}
               onToggleAvailability={handleToggleDriverAvailability}
               overlap
             />

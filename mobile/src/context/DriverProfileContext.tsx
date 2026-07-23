@@ -43,11 +43,14 @@ export function DriverProfileProvider({ children }: { children: React.ReactNode 
     if (updating) return;
     const previous = isAvailable;
     setIsAvailable(value);
+    // Mantener profile.is_available alineado (menú / perfil lo leen de aquí).
+    setProfile((prev) => (prev ? { ...prev, is_available: value } : prev));
     setUpdating(true);
     try {
       await deliveryApi.setAvailability(value);
     } catch (err) {
       setIsAvailable(previous);
+      setProfile((prev) => (prev ? { ...prev, is_available: previous } : prev));
       appAlert('Disponibilidad', getApiErrorMessage(err, 'No se pudo actualizar tu estado.'));
     } finally {
       setUpdating(false);
@@ -68,4 +71,9 @@ export function useDriverProfileContext(): DriverProfileContextValue {
     throw new Error('useDriverProfileContext must be used within DriverProfileProvider');
   }
   return ctx;
+}
+
+/** Para pantallas compartidas (Perfil) que también usan cliente/restaurante. */
+export function useOptionalDriverProfileContext(): DriverProfileContextValue | null {
+  return useContext(DriverProfileContext);
 }
