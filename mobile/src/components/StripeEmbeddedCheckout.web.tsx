@@ -29,7 +29,6 @@ export default function StripeEmbeddedCheckout({ clientSecret, publishableKey }:
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>Paga con tarjeta</Text>
-      <Text style={styles.sub}>El cobro lo recibe ZinApp de forma segura.</Text>
       <View style={styles.embed}>
         <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
           <EmbeddedCheckout />
@@ -42,7 +41,6 @@ export default function StripeEmbeddedCheckout({ clientSecret, publishableKey }:
 const styles = StyleSheet.create({
   wrap: { gap: 10, paddingBottom: 24 },
   title: { fontSize: 20, fontWeight: '900', color: colors.text },
-  sub: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 },
   embed: {
     minHeight: 420,
     borderRadius: 16,

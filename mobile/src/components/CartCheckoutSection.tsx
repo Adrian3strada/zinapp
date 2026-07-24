@@ -260,12 +260,6 @@ function CartCheckoutSection({
             Pago con tarjeta estará disponible pronto. Usa efectivo o transferencia.
           </Text>
         )}
-        {paymentMethod === 'online' && onlinePaymentsEnabled && !stripeClientSecret && (
-          <Text style={styles.onlineHint}>
-            Pago seguro con tarjeta. El cobro lo recibe ZinApp (no el restaurante).
-            Al confirmar aparecerán aquí los datos de tu tarjeta.
-          </Text>
-        )}
         {paymentMethod === 'online' && stripeClientSecret && stripePublishableKey ? (
           <View style={styles.stripeEmbed}>
             <StripeEmbeddedCheckout
