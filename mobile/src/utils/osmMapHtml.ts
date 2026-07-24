@@ -136,6 +136,11 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
 
+    map.createPane('zinRoute');
+    map.getPane('zinRoute').style.zIndex = 450;
+    map.createPane('zinPins');
+    map.getPane('zinPins').style.zIndex = 650;
+
     function postMessage(payload) {
       var json = JSON.stringify(payload);
       if (window.ReactNativeWebView) {
@@ -278,6 +283,7 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         }
         var layer = L.marker(latlng, {
           icon: createPinIcon(m),
+          pane: 'zinPins',
           zIndexOffset: m.id === 'driver' || m.id === 'me' ? 500 : 100
         }).addTo(map);
         if (m.label) layer.bindPopup(m.label);
@@ -320,7 +326,10 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
           polylineLayers[id] = L.polyline(latlngs, {
             color: lineColor,
             weight: lineWeight,
-            opacity: 0.95
+            opacity: 0.95,
+            pane: 'zinRoute',
+            lineJoin: 'round',
+            lineCap: 'round'
           }).addTo(map);
         });
       }

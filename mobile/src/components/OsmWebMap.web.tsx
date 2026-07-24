@@ -30,6 +30,23 @@ interface Props {
   onMarkerPress?: (markerId: string) => void;
 }
 
+/** Firma estable: remonta el iframe cuando aparecen pines o pasa de recta → calles. */
+function mapBootKey(markers: OsmMapMarker[], polylines: OsmMapPolyline[]): string {
+  const markerKey = markers
+    .map((m) => m.id)
+    .sort()
+    .join(',');
+  const lineKey = polylines
+    .map((line) => {
+      const n = line.coordinates?.length ?? 0;
+      // 0 = vacío, 1 = recta/estimada, 2 = geometría de calles
+      const bucket = n < 2 ? 0 : n <= 2 ? 1 : 2;
+      return `${line.id ?? 'line'}:${bucket}`;
+    })
+    .join('|');
+  return `${markerKey}#${lineKey}`;
+}
+
 /** Mapa OpenStreetMap en iframe (web). */
 export default function OsmWebMap({
   height = 220,
@@ -65,29 +82,32 @@ export default function OsmWebMap({
   }
   const shellCenter = shellCenterRef.current;
 
-  const seedMarkersRef = useRef(markers);
-  const seedPolylinesRef = useRef(polylines);
-  if (seedMarkersRef.current.length === 0 && markers.length > 0) {
-    seedMarkersRef.current = markers;
-  }
-  if (seedPolylinesRef.current.length === 0 && polylines.length > 0) {
-    seedPolylinesRef.current = polylines;
-  }
+  const bootKey = useMemo(() => mapBootKey(markers, polylines), [markers, polylines]);
 
+  // Al remontar (bootKey), mete pines + ruta actuales en el HTML (no dependas solo de postMessage).
   const html = useMemo(
     () =>
       buildOsmMapHtml({
         center: shellCenter,
         zoom,
-        markers: seedMarkersRef.current,
-        polylines: seedPolylinesRef.current,
+        markers,
+        polylines,
         interactive,
         pinCoordinate,
         pinType,
         followMarkerId: null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shellCenter.latitude, shellCenter.longitude, zoom, interactive, pinType, pinCoordinate?.latitude, pinCoordinate?.longitude],
+    [
+      bootKey,
+      shellCenter.latitude,
+      shellCenter.longitude,
+      zoom,
+      interactive,
+      pinType,
+      pinCoordinate?.latitude,
+      pinCoordinate?.longitude,
+    ],
   );
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -128,7 +148,11 @@ export default function OsmWebMap({
 
   const markReadyAndPush = useCallback(() => {
     setMapReady(true);
-    pushLiveData(livePayloadRef.current);
+    // Pequeño delay: en iOS Safari el listener del iframe a veces no está aún.
+    requestAnimationFrame(() => {
+      pushLiveData(livePayloadRef.current);
+      setTimeout(() => pushLiveData(livePayloadRef.current), 50);
+    });
   }, [pushLiveData]);
 
   useEffect(() => {
@@ -193,6 +217,7 @@ export default function OsmWebMap({
       onResponderTerminationRequest={() => false}
     >
       <iframe
+        key={bootKey}
         ref={iframeRef}
         title="Mapa ZinApp"
         srcDoc={html}

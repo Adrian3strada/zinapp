@@ -31,6 +31,21 @@ interface Props {
   onMarkerPress?: (markerId: string) => void;
 }
 
+function mapBootKey(markers: OsmMapMarker[], polylines: OsmMapPolyline[]): string {
+  const markerKey = markers
+    .map((m) => m.id)
+    .sort()
+    .join(',');
+  const lineKey = polylines
+    .map((line) => {
+      const n = line.coordinates?.length ?? 0;
+      const bucket = n < 2 ? 0 : n <= 2 ? 1 : 2;
+      return `${line.id ?? 'line'}:${bucket}`;
+    })
+    .join('|');
+  return `${markerKey}#${lineKey}`;
+}
+
 /** Mapa OpenStreetMap en WebView (iOS/Android). */
 export default function OsmWebMap({
   height = 220,
@@ -59,36 +74,37 @@ export default function OsmWebMap({
     };
   }, [center, pinCoordinate, markers]);
 
-  // Congela centro + datos iniciales del shell (evita remount por GPS).
   const shellCenterRef = useRef<MapCoordinate | null>(null);
   if (!shellCenterRef.current) {
     shellCenterRef.current = resolveCenter();
   }
   const shellCenter = shellCenterRef.current;
 
-  const seedMarkersRef = useRef(markers);
-  const seedPolylinesRef = useRef(polylines);
-  if (seedMarkersRef.current.length === 0 && markers.length > 0) {
-    seedMarkersRef.current = markers;
-  }
-  if (seedPolylinesRef.current.length === 0 && polylines.length > 0) {
-    seedPolylinesRef.current = polylines;
-  }
+  const bootKey = useMemo(() => mapBootKey(markers, polylines), [markers, polylines]);
 
   const html = useMemo(
     () =>
       buildOsmMapHtml({
         center: shellCenter,
         zoom,
-        markers: seedMarkersRef.current,
-        polylines: seedPolylinesRef.current,
+        markers,
+        polylines,
         interactive,
         pinCoordinate,
         pinType,
         followMarkerId: null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shellCenter.latitude, shellCenter.longitude, zoom, interactive, pinType, pinCoordinate?.latitude, pinCoordinate?.longitude],
+    [
+      bootKey,
+      shellCenter.latitude,
+      shellCenter.longitude,
+      zoom,
+      interactive,
+      pinType,
+      pinCoordinate?.latitude,
+      pinCoordinate?.longitude,
+    ],
   );
 
   const webRef = useRef<WebView>(null);
@@ -104,9 +120,10 @@ export default function OsmWebMap({
       }),
     [markers, polylines, followMarkerId, fitPadding],
   );
+  const livePayloadRef = useRef(livePayload);
+  livePayloadRef.current = livePayload;
 
   const pushLiveData = useCallback((payload: string) => {
-    // JSON.stringify del string → literal seguro para injectJavaScript.
     webRef.current?.injectJavaScript(
       `try{window.setMapData&&window.setMapData(JSON.parse(${JSON.stringify(payload)}));}catch(e){} true;`,
     );
@@ -117,6 +134,11 @@ export default function OsmWebMap({
       `window.setPinPosition && window.setPinPosition(${latitude}, ${longitude}); true;`,
     );
   }, []);
+
+  const markReadyAndPush = useCallback(() => {
+    setMapReady(true);
+    pushLiveData(livePayloadRef.current);
+  }, [pushLiveData]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -138,7 +160,7 @@ export default function OsmWebMap({
           id?: string;
         };
         if (data.type === 'ready') {
-          setMapReady(true);
+          markReadyAndPush();
           return;
         }
         if (
@@ -156,7 +178,7 @@ export default function OsmWebMap({
         // ignore malformed messages
       }
     },
-    [onCoordinateChange, onMarkerPress],
+    [markReadyAndPush, onCoordinateChange, onMarkerPress],
   );
 
   useEffect(() => {
@@ -166,6 +188,7 @@ export default function OsmWebMap({
   return (
     <View style={[styles.wrapper, { height }, cardShadow, style]}>
       <WebView
+        key={bootKey}
         ref={webRef}
         source={{ html }}
         style={styles.webview}
@@ -179,9 +202,7 @@ export default function OsmWebMap({
         mixedContentMode="always"
         setSupportMultipleWindows={false}
         onLoadEnd={() => {
-          // Fallback si el postMessage "ready" se pierde en Android.
-          setMapReady(true);
-          pushLiveData(livePayload);
+          markReadyAndPush();
         }}
         onMessage={(event) => handleMessage(event.nativeEvent.data)}
         {...(Platform.OS === 'android' ? { androidLayerType: 'hardware' as const } : {})}
@@ -198,6 +219,6 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'transparent',
   },
 });

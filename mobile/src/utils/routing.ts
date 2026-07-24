@@ -135,6 +135,56 @@ function routeKey(
   ].join(',');
 }
 
+const OSRM_CLIENT_URLS = [
+  'https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=geojson',
+  'https://routing.openstreetmap.de/routed-car/route/v1/driving/{coords}?overview=full&geometries=geojson',
+] as const;
+
+/** Ruta OSRM directa (útil cuando el backend en datacenter queda bloqueado). */
+async function fetchOsrmClient(
+  from: MapCoordinate,
+  to: MapCoordinate,
+): Promise<CachedRoute | null> {
+  const coords = `${from.longitude.toFixed(6)},${from.latitude.toFixed(6)};${to.longitude.toFixed(6)},${to.latitude.toFixed(6)}`;
+  for (const template of OSRM_CLIENT_URLS) {
+    const url = template.replace('{coords}', coords);
+    try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = controller ? setTimeout(() => controller.abort(), 10000) : null;
+      const res = await fetch(url, {
+        method: 'GET',
+        signal: controller?.signal,
+      });
+      if (timer) clearTimeout(timer);
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        code?: string;
+        routes?: Array<{
+          distance?: number;
+          duration?: number;
+          geometry?: { coordinates?: [number, number][] };
+        }>;
+      };
+      const route = data.routes?.[0];
+      const raw = route?.geometry?.coordinates;
+      if (!raw || raw.length < 2) continue;
+      const coordinates = sanitizeCoordinates(
+        raw.map(([longitude, latitude]) => ({ latitude, longitude })),
+      );
+      if (coordinates.length < 2) continue;
+      return {
+        coordinates,
+        distanceMeters: typeof route?.distance === 'number' ? route.distance : null,
+        durationSeconds: typeof route?.duration === 'number' ? route.duration : null,
+        isEstimated: false,
+      };
+    } catch {
+      // probar siguiente mirror
+    }
+  }
+  return null;
+}
+
 export interface StreetRouteSegment {
   id: string;
   from: MapCoordinate | null;
@@ -167,7 +217,7 @@ export async function fetchStreetRoute(
 
   const key = routeKey(from, to, dynamic);
   const cached = routeCache.get(key);
-  if (cached) return cached;
+  if (cached && !cached.isEstimated) return cached;
 
   try {
     const { data } = await restaurantApi.route(from, to);
@@ -177,24 +227,32 @@ export async function fetchStreetRoute(
         longitude: c.longitude,
       })),
     );
-    if (coords.length >= 2) {
+    // Solo aceptar geometría de calles; el fallback recto del API se mejora con OSRM cliente.
+    if (coords.length >= 3 && !data.is_fallback) {
       const result: CachedRoute = {
         coordinates: coords,
         distanceMeters: data.distance_meters ?? null,
         durationSeconds: data.duration_seconds ?? null,
-        isEstimated: !!data.is_fallback,
+        isEstimated: false,
       };
       routeCache.set(key, result);
       return result;
     }
   } catch {
-    // fallback below — no cachear errores
+    // seguir con OSRM en el cliente
   }
 
+  const direct = await fetchOsrmClient(from, to);
+  if (direct) {
+    routeCache.set(key, direct);
+    return direct;
+  }
+
+  // Último recurso: línea recta (no cachear).
   return {
     coordinates: [from, to],
-    distanceMeters: null,
-    durationSeconds: null,
+    distanceMeters: Math.round(haversineMeters(from, to) * 1.3),
+    durationSeconds: Math.max(60, Math.round((haversineMeters(from, to) * 1.3) / (25_000 / 3600))),
     isEstimated: true,
   };
 }
