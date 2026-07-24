@@ -41,7 +41,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zinapp.delivery",
-      "buildNumber": "30",
+      "buildNumber": "31",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
@@ -53,7 +53,10 @@
         "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleAllowMixedLocalizations": true,
-        "CFBundleLocalizations": ["es", "en"]
+        "CFBundleLocalizations": [
+          "es",
+          "en"
+        ]
       }
     },
     "android": {
