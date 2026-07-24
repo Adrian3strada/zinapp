@@ -144,6 +144,10 @@ class Order(models.Model):
     mercadopago_payment_id = models.CharField(max_length=80, blank=True, db_index=True)
     mercadopago_status = models.CharField(max_length=40, blank=True)
     mercadopago_payload = models.JSONField(default=dict, blank=True)
+    stripe_checkout_session_id = models.CharField(max_length=120, blank=True, db_index=True)
+    stripe_payment_intent_id = models.CharField(max_length=120, blank=True, db_index=True)
+    stripe_status = models.CharField(max_length=40, blank=True)
+    stripe_payload = models.JSONField(default=dict, blank=True)
     cancellation_source = models.CharField(
         max_length=20,
         choices=CancellationSource.choices,

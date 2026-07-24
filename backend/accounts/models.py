@@ -132,6 +132,7 @@ class AuditLog(models.Model):
         ORDER_CANCELLED = 'order_cancelled', 'Pedido cancelado'
         PAYMENT_CONFIRMED = 'payment_confirmed', 'Pago confirmado'
         MP_WEBHOOK_PAID = 'mp_webhook_paid', 'Pago confirmado por Mercado Pago'
+        STRIPE_WEBHOOK_PAID = 'stripe_webhook_paid', 'Pago confirmado por Stripe'
         SHIPMENT_ACCEPTED = 'shipment_accepted', 'Envío aceptado'
         SHIPMENT_STATUS_UPDATED = 'shipment_status_updated', 'Estado de envío actualizado'
         DRIVER_VERIFICATION_UPDATED = 'driver_verification_updated', 'Verificación de repartidor actualizada'

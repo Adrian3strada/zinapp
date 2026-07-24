@@ -253,12 +253,12 @@ function CartCheckoutSection({
         )}
         {!onlinePaymentsEnabled && (
           <Text style={styles.onlineHint}>
-            Pago en línea (Mercado Pago) estará disponible pronto. Usa efectivo o transferencia.
+            Pago con tarjeta estará disponible pronto. Usa efectivo o transferencia.
           </Text>
         )}
         {paymentMethod === 'online' && onlinePaymentsEnabled && (
           <Text style={styles.onlineHint}>
-            Pago en línea con Mercado Pago (tarjeta, OXXO, etc.).
+            Pago seguro con tarjeta (Stripe). El restaurante confirma al recibir el pago.
           </Text>
         )}
       </View>

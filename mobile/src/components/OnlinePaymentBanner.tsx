@@ -55,7 +55,7 @@ export default function OnlinePaymentBanner({ order, onRefresh, onPay }: Props) 
         </Text>
         {isPending && (
           <Button
-            title={paying ? 'Abriendo Mercado Pago…' : 'Pagar ahora'}
+            title={paying ? 'Abriendo pago…' : 'Pagar con tarjeta'}
             onPress={handlePay}
             disabled={paying}
             size="md"

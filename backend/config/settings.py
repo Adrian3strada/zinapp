@@ -268,6 +268,13 @@ MERCADOPAGO_BACK_URL = config('MERCADOPAGO_BACK_URL', default='')
 MERCADOPAGO_WEBHOOK_URL = config('MERCADOPAGO_WEBHOOK_URL', default='')
 MERCADOPAGO_WEBHOOK_SECRET = config('MERCADOPAGO_WEBHOOK_SECRET', default='')
 
+# Stripe Checkout (pago en línea activo). MP queda desconectado del flujo.
+STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
+STRIPE_SUCCESS_URL = config('STRIPE_SUCCESS_URL', default='')
+STRIPE_CANCEL_URL = config('STRIPE_CANCEL_URL', default='')
+STRIPE_BACK_URL = config('STRIPE_BACK_URL', default='')
+
 CRON_SECRET = config('CRON_SECRET', default='')
 
 # Resend: preferir API HTTP (RESEND_API_KEY). SMTP a smtp.resend.com se cuelga en Railway.

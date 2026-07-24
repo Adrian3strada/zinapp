@@ -9,6 +9,7 @@ from .views import (
     OrderViewSet,
     ReviewViewSet,
     ShipmentViewSet,
+    StripeWebhookView,
 )
 
 router = DefaultRouter()
@@ -21,5 +22,6 @@ router.register('disputes', OrderDisputeViewSet, basename='dispute')
 urlpatterns = [
     path('admin/stats/', AdminStatsView.as_view(), name='admin-stats'),
     path('payments/mercadopago/webhook/', MercadoPagoWebhookView.as_view(), name='mp-webhook'),
+    path('payments/stripe/webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
     path('', include(router.urls)),
 ]

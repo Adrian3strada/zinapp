@@ -535,3 +535,162 @@ class MercadoPagoWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
         self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+
+@override_settings(
+    STRIPE_SECRET_KEY='sk_test_dummy',
+    STRIPE_WEBHOOK_SECRET='whsec_test_secret',
+)
+class StripeWebhookTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            username='stripe_customer',
+            password='test1234',
+            role='customer',
+        )
+        self.owner = User.objects.create_user(
+            username='stripe_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Stripe Rest',
+            address='Centro',
+            is_active=True,
+            accepting_orders=True,
+        )
+        self.order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            delivery_address='Calle 1',
+            payment_method=PaymentMethod.ONLINE,
+            payment_status=PaymentStatus.PENDING,
+            subtotal=Decimal('100.00'),
+            delivery_fee=Decimal('25.00'),
+            total=Decimal('125.00'),
+        )
+
+    def session_completed_event(self, **overrides):
+        session = {
+            'id': 'cs_test_123',
+            'object': 'checkout.session',
+            'payment_status': 'paid',
+            'status': 'complete',
+            'currency': 'mxn',
+            'amount_total': 12500,
+            'client_reference_id': str(self.order.id),
+            'payment_intent': 'pi_test_123',
+            'metadata': {'order_id': str(self.order.id), 'type': 'order'},
+        }
+        session.update(overrides)
+        return {
+            'id': 'evt_test_1',
+            'type': 'checkout.session.completed',
+            'data': {'object': session},
+        }
+
+    @patch('orders.stripe_payments.construct_webhook_event')
+    def test_checkout_completed_marks_order_paid(self, mock_construct):
+        mock_construct.return_value = self.session_completed_event()
+
+        response = self.client.post(
+            '/api/payments/stripe/webhook/',
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=1,v1=fake',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
+        self.assertEqual(self.order.stripe_checkout_session_id, 'cs_test_123')
+        self.assertEqual(self.order.stripe_payment_intent_id, 'pi_test_123')
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action=AuditLog.Action.STRIPE_WEBHOOK_PAID,
+                object_type='Order',
+                object_id=str(self.order.id),
+            ).exists()
+        )
+
+    @patch('orders.stripe_payments.construct_webhook_event')
+    def test_invalid_signature_rejects_webhook(self, mock_construct):
+        mock_construct.side_effect = Exception('bad sig')
+
+        response = self.client.post(
+            '/api/payments/stripe/webhook/',
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=1,v1=bad',
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    @patch('orders.stripe_payments.construct_webhook_event')
+    def test_amount_mismatch_does_not_mark_order_paid(self, mock_construct):
+        mock_construct.return_value = self.session_completed_event(amount_total=12600)
+
+        response = self.client.post(
+            '/api/payments/stripe/webhook/',
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=1,v1=fake',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    @patch('orders.stripe_payments.construct_webhook_event')
+    def test_wrong_currency_does_not_mark_order_paid(self, mock_construct):
+        mock_construct.return_value = self.session_completed_event(currency='usd')
+
+        response = self.client.post(
+            '/api/payments/stripe/webhook/',
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=1,v1=fake',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    @patch('orders.stripe_payments.construct_webhook_event')
+    def test_idempotent_when_already_paid(self, mock_construct):
+        self.order.payment_status = PaymentStatus.PAID
+        self.order.save(update_fields=['payment_status', 'updated_at'])
+        mock_construct.return_value = self.session_completed_event()
+
+        response = self.client.post(
+            '/api/payments/stripe/webhook/',
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=1,v1=fake',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PAID)
+
+    @patch('orders.stripe_payments.construct_webhook_event')
+    def test_cancelled_order_is_not_marked_paid(self, mock_construct):
+        self.order.status = OrderStatus.CANCELLED
+        self.order.save(update_fields=['status', 'updated_at'])
+        mock_construct.return_value = self.session_completed_event()
+
+        response = self.client.post(
+            '/api/payments/stripe/webhook/',
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='t=1,v1=fake',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)

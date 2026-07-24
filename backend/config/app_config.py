@@ -3,14 +3,14 @@
 from django.conf import settings
 
 from accounts.google_auth import google_sign_in_enabled
-from orders.mercadopago import mercadopago_enabled
+from orders.stripe_payments import stripe_enabled
 
 from .email_utils import email_delivery_configured, email_reset_enabled
 
 
 def get_public_app_config() -> dict:
     return {
-        'online_payments_enabled': mercadopago_enabled(),
+        'online_payments_enabled': stripe_enabled(),
         'support_whatsapp': settings.SUPPORT_WHATSAPP,
         # WhatsApp solo si no hay entrega real (consola DEBUG no cuenta).
         'password_reset_via_whatsapp': (

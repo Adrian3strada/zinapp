@@ -631,14 +631,37 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.payment_status == PaymentStatus.PAID:
             return Response({'detail': 'Ya está pagado.', 'payment_status': 'paid'})
 
-        from .mercadopago import create_checkout_preference, mercadopago_enabled
+        from .stripe_payments import create_checkout_session, stripe_enabled
 
-        mp = create_checkout_preference(order) if mercadopago_enabled() else None
-        if mp and mp.get('init_point'):
+        if not stripe_enabled():
             return Response({
                 'payment_status': 'pending',
-                'payment_url': mp['init_point'],
-                'preference_id': mp.get('preference_id'),
+                'payment_url': None,
+                'message': (
+                    'Pago en línea no configurado. '
+                    'Configura STRIPE_SECRET_KEY o usa efectivo/transferencia.'
+                ),
+                'order_id': order.id,
+                'amount': str(order.total),
+            })
+
+        session = create_checkout_session(order)
+        if session and session.get('payment_url'):
+            order.stripe_checkout_session_id = str(session.get('session_id') or '')
+            pi = session.get('payment_intent') or ''
+            if pi:
+                order.stripe_payment_intent_id = str(pi)
+            order.stripe_status = 'checkout_created'
+            order.save(update_fields=[
+                'stripe_checkout_session_id',
+                'stripe_payment_intent_id',
+                'stripe_status',
+                'updated_at',
+            ])
+            return Response({
+                'payment_status': 'pending',
+                'payment_url': session['payment_url'],
+                'session_id': session.get('session_id'),
                 'order_id': order.id,
                 'amount': str(order.total),
             })
@@ -646,10 +669,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({
             'payment_status': 'pending',
             'payment_url': None,
-            'message': (
-                'Pago en línea no configurado. '
-                'Configura MERCADOPAGO_ACCESS_TOKEN o usa efectivo/transferencia.'
-            ),
+            'message': 'No se pudo iniciar el pago con tarjeta. Intenta de nuevo o usa efectivo/transferencia.',
             'order_id': order.id,
             'amount': str(order.total),
         })
@@ -1004,6 +1024,205 @@ class MercadoPagoWebhookView(APIView):
                         'currency_id': payment.get('currency_id'),
                     },
                 )
+
+        return Response({'detail': 'OK', 'order_id': order.id})
+
+
+@extend_schema(exclude=True)
+class StripeWebhookView(APIView):
+    """Webhook de Stripe Checkout / PaymentIntent."""
+    permission_classes = []
+    authentication_classes = []
+    throttle_classes = []
+
+    def post(self, request):
+        from .stripe_payments import construct_webhook_event, stripe_enabled
+
+        if not stripe_enabled():
+            return Response(
+                {'detail': 'Stripe no configurado.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+        try:
+            event = construct_webhook_event(payload, sig_header)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            return Response(
+                {'detail': 'Firma de webhook inválida.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        event_type = event.get('type') if isinstance(event, dict) else getattr(event, 'type', None)
+        data_object = (
+            event['data']['object']
+            if isinstance(event, dict)
+            else event.data.object
+        )
+
+        # Normalizar a dict-like
+        if hasattr(data_object, 'to_dict'):
+            obj = data_object.to_dict()
+        elif isinstance(data_object, dict):
+            obj = data_object
+        else:
+            obj = dict(data_object)
+
+        if event_type == 'checkout.session.completed':
+            return self._handle_checkout_completed(request, obj)
+        if event_type == 'payment_intent.succeeded':
+            return self._handle_payment_intent_succeeded(request, obj)
+
+        return Response({'detail': 'Ignorado.'})
+
+    def _handle_checkout_completed(self, request, session: dict):
+        if session.get('payment_status') != 'paid':
+            return Response({'detail': 'Sesión no pagada.'})
+
+        metadata = session.get('metadata') or {}
+        if metadata.get('type') and metadata.get('type') != 'order':
+            return Response({'detail': 'Notificación ignorada.'})
+
+        order_id = session.get('client_reference_id') or metadata.get('order_id')
+        if not order_id:
+            return Response({'detail': 'Sin referencia.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        currency = (session.get('currency') or '').lower()
+        if currency and currency != 'mxn':
+            return Response(
+                {'detail': 'El pago no corresponde al pedido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        amount_total = session.get('amount_total')
+        try:
+            payment_amount = (
+                Decimal(str(amount_total)) / Decimal('100')
+            ).quantize(Decimal('0.01')) if amount_total is not None else None
+        except Exception:
+            payment_amount = None
+
+        return self._mark_order_paid(
+            request,
+            order_id=order_id,
+            payment_amount=payment_amount,
+            session_id=str(session.get('id') or ''),
+            payment_intent_id=str(session.get('payment_intent') or ''),
+            stripe_status=str(session.get('payment_status') or 'paid'),
+            payload={
+                'id': session.get('id'),
+                'payment_status': session.get('payment_status'),
+                'status': session.get('status'),
+                'currency': session.get('currency'),
+                'amount_total': session.get('amount_total'),
+                'client_reference_id': session.get('client_reference_id'),
+                'payment_intent': session.get('payment_intent'),
+            },
+        )
+
+    def _handle_payment_intent_succeeded(self, request, intent: dict):
+        metadata = intent.get('metadata') or {}
+        if metadata.get('type') and metadata.get('type') != 'order':
+            return Response({'detail': 'Notificación ignorada.'})
+
+        order_id = metadata.get('order_id')
+        if not order_id:
+            # Sin order_id en PI; puede llegar solo el de Checkout Session.
+            return Response({'detail': 'Ignorado (sin order_id).'})
+
+        currency = (intent.get('currency') or '').lower()
+        if currency and currency != 'mxn':
+            return Response(
+                {'detail': 'El pago no corresponde al pedido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        amount = intent.get('amount_received') or intent.get('amount')
+        try:
+            payment_amount = (
+                Decimal(str(amount)) / Decimal('100')
+            ).quantize(Decimal('0.01')) if amount is not None else None
+        except Exception:
+            payment_amount = None
+
+        return self._mark_order_paid(
+            request,
+            order_id=order_id,
+            payment_amount=payment_amount,
+            session_id='',
+            payment_intent_id=str(intent.get('id') or ''),
+            stripe_status=str(intent.get('status') or 'succeeded'),
+            payload={
+                'id': intent.get('id'),
+                'status': intent.get('status'),
+                'currency': intent.get('currency'),
+                'amount': intent.get('amount'),
+                'amount_received': intent.get('amount_received'),
+            },
+        )
+
+    def _mark_order_paid(
+        self,
+        request,
+        *,
+        order_id,
+        payment_amount: Decimal | None,
+        session_id: str,
+        payment_intent_id: str,
+        stripe_status: str,
+        payload: dict,
+    ):
+        try:
+            order_pk = int(order_id)
+        except (ValueError, TypeError):
+            return Response({'detail': 'Pedido no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            try:
+                order = Order.objects.select_for_update().get(pk=order_pk)
+            except Order.DoesNotExist:
+                return Response({'detail': 'Pedido no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if payment_amount is not None and payment_amount != order.total:
+                return Response(
+                    {'detail': 'El pago no corresponde al pedido.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if order.status == OrderStatus.CANCELLED or order.payment_status == PaymentStatus.PAID:
+                return Response({'detail': 'OK', 'order_id': order.id})
+
+            if order.payment_method != PaymentMethod.ONLINE:
+                return Response({'detail': 'Pedido no es pago en línea.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            order.payment_status = PaymentStatus.PAID
+            if session_id:
+                order.stripe_checkout_session_id = session_id
+            if payment_intent_id:
+                order.stripe_payment_intent_id = payment_intent_id
+            order.stripe_status = stripe_status
+            order.stripe_payload = payload
+            order.save(update_fields=[
+                'payment_status',
+                'stripe_checkout_session_id',
+                'stripe_payment_intent_id',
+                'stripe_status',
+                'stripe_payload',
+                'updated_at',
+            ])
+            write_audit_log(
+                action=AuditLog.Action.STRIPE_WEBHOOK_PAID,
+                obj=order,
+                request=request,
+                metadata={
+                    'session_id': session_id,
+                    'payment_intent_id': payment_intent_id,
+                    'amount': str(payment_amount) if payment_amount is not None else None,
+                },
+            )
 
         return Response({'detail': 'OK', 'order_id': order.id})
 

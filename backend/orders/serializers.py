@@ -300,8 +300,8 @@ class OrderCreateSerializer(serializers.Serializer):
 
         payment_method = attrs.get('payment_method')
         if payment_method == PaymentMethod.ONLINE:
-            from .mercadopago import mercadopago_enabled
-            if not mercadopago_enabled():
+            from .stripe_payments import stripe_enabled
+            if not stripe_enabled():
                 raise serializers.ValidationError({
                     'payment_method': 'El pago en línea no está disponible. Usa efectivo o transferencia.',
                 })
