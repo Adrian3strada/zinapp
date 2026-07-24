@@ -578,10 +578,13 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='restaurant-pending')
     def restaurant_pending(self, request):
-        """Pedidos activos del restaurante del usuario."""
+        """Pedidos activos del restaurante (solo cobrados si son en línea)."""
         orders = self.queryset.filter(
             restaurant__owner=request.user,
-        ).exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED])
+        ).exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED]).exclude(
+            Q(payment_method=PaymentMethod.ONLINE)
+            & ~Q(payment_status=PaymentStatus.PAID),
+        )
         serializer = OrderSerializer(orders, many=True, context={'request': request})
         return Response(serializer.data)
 
@@ -599,15 +602,20 @@ class OrderViewSet(viewsets.ModelViewSet):
         now = timezone.now()
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         qs = Order.objects.filter(restaurant=restaurant, created_at__gte=day_start)
-        delivered = qs.filter(status=OrderStatus.DELIVERED)
-        cancelled = qs.filter(status=OrderStatus.CANCELLED)
-        active = qs.exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED])
+        # Pedidos en línea sin pagar no cuentan como pedidos del día para el local.
+        qs_visible = qs.exclude(
+            Q(payment_method=PaymentMethod.ONLINE)
+            & ~Q(payment_status=PaymentStatus.PAID),
+        )
+        delivered = qs_visible.filter(status=OrderStatus.DELIVERED)
+        cancelled = qs_visible.filter(status=OrderStatus.CANCELLED)
+        active = qs_visible.exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED])
         sales = delivered.aggregate(total=Sum('subtotal'))['total'] or Decimal('0')
         discounts = delivered.aggregate(total=Sum('discount_amount'))['total'] or Decimal('0')
 
         return Response({
             'date': day_start.date().isoformat(),
-            'orders_created': qs.count(),
+            'orders_created': qs_visible.count(),
             'orders_active': active.count(),
             'orders_delivered': delivered.count(),
             'orders_cancelled': cancelled.count(),

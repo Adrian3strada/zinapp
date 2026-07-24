@@ -10,12 +10,22 @@ from accounts.notifications import (
     notify_review_reminder,
     notify_shipment_pending_reminder,
 )
-from orders.models import Order, OrderStatus, Review, Shipment, ShipmentStatus
+from orders.models import (
+    CancellationSource,
+    Order,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+    Review,
+    Shipment,
+    ShipmentStatus,
+)
 
 PENDING_REMINDER_MINUTES = 7
 READY_NO_DRIVER_MINUTES = 15
 REVIEW_REMINDER_HOURS = 1
 SHIPMENT_PENDING_MINUTES = 10
+UNPAID_ONLINE_CANCEL_MINUTES = 30
 
 
 class Command(BaseCommand):
@@ -28,6 +38,7 @@ class Command(BaseCommand):
             'ready_no_driver': 0,
             'review': 0,
             'shipment_pending': 0,
+            'unpaid_cancelled': 0,
         }
 
         pending_cutoff = now - timedelta(minutes=PENDING_REMINDER_MINUTES)
@@ -35,6 +46,9 @@ class Command(BaseCommand):
             status=OrderStatus.PENDING,
             pending_reminder_sent=False,
             created_at__lte=pending_cutoff,
+        ).exclude(
+            payment_method=PaymentMethod.ONLINE,
+            payment_status=PaymentStatus.PENDING,
         ).select_related('restaurant', 'restaurant__owner', 'customer')
 
         for order in pending_orders:
@@ -42,6 +56,21 @@ class Command(BaseCommand):
                 order.pending_reminder_sent = True
                 order.save(update_fields=['pending_reminder_sent'])
                 sent['pending'] += 1
+
+        unpaid_cutoff = now - timedelta(minutes=UNPAID_ONLINE_CANCEL_MINUTES)
+        unpaid_online = Order.objects.filter(
+            status=OrderStatus.PENDING,
+            payment_method=PaymentMethod.ONLINE,
+            payment_status=PaymentStatus.PENDING,
+            created_at__lte=unpaid_cutoff,
+        )
+        cancelled_unpaid = 0
+        for order in unpaid_online:
+            order.status = OrderStatus.CANCELLED
+            order.cancellation_source = CancellationSource.CUSTOMER
+            order.save(update_fields=['status', 'cancellation_source', 'updated_at'])
+            cancelled_unpaid += 1
+        sent['unpaid_cancelled'] = cancelled_unpaid
 
         ready_cutoff = now - timedelta(minutes=READY_NO_DRIVER_MINUTES)
         ready_orders = Order.objects.filter(
@@ -95,6 +124,7 @@ class Command(BaseCommand):
                 f'pendientes: {sent["pending"]}, '
                 f'sin repartidor: {sent["ready_no_driver"]}, '
                 f'reseñas: {sent["review"]}, '
-                f'envíos: {sent["shipment_pending"]}',
+                f'envíos: {sent["shipment_pending"]}, '
+                f'sin pagar cancelados: {sent.get("unpaid_cancelled", 0)}',
             ),
         )

@@ -28,7 +28,7 @@ export default function StripeEmbeddedCheckout({ clientSecret, publishableKey }:
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Paga con tarjeta</Text>
+      <Text style={styles.title}>Paga para enviar tu pedido</Text>
       <View style={styles.embed}>
         <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
           <EmbeddedCheckout />

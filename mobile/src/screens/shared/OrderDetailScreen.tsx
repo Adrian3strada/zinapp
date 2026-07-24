@@ -55,6 +55,17 @@ const STATUS_HINTS: Partial<Record<OrderStatus, string>> = {
   delivered: 'Pedido entregado',
   cancelled: 'Pedido cancelado',
 };
+
+function statusHintForOrder(order: Order): string | undefined {
+  if (
+    order.status === 'pending'
+    && order.payment_method === 'online'
+    && order.payment_status !== 'paid'
+  ) {
+    return 'Completa el pago con tarjeta para enviar tu pedido al restaurante';
+  }
+  return STATUS_HINTS[order.status];
+}
 const TRACKING_POLL_MS = 2000;
 const DEFAULT_POLL_MS = 6000;
 
@@ -319,8 +330,8 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               />
               {isLiveTracking && <LiveBadge />}
             </View>
-            {STATUS_HINTS[order.status] && (
-              <Text style={styles.heroEta}>{STATUS_HINTS[order.status]}</Text>
+            {statusHintForOrder(order) && (
+              <Text style={styles.heroEta}>{statusHintForOrder(order)}</Text>
             )}
             {user?.role === 'restaurant' && awaitingOnlinePayment && order.status === 'pending' && (
               <Text style={styles.heroPaymentWarn}>

@@ -156,6 +156,11 @@ def _order_ref(order) -> str:
 
 
 def notify_order_status(order):
+    # En línea sin pagar: el pedido aún no se "realiza" para el restaurante.
+    if getattr(order, 'awaits_online_payment', False):
+        notify_awaiting_online_payment(order)
+        return
+
     ref = _order_ref(order)
     title = f'Pedido {ref}'
     data = {'orderId': order.id, 'status': order.status}
@@ -306,16 +311,31 @@ def notify_restaurant_opened(restaurant) -> None:
         send_push_to_user(favorite.user, title, body, data, channel_id='orders_v2')
 
 
+def notify_awaiting_online_payment(order) -> None:
+    """Avisa solo al cliente: el restaurante no ve el pedido hasta cobrar."""
+    ref = _order_ref(order)
+    total_label = f'${order.total:.2f}'
+    send_push_to_user(
+        order.customer,
+        f'Pedido {ref}',
+        f'Completa el pago con tarjeta ({total_label}) para enviar tu pedido al restaurante.',
+        {'orderId': order.id, 'status': order.status, 'type': 'awaiting_payment'},
+        channel_id='orders_v2',
+    )
+
+
 def notify_payment_confirmed(order) -> None:
+    """Tras cobrar: el pedido se realiza y el restaurante puede aceptarlo."""
     ref = _order_ref(order)
     title = f'Pedido {ref}'
     data = {'orderId': order.id, 'status': order.status, 'type': 'payment_confirmed'}
     total_label = f'${order.total:.2f}'
+    restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
 
     send_push_to_user(
         order.customer,
         title,
-        f'Pago recibido por {total_label}. Tu pedido sigue en proceso.',
+        f'Pago recibido ({total_label}). {restaurant_name} confirmará pronto.',
         data,
         channel_id='orders_v2',
     )
@@ -324,7 +344,7 @@ def notify_payment_confirmed(order) -> None:
         send_push_to_user(
             order.restaurant.owner,
             title,
-            f'Pago confirmado del pedido {ref} ({total_label}). Ya puedes prepararlo.',
+            f'¡Nuevo pedido! {ref} por {total_label}. Confírmalo en la app.',
             data,
         )
 

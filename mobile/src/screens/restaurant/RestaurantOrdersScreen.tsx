@@ -112,7 +112,12 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
   }, [navigation, load, refreshRestaurant]);
 
   const pendingOrders = useMemo(
-    () => orders.filter((o) => o.status === 'pending'),
+    () =>
+      orders.filter(
+        (o) =>
+          o.status === 'pending'
+          && !(o.payment_method === 'online' && o.payment_status !== 'paid'),
+      ),
     [orders],
   );
   const alertOrder = pendingOrders[0] ?? null;

@@ -65,7 +65,7 @@ export default function OnlinePaymentBanner({
         <Text style={styles.sub}>
           {isPaid
             ? 'ZinApp ya recibió tu pago. El restaurante puede preparar tu pedido.'
-            : `Total ${formatCurrency(order.total)}. El cobro lo recibe ZinApp. Completa el pago con tarjeta.`}
+            : `Total ${formatCurrency(order.total)}. Paga con tarjeta para enviar el pedido al restaurante.`}
         </Text>
         {isPending && clientSecret && publishableKey ? (
           <StripeEmbeddedCheckout clientSecret={clientSecret} publishableKey={publishableKey} />

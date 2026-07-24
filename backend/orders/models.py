@@ -219,6 +219,15 @@ class Order(models.Model):
     def display_ref(self) -> str:
         return self.code or f'#{self.id}'
 
+    @property
+    def awaits_online_payment(self) -> bool:
+        """Pedido en línea aún no cobrado: no debe llegar al restaurante."""
+        return (
+            self.payment_method == PaymentMethod.ONLINE
+            and self.payment_status != PaymentStatus.PAID
+            and self.status != OrderStatus.CANCELLED
+        )
+
     def recalculate_totals(self):
         self.subtotal = sum(item.subtotal for item in self.items.all())
         discount = self.discount_amount or Decimal('0.00')

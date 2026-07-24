@@ -371,9 +371,9 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         });
         offerSaveAddress(address);
         if (useEmbedded && payRes.data.client_secret) {
+          clearCart();
           setStripeClientSecret(payRes.data.client_secret);
           checkoutIdempotencyKey.current = null;
-          // Mantén el carrito visible para que el formulario quede bajo «En línea».
           return;
         }
         clearCart();

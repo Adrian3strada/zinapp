@@ -694,3 +694,33 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
         self.assertEqual(self.order.payment_status, PaymentStatus.PENDING)
+
+    def test_awaits_online_payment_property(self):
+        self.assertTrue(self.order.awaits_online_payment)
+        self.order.payment_status = PaymentStatus.PAID
+        self.order.save(update_fields=['payment_status', 'updated_at'])
+        self.assertFalse(self.order.awaits_online_payment)
+
+    def test_restaurant_pending_hides_unpaid_online(self):
+        paid = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            delivery_address='Calle 2',
+            payment_method=PaymentMethod.CASH,
+            payment_status=PaymentStatus.PAID,
+            subtotal=Decimal('50.00'),
+            delivery_fee=Decimal('25.00'),
+            total=Decimal('75.00'),
+        )
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.get('/api/orders/restaurant-pending/')
+        self.assertEqual(response.status_code, 200)
+        ids = {row['id'] for row in response.data}
+        self.assertNotIn(self.order.id, ids)
+        self.assertIn(paid.id, ids)
+
+        self.order.payment_status = PaymentStatus.PAID
+        self.order.save(update_fields=['payment_status', 'updated_at'])
+        response = self.client.get('/api/orders/restaurant-pending/')
+        ids = {row['id'] for row in response.data}
+        self.assertIn(self.order.id, ids)
