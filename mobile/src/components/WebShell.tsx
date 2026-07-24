@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type DimensionValue, type ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -9,6 +9,11 @@ import { isWebPlatform } from '../utils/webPlatform';
 interface Props {
   children: React.ReactNode;
 }
+
+const viewportHeight = '100dvh' as DimensionValue;
+const mobileFrameShadow = {
+  boxShadow: '0 12px 48px rgba(15, 23, 42, 0.12)',
+} as unknown as ViewStyle;
 
 /**
  * Móvil web: columna centrada tipo teléfono.
@@ -35,7 +40,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    minHeight: '100dvh',
+    minHeight: viewportHeight,
   },
   pageMobile: {
     alignItems: 'center',
@@ -54,11 +59,11 @@ const styles = StyleSheet.create({
     minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
-    maxHeight: '100dvh',
+    maxHeight: viewportHeight,
   },
   frameMobile: {
     maxWidth: WEB_MOBILE_FRAME_MAX,
-    boxShadow: '0 12px 48px rgba(15, 23, 42, 0.12)',
+    ...mobileFrameShadow,
   },
   frameDesktop: {
     maxWidth: '100%',

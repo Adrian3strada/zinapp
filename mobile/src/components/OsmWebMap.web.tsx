@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
@@ -16,7 +16,7 @@ import {
 
 interface Props {
   height?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   center?: MapCoordinate;
   zoom?: number;
   markers?: OsmMapMarker[];

@@ -24,6 +24,7 @@ import RestaurantReviewsScreenEager from '../screens/customer/RestaurantReviewsS
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import GuestAccountScreen from '../screens/customer/GuestAccountScreen';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -41,6 +42,7 @@ import type {
   ProductDetailScreenProps,
   RestaurantsScreenProps,
   ServicesScreenProps,
+  ShipmentDetailScreenProps,
 } from './types';
 
 /** En web evitamos React.lazy (chunks Metro inestables). En nativo sí code-split. */
@@ -125,6 +127,14 @@ function OrderParticipantProfileScreenWithBoundary(props: OrderParticipantProfil
 
 function LazyOrderDetailScreen(props: OrderDetailScreenProps) {
   return <OrderDetailScreenWithBoundary {...props} />;
+}
+
+function LazyShipmentDetailScreen(props: ShipmentDetailScreenProps) {
+  return (
+    <AppErrorBoundary>
+      <ShipmentDetailScreen {...props} />
+    </AppErrorBoundary>
+  );
 }
 
 function LazyOrderParticipantProfileScreen(props: OrderParticipantProfileScreenProps) {
@@ -327,6 +337,11 @@ export default function CustomerNavigator({
           name="OrderDetail"
           component={LazyOrderDetailScreen}
           options={{ ...modalPresentationOptions, title: 'Seguimiento' }}
+        />
+        <Stack.Screen
+          name="ShipmentDetail"
+          component={LazyShipmentDetailScreen}
+          options={{ ...modalPresentationOptions, title: 'Envío' }}
         />
         <Stack.Screen
           name="ParticipantProfile"

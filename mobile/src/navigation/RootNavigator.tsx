@@ -108,7 +108,7 @@ function MainRoutes() {
     );
   }
 
-  return <RoleNavigator role={user.role} />;
+  return <RoleNavigator role={user!.role} />;
 }
 
 export default function RootNavigator() {

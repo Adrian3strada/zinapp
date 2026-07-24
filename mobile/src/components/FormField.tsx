@@ -1,6 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Platform, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
 
 import { colors } from '../theme/colors';
 import { webTextInputStyle } from '../utils/webPlatform';
@@ -16,13 +25,13 @@ interface Props {
   hideLabel?: boolean;
   secureTextEntry?: boolean;
   multiline?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'decimal-pad';
+  keyboardType?: TextInputProps['keyboardType'];
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoCorrect?: boolean;
   embedded?: boolean;
   rightElement?: React.ReactNode;
-  autoComplete?: string;
-  style?: ViewStyle;
+  autoComplete?: TextInputProps['autoComplete'];
+  style?: StyleProp<ViewStyle>;
 }
 
 export default function FormField({

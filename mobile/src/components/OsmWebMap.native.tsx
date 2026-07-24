@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { colors } from '../theme/colors';
@@ -17,7 +17,7 @@ import {
 
 interface Props {
   height?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   center?: MapCoordinate;
   zoom?: number;
   markers?: OsmMapMarker[];

@@ -1,4 +1,4 @@
-import type { ViewStyle } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import type { MapCoordinate, MapRegion } from '../utils/maps';
 import type { MapPinType } from './MapPin';
@@ -31,7 +31,7 @@ export interface AppMapProps {
   polylines?: MapPolyline[];
   region?: MapRegion;
   height?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   showsUserLocation?: boolean;
   followsUserLocation?: boolean;
   emptyMessage?: string;

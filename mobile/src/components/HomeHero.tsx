@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { BrandMark } from './BrandLogo';
 import HeroBackground from './HeroBackground';
@@ -14,7 +14,7 @@ interface Props {
   subtitle?: string;
   onProfilePress?: () => void;
   topInset: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
   stats?: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap }[];
 }

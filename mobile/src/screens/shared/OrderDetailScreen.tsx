@@ -58,6 +58,13 @@ const STATUS_HINTS: Partial<Record<OrderStatus, string>> = {
 const TRACKING_POLL_MS = 2000;
 const DEFAULT_POLL_MS = 6000;
 
+type ParticipantNavigation = {
+  navigate: (
+    screen: 'ParticipantProfile',
+    params: { orderId: number; participant: 'driver' | 'customer' },
+  ) => void;
+};
+
 const RESTAURANT_NEXT_STATUS: Record<string, { status: string; label: string }> = {
   accepted: { status: 'preparing', label: 'Empezar a preparar' },
   preparing: { status: 'ready', label: 'Listo para recoger' },
@@ -71,6 +78,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const insets = useSafeAreaInsets();
   const activeDeliveries = useOptionalCustomerActiveDeliveries();
   const { config: appConfig } = useAppConfig();
+  const participantNavigation = navigation as ParticipantNavigation;
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -368,7 +376,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                   label="Repartidor"
                   user={order.driver_detail}
                   subtitle={order.driver_delivery_profile?.vehicle_type_display ?? null}
-                  onPress={() => navigation.navigate('ParticipantProfile', {
+                  onPress={() => participantNavigation.navigate('ParticipantProfile', {
                     orderId: order.id,
                     participant: 'driver',
                   })}
@@ -385,7 +393,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                   label="Cliente"
                   user={order.customer_detail}
                   subtitle={order.delivery_address}
-                  onPress={() => navigation.navigate('ParticipantProfile', {
+                  onPress={() => participantNavigation.navigate('ParticipantProfile', {
                     orderId: order.id,
                     participant: 'customer',
                   })}

@@ -14,6 +14,8 @@ import { colors } from '../../theme/colors';
 import { elevatedShadow } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 
+const fixedPosition = 'fixed' as unknown as 'absolute';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'AppDialog'>;
 
 function buttonVariant(style: AppDialogButtonStyle | undefined): 'primary' | 'secondary' | 'danger' {
@@ -135,7 +137,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   rootWeb: {
-    position: 'fixed',
+    position: fixedPosition,
     top: 0,
     left: 0,
     right: 0,

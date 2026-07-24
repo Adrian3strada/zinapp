@@ -1,3 +1,5 @@
+const { withAndroidManifest } = require('@expo/config-plugins');
+
 const appJson = require('./app.json');
 
 const DEFAULT_API = appJson.expo.extra?.apiUrl;
@@ -16,10 +18,42 @@ if (
 
 const webBasePath = process.env.EXPO_PUBLIC_WEB_BASE_PATH || '/';
 
-/** @type {import('expo/config').ExpoConfig} */
-module.exports = () => ({
+const ANDROID_QUERIES = [
+  { scheme: 'geo' },
+  { scheme: 'google.navigation' },
+  { scheme: 'comgooglemaps' },
+  { scheme: 'waze' },
+  { package: 'com.google.android.apps.maps' },
+  { package: 'com.waze' },
+];
+
+function androidQueryNode(query) {
+  if (query.scheme) {
+    return {
+      intent: [{
+        action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+        data: [{ $: { 'android:scheme': query.scheme } }],
+      }],
+    };
+  }
+  return { package: [{ $: { 'android:name': query.package } }] };
+}
+
+function withAndroidMapQueries(config) {
+  return withAndroidManifest(config, (configWithManifest) => {
+    const manifest = configWithManifest.modResults.manifest;
+    const existing = manifest.queries ?? [];
+    manifest.queries = [...existing, ...ANDROID_QUERIES.map(androidQueryNode)];
+    return configWithManifest;
+  });
+}
+
+/** @type {(context: { config: import('expo/config').ExpoConfig }) => import('expo/config').ExpoConfig} */
+module.exports = ({ config }) => withAndroidMapQueries({
+  ...config,
   ...appJson.expo,
   experiments: {
+    ...(config.experiments ?? {}),
     baseUrl: webBasePath,
   },
   extra: {

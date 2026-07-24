@@ -36,9 +36,8 @@ export function webTabBarStyle(isDesktopWeb = false): ViewStyle {
     width: '100%',
     maxWidth: WEB_MOBILE_FRAME_MAX,
     zIndex: 1000,
-    // @ts-expect-error RN web transform
     transform: [{ translateX: '-50%' }],
-  };
+  } as unknown as ViewStyle;
 }
 
 /** @deprecated usar webTabBarStyle(isDesktopWeb) */
@@ -65,9 +64,8 @@ export function webTextInputStyle(): TextStyle {
     paddingVertical: 0,
     margin: 0,
     minWidth: 0,
-    // @ts-expect-error RN web
     boxShadow: 'none',
-  };
+  } as unknown as TextStyle;
 }
 
 /** CSS global para inputs dentro de la app web (login, formularios). */

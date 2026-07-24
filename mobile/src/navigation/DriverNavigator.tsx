@@ -15,6 +15,7 @@ import MyDeliveriesScreen from '../screens/driver/MyDeliveriesScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
 import OrderParticipantProfileScreen from '../screens/shared/OrderParticipantProfileScreen';
 import ProfileScreenEager from '../screens/shared/ProfileScreen';
+import ShipmentDetailScreen from '../screens/shared/ShipmentDetailScreen';
 import { colors } from '../theme/colors';
 import { modalPresentationOptions } from './modalOptions';
 import { tabBarScreenOptions } from './tabBarOptions';
@@ -111,6 +112,15 @@ export default function DriverNavigator() {
             ...modalPresentationOptions,
             headerShown: true,
             title: 'Entrega',
+          }}
+        />
+        <Stack.Screen
+          name="ShipmentDetail"
+          component={ShipmentDetailScreen}
+          options={{
+            ...modalPresentationOptions,
+            headerShown: true,
+            title: 'Envío',
           }}
         />
         <Stack.Screen

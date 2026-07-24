@@ -81,6 +81,10 @@ async function playAlertSound(): Promise<void> {
   try {
     await setAudioModeAsync({
       playsInSilentMode: true,
+      interruptionMode: 'duckOthers',
+      allowsRecording: false,
+      shouldPlayInBackground: false,
+      shouldRouteThroughEarpiece: false,
     });
     if (!alertPlayer) {
       alertPlayer = createAudioPlayer(alertSource);

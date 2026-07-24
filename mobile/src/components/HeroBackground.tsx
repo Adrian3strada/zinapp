@@ -1,13 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { webPassThroughPointerEvents } from '../utils/webPlatform';
 
 interface Props {
   colors?: [string, string, ...string[]];
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
 
