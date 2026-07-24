@@ -7,13 +7,19 @@ import { cardShadow } from '../theme/shadows';
 import type { Order } from '../types';
 import { formatCurrency } from '../utils/format';
 import { openPaymentCheckout } from '../utils/webPlatform';
+import { appAlert } from '../utils/appAlert';
+import { useNativeStripePayment } from '../hooks/useNativeStripePayment';
 import Button from './Button';
 import StripeEmbeddedCheckout from './StripeEmbeddedCheckout';
 
 interface Props {
   order: Order;
   onRefresh: () => void;
-  onPay: () => Promise<{ paymentUrl?: string | null; clientSecret?: string | null } | null>;
+  onPay: () => Promise<{
+    paymentUrl?: string | null;
+    clientSecret?: string | null;
+    paymentSheet?: boolean;
+  } | null>;
   publishableKey?: string;
 }
 
@@ -25,6 +31,7 @@ export default function OnlinePaymentBanner({
 }: Props) {
   const [paying, setPaying] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const { payWithSheet } = useNativeStripePayment();
 
   if (order.payment_method !== 'online') return null;
 
@@ -38,16 +45,32 @@ export default function OnlinePaymentBanner({
     try {
       const result = await onPay();
       if (!result) return;
+
+      // Web: formulario embebido en la pantalla
       if (Platform.OS === 'web' && result.clientSecret && publishableKey) {
         setClientSecret(result.clientSecret);
         return;
       }
+
+      // iOS/Android: Payment Sheet nativo (tarjeta dentro de la app)
+      if (Platform.OS !== 'web' && result.clientSecret) {
+        const paid = await payWithSheet(result.clientSecret);
+        if (paid.ok) {
+          onRefresh();
+          return;
+        }
+        if (!paid.canceled && paid.message) {
+          appAlert('Pago', paid.message);
+        }
+        return;
+      }
+
       if (result.paymentUrl) {
         try {
           const mode = await openPaymentCheckout(result.paymentUrl);
           if (mode === 'opened') onRefresh();
         } catch {
-          // El banner sigue; el usuario puede reintentar
+          appAlert('Pago', 'No se pudo abrir el pago. Intenta de nuevo.');
         }
       }
     } finally {

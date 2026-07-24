@@ -264,16 +264,21 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const handlePayOnline = useCallback(async (): Promise<{
     paymentUrl?: string | null;
     clientSecret?: string | null;
+    paymentSheet?: boolean;
   } | null> => {
     if (!order || actionBusy) return null;
     setActionBusy(true);
     try {
-      const useEmbedded = Platform.OS === 'web';
-      const { data } = await orderApi.initiatePayment(order.id, { embedded: useEmbedded });
+      const isWeb = Platform.OS === 'web';
+      const { data } = await orderApi.initiatePayment(order.id, {
+        embedded: isWeb,
+        paymentSheet: !isWeb,
+      });
       if (data.client_secret || data.payment_url) {
         return {
           paymentUrl: data.payment_url,
           clientSecret: data.client_secret,
+          paymentSheet: !!data.payment_sheet,
         };
       }
       if (data.message) appAlert('Pago en línea', data.message);

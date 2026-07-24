@@ -10,6 +10,7 @@ import { enableScreens } from 'react-native-screens';
 import AppErrorBoundary from './src/components/AppErrorBoundary';
 import BackendWake from './src/components/BackendWake';
 import ImageCropHost from './src/components/ImageCropHost';
+import StripeAppProvider from './src/components/StripeAppProvider';
 import StripeReturnHandler from './src/components/StripeReturnHandler';
 import WebShell from './src/components/WebShell';
 import { AuthProvider } from './src/context/AuthContext';
@@ -100,6 +101,7 @@ export default function App() {
           <AuthProvider>
             <BackendWake />
             <CartProvider>
+              <StripeAppProvider>
               <View style={webNavigationRootStyle() ?? { flex: 1, backgroundColor: colors.background }}>
                 <NavigationContainer ref={navigationRef} theme={navTheme} onStateChange={(state) => setNavResetKey(navStateKey(state))}>
                   <AppErrorBoundary resetKey={navResetKey}>
@@ -117,6 +119,7 @@ export default function App() {
                   </AppErrorBoundary>
                 </NavigationContainer>
               </View>
+              </StripeAppProvider>
             </CartProvider>
           </AuthProvider>
         </WebShell>

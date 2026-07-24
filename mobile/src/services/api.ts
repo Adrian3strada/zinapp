@@ -416,18 +416,20 @@ export const orderApi = {
   messages: (id: number) => api.get<import('../types').OrderMessage[]>(`/orders/${id}/messages/`),
   sendMessage: (id: number, body: string) =>
     api.post<import('../types').OrderMessage>(`/orders/${id}/messages/`, { body }),
-  initiatePayment: (id: number, options?: { embedded?: boolean }) =>
+  initiatePayment: (id: number, options?: { embedded?: boolean; paymentSheet?: boolean }) =>
     api.post<{
       payment_status: string;
       payment_url?: string | null;
       client_secret?: string | null;
       embedded?: boolean;
+      payment_sheet?: boolean;
       session_id?: string;
       message?: string;
       order_id: number;
       amount: string;
     }>(`/orders/${id}/initiate-payment/`, {
       embedded: !!options?.embedded,
+      payment_sheet: !!options?.paymentSheet,
     }),
   confirmPayment: (id: number) => api.post<Order>(`/orders/${id}/confirm-payment/`),
 };

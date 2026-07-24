@@ -639,7 +639,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.payment_status == PaymentStatus.PAID:
             return Response({'detail': 'Ya está pagado.', 'payment_status': 'paid'})
 
-        from .stripe_payments import create_checkout_session, stripe_enabled
+        from .stripe_payments import (
+            create_checkout_session,
+            create_payment_intent,
+            stripe_enabled,
+        )
 
         if not stripe_enabled():
             return Response({
@@ -654,18 +658,25 @@ class OrderViewSet(viewsets.ModelViewSet):
                 'amount': str(order.total),
             })
 
-        embedded = bool(
-            request.data.get('embedded')
-            if isinstance(request.data, dict)
-            else False
+        data = request.data if isinstance(request.data, dict) else {}
+        payment_sheet = bool(data.get('payment_sheet'))
+        embedded = bool(data.get('embedded')) and not payment_sheet
+
+        session = (
+            create_payment_intent(order)
+            if payment_sheet
+            else create_checkout_session(order, embedded=embedded)
         )
-        session = create_checkout_session(order, embedded=embedded)
         if session and (session.get('payment_url') or session.get('client_secret')):
-            order.stripe_checkout_session_id = str(session.get('session_id') or '')
+            sid = session.get('session_id') or ''
+            if sid:
+                order.stripe_checkout_session_id = str(sid)
             pi = session.get('payment_intent') or ''
             if pi:
                 order.stripe_payment_intent_id = str(pi)
-            order.stripe_status = 'checkout_created'
+            order.stripe_status = (
+                'payment_sheet_created' if session.get('payment_sheet') else 'checkout_created'
+            )
             order.save(update_fields=[
                 'stripe_checkout_session_id',
                 'stripe_payment_intent_id',
@@ -677,6 +688,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 'payment_url': session.get('payment_url'),
                 'client_secret': session.get('client_secret'),
                 'embedded': bool(session.get('embedded')),
+                'payment_sheet': bool(session.get('payment_sheet')),
                 'session_id': session.get('session_id'),
                 'order_id': order.id,
                 'amount': str(order.total),

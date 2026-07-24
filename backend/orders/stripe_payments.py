@@ -45,6 +45,59 @@ def _order_line_item(order, amount_cents: int) -> dict:
     }
 
 
+def create_payment_intent(order) -> dict | None:
+    """PaymentIntent para Stripe Payment Sheet (iOS/Android nativo)."""
+    if not _configure_stripe():
+        return None
+
+    amount_cents = int((Decimal(str(order.total)) * 100).quantize(Decimal('1')))
+    if amount_cents < 1:
+        logger.warning('Stripe PI: total inválido pedido #%s', order.id)
+        return None
+
+    restaurant_name = getattr(getattr(order, 'restaurant', None), 'name', '') or 'ZinApp'
+    description = f'Pedido {order.display_ref} — {restaurant_name}'
+
+    try:
+        # Reutiliza PI pendiente del mismo pedido si existe.
+        existing_id = (getattr(order, 'stripe_payment_intent_id', '') or '').strip()
+        if existing_id.startswith('pi_'):
+            try:
+                existing = stripe.PaymentIntent.retrieve(existing_id)
+                if existing.status in ('requires_payment_method', 'requires_confirmation', 'requires_action'):
+                    secret = getattr(existing, 'client_secret', None)
+                    if secret:
+                        return {
+                            'client_secret': secret,
+                            'payment_intent': existing.id,
+                            'payment_sheet': True,
+                        }
+            except Exception:
+                pass
+
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency='mxn',
+            payment_method_types=['card'],
+            description=description,
+            metadata={
+                'order_id': str(order.id),
+                'type': 'order',
+            },
+        )
+        secret = getattr(intent, 'client_secret', None)
+        if not secret:
+            return None
+        return {
+            'client_secret': secret,
+            'payment_intent': intent.id,
+            'payment_sheet': True,
+        }
+    except Exception as exc:
+        logger.warning('Stripe PaymentIntent falló pedido #%s: %s', order.id, exc)
+        return None
+
+
 def create_checkout_session(order, *, embedded: bool = False) -> dict | None:
     """Crea Checkout Session.
 

@@ -35,11 +35,13 @@ import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { toCoordinate } from '../../utils/maps';
 import { runWithRetry } from '../../utils/runWithRetry';
 import StripeEmbeddedCheckout from '../../components/StripeEmbeddedCheckout';
+import { useNativeStripePayment } from '../../hooks/useNativeStripePayment';
 
 export default function CartScreen({ navigation, route }: CartScreenProps) {
   const { user, refreshUser, requestLogin } = useAuth();
   const { keyboardWithHeader, tabBottomPadding } = useTabScreenInsets();
   const { config: appConfig } = useAppConfig();
+  const { payWithSheet } = useNativeStripePayment();
   const { items, total, updateQuantity, updateItemNotes, clearCart, restaurantId } = useCart();
   const [address, setAddress] = useState(user?.address ?? '');
   const [notes, setNotes] = useState('');
@@ -364,13 +366,13 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         })),
       }, { idempotencyKey: checkoutIdempotencyKey.current });
       if (paymentMethod === 'online') {
-        const useEmbedded =
-          Platform.OS === 'web' && !!appConfig.stripe_publishable_key;
+        const isWeb = Platform.OS === 'web';
         const payRes = await orderApi.initiatePayment(data.id, {
-          embedded: useEmbedded,
+          embedded: isWeb && !!appConfig.stripe_publishable_key,
+          paymentSheet: !isWeb,
         });
         offerSaveAddress(address);
-        if (useEmbedded && payRes.data.client_secret) {
+        if (isWeb && payRes.data.client_secret) {
           clearCart();
           setStripeClientSecret(payRes.data.client_secret);
           checkoutIdempotencyKey.current = null;
@@ -378,8 +380,19 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         }
         clearCart();
         checkoutIdempotencyKey.current = null;
-        // Primero el detalle del pedido; luego el navegador de pago (más estable en iOS).
         navigation.navigate('OrderDetail', { orderId: data.id });
+        if (!isWeb && payRes.data.client_secret) {
+          const paid = await payWithSheet(payRes.data.client_secret);
+          if (paid.ok) {
+            appAlert('Pago recibido', 'Tu pedido ya se envió al restaurante.');
+          } else if (!paid.canceled) {
+            appAlert(
+              'Pago pendiente',
+              `${paid.message || 'No se completó el pago.'}\n\nPuedes reintentar desde el detalle del pedido.`,
+            );
+          }
+          return;
+        }
         if (payRes.data.payment_url) {
           try {
             await openPaymentCheckout(payRes.data.payment_url);
@@ -427,6 +440,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
     user,
     requestLogin,
     appConfig.stripe_publishable_key,
+    payWithSheet,
   ]);
 
   useEffect(() => {

@@ -3,7 +3,7 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.22",
+    "version": "1.1.23",
     "scheme": [
       "zinapp",
       "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd"
@@ -51,7 +51,9 @@
         ],
         "NSPhotoLibraryUsageDescription": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
         "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleAllowMixedLocalizations": true,
+        "CFBundleLocalizations": ["es", "en"]
       }
     },
     "android": {
@@ -117,7 +119,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "enableGooglePay": false
+        }
+      ]
     ]
   }
 }
