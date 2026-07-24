@@ -84,6 +84,7 @@ const RESTAURANT_NEXT_STATUS: Record<string, { status: string; label: string }> 
 export default function OrderDetailScreen({ route, navigation }: OrderDetailScreenProps) {
   const { orderId } = route.params;
   const promptReview = 'promptReview' in route.params ? route.params.promptReview : false;
+  const autoPay = 'autoPay' in route.params ? !!route.params.autoPay : false;
   const { user } = useAuth();
   const { replaceCart } = useCart();
   const insets = useSafeAreaInsets();
@@ -96,6 +97,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
   const [actionBusy, setActionBusy] = useState(false);
   const [prepMinutes, setPrepMinutes] = useState(15);
   const [reordering, setReordering] = useState(false);
+  const [autoPayRequested, setAutoPayRequested] = useState(autoPay);
 
   const load = useCallback(async (isMounted: () => boolean) => {
     try {
@@ -351,6 +353,13 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               onRefresh={reloadOrder}
               onPay={handlePayOnline}
               publishableKey={appConfig.stripe_publishable_key}
+              autoStart={autoPayRequested}
+              onAutoStartHandled={() => {
+                setAutoPayRequested(false);
+                if ('autoPay' in route.params) {
+                  navigation.setParams({ autoPay: false } as never);
+                }
+              }}
             />
           )}
 

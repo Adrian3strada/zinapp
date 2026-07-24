@@ -28,7 +28,7 @@ import { DELIVERY_FEE } from '../../config/delivery';
 import { resolveTransferInfo } from '../../config/payments';
 import type { Restaurant, SelectedProductOption } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { keyboardAvoidingBehavior, openPaymentCheckout } from '../../utils/webPlatform';
+import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
@@ -378,31 +378,29 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
           checkoutIdempotencyKey.current = null;
           return;
         }
-        clearCart();
-        checkoutIdempotencyKey.current = null;
-        navigation.navigate('OrderDetail', { orderId: data.id });
+        // Nativo: mostrar Payment Sheet ANTES de salir del carrito (si no, iOS lo cierra).
         if (!isWeb && payRes.data.client_secret) {
           const paid = await payWithSheet(payRes.data.client_secret);
+          clearCart();
+          checkoutIdempotencyKey.current = null;
+          navigation.navigate('OrderDetail', {
+            orderId: data.id,
+            autoPay: !paid.ok && !paid.canceled,
+          });
           if (paid.ok) {
             appAlert('Pago recibido', 'Tu pedido ya se envió al restaurante.');
           } else if (!paid.canceled) {
             appAlert(
-              'Pago pendiente',
-              `${paid.message || 'No se completó el pago.'}\n\nPuedes reintentar desde el detalle del pedido.`,
+              'No se completó el pago',
+              `${paid.message || 'Intenta de nuevo.'}\n\nEn el detalle del pedido toca «Pagar con tarjeta».`,
             );
           }
           return;
         }
-        if (payRes.data.payment_url) {
-          try {
-            await openPaymentCheckout(payRes.data.payment_url);
-          } catch {
-            appAlert(
-              'Pago pendiente',
-              'Tu pedido está creado. Abre «Pagar con tarjeta» en el detalle del pedido.',
-            );
-          }
-        } else if (payRes.data.message) {
+        clearCart();
+        checkoutIdempotencyKey.current = null;
+        navigation.navigate('OrderDetail', { orderId: data.id, autoPay: true });
+        if (payRes.data.message) {
           appAlert(
             'Pedido creado — pago pendiente',
             `${payRes.data.message}\n\nPuedes pagar desde el detalle del pedido.`,

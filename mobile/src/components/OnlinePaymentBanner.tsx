@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
@@ -21,6 +21,8 @@ interface Props {
     paymentSheet?: boolean;
   } | null>;
   publishableKey?: string;
+  autoStart?: boolean;
+  onAutoStartHandled?: () => void;
 }
 
 export default function OnlinePaymentBanner({
@@ -28,39 +30,37 @@ export default function OnlinePaymentBanner({
   onRefresh,
   onPay,
   publishableKey = '',
+  autoStart = false,
+  onAutoStartHandled,
 }: Props) {
   const [paying, setPaying] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const { payWithSheet } = useNativeStripePayment();
+  const autoStarted = useRef(false);
 
-  if (order.payment_method !== 'online') return null;
-
+  const isOnline = order.payment_method === 'online';
   const isPaid = order.payment_status === 'paid';
-  const isPending = !isPaid && order.status !== 'cancelled';
+  const isPending = isOnline && !isPaid && order.status !== 'cancelled';
 
-  if (!isPending && !isPaid) return null;
-
-  const handlePay = async () => {
+  const handlePay = useCallback(async () => {
     setPaying(true);
     try {
       const result = await onPay();
       if (!result) return;
 
-      // Web: formulario embebido en la pantalla
       if (Platform.OS === 'web' && result.clientSecret && publishableKey) {
         setClientSecret(result.clientSecret);
         return;
       }
 
-      // iOS/Android: Payment Sheet nativo (tarjeta dentro de la app)
       if (Platform.OS !== 'web' && result.clientSecret) {
         const paid = await payWithSheet(result.clientSecret);
         if (paid.ok) {
           onRefresh();
           return;
         }
-        if (!paid.canceled && paid.message) {
-          appAlert('Pago', paid.message);
+        if (paid.message) {
+          appAlert(paid.canceled ? 'Pago cancelado' : 'Pago', paid.message);
         }
         return;
       }
@@ -72,11 +72,24 @@ export default function OnlinePaymentBanner({
         } catch {
           appAlert('Pago', 'No se pudo abrir el pago. Intenta de nuevo.');
         }
+      } else {
+        appAlert('Pago', 'No se pudo iniciar el cobro. Intenta de nuevo.');
       }
     } finally {
       setPaying(false);
     }
-  };
+  }, [onPay, onRefresh, payWithSheet, publishableKey]);
+
+  useEffect(() => {
+    if (!autoStart || !isPending || autoStarted.current || Platform.OS === 'web') {
+      return;
+    }
+    autoStarted.current = true;
+    onAutoStartHandled?.();
+    void handlePay();
+  }, [autoStart, isPending, handlePay, onAutoStartHandled]);
+
+  if (!isOnline || (!isPending && !isPaid)) return null;
 
   return (
     <View style={[styles.banner, isPaid ? styles.paid : styles.pending]}>

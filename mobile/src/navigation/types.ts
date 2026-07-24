@@ -36,7 +36,7 @@ export type CustomerStackParamList = {
   Servicios: undefined;
   Menu: { restaurantId: number; restaurantName: string };
   ProductDetail: { product: Product; restaurantName?: string };
-  OrderDetail: { orderId: number; promptReview?: boolean };
+  OrderDetail: { orderId: number; promptReview?: boolean; autoPay?: boolean };
   ShipmentDetail: { shipmentId: number };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
   Ofertas: undefined;
