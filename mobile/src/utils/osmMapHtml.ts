@@ -294,34 +294,38 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
         nextLines[id] = line;
       });
 
-      Object.keys(polylineLayers).forEach(function(id) {
-        if (!nextLines[id]) {
-          map.removeLayer(polylineLayers[id]);
-          delete polylineLayers[id];
-        }
-      });
-
-      Object.keys(nextLines).forEach(function(id) {
-        var line = nextLines[id];
-        var latlngs = line.coordinates.map(function(c) {
-          return [c.latitude, c.longitude];
+      // Si llega un update vacío (carrera al cargar ruta), no borres la línea ya dibujada.
+      var hasAnyNextLines = Object.keys(nextLines).length > 0;
+      if (hasAnyNextLines) {
+        Object.keys(polylineLayers).forEach(function(id) {
+          if (!nextLines[id]) {
+            map.removeLayer(polylineLayers[id]);
+            delete polylineLayers[id];
+          }
         });
-        var existing = polylineLayers[id];
-        var lineColor = line.color || '#111827';
-        var lineWeight = line.weight || 6;
-        if (existing) {
-          existing.setLatLngs(latlngs);
-          existing.setStyle({ color: lineColor, weight: lineWeight, opacity: 0.95 });
-          return;
-        }
-        polylineLayers[id] = L.polyline(latlngs, {
-          color: lineColor,
-          weight: lineWeight,
-          opacity: 0.95
-        }).addTo(map);
-      });
 
-      var hasLinesNow = Object.keys(nextLines).length > 0;
+        Object.keys(nextLines).forEach(function(id) {
+          var line = nextLines[id];
+          var latlngs = line.coordinates.map(function(c) {
+            return [c.latitude, c.longitude];
+          });
+          var existing = polylineLayers[id];
+          var lineColor = line.color || '#111827';
+          var lineWeight = line.weight || 6;
+          if (existing) {
+            existing.setLatLngs(latlngs);
+            existing.setStyle({ color: lineColor, weight: lineWeight, opacity: 0.95 });
+            return;
+          }
+          polylineLayers[id] = L.polyline(latlngs, {
+            color: lineColor,
+            weight: lineWeight,
+            opacity: 0.95
+          }).addTo(map);
+        });
+      }
+
+      var hasLinesNow = Object.keys(polylineLayers).length > 0;
       var markerCount = Object.keys(nextMarkers).length;
       // Si pines o ruta llegan después del primer paint vacío, recentrar.
       if ((hasLinesNow && !hadPolylines) || (markerCount > 0 && !hadMarkers)) {

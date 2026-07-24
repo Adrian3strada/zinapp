@@ -168,6 +168,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     routeSegments,
     primaryCoord,
     secondaryCoord,
+    nextStopCoord,
     nextStopLabel,
     title,
     subtitle,
@@ -178,6 +179,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
         routeSegments: [] as StreetRouteSegment[],
         primaryCoord: null as MapCoordinate | null,
         secondaryCoord: null as MapCoordinate | null,
+        nextStopCoord: null as MapCoordinate | null,
         nextStopLabel: '',
         title: '',
         subtitle: '',
@@ -237,6 +239,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
       routeSegments: segments,
       primaryCoord: restaurant,
       secondaryCoord: delivery,
+      nextStopCoord: nextStop,
       nextStopLabel: goToDelivery ? 'Ir a entrega' : 'Ir al restaurante',
       title: `Navegación · ${formatOrderLabel(order)}`,
       subtitle: goToDelivery ? order.delivery_address : (order.restaurant_detail?.name ?? ''),
@@ -273,16 +276,39 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
   }, [polylines, routeFrom]);
 
   const remainingPolylines = useMemo(() => {
-    if (remainingCoords.length < 2) return [];
-    return [
-      {
-        id: 'to-next-stop',
-        coordinates: remainingCoords,
-        strokeColor: colors.text,
-        strokeWidth: 6,
-      },
-    ];
-  }, [remainingCoords]);
+    if (remainingCoords.length >= 2) {
+      return [
+        {
+          id: 'to-next-stop',
+          coordinates: remainingCoords,
+          strokeColor: colors.text,
+          strokeWidth: 6,
+        },
+      ];
+    }
+    const full = polylines.find((p) => p.id === 'to-next-stop') ?? polylines[0];
+    if (full?.coordinates && full.coordinates.length >= 2) {
+      return [
+        {
+          id: 'to-next-stop',
+          coordinates: full.coordinates,
+          strokeColor: colors.text,
+          strokeWidth: 6,
+        },
+      ];
+    }
+    if (routeFrom && nextStopCoord) {
+      return [
+        {
+          id: 'to-next-stop',
+          coordinates: [routeFrom, nextStopCoord],
+          strokeColor: colors.text,
+          strokeWidth: 6,
+        },
+      ];
+    }
+    return [];
+  }, [remainingCoords, polylines, routeFrom, nextStopCoord]);
 
   // Paradas fijas solamente; el pin GPS en movimiento hace parecer bug.
   const mapMarkers = markers;

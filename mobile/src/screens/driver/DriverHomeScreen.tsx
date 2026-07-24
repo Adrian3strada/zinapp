@@ -272,7 +272,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     if (!line?.coordinates || line.coordinates.length < 2) return;
     fullRouteRef.current = line.coordinates;
     routeProgressRef.current = 0;
-    const origin = lastMapLocation.current ?? userLocation ?? routeFrom;
+    const origin = lastMapLocation.current ?? routeFrom;
     if (origin) {
       const trimmed = trimRouteAhead(line.coordinates, origin, 0);
       routeProgressRef.current = trimmed.progressIndex;
@@ -280,7 +280,8 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     } else {
       setRemainingCoords(line.coordinates);
     }
-  }, [polylines, routeFrom, userLocation]);
+    // Solo al cambiar la geometría pedida; el GPS recorta en el watcher.
+  }, [polylines, routeFrom]);
 
   const remainingPolylines = useMemo(() => {
     if (!activeOrder) return [];

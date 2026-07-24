@@ -307,6 +307,12 @@ _ROUTE_CACHE: dict[str, tuple[float, dict]] = {}
 _ROUTE_CACHE_TTL = 300
 _ROUTE_CACHE_MAX = 200
 
+# Demo OSRM a veces limita IPs de datacenter; probar varios mirrors.
+_OSRM_ROUTE_URLS = (
+    'https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=geojson',
+    'https://routing.openstreetmap.de/routed-car/route/v1/driving/{coords}?overview=full&geometries=geojson',
+)
+
 
 def _route_cache_key(lat1: float, lon1: float, lat2: float, lon2: float) -> str:
     return f'{round(lat1, 4)},{round(lon1, 4)}|{round(lat2, 4)},{round(lon2, 4)}'
@@ -328,6 +334,28 @@ def _route_cache_set(key: str, payload: dict) -> None:
         oldest = min(_ROUTE_CACHE, key=lambda k: _ROUTE_CACHE[k][0])
         _ROUTE_CACHE.pop(oldest, None)
     _ROUTE_CACHE[key] = (time.monotonic() + _ROUTE_CACHE_TTL, payload)
+
+
+def _fetch_osrm_payload(lat1: float, lon1: float, lat2: float, lon2: float) -> dict | None:
+    coords = f'{lon1:.6f},{lat1:.6f};{lon2:.6f},{lat2:.6f}'
+    headers = {'User-Agent': 'ZinApp/1.0 (delivery routing; https://zinapp.com.mx)'}
+    for template in _OSRM_ROUTE_URLS:
+        url = template.format(coords=coords)
+        try:
+            req = urllib.request.Request(url, headers=headers, method='GET')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                payload = json.loads(resp.read().decode())
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if (payload.get('code') or '').lower() not in ('ok', ''):
+            # Algunos mirrors omiten code; si hay routes seguimos.
+            if not payload.get('routes'):
+                continue
+        if payload.get('routes'):
+            return payload
+    return None
 
 
 def driving_route(
@@ -366,20 +394,8 @@ def driving_route(
         _route_cache_set(cache_key, result)
         return result
 
-    url = (
-        'https://router.project-osrm.org/route/v1/driving/'
-        f'{lon1:.6f},{lat1:.6f};{lon2:.6f},{lat2:.6f}'
-        '?overview=full&geometries=geojson'
-    )
-    try:
-        req = urllib.request.Request(
-            url,
-            headers={'User-Agent': 'ZinApp/1.0 (delivery routing)'},
-            method='GET',
-        )
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            payload = json.loads(resp.read().decode())
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError, KeyError):
+    payload = _fetch_osrm_payload(lat1, lon1, lat2, lon2)
+    if not payload:
         return _fallback()
 
     routes = payload.get('routes') or []

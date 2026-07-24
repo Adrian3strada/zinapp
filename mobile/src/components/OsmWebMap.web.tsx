@@ -103,12 +103,20 @@ export default function OsmWebMap({
       }),
     [markers, polylines, followMarkerId, fitPadding],
   );
+  const livePayloadRef = useRef(livePayload);
+  livePayloadRef.current = livePayload;
 
   const pushLiveData = useCallback((payload: string) => {
-    iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ type: 'setMapData', payload: JSON.parse(payload) }),
-      '*',
-    );
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.postMessage(
+        JSON.stringify({ type: 'setMapData', payload: JSON.parse(payload) }),
+        '*',
+      );
+    } catch {
+      // iframe aún no listo
+    }
   }, []);
 
   const pushPinPosition = useCallback((latitude: number, longitude: number) => {
@@ -117,6 +125,11 @@ export default function OsmWebMap({
       '*',
     );
   }, []);
+
+  const markReadyAndPush = useCallback(() => {
+    setMapReady(true);
+    pushLiveData(livePayloadRef.current);
+  }, [pushLiveData]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -138,7 +151,7 @@ export default function OsmWebMap({
           id?: string;
         };
         if (data.type === 'ready') {
-          setMapReady(true);
+          markReadyAndPush();
           return;
         }
         if (
@@ -156,7 +169,7 @@ export default function OsmWebMap({
         // ignore malformed messages
       }
     },
-    [onCoordinateChange, onMarkerPress],
+    [markReadyAndPush, onCoordinateChange, onMarkerPress],
   );
 
   useEffect(() => {
@@ -183,6 +196,7 @@ export default function OsmWebMap({
         ref={iframeRef}
         title="Mapa ZinApp"
         srcDoc={html}
+        onLoad={markReadyAndPush}
         style={{
           border: 0,
           width: '100%',
