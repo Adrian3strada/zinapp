@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -29,7 +28,7 @@ import { DELIVERY_FEE } from '../../config/delivery';
 import { resolveTransferInfo } from '../../config/payments';
 import type { Restaurant, SelectedProductOption } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
+import { keyboardAvoidingBehavior, openPaymentCheckout } from '../../utils/webPlatform';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
@@ -366,15 +365,17 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         const payRes = await orderApi.initiatePayment(data.id);
         clearCart();
         checkoutIdempotencyKey.current = null;
+        offerSaveAddress(address);
         if (payRes.data.payment_url) {
-          await Linking.openURL(payRes.data.payment_url);
+          const mode = await openPaymentCheckout(payRes.data.payment_url);
+          // En web salimos de la app hacia Stripe; no navegues al detalle.
+          if (mode === 'redirected') return;
         } else if (payRes.data.message) {
           appAlert(
             'Pedido creado — pago pendiente',
             `${payRes.data.message}\n\nPuedes pagar desde el detalle del pedido.`,
           );
         }
-        offerSaveAddress(address);
         navigation.navigate('OrderDetail', { orderId: data.id });
         return;
       }

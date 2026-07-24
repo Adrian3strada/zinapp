@@ -105,3 +105,18 @@ export function injectWebInputStyles(): void {
   `;
   document.head.appendChild(style);
 }
+
+/**
+ * Abre el checkout de pago.
+ * En web: misma pestaña (no otra ventana).
+ * En iOS/Android: navegador / app externa.
+ */
+export async function openPaymentCheckout(url: string): Promise<'redirected' | 'opened'> {
+  if (isWebPlatform() && typeof window !== 'undefined') {
+    window.location.assign(url);
+    return 'redirected';
+  }
+  const { Linking } = await import('react-native');
+  await Linking.openURL(url);
+  return 'opened';
+}

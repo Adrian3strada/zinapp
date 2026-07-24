@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
 import type { Order } from '../types';
 import { formatCurrency } from '../utils/format';
+import { openPaymentCheckout } from '../utils/webPlatform';
 import Button from './Button';
 
 interface Props {
@@ -29,8 +30,8 @@ export default function OnlinePaymentBanner({ order, onRefresh, onPay }: Props) 
     try {
       const url = await onPay();
       if (url) {
-        await Linking.openURL(url);
-        onRefresh();
+        const mode = await openPaymentCheckout(url);
+        if (mode === 'opened') onRefresh();
       }
     } finally {
       setPaying(false);
