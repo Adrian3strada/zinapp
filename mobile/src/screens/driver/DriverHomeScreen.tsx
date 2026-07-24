@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -27,7 +28,7 @@ import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
 import { deliveryApi, orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import { HIT_SLOP } from '../../theme/spacing';
+import { HIT_SLOP, spacing } from '../../theme/spacing';
 import type { Order } from '../../types';
 import { appAlert } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
@@ -59,6 +60,7 @@ import {
 export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { isAvailable, profile, updating, toggleAvailability } = useDriverProfileContext();
   const isApproved = profile?.verification_status === 'approved';
   const {
@@ -528,8 +530,10 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         ? 'Conectado · recibiendo pedidos'
         : 'Desconectado';
 
-  // El contenido del tab ya termina arriba de la barra; no sumar tabBar otra vez.
-  const bottomPad = { paddingBottom: 8 };
+  // Siempre dejar libre el alto de la tab bar: en web es fixed y tapa el slide.
+  const bottomPad = {
+    paddingBottom: Math.max(tabBarHeight, spacing.tabBar + Math.max(insets.bottom, 0)) + 12,
+  };
 
   const online = !!(activeOrder || (isAvailable && isApproved));
 
@@ -803,6 +807,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     gap: 10,
+    zIndex: 6,
+    elevation: 6,
   },
   tipBanner: {
     marginHorizontal: 12,
@@ -820,7 +826,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 12,
+    paddingBottom: 16,
     gap: 12,
     borderTopWidth: 1,
     borderColor: colors.borderLight,
