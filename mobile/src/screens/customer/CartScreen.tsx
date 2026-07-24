@@ -34,6 +34,7 @@ import { createIdempotencyKey } from '../../utils/idempotency';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { toCoordinate } from '../../utils/maps';
 import { runWithRetry } from '../../utils/runWithRetry';
+import StripeEmbeddedCheckout from '../../components/StripeEmbeddedCheckout';
 
 export default function CartScreen({ navigation, route }: CartScreenProps) {
   const { user, refreshUser, requestLogin } = useAuth();
@@ -59,6 +60,8 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
   } | null>(null);
   const [addressApproximate, setAddressApproximate] = useState(false);
   const [cartRestaurant, setCartRestaurant] = useState<Restaurant | null>(null);
+  const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+  const [pendingStripeOrderId, setPendingStripeOrderId] = useState<number | null>(null);
   const checkoutInFlight = useRef(false);
   const checkoutIdempotencyKey = useRef<string | null>(null);
   const pendingCouponApply = useRef<string | null>(null);
@@ -70,6 +73,24 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
       }),
     [appConfig.support_whatsapp],
   );
+
+  // Tras pagar con Embedded Checkout, Stripe redirige a /app/?stripe_return=1&order_id=
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('stripe_return') !== '1') return;
+    const orderId = Number(params.get('order_id') || 0);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('stripe_return');
+    url.searchParams.delete('order_id');
+    window.history.replaceState({}, '', url.pathname + url.search);
+    clearCart();
+    setStripeClientSecret(null);
+    setPendingStripeOrderId(null);
+    if (orderId > 0) {
+      navigation.navigate('OrderDetail', { orderId });
+    }
+  }, [clearCart, navigation]);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -362,13 +383,23 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         })),
       }, { idempotencyKey: checkoutIdempotencyKey.current });
       if (paymentMethod === 'online') {
-        const payRes = await orderApi.initiatePayment(data.id);
+        const useEmbedded =
+          Platform.OS === 'web' && !!appConfig.stripe_publishable_key;
+        const payRes = await orderApi.initiatePayment(data.id, {
+          embedded: useEmbedded,
+        });
+        offerSaveAddress(address);
+        if (useEmbedded && payRes.data.client_secret) {
+          setStripeClientSecret(payRes.data.client_secret);
+          setPendingStripeOrderId(data.id);
+          checkoutIdempotencyKey.current = null;
+          // Mantén el carrito visible para que el formulario quede bajo «En línea».
+          return;
+        }
         clearCart();
         checkoutIdempotencyKey.current = null;
-        offerSaveAddress(address);
         if (payRes.data.payment_url) {
           const mode = await openPaymentCheckout(payRes.data.payment_url);
-          // En web salimos de la app hacia Stripe; no navegues al detalle.
           if (mode === 'redirected') return;
         } else if (payRes.data.message) {
           appAlert(
@@ -408,7 +439,14 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
     offerSaveAddress,
     user,
     requestLogin,
+    appConfig.stripe_publishable_key,
   ]);
+
+  useEffect(() => {
+    if (paymentMethod !== 'online') {
+      setStripeClientSecret(null);
+    }
+  }, [paymentMethod]);
 
   const handleDecrease = useCallback(
     (productId: number, quantity: number, notes?: string, selectedOptions?: SelectedProductOption[]) =>
@@ -437,7 +475,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
     };
   }, [cartRestaurant, deliveryCoords]);
 
-  if (items.length === 0) {
+  if (items.length === 0 && !stripeClientSecret) {
     return (
       <ScreenContainer>
         <View style={[styles.emptyWrap, { paddingBottom: tabBottomPadding() }]}>
@@ -449,6 +487,24 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
             onAction={() => navigation.navigate('Inicio')}
           />
         </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (stripeClientSecret && items.length === 0) {
+    return (
+      <ScreenContainer>
+        <ScrollView
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: tabBottomPadding(spacing.xl) },
+          ]}
+        >
+          <StripeEmbeddedCheckout
+            clientSecret={stripeClientSecret}
+            publishableKey={appConfig.stripe_publishable_key || ''}
+          />
+        </ScrollView>
       </ScreenContainer>
     );
   }
@@ -510,6 +566,8 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
             scheduleKey={scheduleKey}
             transferInfo={transferInfo}
             onlinePaymentsEnabled={appConfig.online_payments_enabled}
+            stripeClientSecret={stripeClientSecret}
+            stripePublishableKey={appConfig.stripe_publishable_key}
             onAddressChange={handleAddressChange}
             onNotesChange={setNotes}
             onPaymentMethodChange={setPaymentMethod}

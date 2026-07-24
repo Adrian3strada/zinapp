@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { cardShadow } from '../theme/shadows';
@@ -8,15 +8,23 @@ import type { Order } from '../types';
 import { formatCurrency } from '../utils/format';
 import { openPaymentCheckout } from '../utils/webPlatform';
 import Button from './Button';
+import StripeEmbeddedCheckout from './StripeEmbeddedCheckout';
 
 interface Props {
   order: Order;
   onRefresh: () => void;
-  onPay: () => Promise<string | null>;
+  onPay: () => Promise<{ paymentUrl?: string | null; clientSecret?: string | null } | null>;
+  publishableKey?: string;
 }
 
-export default function OnlinePaymentBanner({ order, onRefresh, onPay }: Props) {
+export default function OnlinePaymentBanner({
+  order,
+  onRefresh,
+  onPay,
+  publishableKey = '',
+}: Props) {
   const [paying, setPaying] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   if (order.payment_method !== 'online') return null;
 
@@ -28,9 +36,14 @@ export default function OnlinePaymentBanner({ order, onRefresh, onPay }: Props) 
   const handlePay = async () => {
     setPaying(true);
     try {
-      const url = await onPay();
-      if (url) {
-        const mode = await openPaymentCheckout(url);
+      const result = await onPay();
+      if (!result) return;
+      if (Platform.OS === 'web' && result.clientSecret && publishableKey) {
+        setClientSecret(result.clientSecret);
+        return;
+      }
+      if (result.paymentUrl) {
+        const mode = await openPaymentCheckout(result.paymentUrl);
         if (mode === 'opened') onRefresh();
       }
     } finally {
@@ -51,10 +64,13 @@ export default function OnlinePaymentBanner({ order, onRefresh, onPay }: Props) 
         </Text>
         <Text style={styles.sub}>
           {isPaid
-            ? 'El restaurante puede preparar tu pedido.'
-            : `Total ${formatCurrency(order.total)}. Completa el pago para que el restaurante confirme.`}
+            ? 'ZinApp ya recibió tu pago. El restaurante puede preparar tu pedido.'
+            : `Total ${formatCurrency(order.total)}. El cobro lo recibe ZinApp. Completa el pago con tarjeta.`}
         </Text>
-        {isPending && (
+        {isPending && clientSecret && publishableKey ? (
+          <StripeEmbeddedCheckout clientSecret={clientSecret} publishableKey={publishableKey} />
+        ) : null}
+        {isPending && !clientSecret && (
           <Button
             title={paying ? 'Abriendo pago…' : 'Pagar con tarjeta'}
             onPress={handlePay}
@@ -63,7 +79,9 @@ export default function OnlinePaymentBanner({ order, onRefresh, onPay }: Props) 
             style={styles.btn}
           />
         )}
-        {paying && <ActivityIndicator color={colors.primary} style={styles.spinner} />}
+        {paying && !clientSecret && (
+          <ActivityIndicator color={colors.primary} style={styles.spinner} />
+        )}
       </View>
     </View>
   );

@@ -3,7 +3,7 @@
 from django.conf import settings
 
 from accounts.google_auth import google_sign_in_enabled
-from orders.stripe_payments import stripe_enabled
+from orders.stripe_payments import stripe_enabled, stripe_publishable_key
 
 from .email_utils import email_delivery_configured, email_reset_enabled
 
@@ -11,6 +11,7 @@ from .email_utils import email_delivery_configured, email_reset_enabled
 def get_public_app_config() -> dict:
     return {
         'online_payments_enabled': stripe_enabled(),
+        'stripe_publishable_key': stripe_publishable_key() if stripe_enabled() else '',
         'support_whatsapp': settings.SUPPORT_WHATSAPP,
         # WhatsApp solo si no hay entrega real (consola DEBUG no cuenta).
         'password_reset_via_whatsapp': (

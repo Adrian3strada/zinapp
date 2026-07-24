@@ -10,6 +10,7 @@ import DeliveryPinPicker from './DeliveryPinPicker';
 import CoverageZoneHint from './CoverageZoneHint';
 import FormField from './FormField';
 import RoutePreviewMap from './RoutePreviewMap';
+import StripeEmbeddedCheckout from './StripeEmbeddedCheckout';
 import { colors } from '../theme/colors';
 import { HIT_SLOP, spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
@@ -43,6 +44,8 @@ interface Props {
   onAddressChange: (text: string) => void;
   onNotesChange: (text: string) => void;
   onlinePaymentsEnabled?: boolean;
+  stripeClientSecret?: string | null;
+  stripePublishableKey?: string;
   onPaymentMethodChange: (method: 'cash' | 'transfer' | 'online') => void;
   onCouponChange: (text: string) => void;
   onApplyCoupon: () => void;
@@ -102,6 +105,8 @@ function CartCheckoutSection({
   scheduleKey,
   transferInfo,
   onlinePaymentsEnabled = false,
+  stripeClientSecret = null,
+  stripePublishableKey = '',
   onAddressChange,
   onNotesChange,
   onPaymentMethodChange,
@@ -242,13 +247,12 @@ function CartCheckoutSection({
             <Text style={styles.transferLine}>Banco: {transferInfo.bank}</Text>
             <Text style={styles.transferLine}>Titular: {transferInfo.holder}</Text>
             <Text style={styles.transferClabe}>CLABE: {transferInfo.clabe}</Text>
-            {transferInfo.whatsapp ? (
-              <Text style={styles.transferNote}>
-                WhatsApp: {transferInfo.whatsapp} — {transferInfo.note}
-              </Text>
-            ) : (
-              <Text style={styles.transferNote}>{transferInfo.note}</Text>
-            )}
+            <Text style={styles.transferNote}>
+              La transferencia la recibe ZinApp (no el restaurante).
+              {transferInfo.whatsapp
+                ? ` WhatsApp: ${transferInfo.whatsapp} — ${transferInfo.note}`
+                : ` ${transferInfo.note}`}
+            </Text>
           </View>
         )}
         {!onlinePaymentsEnabled && (
@@ -256,11 +260,20 @@ function CartCheckoutSection({
             Pago con tarjeta estará disponible pronto. Usa efectivo o transferencia.
           </Text>
         )}
-        {paymentMethod === 'online' && onlinePaymentsEnabled && (
+        {paymentMethod === 'online' && onlinePaymentsEnabled && !stripeClientSecret && (
           <Text style={styles.onlineHint}>
-            Pago seguro con tarjeta (Stripe). El restaurante confirma al recibir el pago.
+            Pago seguro con tarjeta. El cobro lo recibe ZinApp (no el restaurante).
+            Al confirmar aparecerán aquí los datos de tu tarjeta.
           </Text>
         )}
+        {paymentMethod === 'online' && stripeClientSecret && stripePublishableKey ? (
+          <View style={styles.stripeEmbed}>
+            <StripeEmbeddedCheckout
+              clientSecret={stripeClientSecret}
+              publishableKey={stripePublishableKey}
+            />
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.card}>
@@ -334,30 +347,38 @@ function CartCheckoutSection({
         </View>
       </View>
 
-      <Pressable
-        onPress={onCheckout}
-        disabled={loading || couponValidating}
-        hitSlop={HIT_SLOP}
-        style={({ pressed }) => [
-          styles.checkoutWrap,
-          (loading || couponValidating) && styles.checkoutDisabled,
-          pressed && !loading && !couponValidating && styles.checkoutPressed,
-        ]}
-      >
-        <LinearGradient
-          colors={[colors.primary, colors.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.checkoutBtn}
+      {!stripeClientSecret ? (
+        <Pressable
+          onPress={onCheckout}
+          disabled={loading || couponValidating}
+          hitSlop={HIT_SLOP}
+          style={({ pressed }) => [
+            styles.checkoutWrap,
+            (loading || couponValidating) && styles.checkoutDisabled,
+            pressed && !loading && !couponValidating && styles.checkoutPressed,
+          ]}
         >
-          <Text style={styles.checkoutText}>
-            {loading ? 'Procesando...' : couponValidating ? 'Actualizando cupón...' : 'Confirmar pedido'}
-          </Text>
-          <View style={styles.checkoutTotalPill}>
-            <Text style={styles.checkoutTotal}>{formatCurrency(grandTotal)}</Text>
-          </View>
-        </LinearGradient>
-      </Pressable>
+          <LinearGradient
+            colors={[colors.primary, colors.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.checkoutBtn}
+          >
+            <Text style={styles.checkoutText}>
+              {loading
+                ? 'Procesando...'
+                : couponValidating
+                  ? 'Actualizando cupón...'
+                  : paymentMethod === 'online'
+                    ? 'Confirmar y pagar'
+                    : 'Confirmar pedido'}
+            </Text>
+            <View style={styles.checkoutTotalPill}>
+              <Text style={styles.checkoutTotal}>{formatCurrency(grandTotal)}</Text>
+            </View>
+          </LinearGradient>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -433,6 +454,7 @@ const styles = StyleSheet.create({
   transferClabe: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: 0.5 },
   transferNote: { fontSize: 12, color: colors.textSecondary, marginTop: 6, lineHeight: 18 },
   onlineHint: { fontSize: 12, color: colors.textMuted, marginTop: 10, lineHeight: 18 },
+  stripeEmbed: { marginTop: 14 },
   paymentRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   payOption: {
     flex: 1,

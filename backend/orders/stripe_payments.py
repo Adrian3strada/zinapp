@@ -16,6 +16,10 @@ def stripe_enabled() -> bool:
     return bool(key.strip())
 
 
+def stripe_publishable_key() -> str:
+    return (getattr(settings, 'STRIPE_PUBLISHABLE_KEY', '') or '').strip()
+
+
 def _configure_stripe() -> str | None:
     key = (getattr(settings, 'STRIPE_SECRET_KEY', '') or '').strip()
     if not key:
@@ -24,8 +28,27 @@ def _configure_stripe() -> str | None:
     return key
 
 
-def create_checkout_session(order) -> dict | None:
-    """Crea una Checkout Session y devuelve {session_id, payment_url}."""
+def _order_line_item(order, amount_cents: int) -> dict:
+    restaurant_name = getattr(getattr(order, 'restaurant', None), 'name', '') or 'ZinApp'
+    title = f'Pedido {order.display_ref} — {restaurant_name}'
+    return {
+        'quantity': 1,
+        'price_data': {
+            'currency': 'mxn',
+            'unit_amount': amount_cents,
+            'product_data': {
+                'name': title,
+            },
+        },
+    }
+
+
+def create_checkout_session(order, *, embedded: bool = False) -> dict | None:
+    """Crea Checkout Session.
+
+    - embedded=False → {session_id, payment_url} (redirige)
+    - embedded=True  → {session_id, client_secret} (formulario en la app)
+    """
     if not _configure_stripe():
         return None
 
@@ -37,45 +60,55 @@ def create_checkout_session(order) -> dict | None:
     if not cancel_url:
         cancel_url = back_url or success_url
 
-    # Stripe usa centavos (o la menor unidad); MXN = centavos.
     amount_cents = int((Decimal(str(order.total)) * 100).quantize(Decimal('1')))
     if amount_cents < 1:
         logger.warning('Stripe: total inválido pedido #%s', order.id)
         return None
 
-    restaurant_name = getattr(getattr(order, 'restaurant', None), 'name', '') or 'ZinApp'
-    title = f'Pedido {order.display_ref} — {restaurant_name}'
-
-    try:
-        session = stripe.checkout.Session.create(
-            mode='payment',
-            payment_method_types=['card'],
-            line_items=[
-                {
-                    'quantity': 1,
-                    'price_data': {
-                        'currency': 'mxn',
-                        'unit_amount': amount_cents,
-                        'product_data': {
-                            'name': title,
-                        },
-                    },
-                }
-            ],
-            client_reference_id=str(order.id),
-            metadata={
+    common = {
+        'mode': 'payment',
+        'payment_method_types': ['card'],
+        'line_items': [_order_line_item(order, amount_cents)],
+        'client_reference_id': str(order.id),
+        'metadata': {
+            'order_id': str(order.id),
+            'type': 'order',
+        },
+        'payment_intent_data': {
+            'metadata': {
                 'order_id': str(order.id),
                 'type': 'order',
             },
-            payment_intent_data={
-                'metadata': {
-                    'order_id': str(order.id),
-                    'type': 'order',
-                },
-            },
+        },
+        'locale': 'es',
+    }
+
+    try:
+        if embedded:
+            # El formulario vive dentro de ZinApp (misma pantalla).
+            base = success_url.rstrip('/')
+            sep = '&' if '?' in base else '?'
+            return_url = f'{base}{sep}stripe_return=1&order_id={order.id}'
+
+            session = stripe.checkout.Session.create(
+                **common,
+                ui_mode='embedded',
+                return_url=return_url,
+            )
+            client_secret = getattr(session, 'client_secret', None)
+            if not client_secret:
+                return None
+            return {
+                'session_id': session.id,
+                'client_secret': client_secret,
+                'payment_intent': getattr(session, 'payment_intent', None) or '',
+                'embedded': True,
+            }
+
+        session = stripe.checkout.Session.create(
+            **common,
             success_url=success_url,
             cancel_url=cancel_url,
-            locale='es',
         )
         url = getattr(session, 'url', None)
         if not url:
@@ -84,6 +117,7 @@ def create_checkout_session(order) -> dict | None:
             'session_id': session.id,
             'payment_url': url,
             'payment_intent': getattr(session, 'payment_intent', None) or '',
+            'embedded': False,
         }
     except Exception as exc:
         logger.warning('Stripe Checkout falló pedido #%s: %s', order.id, exc)

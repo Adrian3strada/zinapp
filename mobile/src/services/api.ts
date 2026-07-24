@@ -416,14 +416,19 @@ export const orderApi = {
   messages: (id: number) => api.get<import('../types').OrderMessage[]>(`/orders/${id}/messages/`),
   sendMessage: (id: number, body: string) =>
     api.post<import('../types').OrderMessage>(`/orders/${id}/messages/`, { body }),
-  initiatePayment: (id: number) =>
+  initiatePayment: (id: number, options?: { embedded?: boolean }) =>
     api.post<{
       payment_status: string;
       payment_url?: string | null;
+      client_secret?: string | null;
+      embedded?: boolean;
+      session_id?: string;
       message?: string;
       order_id: number;
       amount: string;
-    }>(`/orders/${id}/initiate-payment/`),
+    }>(`/orders/${id}/initiate-payment/`, {
+      embedded: !!options?.embedded,
+    }),
   confirmPayment: (id: number) => api.post<Order>(`/orders/${id}/confirm-payment/`),
 };
 
@@ -512,6 +517,7 @@ export const adminApi = {
 
 export interface AppConfig {
   online_payments_enabled: boolean;
+  stripe_publishable_key?: string;
   support_whatsapp: string;
   password_reset_via_whatsapp: boolean;
   password_reset_email_enabled?: boolean;

@@ -637,6 +637,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({
                 'payment_status': 'pending',
                 'payment_url': None,
+                'client_secret': None,
                 'message': (
                     'Pago en línea no configurado. '
                     'Configura STRIPE_SECRET_KEY o usa efectivo/transferencia.'
@@ -645,8 +646,13 @@ class OrderViewSet(viewsets.ModelViewSet):
                 'amount': str(order.total),
             })
 
-        session = create_checkout_session(order)
-        if session and session.get('payment_url'):
+        embedded = bool(
+            request.data.get('embedded')
+            if isinstance(request.data, dict)
+            else False
+        )
+        session = create_checkout_session(order, embedded=embedded)
+        if session and (session.get('payment_url') or session.get('client_secret')):
             order.stripe_checkout_session_id = str(session.get('session_id') or '')
             pi = session.get('payment_intent') or ''
             if pi:
@@ -660,7 +666,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             ])
             return Response({
                 'payment_status': 'pending',
-                'payment_url': session['payment_url'],
+                'payment_url': session.get('payment_url'),
+                'client_secret': session.get('client_secret'),
+                'embedded': bool(session.get('embedded')),
                 'session_id': session.get('session_id'),
                 'order_id': order.id,
                 'amount': str(order.total),
@@ -669,6 +677,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({
             'payment_status': 'pending',
             'payment_url': None,
+            'client_secret': None,
             'message': 'No se pudo iniciar el pago con tarjeta. Intenta de nuevo o usa efectivo/transferencia.',
             'order_id': order.id,
             'amount': str(order.total),

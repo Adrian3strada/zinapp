@@ -270,6 +270,7 @@ MERCADOPAGO_WEBHOOK_SECRET = config('MERCADOPAGO_WEBHOOK_SECRET', default='')
 
 # Stripe Checkout (pago en línea activo). MP queda desconectado del flujo.
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='')
+STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY', default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 STRIPE_SUCCESS_URL = config('STRIPE_SUCCESS_URL', default='')
 STRIPE_CANCEL_URL = config('STRIPE_CANCEL_URL', default='')

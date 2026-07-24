@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Pressable, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appAlert, appConfirm } from '../../utils/appAlert';
@@ -242,12 +242,21 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     }
   }, [order, actionBusy, reloadOrder]);
 
-  const handlePayOnline = useCallback(async (): Promise<string | null> => {
+  const handlePayOnline = useCallback(async (): Promise<{
+    paymentUrl?: string | null;
+    clientSecret?: string | null;
+  } | null> => {
     if (!order || actionBusy) return null;
     setActionBusy(true);
     try {
-      const { data } = await orderApi.initiatePayment(order.id);
-      if (data.payment_url) return data.payment_url;
+      const useEmbedded = Platform.OS === 'web';
+      const { data } = await orderApi.initiatePayment(order.id, { embedded: useEmbedded });
+      if (data.client_secret || data.payment_url) {
+        return {
+          paymentUrl: data.payment_url,
+          clientSecret: data.client_secret,
+        };
+      }
       if (data.message) appAlert('Pago en línea', data.message);
       return null;
     } catch (err) {
@@ -317,6 +326,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               order={order}
               onRefresh={reloadOrder}
               onPay={handlePayOnline}
+              publishableKey={appConfig.stripe_publishable_key}
             />
           )}
 
