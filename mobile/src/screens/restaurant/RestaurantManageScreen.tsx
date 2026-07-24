@@ -14,7 +14,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { appAlert, appConfirm } from '../../utils/appAlert';
+import { appAlert } from '../../utils/appAlert';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 
@@ -193,6 +193,8 @@ export default function RestaurantManageScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<ProductDraft | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -242,6 +244,8 @@ export default function RestaurantManageScreen() {
   };
 
   const openNewProduct = () => {
+    setConfirmDelete(false);
+    setConfirmDiscard(false);
     setEditor({
       name: '',
       description: '',
@@ -254,6 +258,8 @@ export default function RestaurantManageScreen() {
   };
 
   const openEditProduct = (product: Product) => {
+    setConfirmDelete(false);
+    setConfirmDiscard(false);
     setEditor({
       id: product.id,
       name: product.name,
@@ -279,14 +285,13 @@ export default function RestaurantManageScreen() {
         editor.imageUri);
 
     if (isNewDraft) {
-      appConfirm(
-        'Cerrar formulario',
-        '¿Descartar el producto nuevo?',
-        () => setEditor(null),
-        'Descartar',
-      );
+      // Confirmación dentro del Modal (appConfirm queda detrás en web).
+      setConfirmDiscard(true);
+      setConfirmDelete(false);
       return;
     }
+    setConfirmDelete(false);
+    setConfirmDiscard(false);
     setEditor(null);
   }, [editor]);
 
@@ -355,6 +360,8 @@ export default function RestaurantManageScreen() {
         const others = prev.filter((p) => p.id !== withOptions.id);
         return sortProductsByCategory([...others, withOptions]);
       });
+      setConfirmDelete(false);
+      setConfirmDiscard(false);
       setEditor(null);
       await refreshRestaurant();
       appAlert('Listo', wasEdit ? 'Producto actualizado' : 'Producto agregado');
@@ -366,26 +373,28 @@ export default function RestaurantManageScreen() {
   };
 
   const deleteProduct = () => {
-    if (!editor?.id) return;
-    appConfirm(
-      'Eliminar producto',
-      `¿Quitar "${editor.name}" del menú?`,
-      async () => {
-        setDeleting(true);
-        try {
-          await productApi.delete(editor.id!);
-          setProducts((prev) => prev.filter((p) => p.id !== editor.id));
-          setEditor(null);
-          await refreshRestaurant();
-          appAlert('Listo', 'Producto eliminado');
-        } catch (err) {
-          appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
-        } finally {
-          setDeleting(false);
-        }
-      },
-      'Eliminar',
-    );
+    if (!editor?.id || deleting) return;
+    // Confirmación dentro del Modal (appConfirm queda detrás en web).
+    setConfirmDelete(true);
+    setConfirmDiscard(false);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!editor?.id || deleting) return;
+    setDeleting(true);
+    try {
+      await productApi.delete(editor.id);
+      setProducts((prev) => prev.filter((p) => p.id !== editor.id));
+      setConfirmDelete(false);
+      setConfirmDiscard(false);
+      setEditor(null);
+      await refreshRestaurant();
+      appAlert('Listo', 'Producto eliminado');
+    } catch (err) {
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo eliminar el producto'));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -796,28 +805,80 @@ export default function RestaurantManageScreen() {
               </ScrollView>
 
               <View style={styles.modalFooter}>
-                <View style={styles.modalActions}>
-                  <Button
-                    title="Cancelar"
-                    variant="secondary"
-                    onPress={closeEditor}
-                    style={styles.modalActionBtn}
-                  />
-                  <Button
-                    title="Guardar"
-                    onPress={saveProduct}
-                    loading={saving}
-                    style={styles.modalActionBtn}
-                  />
-                </View>
-                {editor?.id && (
-                  <Button
-                    title="Eliminar producto"
-                    variant="danger"
-                    onPress={deleteProduct}
-                    loading={deleting}
-                    style={styles.deleteBtn}
-                  />
+                {confirmDiscard ? (
+                  <View style={styles.confirmBox}>
+                    <Text style={styles.confirmTitle}>¿Descartar el producto nuevo?</Text>
+                    <Text style={styles.confirmSub}>Se perderán los datos del formulario.</Text>
+                    <View style={styles.modalActions}>
+                      <Button
+                        title="Seguir editando"
+                        variant="secondary"
+                        onPress={() => setConfirmDiscard(false)}
+                        style={styles.modalActionBtn}
+                      />
+                      <Button
+                        title="Descartar"
+                        variant="danger"
+                        onPress={() => {
+                          setConfirmDiscard(false);
+                          setConfirmDelete(false);
+                          setEditor(null);
+                        }}
+                        style={styles.modalActionBtn}
+                      />
+                    </View>
+                  </View>
+                ) : confirmDelete ? (
+                  <View style={styles.confirmBox}>
+                    <Text style={styles.confirmTitle}>¿Eliminar producto?</Text>
+                    <Text style={styles.confirmSub}>
+                      {`Se quitará "${editor?.name || 'este producto'}" del menú.`}
+                    </Text>
+                    <View style={styles.modalActions}>
+                      <Button
+                        title="Cancelar"
+                        variant="secondary"
+                        onPress={() => setConfirmDelete(false)}
+                        disabled={deleting}
+                        style={styles.modalActionBtn}
+                      />
+                      <Button
+                        title="Sí, eliminar"
+                        variant="danger"
+                        onPress={() => {
+                          void confirmDeleteProduct();
+                        }}
+                        loading={deleting}
+                        style={styles.modalActionBtn}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.modalActions}>
+                      <Button
+                        title="Cancelar"
+                        variant="secondary"
+                        onPress={closeEditor}
+                        style={styles.modalActionBtn}
+                      />
+                      <Button
+                        title="Guardar"
+                        onPress={saveProduct}
+                        loading={saving}
+                        style={styles.modalActionBtn}
+                      />
+                    </View>
+                    {editor?.id ? (
+                      <Button
+                        title="Eliminar producto"
+                        variant="danger"
+                        onPress={deleteProduct}
+                        loading={deleting}
+                        style={styles.deleteBtn}
+                      />
+                    ) : null}
+                  </>
                 )}
               </View>
             </View>
@@ -1054,4 +1115,25 @@ const styles = StyleSheet.create({
   },
   modalActionBtn: { flex: 1, minWidth: 0, height: 50 },
   deleteBtn: { alignSelf: 'stretch', height: 50 },
+  confirmBox: {
+    backgroundColor: colors.background,
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  confirmTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.text,
+    textAlign: 'center',
+  },
+  confirmSub: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });

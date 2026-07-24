@@ -8,7 +8,6 @@ import {
   PanResponder,
   Platform,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
@@ -41,6 +40,7 @@ export default function SlideAction({
   const [trackWidth, setTrackWidth] = useState(0);
   const offsetAnim = useRef(new Animated.Value(0)).current;
   const offsetRef = useRef(0);
+  const dragStartRef = useRef(0);
   const completingRef = useRef(false);
   const maxOffset = Math.max(0, trackWidth - THUMB - 8);
 
@@ -97,25 +97,36 @@ export default function SlideAction({
     }
   }, [disabled, loading, maxOffset, onComplete, reset, animateTo]);
 
+  const canDrag = !disabled && !loading && maxOffset > 0;
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => !disabled && !loading && maxOffset > 0,
+        // Captura el gesto para que FlatList / ScrollView no se lo lleven (header del local).
+        // Captura desde el toque: en ListHeader de FlatList, si no, el scroll se queda con el gesto.
+        onStartShouldSetPanResponder: () => canDrag,
+        onStartShouldSetPanResponderCapture: () => canDrag,
         onMoveShouldSetPanResponder: (_, g) =>
-          !disabled && !loading && Math.abs(g.dx) > 4 && Math.abs(g.dx) > Math.abs(g.dy),
+          canDrag && Math.abs(g.dx) > 2 && Math.abs(g.dx) >= Math.abs(g.dy),
+        onMoveShouldSetPanResponderCapture: (_, g) =>
+          canDrag && Math.abs(g.dx) > 2 && Math.abs(g.dx) >= Math.abs(g.dy),
+        onPanResponderTerminationRequest: () => false,
+        onShouldBlockNativeResponder: () => true,
         onPanResponderGrant: () => {
           completingRef.current = false;
           offsetAnim.stopAnimation((v) => {
-            offsetRef.current = typeof v === 'number' ? v : offsetRef.current;
+            const current = typeof v === 'number' ? v : offsetRef.current;
+            offsetRef.current = current;
+            dragStartRef.current = current;
           });
         },
         onPanResponderMove: (_, g) => {
-          if (disabled || loading || completingRef.current) return;
-          const next = Math.min(maxOffset, Math.max(0, g.dx));
+          if (!canDrag || completingRef.current) return;
+          const next = Math.min(maxOffset, Math.max(0, dragStartRef.current + g.dx));
           setOffsetImmediate(next);
         },
         onPanResponderRelease: () => {
-          if (disabled || loading || completingRef.current) return;
+          if (!canDrag || completingRef.current) return;
           if (offsetRef.current >= maxOffset * COMPLETE_RATIO) {
             void finish();
           } else {
@@ -124,7 +135,7 @@ export default function SlideAction({
         },
         onPanResponderTerminate: () => reset(),
       }),
-    [disabled, loading, maxOffset, finish, reset, setOffsetImmediate, offsetAnim],
+    [canDrag, maxOffset, finish, reset, setOffsetImmediate, offsetAnim],
   );
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -149,11 +160,15 @@ export default function SlideAction({
         styles.track,
         { backgroundColor: disabled ? colors.border : `${color}22` },
         disabled && styles.trackDisabled,
+        Platform.OS === 'web'
+          ? ({ touchAction: 'none', userSelect: 'none' } as object)
+          : null,
       ]}
       onLayout={onLayout}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading }}
+      {...panResponder.panHandlers}
     >
       <Animated.View style={[styles.fill, { width: fillWidth, backgroundColor: color }]} />
       <Animated.Text
@@ -175,7 +190,7 @@ export default function SlideAction({
             backgroundColor: disabled ? colors.textMuted : color,
           },
         ]}
-        {...panResponder.panHandlers}
+        pointerEvents="none"
       >
         {loading ? (
           <ActivityIndicator color="#FFF" />

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { appAlert, appConfirm } from '../../utils/appAlert';
-import { formatOrderLabel } from '../../utils/orderDisplay';
+import { appAlert } from '../../utils/appAlert';
 
 import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
@@ -164,22 +163,18 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   const handleReject = (order: Order) => {
     if (busyOrderId != null) return;
-    appConfirm(
-      'Rechazar pedido',
-      `¿Rechazar ${formatOrderLabel(order)}?`,
-      async () => {
-        setBusyOrderId(order.id);
-        try {
-          await orderApi.reject(order.id);
-          await load();
-        } catch (err) {
-          appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
-        } finally {
-          setBusyOrderId(null);
-        }
-      },
-      'Rechazar',
-    );
+    // Confirmación va dentro de NewOrderAlert (appConfirm queda detrás del Modal en web).
+    void (async () => {
+      setBusyOrderId(order.id);
+      try {
+        await orderApi.reject(order.id);
+        await load();
+      } catch (err) {
+        appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
+      } finally {
+        setBusyOrderId(null);
+      }
+    })();
   };
 
   const handleAdvance = async (order: Order) => {
@@ -244,9 +239,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
               readyCount={counts.ready}
               deliveryCount={counts.delivery}
               toggling={togglingOrders}
-              onToggleOpen={(open) => {
-                void toggleAcceptingOrders(open);
-              }}
+              onToggleOpen={(open) => toggleAcceptingOrders(open)}
             />
 
             {!isOpen && restaurant?.is_active ? (

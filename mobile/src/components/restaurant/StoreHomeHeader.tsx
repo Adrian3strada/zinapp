@@ -28,7 +28,7 @@ interface Props {
   readyCount: number;
   deliveryCount: number;
   toggling: boolean;
-  onToggleOpen: (open: boolean) => void;
+  onToggleOpen: (open: boolean) => void | Promise<void>;
 }
 
 /** Home del negocio: abrir/cerrar + resumen del día + atajos. */

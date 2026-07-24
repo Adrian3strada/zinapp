@@ -49,10 +49,12 @@ export default function NewOrderAlert({
   const insets = useSafeAreaInsets();
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECS);
   const [prepMinutes, setPrepMinutes] = useState<number>(15);
+  const [confirmReject, setConfirmReject] = useState(false);
 
   useEffect(() => {
     setSecondsLeft(COUNTDOWN_SECS);
     setPrepMinutes(15);
+    setConfirmReject(false);
     if (Platform.OS !== 'web') {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     }
@@ -107,7 +109,7 @@ export default function NewOrderAlert({
                   key={mins}
                   style={[styles.prepChip, active && styles.prepChipActive]}
                   onPress={() => setPrepMinutes(mins)}
-                  disabled={busy}
+                  disabled={busy || confirmReject}
                 >
                   <Text style={[styles.prepChipText, active && styles.prepChipTextActive]}>
                     {mins} min
@@ -158,19 +160,46 @@ export default function NewOrderAlert({
         </ScrollView>
 
         <View style={styles.actions}>
-          <Button
-            title={`Aceptar · ${prepMinutes} min`}
-            onPress={() => onAccept(prepMinutes)}
-            loading={busy}
-            style={styles.acceptBtn}
-          />
-          <Button
-            title="Rechazar"
-            variant="danger"
-            onPress={onReject}
-            loading={busy}
-            style={styles.rejectBtn}
-          />
+          {confirmReject ? (
+            <View style={styles.confirmBox}>
+              <Text style={styles.confirmTitle}>¿Rechazar este pedido?</Text>
+              <Text style={styles.confirmSub}>
+                El cliente verá que el pedido fue cancelado por el restaurante.
+              </Text>
+              <View style={styles.confirmRow}>
+                <Button
+                  title="No, volver"
+                  variant="secondary"
+                  onPress={() => setConfirmReject(false)}
+                  disabled={busy}
+                  style={styles.confirmBtn}
+                />
+                <Button
+                  title="Sí, rechazar"
+                  variant="danger"
+                  onPress={onReject}
+                  loading={busy}
+                  style={styles.confirmBtn}
+                />
+              </View>
+            </View>
+          ) : (
+            <>
+              <Button
+                title={`Aceptar · ${prepMinutes} min`}
+                onPress={() => onAccept(prepMinutes)}
+                loading={busy}
+                style={styles.acceptBtn}
+              />
+              <Button
+                title="Rechazar"
+                variant="danger"
+                onPress={() => setConfirmReject(true)}
+                disabled={busy}
+                style={styles.rejectBtn}
+              />
+            </>
+          )}
         </View>
       </View>
     </Modal>
@@ -294,4 +323,22 @@ const styles = StyleSheet.create({
   actions: { gap: 10, paddingTop: 8 },
   acceptBtn: { minHeight: 54 },
   rejectBtn: { minHeight: 48 },
+  confirmBox: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  confirmTitle: { fontSize: 16, fontWeight: '900', color: colors.text, textAlign: 'center' },
+  confirmSub: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  confirmRow: { flexDirection: 'row', gap: 10 },
+  confirmBtn: { flex: 1, minHeight: 48 },
 });
