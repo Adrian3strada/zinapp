@@ -3,6 +3,8 @@ import { restaurantApi } from '../services/api';
 import type { MapCoordinate } from './maps';
 import { isValidCoordinate, sanitizeCoordinates } from './maps';
 import { roundCoordinate } from './coords';
+import { decodePolyline } from './polyline';
+import { Platform } from 'react-native';
 
 export interface StreetRouteStats {
   distanceMeters: number | null;
@@ -140,6 +142,32 @@ const OSRM_CLIENT_URLS = [
   'https://routing.openstreetmap.de/routed-car/route/v1/driving/{coords}?overview=full&geometries=geojson',
 ] as const;
 
+const VALHALLA_URL = 'https://valhalla1.openstreetmap.de/route';
+
+function isStreetGeometry(coords: MapCoordinate[]): boolean {
+  return coords.length >= 3;
+}
+
+async function fetchJson(url: string, init?: RequestInit, timeoutMs = 12000): Promise<unknown | null> {
+  try {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    const res = await fetch(url, {
+      ...init,
+      signal: controller?.signal,
+      headers: {
+        Accept: 'application/json',
+        ...(init?.headers ?? {}),
+      },
+    });
+    if (timer) clearTimeout(timer);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 /** Ruta OSRM directa (útil cuando el backend en datacenter queda bloqueado). */
 async function fetchOsrmClient(
   from: MapCoordinate,
@@ -148,39 +176,115 @@ async function fetchOsrmClient(
   const coords = `${from.longitude.toFixed(6)},${from.latitude.toFixed(6)};${to.longitude.toFixed(6)},${to.latitude.toFixed(6)}`;
   for (const template of OSRM_CLIENT_URLS) {
     const url = template.replace('{coords}', coords);
-    try {
-      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timer = controller ? setTimeout(() => controller.abort(), 10000) : null;
-      const res = await fetch(url, {
-        method: 'GET',
-        signal: controller?.signal,
-      });
-      if (timer) clearTimeout(timer);
-      if (!res.ok) continue;
-      const data = (await res.json()) as {
-        code?: string;
-        routes?: Array<{
-          distance?: number;
-          duration?: number;
-          geometry?: { coordinates?: [number, number][] };
-        }>;
-      };
-      const route = data.routes?.[0];
-      const raw = route?.geometry?.coordinates;
-      if (!raw || raw.length < 2) continue;
-      const coordinates = sanitizeCoordinates(
-        raw.map(([longitude, latitude]) => ({ latitude, longitude })),
-      );
-      if (coordinates.length < 2) continue;
+    const data = (await fetchJson(url)) as {
+      routes?: Array<{
+        distance?: number;
+        duration?: number;
+        geometry?: { coordinates?: [number, number][] };
+      }>;
+    } | null;
+    if (!data) continue;
+    const route = data.routes?.[0];
+    const raw = route?.geometry?.coordinates;
+    if (!raw || raw.length < 3) continue;
+    const coordinates = sanitizeCoordinates(
+      raw.map(([longitude, latitude]) => ({ latitude, longitude })),
+    );
+    if (!isStreetGeometry(coordinates)) continue;
+    return {
+      coordinates,
+      distanceMeters: typeof route?.distance === 'number' ? route.distance : null,
+      durationSeconds: typeof route?.duration === 'number' ? route.duration : null,
+      isEstimated: false,
+    };
+  }
+  return null;
+}
+
+/** Valhalla (OSM.de) — buen respaldo con CORS abierto. */
+async function fetchValhallaClient(
+  from: MapCoordinate,
+  to: MapCoordinate,
+): Promise<CachedRoute | null> {
+  const data = (await fetchJson(
+    VALHALLA_URL,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        locations: [
+          { lat: from.latitude, lon: from.longitude },
+          { lat: to.latitude, lon: to.longitude },
+        ],
+        costing: 'auto',
+        directions_options: { units: 'kilometers' },
+      }),
+    },
+  )) as {
+    trip?: {
+      summary?: { length?: number; time?: number };
+      legs?: Array<{ shape?: string }>;
+    };
+  } | null;
+  if (!data?.trip?.legs?.length) return null;
+
+  const coordinates: MapCoordinate[] = [];
+  for (const leg of data.trip.legs) {
+    if (!leg.shape) continue;
+    coordinates.push(...decodePolyline(leg.shape, 6));
+  }
+  const cleaned = sanitizeCoordinates(coordinates);
+  if (!isStreetGeometry(cleaned)) return null;
+
+  const lengthKm = data.trip.summary?.length;
+  const timeSec = data.trip.summary?.time;
+  return {
+    coordinates: cleaned,
+    distanceMeters: typeof lengthKm === 'number' ? lengthKm * 1000 : null,
+    durationSeconds: typeof timeSec === 'number' ? timeSec : null,
+    isEstimated: false,
+  };
+}
+
+async function fetchClientStreetRoute(
+  from: MapCoordinate,
+  to: MapCoordinate,
+): Promise<CachedRoute | null> {
+  // En web prioriza proveedores públicos (Railway a veces no llega a OSRM).
+  const order =
+    Platform.OS === 'web'
+      ? [fetchValhallaClient, fetchOsrmClient]
+      : [fetchOsrmClient, fetchValhallaClient];
+
+  for (const fn of order) {
+    const route = await fn(from, to);
+    if (route && isStreetGeometry(route.coordinates)) return route;
+  }
+  return null;
+}
+
+async function fetchBackendStreetRoute(
+  from: MapCoordinate,
+  to: MapCoordinate,
+): Promise<CachedRoute | null> {
+  try {
+    const { data } = await restaurantApi.route(from, to);
+    const coords = sanitizeCoordinates(
+      (data.coordinates ?? []).map((c) => ({
+        latitude: c.latitude,
+        longitude: c.longitude,
+      })),
+    );
+    if (isStreetGeometry(coords) && !data.is_fallback) {
       return {
-        coordinates,
-        distanceMeters: typeof route?.distance === 'number' ? route.distance : null,
-        durationSeconds: typeof route?.duration === 'number' ? route.duration : null,
+        coordinates: coords,
+        distanceMeters: data.distance_meters ?? null,
+        durationSeconds: data.duration_seconds ?? null,
         isEstimated: false,
       };
-    } catch {
-      // probar siguiente mirror
     }
+  } catch {
+    // ignore
   }
   return null;
 }
@@ -217,35 +321,21 @@ export async function fetchStreetRoute(
 
   const key = routeKey(from, to, dynamic);
   const cached = routeCache.get(key);
-  if (cached && !cached.isEstimated) return cached;
-
-  try {
-    const { data } = await restaurantApi.route(from, to);
-    const coords = sanitizeCoordinates(
-      (data.coordinates ?? []).map((c) => ({
-        latitude: c.latitude,
-        longitude: c.longitude,
-      })),
-    );
-    // Solo aceptar geometría de calles; el fallback recto del API se mejora con OSRM cliente.
-    if (coords.length >= 3 && !data.is_fallback) {
-      const result: CachedRoute = {
-        coordinates: coords,
-        distanceMeters: data.distance_meters ?? null,
-        durationSeconds: data.duration_seconds ?? null,
-        isEstimated: false,
-      };
-      routeCache.set(key, result);
-      return result;
-    }
-  } catch {
-    // seguir con OSRM en el cliente
+  if (cached && !cached.isEstimated && isStreetGeometry(cached.coordinates)) {
+    return cached;
   }
 
-  const direct = await fetchOsrmClient(from, to);
-  if (direct) {
-    routeCache.set(key, direct);
-    return direct;
+  // Backend + cliente en paralelo; nos quedamos con la primera geometría de calles.
+  const settled = await Promise.allSettled([
+    fetchBackendStreetRoute(from, to),
+    fetchClientStreetRoute(from, to),
+  ]);
+
+  for (const result of settled) {
+    if (result.status !== 'fulfilled' || !result.value) continue;
+    if (!isStreetGeometry(result.value.coordinates)) continue;
+    routeCache.set(key, result.value);
+    return result.value;
   }
 
   // Último recurso: línea recta (no cachear).

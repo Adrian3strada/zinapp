@@ -17,10 +17,26 @@ def health(_request):
     finally:
         connection.close()
 
+    route_info = None
+    try:
+        from restaurants.geo import driving_route
+
+        # Puntos fijos en Zinapécuaro para verificar proveedores de rutas.
+        sample = driving_route(19.860, -100.823, 19.865, -100.825)
+        route_info = {
+            'ok': not sample.get('is_fallback') and len(sample.get('coordinates') or []) >= 3,
+            'is_fallback': bool(sample.get('is_fallback')),
+            'points': len(sample.get('coordinates') or []),
+            'distance_meters': sample.get('distance_meters'),
+        }
+    except Exception as exc:
+        route_info = {'ok': False, 'error': str(exc)[:120]}
+
     status = 200 if db_ok else 503
     return JsonResponse(
         {
             'ok': db_ok,
+            'routing': route_info,
         },
         status=status,
     )

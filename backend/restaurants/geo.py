@@ -307,11 +307,12 @@ _ROUTE_CACHE: dict[str, tuple[float, dict]] = {}
 _ROUTE_CACHE_TTL = 300
 _ROUTE_CACHE_MAX = 200
 
-# Demo OSRM a veces limita IPs de datacenter; probar varios mirrors.
+# Demo OSRM a veces limita IPs de datacenter; probar varios mirrors + Valhalla.
 _OSRM_ROUTE_URLS = (
     'https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=geojson',
     'https://routing.openstreetmap.de/routed-car/route/v1/driving/{coords}?overview=full&geometries=geojson',
 )
+_VALHALLA_URL = 'https://valhalla1.openstreetmap.de/route'
 
 
 def _route_cache_key(lat1: float, lon1: float, lat2: float, lon2: float) -> str:
@@ -336,6 +337,43 @@ def _route_cache_set(key: str, payload: dict) -> None:
     _ROUTE_CACHE[key] = (time.monotonic() + _ROUTE_CACHE_TTL, payload)
 
 
+def _decode_polyline(encoded: str, precision: int = 6) -> list[dict]:
+    coordinates: list[dict] = []
+    index = 0
+    lat = 0
+    lng = 0
+    factor = 10**precision
+    length = len(encoded)
+
+    while index < length:
+        result = 0
+        shift = 0
+        while True:
+            b = ord(encoded[index]) - 63
+            index += 1
+            result |= (b & 0x1F) << shift
+            shift += 5
+            if b < 0x20:
+                break
+        dlat = ~(result >> 1) if result & 1 else (result >> 1)
+        lat += dlat
+
+        result = 0
+        shift = 0
+        while True:
+            b = ord(encoded[index]) - 63
+            index += 1
+            result |= (b & 0x1F) << shift
+            shift += 5
+            if b < 0x20:
+                break
+        dlng = ~(result >> 1) if result & 1 else (result >> 1)
+        lng += dlng
+        coordinates.append({'latitude': lat / factor, 'longitude': lng / factor})
+
+    return coordinates
+
+
 def _fetch_osrm_payload(lat1: float, lon1: float, lat2: float, lon2: float) -> dict | None:
     coords = f'{lon1:.6f},{lat1:.6f};{lon2:.6f},{lat2:.6f}'
     headers = {'User-Agent': 'ZinApp/1.0 (delivery routing; https://zinapp.com.mx)'}
@@ -350,12 +388,58 @@ def _fetch_osrm_payload(lat1: float, lon1: float, lat2: float, lon2: float) -> d
         if not isinstance(payload, dict):
             continue
         if (payload.get('code') or '').lower() not in ('ok', ''):
-            # Algunos mirrors omiten code; si hay routes seguimos.
             if not payload.get('routes'):
                 continue
         if payload.get('routes'):
             return payload
     return None
+
+
+def _fetch_valhalla_route(lat1: float, lon1: float, lat2: float, lon2: float) -> dict | None:
+    body = json.dumps(
+        {
+            'locations': [
+                {'lat': lat1, 'lon': lon1},
+                {'lat': lat2, 'lon': lon2},
+            ],
+            'costing': 'auto',
+            'directions_options': {'units': 'kilometers'},
+        }
+    ).encode()
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'ZinApp/1.0 (delivery routing; https://zinapp.com.mx)',
+    }
+    try:
+        req = urllib.request.Request(_VALHALLA_URL, data=body, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            payload = json.loads(resp.read().decode())
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return None
+
+    trip = payload.get('trip') or {}
+    legs = trip.get('legs') or []
+    if not legs:
+        return None
+
+    coordinates: list[dict] = []
+    for leg in legs:
+        shape = leg.get('shape')
+        if not shape:
+            continue
+        coordinates.extend(_decode_polyline(shape, 6))
+    if len(coordinates) < 3:
+        return None
+
+    summary = trip.get('summary') or {}
+    length_km = summary.get('length')
+    time_sec = summary.get('time')
+    return {
+        'coordinates': coordinates,
+        'distance_meters': round(float(length_km) * 1000, 1) if length_km is not None else None,
+        'duration_seconds': round(float(time_sec), 1) if time_sec is not None else None,
+        'is_fallback': False,
+    }
 
 
 def driving_route(
@@ -364,7 +448,7 @@ def driving_route(
     lat2: float,
     lon2: float,
 ) -> dict:
-    """Ruta por calles entre dos puntos (OSRM / OpenStreetMap)."""
+    """Ruta por calles entre dos puntos (OSRM / Valhalla / OpenStreetMap)."""
     cache_key = _route_cache_key(lat1, lon1, lat2, lon2)
     cached = _route_cache_get(cache_key)
     if cached:
@@ -395,34 +479,36 @@ def driving_route(
         return result
 
     payload = _fetch_osrm_payload(lat1, lon1, lat2, lon2)
-    if not payload:
-        return _fallback()
+    if payload:
+        routes = payload.get('routes') or []
+        if routes:
+            route = routes[0]
+            geometry = route.get('geometry') or {}
+            raw_coords = geometry.get('coordinates') or []
+            coordinates = [
+                {'latitude': float(point[1]), 'longitude': float(point[0])}
+                for point in raw_coords
+                if isinstance(point, (list, tuple)) and len(point) >= 2
+            ]
+            if len(coordinates) >= 3:
+                distance = route.get('distance')
+                duration = route.get('duration')
+                result = {
+                    'coordinates': coordinates,
+                    'distance_meters': round(float(distance), 1) if distance is not None else round(fallback_distance, 1),
+                    'duration_seconds': round(float(duration), 1) if duration is not None else round(_estimate_driving_duration_seconds(fallback_distance), 1),
+                    'is_fallback': False,
+                }
+                _route_cache_set(cache_key, result)
+                return result
 
-    routes = payload.get('routes') or []
-    if not routes:
-        return _fallback()
+    valhalla = _fetch_valhalla_route(lat1, lon1, lat2, lon2)
+    if valhalla:
+        if valhalla.get('distance_meters') is None:
+            valhalla['distance_meters'] = round(fallback_distance, 1)
+        if valhalla.get('duration_seconds') is None:
+            valhalla['duration_seconds'] = round(_estimate_driving_duration_seconds(fallback_distance), 1)
+        _route_cache_set(cache_key, valhalla)
+        return valhalla
 
-    route = routes[0]
-    geometry = route.get('geometry') or {}
-    raw_coords = geometry.get('coordinates') or []
-    if len(raw_coords) < 2:
-        return _fallback()
-
-    coordinates = [
-        {'latitude': float(point[1]), 'longitude': float(point[0])}
-        for point in raw_coords
-        if isinstance(point, (list, tuple)) and len(point) >= 2
-    ]
-    if len(coordinates) < 2:
-        return _fallback()
-
-    distance = route.get('distance')
-    duration = route.get('duration')
-    result = {
-        'coordinates': coordinates,
-        'distance_meters': round(float(distance), 1) if distance is not None else round(fallback_distance, 1),
-        'duration_seconds': round(float(duration), 1) if duration is not None else round(_estimate_driving_duration_seconds(fallback_distance), 1),
-        'is_fallback': False,
-    }
-    _route_cache_set(cache_key, result)
-    return result
+    return _fallback()

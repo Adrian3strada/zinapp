@@ -52,12 +52,23 @@ export function useStreetRoutes(segments: StreetRouteSegment[]) {
     }
 
     setLoading(true);
+
+    const apply = (built: BuiltStreetRoutes) => {
+      if (cancelled) return;
+      setResult(built);
+      setLoading(false);
+    };
+
     buildStreetRoutes(active)
       .then((built) => {
-        if (!cancelled) {
-          setResult(built);
-          setLoading(false);
-        }
+        apply(built);
+        const needsRetry = Object.values(built.stats).some((s) => s.isEstimated);
+        if (!needsRetry) return;
+        // Reintento: a veces OSRM/Valhalla fallan al primer intento en redes móviles.
+        setTimeout(() => {
+          if (cancelled) return;
+          void buildStreetRoutes(active).then(apply);
+        }, 1200);
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
