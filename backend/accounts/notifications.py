@@ -312,16 +312,12 @@ def notify_restaurant_opened(restaurant) -> None:
 
 
 def notify_awaiting_online_payment(order) -> None:
-    """Avisa solo al cliente: el restaurante no ve el pedido hasta cobrar."""
-    ref = _order_ref(order)
-    total_label = f'${order.total:.2f}'
-    send_push_to_user(
-        order.customer,
-        f'Pedido {ref}',
-        f'Completa el pago con tarjeta ({total_label}) para enviar tu pedido al restaurante.',
-        {'orderId': order.id, 'status': order.status, 'type': 'awaiting_payment'},
-        channel_id='orders_v2',
-    )
+    """Pedido en línea sin pagar: no notificar al restaurante.
+
+    Tampoco push inmediato al cliente: ya está en el flujo de pago y un
+    aviso concurrente al abrir Stripe ha causado cierres en iOS.
+    """
+    return
 
 
 def notify_payment_confirmed(order) -> None:

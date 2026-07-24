@@ -1,4 +1,5 @@
-import { Platform, type TextStyle, type ViewStyle } from 'react-native';
+import { Linking, Platform, type TextStyle, type ViewStyle } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 import { WEB_BREAKPOINT_DESKTOP, WEB_MOBILE_FRAME_MAX } from './responsive';
 
@@ -106,15 +107,31 @@ export function injectWebInputStyles(): void {
 
 /**
  * Abre el checkout de pago.
- * En web: misma pestaña (no otra ventana).
- * En iOS/Android: navegador / app externa.
+ * En web: misma pestaña.
+ * En iOS/Android: navegador in-app (evita crash al salir con Linking.openURL).
  */
 export async function openPaymentCheckout(url: string): Promise<'redirected' | 'opened'> {
+  const trimmed = (url || '').trim();
+  if (!trimmed) {
+    throw new Error('URL de pago vacía');
+  }
+
   if (isWebPlatform() && typeof window !== 'undefined') {
-    window.location.assign(url);
+    window.location.assign(trimmed);
     return 'redirected';
   }
-  const { Linking } = await import('react-native');
-  await Linking.openURL(url);
-  return 'opened';
+
+  try {
+    await WebBrowser.openBrowserAsync(trimmed, {
+      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      enableDefaultShareMenuItem: false,
+      showTitle: true,
+      controlsColor: '#1A56DB',
+    });
+    return 'opened';
+  } catch {
+    // Fallback si el navegador in-app no está disponible
+    await Linking.openURL(trimmed);
+    return 'opened';
+  }
 }

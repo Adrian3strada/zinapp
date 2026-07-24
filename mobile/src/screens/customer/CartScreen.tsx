@@ -378,16 +378,23 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         }
         clearCart();
         checkoutIdempotencyKey.current = null;
+        // Primero el detalle del pedido; luego el navegador de pago (más estable en iOS).
+        navigation.navigate('OrderDetail', { orderId: data.id });
         if (payRes.data.payment_url) {
-          const mode = await openPaymentCheckout(payRes.data.payment_url);
-          if (mode === 'redirected') return;
+          try {
+            await openPaymentCheckout(payRes.data.payment_url);
+          } catch {
+            appAlert(
+              'Pago pendiente',
+              'Tu pedido está creado. Abre «Pagar con tarjeta» en el detalle del pedido.',
+            );
+          }
         } else if (payRes.data.message) {
           appAlert(
             'Pedido creado — pago pendiente',
             `${payRes.data.message}\n\nPuedes pagar desde el detalle del pedido.`,
           );
         }
-        navigation.navigate('OrderDetail', { orderId: data.id });
         return;
       }
       clearCart();

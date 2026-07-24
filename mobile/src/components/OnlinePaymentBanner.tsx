@@ -43,8 +43,12 @@ export default function OnlinePaymentBanner({
         return;
       }
       if (result.paymentUrl) {
-        const mode = await openPaymentCheckout(result.paymentUrl);
-        if (mode === 'opened') onRefresh();
+        try {
+          const mode = await openPaymentCheckout(result.paymentUrl);
+          if (mode === 'opened') onRefresh();
+        } catch {
+          // El banner sigue; el usuario puede reintentar
+        }
       }
     } finally {
       setPaying(false);
