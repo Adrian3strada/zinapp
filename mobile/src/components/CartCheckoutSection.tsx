@@ -248,10 +248,9 @@ function CartCheckoutSection({
             <Text style={styles.transferLine}>Titular: {transferInfo.holder}</Text>
             <Text style={styles.transferClabe}>CLABE: {transferInfo.clabe}</Text>
             <Text style={styles.transferNote}>
-              La transferencia la recibe ZinApp (no el restaurante).
               {transferInfo.whatsapp
-                ? ` WhatsApp: ${transferInfo.whatsapp} — ${transferInfo.note}`
-                : ` ${transferInfo.note}`}
+                ? `WhatsApp: ${transferInfo.whatsapp} — ${transferInfo.note}`
+                : transferInfo.note}
             </Text>
           </View>
         )}

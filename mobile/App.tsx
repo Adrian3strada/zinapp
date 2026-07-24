@@ -10,6 +10,7 @@ import { enableScreens } from 'react-native-screens';
 import AppErrorBoundary from './src/components/AppErrorBoundary';
 import BackendWake from './src/components/BackendWake';
 import ImageCropHost from './src/components/ImageCropHost';
+import StripeReturnHandler from './src/components/StripeReturnHandler';
 import WebShell from './src/components/WebShell';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
@@ -111,6 +112,7 @@ export default function App() {
                     ) : null}
                     <StatusBar style="dark" />
                     <RootNavigator />
+                    <StripeReturnHandler />
                     <ImageCropHost />
                   </AppErrorBoundary>
                 </NavigationContainer>

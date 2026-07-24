@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 import stripe
 from django.conf import settings
 
@@ -86,9 +88,18 @@ def create_checkout_session(order, *, embedded: bool = False) -> dict | None:
     try:
         if embedded:
             # El formulario vive dentro de ZinApp (misma pantalla).
-            base = success_url.rstrip('/')
-            sep = '&' if '?' in base else '?'
-            return_url = f'{base}{sep}stripe_return=1&order_id={order.id}'
+            parts = urlsplit(success_url or 'https://zinapp.com.mx/app/')
+            query = dict(parse_qsl(parts.query, keep_blank_values=True))
+            query['stripe_return'] = '1'
+            query['order_id'] = str(order.id)
+            path = parts.path or '/'
+            return_url = urlunsplit((
+                parts.scheme,
+                parts.netloc,
+                path,
+                urlencode(query),
+                parts.fragment,
+            ))
 
             session = stripe.checkout.Session.create(
                 **common,

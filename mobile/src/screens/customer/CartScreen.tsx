@@ -61,7 +61,6 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
   const [addressApproximate, setAddressApproximate] = useState(false);
   const [cartRestaurant, setCartRestaurant] = useState<Restaurant | null>(null);
   const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
-  const [pendingStripeOrderId, setPendingStripeOrderId] = useState<number | null>(null);
   const checkoutInFlight = useRef(false);
   const checkoutIdempotencyKey = useRef<string | null>(null);
   const pendingCouponApply = useRef<string | null>(null);
@@ -73,24 +72,6 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
       }),
     [appConfig.support_whatsapp],
   );
-
-  // Tras pagar con Embedded Checkout, Stripe redirige a /app/?stripe_return=1&order_id=
-  useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('stripe_return') !== '1') return;
-    const orderId = Number(params.get('order_id') || 0);
-    const url = new URL(window.location.href);
-    url.searchParams.delete('stripe_return');
-    url.searchParams.delete('order_id');
-    window.history.replaceState({}, '', url.pathname + url.search);
-    clearCart();
-    setStripeClientSecret(null);
-    setPendingStripeOrderId(null);
-    if (orderId > 0) {
-      navigation.navigate('OrderDetail', { orderId });
-    }
-  }, [clearCart, navigation]);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -391,7 +372,6 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         offerSaveAddress(address);
         if (useEmbedded && payRes.data.client_secret) {
           setStripeClientSecret(payRes.data.client_secret);
-          setPendingStripeOrderId(data.id);
           checkoutIdempotencyKey.current = null;
           // Mantén el carrito visible para que el formulario quede bajo «En línea».
           return;
