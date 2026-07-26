@@ -207,7 +207,8 @@ def get_financial_report(params=None):
             .annotate(delivery_earnings=Sum('delivery_fee'))
         )
     }
-    for day in sorted(set(order_daily) | set(shipment_daily), reverse=True)[:14]:
+    days = (day for day in (set(order_daily) | set(shipment_daily)) if day is not None)
+    for day in sorted(days, reverse=True)[:14]:
         order_row = order_daily.get(day, {})
         row_product_sales = _money(order_row.get('product_sales'))
         row_restaurant_amount = calculate_restaurant_amount(row_product_sales)
