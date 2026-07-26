@@ -100,7 +100,7 @@ def get_financial_report(params=None):
         Order.objects.filter(
             status=OrderStatus.DELIVERED,
             payment_status=PaymentStatus.PAID,
-        ).exclude(dispute__status=DisputeStatus.REFUNDED),
+        ).exclude(disputes__status=DisputeStatus.REFUNDED),
         start_date,
         end_date,
     )
