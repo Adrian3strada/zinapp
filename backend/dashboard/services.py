@@ -13,6 +13,7 @@ from orders.models import (
     OrderDispute,
     OrderItem,
     OrderStatus,
+    PaymentStatus,
     Shipment,
     ShipmentStatus,
 )
@@ -96,12 +97,18 @@ def _apply_delivered_date_range(qs, start_date, end_date):
 def get_financial_report(params=None):
     period, start_date, end_date = _date_range_from_params(params)
     delivered_orders = _apply_delivered_date_range(
-        Order.objects.filter(status=OrderStatus.DELIVERED),
+        Order.objects.filter(
+            status=OrderStatus.DELIVERED,
+            payment_status=PaymentStatus.PAID,
+        ).exclude(dispute__status=DisputeStatus.REFUNDED),
         start_date,
         end_date,
     )
     delivered_shipments = _apply_delivered_date_range(
-        Shipment.objects.filter(status=ShipmentStatus.DELIVERED),
+        Shipment.objects.filter(
+            status=ShipmentStatus.DELIVERED,
+            payment_status=PaymentStatus.PAID,
+        ),
         start_date,
         end_date,
     )
@@ -118,14 +125,16 @@ def get_financial_report(params=None):
         F('unit_price') * F('quantity'),
         output_field=DecimalField(max_digits=12, decimal_places=2),
     )
-    delivered_items = OrderItem.objects.filter(order__in=delivered_orders)
+    delivered_items = OrderItem.objects.filter(order__in=delivered_orders).annotate(
+        line_total=item_total,
+    )
     product_rows = []
     for row in (
         delivered_items
         .values('product_id', 'product__name', 'order__restaurant__name')
         .annotate(
             quantity=Sum('quantity'),
-            product_sales=Sum(item_total),
+            product_sales=Sum('line_total'),
             orders_count=Count('order', distinct=True),
         )
         .order_by('-product_sales')[:10]
