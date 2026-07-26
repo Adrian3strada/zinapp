@@ -56,29 +56,95 @@
 </div>
 {% endif %}
 
+<div class="card zin-panel-card mb-3">
+  <div class="card-header">
+    <h3 class="card-title"><i class="fas fa-chart-pie mr-1 text-primary"></i> Ventas y ganancias separadas</h3>
+  </div>
+  <div class="card-body">
+    <form class="form-row align-items-end" method="get">
+      <div class="form-group col-lg-2 col-md-3 col-6 mb-2">
+        <label class="text-muted small mb-1" for="period">Periodo</label>
+        <select id="period" name="period" class="form-control form-control-sm">
+          <option value="day" {% if financial_report.period == 'day' %}selected{% endif %}>Hoy</option>
+          <option value="week" {% if financial_report.period == 'week' %}selected{% endif %}>Semana</option>
+          <option value="month" {% if financial_report.period == 'month' %}selected{% endif %}>Mes</option>
+          <option value="range" {% if financial_report.period == 'range' %}selected{% endif %}>Rango</option>
+          <option value="all" {% if financial_report.period == 'all' %}selected{% endif %}>Todo</option>
+        </select>
+      </div>
+      <div class="form-group col-lg-2 col-md-3 col-6 mb-2">
+        <label class="text-muted small mb-1" for="start">Desde</label>
+        <input id="start" name="start" type="date" class="form-control form-control-sm" value="{{ financial_report.start_date|date:'Y-m-d' }}">
+      </div>
+      <div class="form-group col-lg-2 col-md-3 col-6 mb-2">
+        <label class="text-muted small mb-1" for="end">Hasta</label>
+        <input id="end" name="end" type="date" class="form-control form-control-sm" value="{{ financial_report.end_date|date:'Y-m-d' }}">
+      </div>
+      <div class="form-group col-lg-2 col-md-3 col-12 mb-2">
+        <button type="submit" class="btn btn-primary btn-sm btn-block">
+          <i class="fas fa-filter mr-1"></i> Consultar
+        </button>
+      </div>
+    </form>
+    <p class="text-muted small mb-0">
+      La ganancia del 10% y las ganancias por envíos se muestran por separado; no se combinan como “Ganancia total”.
+    </p>
+  </div>
+</div>
+
 <div class="row zin-kpi-hero">
-  <div class="col-lg-4 col-md-6 col-12">
+  <div class="col-lg-3 col-md-6 col-12">
     <div class="small-box bg-success zin-kpi-primary">
       <div class="inner">
-        <h3>${{ revenue_today|floatformat:2 }}</h3>
-        <p>Ingresos hoy</p>
-        <span class="zin-kpi-meta">{{ orders_delivered_today }} entrega{{ orders_delivered_today|pluralize:"s" }} completada{{ orders_delivered_today|pluralize:"s" }}</span>
+        <h3>${{ financial_report.total_ventas_productos|floatformat:2 }}</h3>
+        <p>Total de ventas de productos</p>
+        <span class="zin-kpi-meta">Importe completo cobrado por productos</span>
       </div>
       <div class="icon"><i class="fas fa-dollar-sign"></i></div>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 col-12">
+  <div class="col-lg-3 col-md-6 col-12">
+    <div class="small-box bg-primary zin-kpi-primary">
+      <div class="inner">
+        <h3>${{ financial_report.monto_correspondiente_restaurantes|floatformat:2 }}</h3>
+        <p>Monto correspondiente a restaurantes</p>
+        <span class="zin-kpi-meta">Base antes del 10% agregado por ZinApp</span>
+      </div>
+      <div class="icon"><i class="fas fa-utensils"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6 col-12">
+    <div class="small-box bg-warning zin-kpi-primary">
+      <div class="inner">
+        <h3>${{ financial_report.ganancia_10_por_ciento|floatformat:2 }}</h3>
+        <p>Ganancias del 10% para ZinApp</p>
+        <span class="zin-kpi-meta">Ventas de productos menos monto restaurantes</span>
+      </div>
+      <div class="icon"><i class="fas fa-percent"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6 col-12">
     <div class="small-box bg-info zin-kpi-primary">
       <div class="inner">
-        <h3>{{ orders_active }}</h3>
-        <p>Pedidos activos</p>
-        <span class="zin-kpi-meta">{{ orders_pending }} pendiente{{ orders_pending|pluralize:"s" }} de aceptar</span>
+        <h3>${{ financial_report.ganancias_envios|floatformat:2 }}</h3>
+        <p>Ganancias por envíos</p>
+        <span class="zin-kpi-meta">Costos de envío cobrados</span>
+      </div>
+      <div class="icon"><i class="fas fa-motorcycle"></i></div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6 col-12">
+    <div class="small-box bg-info zin-kpi-primary">
+      <div class="inner">
+        <h3>{{ financial_report.cantidad_pedidos_completados }}</h3>
+        <p>Cantidad de pedidos completados</p>
+        <span class="zin-kpi-meta">{{ orders_active }} activo{{ orders_active|pluralize:"s" }} · {{ orders_pending }} pendiente{{ orders_pending|pluralize:"s" }}</span>
       </div>
       <div class="icon"><i class="fas fa-bag-shopping"></i></div>
       <a href="{% url 'dashboard:orders' %}" class="small-box-footer">Ver pedidos <i class="fas fa-arrow-circle-right"></i></a>
     </div>
   </div>
-  <div class="col-lg-4 col-md-12 col-12">
+  <div class="col-lg-3 col-md-6 col-12">
     <div class="small-box {% if restaurants_pending %}bg-warning{% else %}bg-teal{% endif %} zin-kpi-primary">
       <div class="inner">
         <h3>{% if restaurants_pending %}{{ restaurants_pending }}{% else %}{{ restaurants_active }}{% endif %}</h3>
@@ -90,6 +156,148 @@
         {% if restaurants_pending %}Revisar pendientes{% else %}Ver restaurantes{% endif %}
         <i class="fas fa-arrow-circle-right"></i>
       </a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-box mr-1"></i> Por producto</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm zin-table mb-0">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Restaurante</th>
+                <th class="text-right">Ventas</th>
+                <th class="text-right">Restaurante</th>
+                <th class="text-right">10%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in financial_report.by_product %}
+              <tr>
+                <td>{{ row.product__name }} <span class="text-muted small">x{{ row.quantity }}</span></td>
+                <td>{{ row.order__restaurant__name }}</td>
+                <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.restaurant_amount|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.zinapp_product_commission|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-box" title="Sin productos completados" message="Cambia el periodo o espera pedidos entregados." %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-receipt mr-1"></i> Por pedido</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm zin-table mb-0">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Restaurante</th>
+                <th class="text-right">Productos</th>
+                <th class="text-right">Restaurante</th>
+                <th class="text-right">10%</th>
+                <th class="text-right">Envío</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in financial_report.by_order %}
+              <tr>
+                <td><a href="{% url 'dashboard:order-detail' row.id %}" class="zin-link-strong">#{{ row.id }}</a></td>
+                <td>{{ row.restaurant_name }}</td>
+                <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.restaurant_amount|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.zinapp_product_commission|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.delivery_earnings|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-receipt" title="Sin pedidos completados" message="Cambia el periodo o espera pedidos entregados." %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-store mr-1"></i> Por restaurante</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm zin-table mb-0">
+            <thead>
+              <tr>
+                <th>Restaurante</th>
+                <th>Pedidos</th>
+                <th class="text-right">Ventas</th>
+                <th class="text-right">Restaurante</th>
+                <th class="text-right">10%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in financial_report.by_restaurant %}
+              <tr>
+                <td>{{ row.restaurant__name }}</td>
+                <td>{{ row.orders_count }}</td>
+                <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.restaurant_amount|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.zinapp_product_commission|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-store" title="Sin restaurantes con ventas" message="Cambia el periodo o espera pedidos entregados." %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title"><i class="fas fa-calendar-day mr-1"></i> Por día</h3></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm zin-table mb-0">
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Pedidos</th>
+                <th class="text-right">Productos</th>
+                <th class="text-right">Restaurante</th>
+                <th class="text-right">10%</th>
+                <th class="text-right">Envíos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in financial_report.by_day %}
+              <tr>
+                <td>{{ row.day|date:"d/m/Y" }}</td>
+                <td>{{ row.orders_count }}</td>
+                <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.restaurant_amount|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.zinapp_product_commission|floatformat:2 }}</td>
+                <td class="text-right mono">${{ row.delivery_earnings|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-calendar-day" title="Sin ventas en el periodo" message="Cambia el periodo o espera pedidos entregados." %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -134,15 +342,6 @@
       <div class="info-box-content">
         <span class="info-box-text">Pedidos hoy</span>
         <span class="info-box-number">{{ orders_today }}</span>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-3 col-md-6 col-6">
-    <div class="info-box mb-3">
-      <span class="info-box-icon bg-secondary"><i class="fas fa-chart-line"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Ingresos del mes</span>
-        <span class="info-box-number">${{ revenue_month|floatformat:0 }}</span>
       </div>
     </div>
   </div>

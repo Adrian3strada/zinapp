@@ -54,6 +54,14 @@
               <td class="text-right mono">${{ order.subtotal|floatformat:2 }}</td>
             </tr>
             <tr>
+              <td colspan="3" class="text-right text-muted">Monto correspondiente al restaurante</td>
+              <td class="text-right mono">${{ financial_breakdown.monto_correspondiente_restaurantes|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-right text-muted">Ganancia del 10% para ZinApp</td>
+              <td class="text-right mono">${{ financial_breakdown.ganancia_10_por_ciento|floatformat:2 }}</td>
+            </tr>
+            <tr>
               <td colspan="3" class="text-right text-muted">Envío</td>
               <td class="text-right mono">${{ order.delivery_fee|floatformat:2 }}</td>
             </tr>

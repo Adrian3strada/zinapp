@@ -10,9 +10,10 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { AdminStats } from '../../types';
+import { formatCurrency } from '../../utils/format';
 import { getPanelLoginUrl } from '../../utils/panelUrl';
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: keyof typeof Ionicons.glyphMap }) {
+function StatCard({ label, value, icon }: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap }) {
   return (
     <View style={[styles.stat, cardShadow]}>
       <Ionicons name={icon} size={22} color={colors.primary} />
@@ -64,6 +65,31 @@ export default function AdminHomeScreen() {
 
         {stats && (
           <View style={styles.grid}>
+            <StatCard
+              label="Total de ventas de productos"
+              value={formatCurrency(stats.total_ventas_productos ?? 0)}
+              icon="cash-outline"
+            />
+            <StatCard
+              label="Monto correspondiente a restaurantes"
+              value={formatCurrency(stats.monto_correspondiente_restaurantes ?? 0)}
+              icon="restaurant-outline"
+            />
+            <StatCard
+              label="Ganancias del 10% para ZinApp"
+              value={formatCurrency(stats.ganancia_10_por_ciento ?? 0)}
+              icon="pricetag-outline"
+            />
+            <StatCard
+              label="Ganancias por envíos"
+              value={formatCurrency(stats.ganancias_envios ?? 0)}
+              icon="bicycle-outline"
+            />
+            <StatCard
+              label="Pedidos completados"
+              value={stats.orders_completed ?? 0}
+              icon="checkmark-done-outline"
+            />
             <StatCard label="Usuarios" value={stats.users} icon="people-outline" />
             <StatCard label="Restaurantes" value={stats.restaurants} icon="restaurant-outline" />
             <StatCard label="Activos" value={stats.restaurants_active ?? 0} icon="checkmark-circle-outline" />

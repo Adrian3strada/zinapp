@@ -337,8 +337,13 @@ export interface AdminStats {
   restaurants_active?: number;
   restaurants_pending?: number;
   orders: number;
+  orders_completed?: number;
   orders_pending: number;
   orders_active: number;
+  total_ventas_productos?: string;
+  monto_correspondiente_restaurantes?: string;
+  ganancia_10_por_ciento?: string;
+  ganancias_envios?: string;
   coupons: number;
   disputes_pending?: number;
 }

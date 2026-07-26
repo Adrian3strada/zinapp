@@ -19,7 +19,7 @@ from accounts.setup import driver_setup_status
 from .access import can_access_panel
 from .mixins import PanelAccessMixin
 from .page_context import page_context
-from .services import get_dashboard_stats, get_order_timeline
+from .services import calculate_restaurant_amount, get_dashboard_stats, get_order_timeline
 
 
 class PanelLoginView(LoginView):
@@ -77,7 +77,7 @@ class DashboardHomeView(PanelAccessMixin, TemplateView):
             'home',
             subtitle='Vista general de pedidos, ingresos y tareas pendientes.',
         ))
-        ctx.update(get_dashboard_stats())
+        ctx.update(get_dashboard_stats(self.request.GET))
         return ctx
 
 
@@ -138,6 +138,14 @@ class OrderDetailView(PanelAccessMixin, DetailView):
             ],
         ))
         ctx['timeline_steps'] = get_order_timeline(self.object)
+        order_product_sales = self.object.subtotal
+        order_restaurant_amount = calculate_restaurant_amount(order_product_sales)
+        ctx['financial_breakdown'] = {
+            'total_ventas_productos': order_product_sales,
+            'monto_correspondiente_restaurantes': order_restaurant_amount,
+            'ganancia_10_por_ciento': order_product_sales - order_restaurant_amount,
+            'ganancias_envios': self.object.delivery_fee,
+        }
         return ctx
 
 

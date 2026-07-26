@@ -1374,18 +1374,25 @@ class AdminStatsView(APIView):
 
     def get(self, request):
         from accounts.models import User
+        from dashboard.services import get_financial_report
         from restaurants.models import Restaurant
 
+        financial_report = get_financial_report({'period': 'all'})
         return Response({
             'users': User.objects.count(),
             'restaurants': Restaurant.objects.count(),
             'restaurants_active': Restaurant.objects.filter(is_active=True).count(),
             'restaurants_pending': Restaurant.objects.filter(is_active=False).count(),
             'orders': Order.objects.count(),
+            'orders_completed': financial_report['cantidad_pedidos_completados'],
             'orders_pending': Order.objects.filter(status=OrderStatus.PENDING).count(),
             'orders_active': Order.objects.exclude(
                 status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED]
             ).count(),
+            'total_ventas_productos': str(financial_report['total_ventas_productos']),
+            'monto_correspondiente_restaurantes': str(financial_report['monto_correspondiente_restaurantes']),
+            'ganancia_10_por_ciento': str(financial_report['ganancia_10_por_ciento']),
+            'ganancias_envios': str(financial_report['ganancias_envios']),
             'coupons': Coupon.objects.filter(is_active=True).count(),
             'disputes_pending': OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
         })
