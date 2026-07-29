@@ -242,9 +242,27 @@ body,
 }
 
 .layout-fixed .main-sidebar {
-  height: calc(100vh - 3.5rem);
-  height: calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px));
+  /* AdminLTE: top:0 + bottom:0. No restar la navbar: deja un hueco claro bajo MARKETING. */
+  top: 0 !important;
+  bottom: 0 !important;
+  height: auto !important;
+  min-height: 100vh;
+  min-height: 100dvh;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-fixed .main-sidebar .brand-link {
+  flex: 0 0 auto;
+}
+
+.layout-fixed .main-sidebar .sidebar {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 1rem;
 }
 
 .main-header .nav-link {
