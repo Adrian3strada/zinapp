@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from . import views
 
@@ -22,6 +22,7 @@ urlpatterns = [
         views.RestaurantToggleOrdersView.as_view(),
         name='restaurant-toggle-orders',
     ),
+    path('clientes/', include('dashboard.modules.customers.urls')),
     path('usuarios/', views.UserListView.as_view(), name='users'),
     path('repartidores/', views.DriverListView.as_view(), name='drivers'),
     path('repartidores/<int:pk>/', views.DriverDetailView.as_view(), name='driver-detail'),

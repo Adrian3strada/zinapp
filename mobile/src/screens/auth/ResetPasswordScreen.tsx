@@ -98,7 +98,8 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
               required
               autoCapitalize="characters"
               autoCorrect={false}
-              hint="8 caracteres del correo más reciente. Si falló, solicita un código nuevo."
+              autoComplete="one-time-code"
+              hint="8 caracteres del correo más reciente. Si pediste el código más de una vez, usa el último correo."
             />
             <FormField
               label="Nueva contraseña"

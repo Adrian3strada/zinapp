@@ -92,6 +92,9 @@ class OrderListView(PanelAccessMixin, ListView):
         status = self.request.GET.get('status', '').strip()
         if status and status in OrderStatus.values:
             qs = qs.filter(status=status)
+        customer_id = self.request.GET.get('customer', '').strip()
+        if customer_id.isdigit():
+            qs = qs.filter(customer_id=int(customer_id), customer__role=UserRole.CUSTOMER)
         search = self.request.GET.get('q', '').strip()
         if search:
             if search.isdigit():
@@ -113,6 +116,7 @@ class OrderListView(PanelAccessMixin, ListView):
         ))
         ctx['status_filter'] = self.request.GET.get('status', '')
         ctx['search_query'] = self.request.GET.get('q', '')
+        ctx['customer_filter'] = self.request.GET.get('customer', '')
         ctx['status_choices'] = OrderStatus.choices
         return ctx
 

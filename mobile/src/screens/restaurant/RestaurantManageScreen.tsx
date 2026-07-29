@@ -1030,7 +1030,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 0,
   },
-  modalBody: { flex: 1, minHeight: 0 },
+  // flexGrow:0 — el modal solo tiene maxHeight; flex:1 colapsa el ScrollView a 0.
+  modalBody: { flexGrow: 0, flexShrink: 1 },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',

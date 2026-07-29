@@ -1,0 +1,46 @@
+{% extends "dashboard/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card zin-panel-card border-danger">
+      <div class="card-header bg-danger">
+        <h3 class="card-title mb-0 text-white">Eliminar cliente</h3>
+      </div>
+      <div class="card-body">
+        <p>
+          Estás a punto de eliminar a
+          <strong>{{ customer.get_full_name|default:customer.username }}</strong>
+          (@{{ customer.username }}).
+        </p>
+
+        {% if not can_delete %}
+        <div class="alert alert-warning">
+          Este cliente tiene <strong>{{ orders_count }}</strong> pedido(s).
+          No se puede eliminar. Usa <strong>Desactivar</strong> para bloquear el acceso.
+        </div>
+        <a href="{% url 'dashboard:customer-detail' customer.pk %}" class="btn btn-default">Volver</a>
+        <form method="post" action="{% url 'dashboard:customer-deactivate' customer.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger">Desactivar en su lugar</button>
+        </form>
+        {% else %}
+        <div class="alert alert-danger">
+          Esta acción es permanente. Escribe el usuario
+          <code>{{ customer.username }}</code> para confirmar.
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="confirm_username">Confirmación</label>
+            <input type="text" name="confirm_username" id="confirm_username" class="form-control" required autocomplete="off" placeholder="{{ customer.username }}">
+          </div>
+          <button type="submit" class="btn btn-danger">Eliminar definitivamente</button>
+          <a href="{% url 'dashboard:customer-detail' customer.pk %}" class="btn btn-default">Cancelar</a>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

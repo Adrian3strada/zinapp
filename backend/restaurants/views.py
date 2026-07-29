@@ -360,7 +360,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='featured', permission_classes=[AllowAny])
     def featured(self, request):
-        """Muestra platillos de distintos restaurantes (inicio de la app)."""
+        """Platillos de restaurantes abiertos ahora (inicio). Si no hay, lista vacía."""
         try:
             limit = min(max(int(request.query_params.get('limit', 8)), 1), 12)
         except (TypeError, ValueError):
@@ -368,22 +368,21 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         qs = (
             self.get_queryset()
-            .filter(is_available=True, restaurant__is_active=True)
+            .filter(
+                is_available=True,
+                restaurant__is_active=True,
+                restaurant__accepting_orders=True,
+            )
             .select_related('restaurant')
+            .prefetch_related('restaurant__business_hours')
             .order_by('-updated_at')[:80]
         )
-        products = list(qs)
-        products.sort(
-            key=lambda p: (
-                0 if p.restaurant.is_open_now() else 1,
-                0 if p.image else 1,
-                -p.pk,
-            )
-        )
+        # Solo abiertos ahora (horario + accepting_orders). Cerrados van en la lista de restaurantes.
+        products = [p for p in qs if p.restaurant.is_open_now()]
+        products.sort(key=lambda p: (0 if p.image else 1, -p.pk))
 
         picked = []
         seen_restaurants = set()
-        # Primero un platillo por sucursal (diversidad).
         for product in products:
             if product.restaurant_id in seen_restaurants:
                 continue

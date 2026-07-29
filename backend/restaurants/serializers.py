@@ -23,9 +23,13 @@ from .setup import restaurant_setup_status
 def build_image_url(obj, request):
     if not obj.image:
         return None
+    url = obj.image.url
+    # Root-relative so build_absolute_uri never joins under /api/...
+    if url and not url.startswith(('http://', 'https://', '/')):
+        url = f'/{url}'
     if request:
-        return request.build_absolute_uri(obj.image.url)
-    return obj.image.url
+        return request.build_absolute_uri(url)
+    return url
 
 
 class ProductOptionSerializer(serializers.ModelSerializer):
@@ -193,6 +197,8 @@ class RestaurantBusinessHourSerializer(serializers.ModelSerializer):
         closing_time = attrs.get('closing_time', getattr(self.instance, 'closing_time', None))
         if not is_closed and (not opening_time or not closing_time):
             raise serializers.ValidationError('Indica hora de apertura y cierre, o marca el día como cerrado.')
+        if not is_closed and opening_time and closing_time and opening_time == closing_time:
+            raise serializers.ValidationError('La hora de apertura y cierre no pueden ser iguales.')
         return attrs
 
 
@@ -280,6 +286,20 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
     def get_setup_status(self, obj):
         return restaurant_setup_status(obj)
+
+    def validate_phone(self, value):
+        from accounts.phone import validate_required_mx_phone
+        try:
+            return validate_required_mx_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def validate_whatsapp(self, value):
+        from accounts.phone import validate_optional_mx_phone
+        try:
+            return validate_optional_mx_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
 
     def validate(self, attrs):
         request = self.context.get('request')

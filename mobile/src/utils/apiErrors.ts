@@ -6,6 +6,7 @@ const FIELD_LABELS: Record<string, string> = {
   password: 'Contraseña',
   password_confirm: 'Confirmar contraseña',
   role: 'Tipo de cuenta',
+  avatar: 'Foto de perfil',
   delivery_address: 'Dirección de entrega',
   delivery_latitude: 'Ubicación (latitud)',
   delivery_longitude: 'Ubicación (longitud)',
@@ -103,7 +104,19 @@ export function getApiErrorMessage(error: unknown, fallback = 'Ocurrió un error
       });
     } else if (typeof value === 'string') {
       messages.push(`${label}: ${friendlyMessage(field, value)}`);
+    } else if (value && typeof value === 'object' && 'message' in (value as object)) {
+      const nested = (value as { message?: unknown }).message;
+      if (typeof nested === 'string') {
+        messages.push(`${label}: ${friendlyMessage(field, nested)}`);
+      }
     }
+  }
+
+  if (messages.length === 1) {
+    // Evita "Código: Código inválido..." en alertas de un solo campo.
+    const only = messages[0];
+    const colon = only.indexOf(': ');
+    if (colon > 0) return only.slice(colon + 2);
   }
 
   return messages.length > 0 ? messages.join('\n') : fallback;

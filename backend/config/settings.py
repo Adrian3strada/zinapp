@@ -167,12 +167,15 @@ LOGIN_URL = '/panel/login/'
 LOGIN_REDIRECT_URL = '/panel/'
 LOGOUT_REDIRECT_URL = '/panel/login/'
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-MEDIA_URL = 'media/'
+# Leading slash is required: without it, request.build_absolute_uri() joins
+# relative to the current API path (e.g. /api/auth/me/media/...) and avatars 404.
+MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(config('MEDIA_ROOT', default=str(BASE_DIR / 'media')))
 # Keep Django's development media server opt-in in production. Public media
 # should normally be served by object storage or the edge proxy.
+# Railway mounts a persistent volume at MEDIA_ROOT (see railway.toml).
 SERVE_MEDIA = config('SERVE_MEDIA', default=False, cast=bool)
 API_DOCS_ENABLED = config('API_DOCS_ENABLED', default=DEBUG, cast=bool)
 

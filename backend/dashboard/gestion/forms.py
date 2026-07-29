@@ -40,6 +40,20 @@ class CouponForm(PanelFormMixin, forms.ModelForm):
     def clean_code(self):
         return self.cleaned_data['code'].strip().upper()
 
+    def clean(self):
+        cleaned = super().clean()
+        percent = cleaned.get('discount_percent') or 0
+        fixed = cleaned.get('discount_fixed') or 0
+        try:
+            fixed_val = float(fixed)
+        except (TypeError, ValueError):
+            fixed_val = 0
+        if percent <= 0 and fixed_val <= 0:
+            raise forms.ValidationError(
+                'Indica un descuento: porcentaje mayor a 0 o monto fijo mayor a 0.'
+            )
+        return cleaned
+
 
 class ProductForm(PanelFormMixin, forms.ModelForm):
     class Meta:
@@ -49,6 +63,18 @@ class ProductForm(PanelFormMixin, forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 3}),
             'category': forms.Select(),
         }
+
+    def clean_name(self):
+        name = (self.cleaned_data.get('name') or '').strip()
+        if not name:
+            raise ValidationError('El nombre del platillo es obligatorio.')
+        return name
+
+    def clean_price(self):
+        price = self.cleaned_data.get('price')
+        if price is None or price <= 0:
+            raise ValidationError('El precio debe ser mayor a 0.')
+        return price
 
 
 class ProductPromotionForm(PanelFormMixin, forms.ModelForm):
@@ -344,6 +370,14 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
         email = (self.cleaned_data.get('email') or '').strip().lower()
         return email
 
+    def clean_phone(self):
+        from accounts.phone import validate_required_mx_phone
+        raw = self.cleaned_data.get('phone')
+        try:
+            return validate_required_mx_phone(raw)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
     def clean(self):
         cleaned = super().clean()
         role = cleaned.get('role')
@@ -606,4 +640,15 @@ class LocalServiceForm(PanelFormMixin, forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 4}),
             'address': forms.Textarea(attrs={'rows': 2}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get('is_active'):
+            phone = (cleaned.get('phone') or '').strip()
+            whatsapp = (cleaned.get('whatsapp') or '').strip()
+            if not phone and not whatsapp:
+                raise forms.ValidationError(
+                    'Un servicio activo necesita teléfono o WhatsApp de contacto.'
+                )
+        return cleaned
 

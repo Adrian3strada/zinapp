@@ -23,6 +23,7 @@ import { HIT_SLOP } from '../../theme/spacing';
 import type { DeliveryProfile, SettlementSummary as SettlementData, User } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { appConfirm } from '../../utils/appAlert';
+import { resolveMediaUrl } from '../../utils/media';
 
 const DRAWER_WIDTH = Math.min(320, Dimensions.get('window').width * 0.86);
 
@@ -139,6 +140,7 @@ export default function DriverSideMenu({
   };
 
   const displayName = displayUserName(user);
+  const avatarUri = resolveMediaUrl(user?.avatar_url ?? user?.avatar);
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={requestClose}>
@@ -164,8 +166,8 @@ export default function DriverSideMenu({
           >
             <View style={styles.header}>
               <View style={styles.avatarWrap}>
-                {user?.avatar_url ? (
-                  <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
                 ) : (
                   <View style={styles.avatarFallback}>
                     <Ionicons name="bicycle" size={28} color={colors.primaryDark} />

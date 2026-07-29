@@ -22,6 +22,7 @@ class PanelUserLoginTests(TestCase):
                 'password1': 'clave12345',
                 'password2': 'clave12345',
                 'role': 'customer',
+                'phone': '4431234567',
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
@@ -38,6 +39,7 @@ class PanelUserLoginTests(TestCase):
                 'role': 'driver',
                 'first_name': 'Gael',
                 'last_name': 'Test',
+                'phone': '4431234567',
             },
         )
         self.assertTrue(form.is_valid(), form.errors)
@@ -362,3 +364,113 @@ class EmailLoginApiTests(TestCase):
             format='json',
         )
         self.assertEqual(response.status_code, 200, response.data)
+
+
+def _tiny_jpeg(name='avatar.jpg'):
+    from io import BytesIO
+
+    from PIL import Image
+
+    buf = BytesIO()
+    Image.new('RGB', (16, 16), color=(20, 40, 60)).save(buf, format='JPEG')
+    return SimpleUploadedFile(name, buf.getvalue(), content_type='image/jpeg')
+
+
+class DriverAvatarUploadTests(TestCase):
+    def setUp(self):
+        self.media_root = tempfile.mkdtemp()
+        self.override = override_settings(
+            MEDIA_ROOT=self.media_root,
+            MEDIA_URL='/media/',
+            SERVE_MEDIA=True,
+        )
+        self.override.enable()
+        self.client = APIClient()
+        self.driver = User.objects.create_user(
+            username='driver_avatar',
+            password='clave12345',
+            role=UserRole.DRIVER,
+            phone='4431234567',
+            email='driver.avatar@example.com',
+            first_name='Ada',
+            last_name='Driver',
+        )
+
+    def tearDown(self):
+        self.override.disable()
+        shutil.rmtree(self.media_root, ignore_errors=True)
+
+    def test_upload_avatar_persists_and_url_is_under_media(self):
+        self.client.force_authenticate(self.driver)
+        response = self.client.patch(
+            '/api/auth/me/',
+            {
+                'first_name': 'Ada',
+                'last_name': 'Driver',
+                'email': 'driver.avatar@example.com',
+                'phone': '4431234567',
+                'avatar': _tiny_jpeg(),
+            },
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        avatar_url = response.data.get('avatar_url')
+        self.assertTrue(avatar_url, response.data)
+        self.assertIn('/media/avatars/', avatar_url)
+        self.assertNotIn('/api/auth/', avatar_url)
+
+        self.driver.refresh_from_db()
+        self.assertTrue(self.driver.avatar)
+        self.assertTrue(self.driver.avatar.name.startswith('avatars/'))
+
+        refetch = self.client.get('/api/auth/me/')
+        self.assertEqual(refetch.status_code, 200)
+        self.assertEqual(refetch.data.get('avatar_url'), avatar_url)
+        self.assertIn('/media/avatars/', refetch.data['avatar_url'])
+
+    def test_profile_update_without_avatar_keeps_existing(self):
+        self.driver.avatar.save('keep.jpg', _tiny_jpeg('keep.jpg'), save=True)
+        previous = self.driver.avatar.name
+        self.client.force_authenticate(self.driver)
+        response = self.client.patch(
+            '/api/auth/me/',
+            {
+                'first_name': 'Ada',
+                'last_name': 'Driver',
+                'email': 'driver.avatar@example.com',
+                'phone': '4431234567',
+                'address': 'Calle 1',
+            },
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        self.driver.refresh_from_db()
+        self.assertEqual(self.driver.avatar.name, previous)
+        self.assertTrue(response.data.get('avatar_url'))
+
+    def test_invalid_avatar_format_rejected(self):
+        self.client.force_authenticate(self.driver)
+        bad = SimpleUploadedFile('avatar.gif', b'GIF89a', content_type='image/gif')
+        response = self.client.patch(
+            '/api/auth/me/',
+            {
+                'first_name': 'Ada',
+                'last_name': 'Driver',
+                'email': 'driver.avatar@example.com',
+                'phone': '4431234567',
+                'avatar': bad,
+            },
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('avatar', response.data)
+        self.driver.refresh_from_db()
+        self.assertFalse(bool(self.driver.avatar))
+
+    def test_anonymous_cannot_upload_avatar(self):
+        response = self.client.patch(
+            '/api/auth/me/',
+            {'avatar': _tiny_jpeg()},
+            format='multipart',
+        )
+        self.assertIn(response.status_code, (401, 403))

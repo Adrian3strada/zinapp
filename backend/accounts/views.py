@@ -197,7 +197,8 @@ class ForgotPasswordView(APIView):
         if not user:
             return Response(response)
 
-        PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+        # No invalidar códigos previos hasta confirmar el nuevo (email OK / DEBUG).
+        # Así un reintento o fallo de correo no mata el código que ya llegó al usuario.
         reset_token = None
         for _ in range(5):
             token_value = _generate_reset_code()
@@ -214,8 +215,14 @@ class ForgotPasswordView(APIView):
             logger.error('Forgot-password: no se pudo generar código único user_id=%s', user.pk)
             return Response(response)
 
+        def activate_latest_token():
+            PasswordResetToken.objects.filter(user=user, used=False).exclude(
+                pk=reset_token.pk,
+            ).update(used=True)
+
         if not user.email:
             logger.info('Forgot-password: usuario sin correo user_id=%s', user.pk)
+            activate_latest_token()
             if settings.DEBUG:
                 response['reset_token'] = reset_token.token
                 response['hint'] = 'En desarrollo: usa este código (cuenta sin correo).'
@@ -232,6 +239,7 @@ class ForgotPasswordView(APIView):
                 'No se envió correo user_id=%s',
                 user.pk,
             )
+            activate_latest_token()
             if settings.DEBUG:
                 response['reset_token'] = reset_token.token
                 response['hint'] = (
@@ -253,11 +261,13 @@ class ForgotPasswordView(APIView):
                     f'Tu código para restablecer la contraseña en ZinApp:\n\n'
                     f'{reset_token.token}\n\n'
                     'Válido 2 horas.\n'
+                    'Usa solo el código del correo más reciente.\n'
                     'En la app: Recuperar contraseña > Ya tengo el código > pega este código.\n'
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
             )
+            activate_latest_token()
             logger.info(
                 'Forgot-password: correo enviado user_id=%s to=%s delivery=%s from=%s',
                 user.pk,
@@ -278,9 +288,10 @@ class ForgotPasswordView(APIView):
                 user.pk,
                 settings.DEFAULT_FROM_EMAIL,
             )
+            # Descarta el código no enviado; deja intactos códigos previos aún válidos.
+            reset_token.delete()
             if settings.DEBUG:
-                response['reset_token'] = reset_token.token
-                response['hint'] = 'Email falló — usa este código en desarrollo.'
+                response['hint'] = 'Email falló. Solicita de nuevo o revisa RESEND_API_KEY.'
             elif whatsapp:
                 response['password_reset_via_whatsapp'] = True
                 response['hint'] = (

@@ -12,6 +12,8 @@ import {
   View,
 } from 'react-native';
 import { appAlert, appConfirm } from '../../utils/appAlert';
+import { getApiErrorMessage } from '../../utils/apiErrors';
+import { mxPhoneError, normalizeMxPhone } from '../../utils/phone';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import AddressPinPicker from '../../components/AddressPinPicker';
 import Button from '../../components/Button';
@@ -36,12 +38,12 @@ import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { DeliveryProfile, Restaurant, RestaurantBusinessHour } from '../../types';
-import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
 import { appendImage, pickImageFromLibrary, pickRestaurantCoverImage, ASPECT_DOCUMENT, ASPECT_SQUARE } from '../../utils/imagePicker';
 import type { MapCoordinate } from '../../utils/maps';
 import { toCoordinate } from '../../utils/maps';
+import { resolveMediaUrl } from '../../utils/media';
 
 const ROLE_LABELS: Record<string, string> = {
   customer: 'Cliente',
@@ -286,21 +288,52 @@ export default function ProfileScreen() {
   };
 
   const handleSavePersonal = async () => {
+    const email = form.email.trim().toLowerCase();
+    const phoneRaw = form.phone.trim();
+    const phoneErr = mxPhoneError(phoneRaw, true);
+    if (!form.first_name.trim() || !form.last_name.trim()) {
+      appAlert('Nombre completo', 'Indica tu nombre y apellido.');
+      return;
+    }
+    if (!email) {
+      appAlert('Email requerido', 'Necesitamos tu correo para recuperar la contraseña.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      appAlert('Email inválido', 'Usa un formato como nombre@correo.com.');
+      return;
+    }
+    if (phoneErr) {
+      appAlert('Teléfono', phoneErr);
+      return;
+    }
     setSaving(true);
     try {
       const fd = new FormData();
       fd.append('first_name', form.first_name.trim());
       fd.append('last_name', form.last_name.trim());
-      fd.append('email', form.email.trim());
-      fd.append('phone', form.phone.trim());
+      fd.append('email', email);
+      fd.append('phone', normalizeMxPhone(phoneRaw));
       fd.append('address', form.address.trim());
+      const uploadingAvatar = Boolean(avatarUri);
       if (avatarUri) await appendImage(fd, 'avatar', avatarUri, 'avatar.jpg');
-      await authApi.updateMeForm(fd);
+      const { data: saved } = await authApi.updateMeForm(fd);
       await refreshUser();
       setAvatarUri(null);
-      appAlert('Perfil actualizado');
+      if (uploadingAvatar && !saved.avatar_url) {
+        appAlert(
+          'Foto no guardada',
+          'El perfil se actualizó pero el servidor no confirmó la foto. Intenta de nuevo.',
+        );
+        return;
+      }
+      appAlert(
+        'Perfil actualizado',
+        uploadingAvatar ? 'Tu foto de perfil quedó guardada.' : undefined,
+      );
     } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el perfil'));
+      const fallback = err instanceof Error ? err.message : 'No se pudo guardar el perfil';
+      appAlert('Error', getApiErrorMessage(err, fallback));
     } finally {
       setSaving(false);
     }
@@ -414,12 +447,26 @@ export default function ProfileScreen() {
       );
       return;
     }
+    const bizPhoneErr = mxPhoneError(restaurantForm.phone, true);
+    if (bizPhoneErr) {
+      appAlert('Teléfono del negocio', bizPhoneErr);
+      return;
+    }
+    const waErr = mxPhoneError(restaurantForm.whatsapp, false);
+    if (waErr) {
+      appAlert('WhatsApp del negocio', waErr);
+      return;
+    }
     const hoursPayload: RestaurantBusinessHour[] = [];
     for (const day of restaurantHours) {
       const openingTime = toApiTime(day.opening_time ?? '');
       const closingTime = toApiTime(day.closing_time ?? '');
       if (!day.is_closed && (!openingTime || !closingTime)) {
         appAlert('Horario inválido', 'Usa formato HH:MM en los días abiertos.');
+        return;
+      }
+      if (!day.is_closed && openingTime && closingTime && openingTime === closingTime) {
+        appAlert('Horario inválido', 'La hora de apertura y cierre no pueden ser iguales.');
         return;
       }
       hoursPayload.push({
@@ -434,8 +481,11 @@ export default function ProfileScreen() {
       const fd = new FormData();
       fd.append('name', restaurantForm.name.trim());
       fd.append('description', restaurantForm.description.trim());
-      fd.append('phone', restaurantForm.phone.trim());
-      fd.append('whatsapp', restaurantForm.whatsapp.trim());
+      fd.append('phone', normalizeMxPhone(restaurantForm.phone));
+      fd.append(
+        'whatsapp',
+        restaurantForm.whatsapp.trim() ? normalizeMxPhone(restaurantForm.whatsapp) : '',
+      );
       fd.append('address', restaurantForm.address.trim());
       fd.append('latitude', String(restaurantCoords.latitude));
       fd.append('longitude', String(restaurantCoords.longitude));
@@ -542,8 +592,8 @@ export default function ProfileScreen() {
       ) : null}
       <FormField label="Nombre" value={form.first_name} onChangeText={(v) => update('first_name', v)} icon="text-outline" embedded required autoCapitalize="words" />
       <FormField label="Apellido" value={form.last_name} onChangeText={(v) => update('last_name', v)} icon="text-outline" embedded required autoCapitalize="words" />
-      <FormField label="Correo" value={form.email} onChangeText={(v) => update('email', v)} icon="mail-outline" embedded keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-      <FormField label="Teléfono" value={form.phone} onChangeText={(v) => update('phone', v)} icon="call-outline" embedded keyboardType="phone-pad" required={user.role !== 'customer'} hint={user.role === 'customer' ? 'Opcional, útil para el repartidor.' : 'Para contactarte durante pedidos.'} />
+      <FormField label="Correo" value={form.email} onChangeText={(v) => update('email', v)} icon="mail-outline" embedded keyboardType="email-address" autoCapitalize="none" autoCorrect={false} required />
+      <FormField label="Teléfono" value={form.phone} onChangeText={(v) => update('phone', v)} icon="call-outline" embedded keyboardType="phone-pad" required hint="Obligatorio. 10 dígitos, para contactarte durante pedidos." />
       <FormField label={addressLabel} value={form.address} onChangeText={(v) => update('address', v)} icon="location-outline" embedded multiline placeholder="Calle, número, colonia, Zinapécuaro" />
       <Button title="Guardar perfil" onPress={handleSavePersonal} loading={saving} />
     </View>
@@ -577,7 +627,7 @@ export default function ProfileScreen() {
           >
             <ProfileAvatarPicker
               imageUri={avatarUri}
-              remoteUrl={user.avatar_url}
+              remoteUrl={resolveMediaUrl(user.avatar_url ?? user.avatar)}
               fallbackLetter={user.first_name?.[0] ?? user.username[0]}
               onPick={handlePickAvatar}
             />
@@ -681,7 +731,7 @@ export default function ProfileScreen() {
               </Pressable>
               <FormField label="Nombre del restaurante" value={restaurantForm.name} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, name: v }))} icon="storefront-outline" embedded required />
               <Text style={styles.subsection}>Contacto</Text>
-              <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" hint="Lo ven clientes y repartidores al coordinar pedidos." />
+              <FormField label="Teléfono del negocio" value={restaurantForm.phone} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, phone: v }))} icon="call-outline" embedded keyboardType="phone-pad" required hint="Obligatorio. 10 dígitos. Lo ven clientes y repartidores." />
               <FormField label="WhatsApp del negocio" value={restaurantForm.whatsapp} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, whatsapp: v }))} icon="logo-whatsapp" embedded keyboardType="phone-pad" hint="Opcional. Si lo dejas vacío, se usa el teléfono del negocio." />
               <FormField label="Dirección del local" value={restaurantForm.address} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, address: v }))} icon="location-outline" embedded multiline required />
               <AddressPinPicker

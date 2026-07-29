@@ -32,6 +32,8 @@ const POST_NO_RETRY = [
   '/orders/',
   '/shipments/',
   '/auth/register/',
+  '/auth/forgot-password/',
+  '/auth/reset-password/',
   '/products/',
   '/reviews/',
 ];

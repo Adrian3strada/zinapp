@@ -8,6 +8,7 @@ from accounts.serializers import (
     OrderDriverDeliverySerializer,
     OrderParticipantUserSerializer,
     UserSerializer,
+    absolute_media_url,
 )
 from accounts.models import User
 from restaurants.fields import CoordinateField
@@ -28,12 +29,7 @@ class PublicReviewAuthorSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_avatar_url(self, obj):
-        if not obj.avatar:
-            return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.avatar.url)
-        return obj.avatar.url
+        return absolute_media_url(obj.avatar, self.context.get('request'))
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

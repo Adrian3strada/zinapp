@@ -9,8 +9,31 @@ from restaurants.fields import CoordinateField
 from restaurants.models import Restaurant
 
 from .models import DeliveryProfile, PasswordResetToken, User, UserRole
+from .phone import validate_optional_mx_phone, validate_required_mx_phone
 from .setup import driver_setup_status
 from .username import normalize_username
+
+# Solo avatar de usuario (no productos / restaurantes / documentos).
+MAX_AVATAR_BYTES = 5 * 1024 * 1024
+ALLOWED_AVATAR_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+ALLOWED_AVATAR_CONTENT_TYPES = {
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+}
+
+
+def absolute_media_url(file_field, request):
+    """URL absoluta raíz (/media/...), nunca relativa al path del endpoint."""
+    if not file_field:
+        return None
+    url = file_field.url
+    if url and not url.startswith(('http://', 'https://', '/')):
+        url = f'/{url}'
+    if request:
+        return request.build_absolute_uri(url)
+    return url
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,18 +55,65 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
     def get_avatar_url(self, obj):
-        if not obj.avatar:
-            return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.avatar.url)
-        return obj.avatar.url
+        return absolute_media_url(obj.avatar, self.context.get('request'))
 
     def get_has_usable_password(self, obj):
         return obj.has_usable_password()
 
     def get_auth_provider(self, obj):
         return 'google' if obj.google_sub else 'password'
+
+    def validate_avatar(self, value):
+        if not value:
+            return value
+        name = (getattr(value, 'name', '') or '').lower()
+        ext = ''
+        if '.' in name:
+            ext = '.' + name.rsplit('.', 1)[-1]
+        content_type = (getattr(value, 'content_type', None) or '').lower()
+        if ext and ext not in ALLOWED_AVATAR_EXTENSIONS:
+            raise serializers.ValidationError(
+                'Formato no permitido. Usa JPG, PNG o WebP.',
+            )
+        if content_type and content_type not in ALLOWED_AVATAR_CONTENT_TYPES:
+            raise serializers.ValidationError(
+                'Formato no permitido. Usa JPG, PNG o WebP.',
+            )
+        size = getattr(value, 'size', None)
+        if size is not None and size > MAX_AVATAR_BYTES:
+            raise serializers.ValidationError(
+                'La imagen es demasiado grande (máximo 5 MB).',
+            )
+        return value
+
+    def validate_email(self, value):
+        email = (value or '').strip().lower()
+        if not email:
+            raise serializers.ValidationError('El correo es obligatorio.')
+        qs = User.objects.filter(email__iexact=email)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('Este correo ya está registrado.')
+        return email
+
+    def validate_phone(self, value):
+        try:
+            return validate_required_mx_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def validate_first_name(self, value):
+        name = (value or '').strip()
+        if not name:
+            raise serializers.ValidationError('El nombre es obligatorio.')
+        return name
+
+    def validate_last_name(self, value):
+        name = (value or '').strip()
+        if not name:
+            raise serializers.ValidationError('El apellido es obligatorio.')
+        return name
 
 
 class OrderParticipantUserSerializer(serializers.ModelSerializer):
@@ -60,12 +130,7 @@ class OrderParticipantUserSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_avatar_url(self, obj):
-        if not obj.avatar:
-            return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.avatar.url)
-        return obj.avatar.url
+        return absolute_media_url(obj.avatar, self.context.get('request'))
 
 
 class OrderDriverDeliverySerializer(serializers.ModelSerializer):
@@ -83,6 +148,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
     email = serializers.EmailField(required=True)
+    first_name = serializers.CharField(required=True, allow_blank=False)
+    last_name = serializers.CharField(required=True, allow_blank=False)
+    phone = serializers.CharField(required=True, allow_blank=False)
     restaurant_name = serializers.CharField(required=False, allow_blank=True, write_only=True)
     restaurant_address = serializers.CharField(required=False, allow_blank=True, write_only=True)
     restaurant_phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
@@ -122,6 +190,24 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Este correo ya está registrado.')
         return email
 
+    def validate_phone(self, value):
+        try:
+            return validate_required_mx_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def validate_first_name(self, value):
+        name = (value or '').strip()
+        if not name:
+            raise serializers.ValidationError('El nombre es obligatorio.')
+        return name
+
+    def validate_last_name(self, value):
+        name = (value or '').strip()
+        if not name:
+            raise serializers.ValidationError('El apellido es obligatorio.')
+        return name
+
     def validate_role(self, value):
         if value == UserRole.ADMIN:
             raise serializers.ValidationError(
@@ -136,6 +222,20 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
         attrs['email'] = (attrs.get('email') or '').strip().lower()
 
+        # Teléfono ya validado/normalizado en validate_phone; reforzar presencia.
+        phone = (attrs.get('phone') or '').strip()
+        if not phone:
+            raise serializers.ValidationError(
+                {'phone': 'El teléfono es obligatorio para operar en ZinApp.'}
+            )
+
+        restaurant_phone = attrs.get('restaurant_phone')
+        if restaurant_phone is not None:
+            try:
+                attrs['restaurant_phone'] = validate_optional_mx_phone(restaurant_phone)
+            except ValueError as exc:
+                raise serializers.ValidationError({'restaurant_phone': str(exc)}) from exc
+
         if attrs.get('role') == UserRole.RESTAURANT:
             name = (attrs.get('restaurant_name') or '').strip()
             address = (attrs.get('restaurant_address') or '').strip()
@@ -147,18 +247,8 @@ class RegisterSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {'restaurant_address': 'Indica la dirección del restaurante.'}
                 )
-            phone = (attrs.get('phone') or '').strip()
-            if not phone:
-                raise serializers.ValidationError(
-                    {'phone': 'Indica tu teléfono de contacto.'}
-                )
 
         if attrs.get('role') == UserRole.DRIVER:
-            phone = (attrs.get('phone') or '').strip()
-            if not phone:
-                raise serializers.ValidationError(
-                    {'phone': 'Indica tu teléfono para coordinar entregas.'}
-                )
             vehicle_type = (attrs.get('vehicle_type') or '').strip()
             if not vehicle_type:
                 raise serializers.ValidationError(
@@ -288,11 +378,22 @@ class ResetPasswordSerializer(serializers.Serializer):
                 used=False,
             )
         except PasswordResetToken.DoesNotExist:
+            used = PasswordResetToken.objects.filter(token=code, used=True).exists()
+            if used:
+                raise serializers.ValidationError(
+                    {
+                        'token': (
+                            'Este código ya se usó. Si acabas de restablecer, '
+                            'inicia sesión con la nueva contraseña. Si no funcionó, '
+                            'solicita un código nuevo.'
+                        )
+                    }
+                )
             raise serializers.ValidationError(
                 {
                     'token': (
-                        'Código inválido o ya usado. '
-                        'Solicita uno nuevo en Recuperar contraseña y usa el del correo más reciente.'
+                        'Código inválido. Solicita uno nuevo en Recuperar contraseña '
+                        'y usa solo el del correo más reciente.'
                     )
                 }
             )

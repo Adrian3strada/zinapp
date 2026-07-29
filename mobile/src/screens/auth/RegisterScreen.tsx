@@ -28,6 +28,7 @@ import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { DeliveryProfile, UserRole } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { mxPhoneError, normalizeMxPhone } from '../../utils/phone';
 
 const ROLES: { value: UserRole; label: string; icon: keyof typeof Ionicons.glyphMap; hint: string }[] = [
   { value: 'customer', label: 'Cliente', icon: 'person', hint: 'Pide comida a domicilio' },
@@ -62,7 +63,6 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const update = (key: string, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
-  const phoneRequired = form.role === 'driver' || form.role === 'restaurant';
   const plateRequired = form.role === 'driver' && vehicleNeedsPlate(form.vehicle_type);
 
   const addressLabel = useMemo(() => {
@@ -87,7 +87,9 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const handleRegister = async () => {
     const username = form.username.trim().toLowerCase();
     const email = form.email.trim().toLowerCase();
-    const phone = form.phone.trim();
+    const phoneRaw = form.phone.trim();
+    const phoneErr = mxPhoneError(phoneRaw, true);
+    const phone = normalizeMxPhone(phoneRaw);
 
     if (!username) {
       appAlert('Usuario requerido', 'Elige un nombre de usuario único.');
@@ -105,13 +107,8 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       appAlert('Nombre completo', 'Indica tu nombre y apellido.');
       return;
     }
-    if (phoneRequired && !phone) {
-      appAlert(
-        'Teléfono requerido',
-        form.role === 'driver'
-          ? 'Los repartidores necesitan teléfono para coordinar entregas.'
-          : 'Indica un teléfono de contacto para tu negocio.',
-      );
+    if (phoneErr) {
+      appAlert('Teléfono', phoneErr);
       return;
     }
     if (!form.password) {
@@ -135,6 +132,11 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         appAlert('Restaurante', 'Indica la dirección del negocio.');
         return;
       }
+      const restPhoneErr = mxPhoneError(form.restaurant_phone, false);
+      if (restPhoneErr) {
+        appAlert('Teléfono del negocio', restPhoneErr);
+        return;
+      }
     }
     if (form.role === 'driver') {
       if (plateRequired && !form.license_plate.trim()) {
@@ -150,6 +152,10 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         username,
         email,
         phone,
+        restaurant_phone:
+          form.role === 'restaurant' && form.restaurant_phone.trim()
+            ? normalizeMxPhone(form.restaurant_phone)
+            : form.restaurant_phone.trim(),
         role: form.role as 'customer' | 'restaurant' | 'driver',
         vehicle_type: form.role === 'driver' ? form.vehicle_type : undefined,
         license_plate: form.role === 'driver' ? form.license_plate.trim() : undefined,
@@ -279,12 +285,8 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             onChangeText={(v) => update('phone', v)}
             icon="call-outline"
             placeholder="443 123 4567"
-            hint={
-              phoneRequired
-                ? 'Obligatorio para contactarte durante pedidos.'
-                : 'Opcional, útil para que el repartidor te llame.'
-            }
-            required={phoneRequired}
+            hint="Obligatorio. 10 dígitos, para contactarte durante pedidos."
+            required
             keyboardType="phone-pad"
           />
           <FormField

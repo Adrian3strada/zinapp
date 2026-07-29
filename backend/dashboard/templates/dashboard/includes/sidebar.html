@@ -66,9 +66,9 @@
 
     <li class="nav-header">PERSONAS</li>
     <li class="nav-item">
-      <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
-        <i class="nav-icon fas fa-users"></i>
-        <p>Usuarios</p>
+      <a href="{% url 'dashboard:customers' %}" class="nav-link {% if nav == 'customers' %}active{% endif %}">
+        <i class="nav-icon fas fa-user"></i>
+        <p>Clientes</p>
       </a>
     </li>
     <li class="nav-item">
@@ -93,6 +93,12 @@
     </li>
 
     <li class="nav-header">SISTEMA</li>
+    <li class="nav-item">
+      <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
+        <i class="nav-icon fas fa-users"></i>
+        <p>Todos los usuarios (legado)</p>
+      </a>
+    </li>
     <li class="nav-item">
       <a href="{% url 'admin:index' %}" class="nav-link">
         <i class="nav-icon fas fa-screwdriver-wrench"></i>

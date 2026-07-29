@@ -262,6 +262,42 @@ class PublicCatalogTests(TestCase):
         self.assertEqual(len(restaurants), len(response.data))
         self.assertTrue(all(item.get('restaurant_name') for item in response.data))
 
+    def test_featured_products_exclude_closed_restaurants(self):
+        from restaurants.models import Product
+        from rest_framework.test import APIClient
+
+        closed_owner = User.objects.create_user(
+            username='featured_closed_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        closed = Restaurant.objects.create(
+            owner=closed_owner,
+            name='Closed Featured Spot',
+            address='Centro',
+            is_active=True,
+            accepting_orders=False,
+        )
+        Product.objects.create(
+            restaurant=closed,
+            name='Platillo Cerrado',
+            price='50.00',
+            is_available=True,
+        )
+        Product.objects.create(
+            restaurant=self.restaurant,
+            name='Platillo Abierto',
+            price='40.00',
+            is_available=True,
+        )
+
+        response = APIClient().get('/api/products/featured/?limit=8')
+        self.assertEqual(response.status_code, 200)
+        names = {item['name'] for item in response.data}
+        self.assertIn('Platillo Abierto', names)
+        self.assertNotIn('Platillo Cerrado', names)
+        self.assertTrue(all(item['restaurant'] == self.restaurant.id for item in response.data))
+
     def test_list_puts_open_restaurants_first(self):
         from restaurants.models import Product
         from rest_framework.test import APIClient
