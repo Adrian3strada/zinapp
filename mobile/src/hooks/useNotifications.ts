@@ -24,9 +24,11 @@ export function usePushNotifications(enabled: boolean) {
 
     const onAppStateChange = (next: AppStateStatus) => {
       if (next === 'active' && mounted) {
-        void import('../services/pushRegistration').then(({ registerPushNotifications }) =>
-          registerPushNotifications(),
-        );
+        void import('../services/pushRegistration')
+          .then(({ registerPushNotifications }) => registerPushNotifications())
+          .catch(() => {
+            // Push opcional — no tumbar la app
+          });
       }
     };
     const appSub = AppState.addEventListener('change', onAppStateChange);

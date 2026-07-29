@@ -72,6 +72,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const acceptingRef = useRef(false);
   const [delivering, setDelivering] = useState(false);
   const [skippedIds, setSkippedIds] = useState<Set<number>>(() => new Set());
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
@@ -440,12 +441,13 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   }, [isApproved, isAvailable, navigation, toggleAvailability]);
 
   const handleAccept = useCallback(async () => {
-    if (!offerOrder || accepting || hasActiveDelivery) {
+    if (!offerOrder || acceptingRef.current || hasActiveDelivery) {
       if (hasActiveDelivery) {
         appAlert('Entrega en curso', 'Termina tu entrega actual antes de aceptar otra.');
       }
       return;
     }
+    acceptingRef.current = true;
     setAccepting(true);
     try {
       await orderApi.acceptDelivery(offerOrder.id);
@@ -469,9 +471,10 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar el pedido'));
     } finally {
+      acceptingRef.current = false;
       setAccepting(false);
     }
-  }, [offerOrder, accepting, hasActiveDelivery, loadOrders, refreshActive]);
+  }, [offerOrder, hasActiveDelivery, loadOrders, refreshActive]);
 
   const handleSkip = useCallback(() => {
     if (!offerOrder) return;

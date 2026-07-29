@@ -335,47 +335,42 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
 
     let coords = deliveryCoords;
     let covered: boolean | null = coverageOk;
-    if (!coords || covered !== true) {
-      checkoutInFlight.current = true;
-      setLoading(true);
-      try {
-        const { data } = await runWithRetry(() => restaurantApi.geocode(address));
-        coords = { latitude: data.latitude, longitude: data.longitude };
-        setDeliveryCoords(coords);
-        setAddress(data.display_name);
-        setCoverageOk(data.in_coverage);
-        setAddressApproximate(!!data.approximate);
-        covered = data.in_coverage;
-        if (!data.in_coverage) {
-          appAlert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
-          return;
-        }
-      } catch (err) {
-        appAlert(
-          'Ubicación',
-          getApiErrorMessage(err, 'Confirma tu dirección con «Buscar dirección» o GPS antes de pedir.'),
-        );
-        return;
-      } finally {
-        checkoutInFlight.current = false;
-        setLoading(false);
-      }
-    }
-    if (!coords || covered !== true) {
-      appAlert('Cobertura', 'Confirma tu dirección con «Buscar dirección» antes de pedir.');
-      return;
-    }
-    if (couponValidating) {
-      appAlert('Cupón', 'Espera a que se actualice el descuento.');
-      return;
-    }
-
     checkoutInFlight.current = true;
     setLoading(true);
     if (!checkoutIdempotencyKey.current) {
       checkoutIdempotencyKey.current = createIdempotencyKey();
     }
     try {
+      if (!coords || covered !== true) {
+        try {
+          const { data } = await runWithRetry(() => restaurantApi.geocode(address));
+          coords = { latitude: data.latitude, longitude: data.longitude };
+          setDeliveryCoords(coords);
+          setAddress(data.display_name);
+          setCoverageOk(data.in_coverage);
+          setAddressApproximate(!!data.approximate);
+          covered = data.in_coverage;
+          if (!data.in_coverage) {
+            appAlert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
+            return;
+          }
+        } catch (err) {
+          appAlert(
+            'Ubicación',
+            getApiErrorMessage(err, 'Confirma tu dirección con «Buscar dirección» o GPS antes de pedir.'),
+          );
+          return;
+        }
+      }
+      if (!coords || covered !== true) {
+        appAlert('Cobertura', 'Confirma tu dirección con «Buscar dirección» antes de pedir.');
+        return;
+      }
+      if (couponValidating) {
+        appAlert('Cupón', 'Espera a que se actualice el descuento.');
+        return;
+      }
+
       const scheduledFor = scheduleKeyToIso(scheduleKey);
       const { data } = await orderApi.create({
         restaurant_id: restaurantId,

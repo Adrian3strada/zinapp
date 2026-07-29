@@ -6,7 +6,7 @@ import { colors } from '../theme/colors';
 import { resolveMediaUrl } from '../utils/media';
 import { getServiceCategoryIcon, getServiceCategoryColor } from '../utils/serviceCategories';
 
-const SIZES = { sm: 56, md: 80 } as const;
+const SIZES = { xs: 48, sm: 56, md: 80 } as const;
 
 interface Props {
   category: string;

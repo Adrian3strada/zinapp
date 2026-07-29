@@ -226,6 +226,14 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
+    def destroy(self, request, *args, **kwargs):
+        """Desactiva el local en lugar de borrar (CASCADE borraría pedidos históricos)."""
+        restaurant = self.get_object()
+        restaurant.is_active = False
+        restaurant.accepting_orders = False
+        restaurant.save(update_fields=['is_active', 'accepting_orders', 'updated_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['get'], url_path='mine')
     def mine(self, request):
         if not request.user.is_restaurant_owner:

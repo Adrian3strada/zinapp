@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
@@ -275,31 +276,33 @@ class RegisterSerializer(serializers.ModelSerializer):
         license_plate = validated_data.pop('license_plate', '').strip()
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
 
-        if user.role == UserRole.DRIVER:
-            DeliveryProfile.objects.create(
-                user=user,
-                vehicle_type=vehicle_type or DeliveryProfile.VehicleType.MOTORCYCLE,
-                license_plate=license_plate,
-                is_available=False,
-                verification_status=DeliveryProfile.VerificationStatus.PENDING,
-            )
+        with transaction.atomic():
+            user = User(**validated_data)
+            user.set_password(password)
+            user.save()
 
-        if user.role == UserRole.RESTAURANT:
-            Restaurant.objects.create(
-                owner=user,
-                name=restaurant_name,
-                address=restaurant_address,
-                phone=restaurant_phone or user.phone,
-                description=restaurant_description,
-                opening_time=None,
-                closing_time=None,
-                is_active=False,
-                accepting_orders=False,
-            )
+            if user.role == UserRole.DRIVER:
+                DeliveryProfile.objects.create(
+                    user=user,
+                    vehicle_type=vehicle_type or DeliveryProfile.VehicleType.MOTORCYCLE,
+                    license_plate=license_plate,
+                    is_available=False,
+                    verification_status=DeliveryProfile.VerificationStatus.PENDING,
+                )
+
+            if user.role == UserRole.RESTAURANT:
+                Restaurant.objects.create(
+                    owner=user,
+                    name=restaurant_name,
+                    address=restaurant_address,
+                    phone=restaurant_phone or user.phone,
+                    description=restaurant_description,
+                    opening_time=None,
+                    closing_time=None,
+                    is_active=False,
+                    accepting_orders=False,
+                )
 
         return user
 

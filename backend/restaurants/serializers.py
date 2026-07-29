@@ -249,7 +249,9 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'reviews_count', 'products_count', 'setup_status',
             'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'created_at', 'updated_at', 'setup_status', 'location_pinned')
+        read_only_fields = (
+            'id', 'owner', 'created_at', 'updated_at', 'setup_status', 'location_pinned',
+        )
         extra_kwargs = {
             'latitude': {'required': False, 'allow_null': True},
             'longitude': {'required': False, 'allow_null': True},

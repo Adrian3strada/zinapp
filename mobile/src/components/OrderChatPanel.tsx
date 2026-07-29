@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import type { OrderMessage } from '../types';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { appAlert } from '../utils/appAlert';
 import { useKeyboardForm } from './KeyboardForm';
 
 interface Props {
@@ -58,8 +59,7 @@ export default function OrderChatPanel({ orderId, closed }: Props) {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err) {
       setBody(text);
-      // eslint-disable-next-line no-console
-      console.warn(getApiErrorMessage(err, 'No se envió el mensaje'));
+      appAlert('Chat', getApiErrorMessage(err, 'No se envió el mensaje'));
     } finally {
       setSending(false);
     }

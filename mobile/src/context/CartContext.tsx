@@ -115,8 +115,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setRestaurantId(productRestaurantId);
+    // Un solo updater: evita mezclar restaurantes con taps rápidos en carrito vacío.
     setItems((prev) => {
+      if (prev.length > 0) {
+        const currentRestaurantId = resolveRestaurantId(prev[0].product);
+        if (currentRestaurantId && currentRestaurantId !== productRestaurantId) {
+          return prev;
+        }
+      }
       const existing = prev.find((i) => sameLine(i, product.id, lineNotes, opts));
       if (existing) {
         return prev.map((i) =>
@@ -126,6 +132,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         );
       }
       return [...prev, nextLine];
+    });
+    setRestaurantId((current) => {
+      if (current && current !== productRestaurantId) return current;
+      return productRestaurantId;
     });
   }, [restaurantId]);
 

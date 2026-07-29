@@ -166,6 +166,21 @@ class OrderViewSet(viewsets.ModelViewSet):
                 {'detail': 'No tienes permiso para actualizar este pedido.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        # En camino: solo repartidor (mark-delivered) o admin; el local no puede
+        # marcar entregado ni cancelar a mitad de ruta.
+        if (
+            order.status == OrderStatus.ON_THE_WAY
+            and not getattr(request.user, 'is_admin_user', False)
+        ):
+            return Response(
+                {
+                    'detail': (
+                        'El pedido ya va en camino. '
+                        'Solo el repartidor puede marcarlo entregado.'
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = self.get_serializer(
             data=request.data,
             context={'order': order, 'request': request},
@@ -277,6 +292,20 @@ class OrderViewSet(viewsets.ModelViewSet):
                         'detail': (
                             'Ya no se puede cancelar. '
                             'Contacta al restaurante si necesitas ayuda.'
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Sin flujo de reembolso Stripe/MP aún: no cancelar pedidos ya cobrados.
+            if (
+                order.payment_method == PaymentMethod.ONLINE
+                and order.payment_status == PaymentStatus.PAID
+            ):
+                return Response(
+                    {
+                        'detail': (
+                            'Este pedido ya fue pagado en línea. '
+                            'Contacta a soporte de ZinApp para solicitar un reembolso.'
                         ),
                     },
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1215,7 +1244,7 @@ class StripeWebhookView(APIView):
             except Order.DoesNotExist:
                 return Response({'detail': 'Pedido no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-            if payment_amount is not None and payment_amount != order.total:
+            if payment_amount is None or payment_amount != order.total:
                 return Response(
                     {'detail': 'El pago no corresponde al pedido.'},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1297,9 +1326,8 @@ class OrderDisputeViewSet(viewsets.ModelViewSet):
         dispute.admin_notes = serializer.validated_data.get('admin_notes', '')
         dispute.resolved_at = timezone.now()
         dispute.save(update_fields=['status', 'admin_notes', 'resolved_at', 'updated_at'])
-        if dispute.status == DisputeStatus.REFUNDED:
-            dispute.order.payment_status = PaymentStatus.PAID
-            dispute.order.save(update_fields=['payment_status', 'updated_at'])
+        # No marcar payment_status=PAID al resolver como reembolsado: oculta el
+        # resultado y puede convertir pedidos impagos en «pagados».
         return Response(OrderDisputeSerializer(dispute).data)
 
 

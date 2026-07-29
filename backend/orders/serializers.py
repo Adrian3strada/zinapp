@@ -7,7 +7,6 @@ from rest_framework import serializers
 from accounts.serializers import (
     OrderDriverDeliverySerializer,
     OrderParticipantUserSerializer,
-    UserSerializer,
     absolute_media_url,
 )
 from accounts.models import User
@@ -602,8 +601,8 @@ def _validate_address_coords(attrs, prefix, errors_field):
 
 
 class ShipmentSerializer(serializers.ModelSerializer):
-    customer_detail = UserSerializer(source='customer', read_only=True)
-    driver_detail = UserSerializer(source='driver', read_only=True)
+    customer_detail = OrderParticipantUserSerializer(source='customer', read_only=True)
+    driver_detail = OrderParticipantUserSerializer(source='driver', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     size_display = serializers.CharField(source='get_size_display', read_only=True)
     payment_method_display = serializers.CharField(

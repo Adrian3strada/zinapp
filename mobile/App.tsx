@@ -24,6 +24,11 @@ import { loadWebFonts } from './src/utils/loadWebFonts';
 import { configureNativeChrome } from './src/utils/nativeChrome';
 import { isWebPlatform, webNavigationRootStyle } from './src/utils/webPlatform';
 
+// TaskManager.defineTask debe registrarse a nivel de módulo (arranque en background).
+if (Platform.OS !== 'web') {
+  require('./src/tasks/driverLocationTask');
+}
+
 if (isWebPlatform()) {
   enableScreens(false);
 }
@@ -70,11 +75,6 @@ export default function App() {
   React.useEffect(() => {
     void configureNativeChrome();
     void prefetchAppConfig();
-  }, []);
-
-  React.useEffect(() => {
-    if (Platform.OS === 'web') return;
-    require('./src/tasks/driverLocationTask');
   }, []);
 
   React.useEffect(() => {

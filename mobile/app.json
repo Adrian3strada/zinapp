@@ -50,7 +50,6 @@
           "location"
         ],
         "NSPhotoLibraryUsageDescription": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
-        "NSCameraUsageDescription": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido.",
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleAllowMixedLocalizations": true,
         "CFBundleLocalizations": [
@@ -117,8 +116,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido.",
-          "cameraPermission": "ZinApp usa la cámara para tomar fotos de comprobantes o del pedido."
+          "photosPermission": "ZinApp accede a tus fotos para adjuntar comprobantes de pago o imágenes del pedido."
         }
       ],
       "expo-secure-store",

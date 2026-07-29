@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 
@@ -67,6 +67,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null);
+  const busyOrderIdRef = useRef<number | null>(null);
   const [filter, setFilter] = useState<RestaurantOrderFilter>('kitchen');
 
   const load = React.useCallback(async () => {
@@ -149,7 +150,8 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
   );
 
   const handleAccept = async (order: Order, prepMinutes: number) => {
-    if (busyOrderId != null) return;
+    if (busyOrderIdRef.current != null) return;
+    busyOrderIdRef.current = order.id;
     setBusyOrderId(order.id);
     try {
       await orderApi.accept(order.id, prepMinutes);
@@ -158,14 +160,16 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
     } finally {
+      busyOrderIdRef.current = null;
       setBusyOrderId(null);
     }
   };
 
   const handleReject = (order: Order) => {
-    if (busyOrderId != null) return;
+    if (busyOrderIdRef.current != null) return;
     // Confirmación va dentro de NewOrderAlert (appConfirm queda detrás del Modal en web).
     void (async () => {
+      busyOrderIdRef.current = order.id;
       setBusyOrderId(order.id);
       try {
         await orderApi.reject(order.id);
@@ -173,6 +177,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
       } catch (err) {
         appAlert('Error', getApiErrorMessage(err, 'No se pudo rechazar'));
       } finally {
+        busyOrderIdRef.current = null;
         setBusyOrderId(null);
       }
     })();
@@ -180,7 +185,8 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   const handleAdvance = async (order: Order) => {
     const next = NEXT_STATUS[order.status];
-    if (!next || busyOrderId != null) return;
+    if (!next || busyOrderIdRef.current != null) return;
+    busyOrderIdRef.current = order.id;
     setBusyOrderId(order.id);
     try {
       await orderApi.updateStatus(order.id, next.status);
@@ -189,6 +195,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar'));
     } finally {
+      busyOrderIdRef.current = null;
       setBusyOrderId(null);
     }
   };
