@@ -224,6 +224,10 @@ def get_financial_report(params=None):
             'orders_count': order_row.get('orders_count', 0),
         })
 
+    by_day_max = max((row['product_sales'] for row in daily_rows), default=Decimal('0.00'))
+    if by_day_max <= 0:
+        by_day_max = Decimal('1.00')
+
     return {
         'period': period,
         'start_date': start_date,
@@ -239,6 +243,8 @@ def get_financial_report(params=None):
         'by_order': order_rows,
         'by_restaurant': restaurant_rows,
         'by_day': daily_rows,
+        'by_day_chart': list(reversed(daily_rows)),
+        'by_day_max': by_day_max,
     }
 
 
@@ -298,5 +304,14 @@ def get_dashboard_stats(params=None):
         'recent_orders': orders_qs.select_related(
             'customer', 'restaurant', 'driver',
         )[:12],
+        'pending_orders': orders_qs.filter(status=OrderStatus.PENDING).select_related(
+            'customer', 'restaurant',
+        ).order_by('created_at')[:8],
+        'active_pipeline_orders': orders_qs.exclude(
+            status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED],
+        ).select_related('customer', 'restaurant', 'driver').order_by('-created_at')[:8],
+        'drivers_pending': DeliveryProfile.objects.filter(
+            verification_status=DeliveryProfile.VerificationStatus.PENDING,
+        ).count(),
         'disputes_pending': OrderDispute.objects.filter(status=DisputeStatus.PENDING).count(),
     }

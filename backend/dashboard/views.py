@@ -73,9 +73,9 @@ class DashboardHomeView(PanelAccessMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(page_context(
-            'Resumen',
+            'Operaciones',
             'home',
-            subtitle='Vista general de pedidos, ingresos y tareas pendientes.',
+            subtitle='',
         ))
         ctx.update(get_dashboard_stats(self.request.GET))
         return ctx
