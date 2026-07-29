@@ -159,14 +159,27 @@ body,
 }
 
 .content-header {
-  padding: 1.25rem 0 0.5rem !important;
+  padding: 1rem 0 0.65rem !important;
 }
 
 .content-header h1 {
-  font-size: 1.65rem !important;
+  font-size: 1.45rem !important;
   font-weight: 800 !important;
   letter-spacing: -0.02em;
   color: var(--zin-text);
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.content-header .row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.content-header .row > [class*="col-"] {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .content-header .text-muted {
@@ -1187,16 +1200,45 @@ a:focus-visible,
 
 .detail-list {
   display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 0.5rem 1rem;
+  grid-template-columns: minmax(6.5rem, 8.5rem) minmax(0, 1fr);
+  column-gap: 1rem;
+  row-gap: 0.65rem;
+  align-items: baseline;
   margin: 0 0 1.25rem;
+  /* Neutraliza Bootstrap .row si alguien lo mezcla con detail-list */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100%;
+}
+
+.detail-list.mb-0 {
+  margin-bottom: 0;
 }
 
 @media (max-width: 576px) {
   .detail-list {
     grid-template-columns: 1fr;
-    gap: 0.2rem 0;
+    row-gap: 0.15rem;
   }
+
+  .detail-list dt {
+    margin-top: 0.45rem;
+  }
+
+  .detail-list dt:first-child {
+    margin-top: 0;
+  }
+}
+
+.detail-list dt,
+.detail-list dd {
+  width: auto !important;
+  max-width: none !important;
+  flex: none !important;
+  float: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  position: static !important;
 }
 
 .detail-list dt {
@@ -1204,9 +1246,18 @@ a:focus-visible,
   font-size: 0.8125rem;
   font-weight: 700;
   color: var(--zin-muted);
+  white-space: nowrap;
+  line-height: 1.35;
 }
 
-.detail-list dd { margin: 0; font-size: 0.875rem; }
+.detail-list dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--zin-text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 .action-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .action-row form { flex: 1; min-width: 160px; }

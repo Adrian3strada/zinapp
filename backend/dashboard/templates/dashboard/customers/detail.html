@@ -27,31 +27,31 @@
         <h3 class="card-title mb-0">Datos del cliente</h3>
       </div>
       <div class="card-body">
-        <dl class="row mb-0 detail-list">
-          <dt class="col-sm-4 text-muted">Nombre</dt>
-          <dd class="col-sm-8">{{ customer.first_name|default:"—" }}</dd>
-          <dt class="col-sm-4 text-muted">Apellidos</dt>
-          <dd class="col-sm-8">{{ customer.last_name|default:"—" }}</dd>
-          <dt class="col-sm-4 text-muted">Usuario</dt>
-          <dd class="col-sm-8">@{{ customer.username }}</dd>
-          <dt class="col-sm-4 text-muted">Correo</dt>
-          <dd class="col-sm-8">{{ customer.email|default:"—" }}</dd>
-          <dt class="col-sm-4 text-muted">Teléfono</dt>
-          <dd class="col-sm-8">{{ customer.phone|default:"—" }}</dd>
-          <dt class="col-sm-4 text-muted">Dirección</dt>
-          <dd class="col-sm-8">{{ customer.address|default:"—" }}</dd>
-          <dt class="col-sm-4 text-muted">Registro</dt>
-          <dd class="col-sm-8">{{ customer.date_joined|date:"d/m/Y H:i" }}</dd>
-          <dt class="col-sm-4 text-muted">Estado</dt>
-          <dd class="col-sm-8">
+        <dl class="detail-list mb-0">
+          <dt>Nombre</dt>
+          <dd>{{ customer.first_name|default:"—" }}</dd>
+          <dt>Apellidos</dt>
+          <dd>{{ customer.last_name|default:"—" }}</dd>
+          <dt>Usuario</dt>
+          <dd>@{{ customer.username }}</dd>
+          <dt>Correo</dt>
+          <dd>{{ customer.email|default:"—" }}</dd>
+          <dt>Teléfono</dt>
+          <dd>{{ customer.phone|default:"—" }}</dd>
+          <dt>Dirección</dt>
+          <dd>{{ customer.address|default:"—" }}</dd>
+          <dt>Registro</dt>
+          <dd>{{ customer.date_joined|date:"d/m/Y H:i" }}</dd>
+          <dt>Estado</dt>
+          <dd>
             {% if customer.is_active %}
               <span class="badge badge-success">Activo</span>
             {% else %}
               <span class="badge badge-muted">Inactivo</span>
             {% endif %}
           </dd>
-          <dt class="col-sm-4 text-muted">Pedidos</dt>
-          <dd class="col-sm-8">
+          <dt>Pedidos</dt>
+          <dd>
             <strong>{{ orders_count }}</strong>
             {% if orders_count %}
             · <a href="{{ orders_list_url }}">Ver historial</a>
