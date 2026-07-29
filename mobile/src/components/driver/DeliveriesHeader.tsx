@@ -72,10 +72,10 @@ export default function DeliveriesHeader({
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 8, gap: 14 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  titleBlock: { gap: 2 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  titleBlock: { flex: 1, minWidth: 0, gap: 2 },
   eyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: colors.primaryDark,
     textTransform: 'uppercase',
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   liveOn: { backgroundColor: colors.success + '18' },
   liveOff: { backgroundColor: colors.background },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  liveText: { fontSize: 11, fontWeight: '800' },
+  liveText: { fontSize: 12, fontWeight: '800' },
   metrics: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   },
   metric: { flex: 1, alignItems: 'center', gap: 2 },
   metricValue: { fontSize: 17, fontWeight: '900', color: colors.text },
-  metricLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
+  metricLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   divider: { width: 1, height: 28, backgroundColor: colors.border },
   continueBtn: {
     flexDirection: 'row',

@@ -4,6 +4,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { radii } from '../../theme/radii';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import type { Restaurant } from '../../types';
 import { formatRestaurantSchedule } from '../../utils/restaurantMeta';
@@ -23,6 +24,7 @@ interface Props {
   subtitle?: string;
   stats?: RestaurantStatItem[];
   actionIcon?: keyof typeof Ionicons.glyphMap;
+  actionLabel?: string;
   onActionPress?: () => void;
   children?: React.ReactNode;
 }
@@ -52,6 +54,7 @@ export default function RestaurantHeroHeader({
   subtitle,
   stats,
   actionIcon = 'add',
+  actionLabel = 'Acción principal',
   onActionPress,
   children,
 }: Props) {
@@ -73,9 +76,6 @@ export default function RestaurantHeroHeader({
       end={{ x: 1, y: 1 }}
       style={[styles.hero, { paddingTop: topInset + spacing.md }]}
     >
-      <View style={styles.decorA} />
-      <View style={styles.decorB} />
-
       <Text style={styles.eyebrow}>{eyebrow}</Text>
 
       <View style={styles.mainRow}>
@@ -115,7 +115,7 @@ export default function RestaurantHeroHeader({
             onPress={onActionPress}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="Acción principal"
+            accessibilityLabel={actionLabel}
           >
             <Ionicons name={actionIcon} size={22} color={colors.primary} />
           </Pressable>
@@ -145,35 +145,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
     marginBottom: spacing.lg,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: radii.sheetLg,
+    borderBottomRightRadius: radii.sheetLg,
     overflow: 'hidden',
-  },
-  decorA: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -50,
-    right: -40,
-  },
-  decorB: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    bottom: 24,
-    left: -24,
   },
   eyebrow: {
     fontSize: 12,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.72)',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.sm,
+    letterSpacing: 0.6,
+    marginBottom: spacing.xs,
   },
   mainRow: {
     flexDirection: 'row',
@@ -181,12 +163,12 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   logoWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
+    width: 56,
+    height: 56,
+    borderRadius: radii.card,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
   logoImage: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -194,7 +176,7 @@ const styles = StyleSheet.create({
   textBlock: { flex: 1, minWidth: 0, gap: 4 },
   title: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFF',
     letterSpacing: -0.3,
   },
@@ -209,8 +191,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginTop: 2,
+    minWidth: 0,
   },
-  metaText: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+  metaText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '500',
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
+  },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -219,39 +209,36 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: radii.pill,
   },
   statusSuccess: { backgroundColor: 'rgba(16, 185, 129, 0.35)' },
   statusWarning: { backgroundColor: 'rgba(245, 158, 11, 0.4)' },
   statusMuted: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  statusText: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  statusText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
   actionBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: spacing.lg,
-  },
+  statsRow: { flexDirection: 'row', gap: 10, marginTop: spacing.md },
   statBox: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: 'rgba(255,255,255,0.14)',
-    borderRadius: 16,
-    paddingVertical: 12,
+    borderRadius: radii.xl,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     alignItems: 'center',
     gap: 2,
   },
-  statValue: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: 2 },
+  statValue: { fontSize: 18, fontWeight: '700', color: '#FFF', marginTop: 2 },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.82)',
-    fontWeight: '600',
+    fontWeight: '500',
     textAlign: 'center',
   },
 });

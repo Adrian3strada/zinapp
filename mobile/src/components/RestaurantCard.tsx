@@ -3,6 +3,8 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { radii } from '../theme/radii';
+import { cardShadow } from '../theme/shadows';
 import { spacing } from '../theme/spacing';
 import type { Restaurant } from '../types';
 import { getRestaurantVisual } from '../utils/foodVisuals';
@@ -54,17 +56,9 @@ function RestaurantCard({ restaurant, onPress }: Props) {
       </View>
 
       <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text style={styles.name} numberOfLines={1}>
-            {restaurant.name}
-          </Text>
-          <View style={[styles.statusPill, isOpen ? styles.statusOpen : styles.statusClosed]}>
-            {isOpen ? <View style={styles.openDot} /> : null}
-            <Text style={[styles.statusText, isOpen ? styles.statusTextOpen : styles.statusTextClosed]}>
-              {isOpen ? 'Abierto' : 'Cerrado'}
-            </Text>
-          </View>
-        </View>
+        <Text style={styles.name} numberOfLines={1}>
+          {restaurant.name}
+        </Text>
 
         {restaurant.description ? (
           <Text style={styles.desc} numberOfLines={1}>
@@ -95,10 +89,6 @@ function RestaurantCard({ restaurant, onPress }: Props) {
             <Text style={styles.signalText}>{feeShort}</Text>
           </View>
         </View>
-
-        <Text style={styles.address} numberOfLines={1}>
-          {restaurant.address}
-        </Text>
       </View>
 
       <Ionicons name="chevron-forward" size={18} color={colors.textMuted} style={styles.chevron} />
@@ -113,26 +103,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: radii.card,
     marginBottom: spacing.md,
     padding: 10,
     gap: 12,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    ...cardShadow,
   },
   pressed: { opacity: 0.92 },
-  closed: { opacity: 0.78 },
+  closed: { opacity: 0.72 },
   thumbWrap: {
     width: 88,
     height: 88,
-    borderRadius: 14,
+    borderRadius: radii.lg,
     overflow: 'hidden',
     backgroundColor: colors.primaryLight,
   },
   thumb: {
     width: 88,
     height: 88,
-    borderRadius: 14,
+    borderRadius: radii.lg,
   },
   thumbOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -141,39 +132,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   thumbOverlayText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   body: { flex: 1, minWidth: 0, gap: 4 },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   name: {
-    flex: 1,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: colors.text,
     letterSpacing: -0.2,
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  statusOpen: { backgroundColor: '#ECFDF5' },
-  statusClosed: { backgroundColor: '#FEF2F2' },
-  openDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
-  statusText: { fontSize: 10, fontWeight: '800' },
-  statusTextOpen: { color: colors.success },
-  statusTextClosed: { color: colors.error },
-  desc: { fontSize: 12, color: colors.textSecondary, lineHeight: 16 },
+  desc: { fontSize: 12, color: colors.textMuted, lineHeight: 16 },
   signalRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -182,10 +153,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   signal: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  signalStrong: { fontSize: 12, fontWeight: '800', color: colors.text },
-  signalText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  signalMuted: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
-  dot: { fontSize: 12, color: colors.textMuted, fontWeight: '700' },
-  address: { fontSize: 11, color: colors.textMuted, fontWeight: '500', marginTop: 2 },
+  signalStrong: { fontSize: 12, fontWeight: '700', color: colors.text },
+  signalText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  signalMuted: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  dot: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   chevron: { marginLeft: 2 },
 });

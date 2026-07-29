@@ -3,12 +3,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import type { RestaurantReviewsScreenProps } from '../../navigation/types';
 import { reviewApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import type { Review } from '../../types';
+import { getApiErrorMessage } from '../../utils/apiErrors';
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -28,14 +30,19 @@ function Stars({ rating }: { rating: number }) {
 export default function RestaurantReviewsScreen({ route }: RestaurantReviewsScreenProps) {
   const { restaurantId, restaurantName } = route.params;
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const { data } = await reviewApi.listByRestaurant(restaurantId);
       setReviews(Array.isArray(data) ? data : []);
-    } catch {
-      setReviews([]);
+      setError(null);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'No se pudieron cargar las reseñas.'));
+    } finally {
+      setLoading(false);
     }
   }, [restaurantId]);
 
@@ -48,6 +55,14 @@ export default function RestaurantReviewsScreen({ route }: RestaurantReviewsScre
     await load();
     setRefreshing(false);
   };
+
+  if (loading && reviews.length === 0) {
+    return (
+      <ScreenContainer>
+        <ListSkeleton />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -62,7 +77,20 @@ export default function RestaurantReviewsScreen({ route }: RestaurantReviewsScre
           <Text style={styles.subtitle}>Opiniones de clientes sobre {restaurantName}</Text>
         }
         ListEmptyComponent={
-          <EmptyState emoji="⭐" title="Sin reseñas aún" subtitle="Sé el primero en calificar después de pedir" />
+          error ? (
+            <EmptyState
+              emoji="⚠️"
+              title="No se pudieron cargar"
+              subtitle={error}
+              actionLabel="Reintentar"
+              onAction={() => {
+                setLoading(true);
+                void load();
+              }}
+            />
+          ) : (
+            <EmptyState emoji="⭐" title="Sin reseñas aún" subtitle="Sé el primero en calificar después de pedir" />
+          )
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -82,7 +110,7 @@ export default function RestaurantReviewsScreen({ route }: RestaurantReviewsScre
 }
 
 const styles = StyleSheet.create({
-  list: { padding: spacing.screen, gap: 10, flexGrow: 1 },
+  list: { padding: spacing.screen, paddingBottom: spacing.xxl + 24, gap: 10, flexGrow: 1 },
   subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 8 },
   card: {
     backgroundColor: colors.surface,
@@ -96,5 +124,5 @@ const styles = StyleSheet.create({
   name: { fontSize: 14, fontWeight: '700', color: colors.text },
   stars: { flexDirection: 'row', gap: 2 },
   comment: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  date: { fontSize: 11, color: colors.textMuted },
+  date: { fontSize: 12, color: colors.textMuted },
 });

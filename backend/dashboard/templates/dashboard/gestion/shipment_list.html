@@ -39,8 +39,8 @@
           <td class="mono">${{ s.total|floatformat:2 }}</td>
           <td class="text-muted">{{ s.created_at|date:"d/m/Y H:i" }}</td>
           <td class="text-right">
-            <a href="{% url 'gestion:shipment-detail' s.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Ver">
-              <i class="fas fa-eye"></i><span class="d-none d-lg-inline ml-1">Ver</span>
+            <a href="{% url 'gestion:shipment-detail' s.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Ver" aria-label="Ver envío">
+              <i class="fas fa-eye" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Ver</span>
             </a>
           </td>
         </tr>

@@ -39,7 +39,10 @@ export default function ActiveDeliverySheet({
     ? (order.restaurant_detail?.address || restaurant)
     : order.delivery_address;
   const cash = order.payment_method === 'cash';
-  const totalLabel = formatCurrency(order.total);
+  const fee = parseFloat(order.delivery_fee || '0');
+  const tip = parseFloat(order.tip_amount || '0');
+  const earn = fee + tip;
+  const earnLabel = formatCurrency(earn > 0 ? earn : order.total);
   const hasEta =
     routeStats?.distanceMeters != null && routeStats.durationSeconds != null;
 
@@ -84,7 +87,7 @@ export default function ActiveDeliverySheet({
         <View style={styles.metaChip}>
           <Ionicons name="cash-outline" size={13} color={colors.success} />
           <Text style={styles.metaText} numberOfLines={1}>
-            {totalLabel}
+            Ganarás {earnLabel}
           </Text>
         </View>
         {cash && !isPickup ? (
@@ -138,7 +141,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 6,
+    paddingBottom: 16,
     gap: 12,
   },
   handle: {
@@ -167,13 +170,13 @@ const styles = StyleSheet.create({
   stepDotActive: { backgroundColor: colors.primary },
   stepDotDone: { backgroundColor: colors.success },
   stepDotIdle: { backgroundColor: colors.border },
-  stepNum: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+  stepNum: { fontSize: 12, fontWeight: '800', color: '#FFF' },
   stepLabel: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   stepLabelActive: { color: colors.text },
   stepLine: { width: 28, height: 2, backgroundColor: colors.border, borderRadius: 1 },
   header: { gap: 4 },
   eyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     textTransform: 'uppercase',
@@ -183,7 +186,7 @@ const styles = StyleSheet.create({
   address: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, lineHeight: 20 },
   metaRow: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     alignItems: 'stretch',
     gap: 6,
   },
@@ -195,11 +198,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     backgroundColor: colors.background,
-    paddingHorizontal: 6,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    minHeight: 40,
     borderRadius: 12,
   },
-  metaText: { fontSize: 11, fontWeight: '700', color: colors.text, flexShrink: 1 },
+  metaText: { fontSize: 12, fontWeight: '700', color: colors.text, flexShrink: 1 },
   navBtn: {
     flexDirection: 'row',
     alignItems: 'center',

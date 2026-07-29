@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-MX">
   <head>
     <meta charset="utf-8" />
-    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>ZinApp</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <title>ZinApp — App Zinapécuaro</title>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -24,8 +24,10 @@
       }
     </style>
   <meta name="theme-color" content="#1E5DB8">
-<link rel="icon" href="/app/favicon.ico" /><meta charset="utf-8" />
-<meta name="description" content="Comida a domicilio y servicios locales en ZinapÃ©cuaro." />
+<link rel="icon" href="/app/favicon.ico" />
+<meta name="description" content="App ZinApp para pedir comida y contactar servicios locales en Zinapécuaro. Usa la web app o instala desde las tiendas." />
+<meta name="robots" content="noindex,follow" />
+<link rel="canonical" href="https://zinapp.com.mx/app/" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="ZinApp" />
@@ -66,14 +68,18 @@
   [role="button"], button, a { cursor: pointer; }
   [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] { z-index: 1000 !important; }
   @media (max-width: 767px) {
-    html, body { background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 100%); }
-    #root { justify-content: center; align-items: center; }
+    html, body { background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 100%); height: 100%; height: 100dvh; }
+    #root { justify-content: flex-start; align-items: stretch; height: 100%; height: 100dvh; }
     [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] {
       position: fixed !important;
       bottom: 0 !important;
       left: 50% !important;
+      right: auto !important;
       transform: translateX(-50%) !important;
-      width: min(520px, 100vw) !important;
+      width: min(100%, 520px) !important;
+      max-width: 520px !important;
+      margin-inline: 0 !important;
+      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
     }
   }
   @media (min-width: 768px) {

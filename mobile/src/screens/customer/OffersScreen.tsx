@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import type { OffersScreenProps } from '../../navigation/types';
@@ -11,7 +12,6 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { PublicCoupon } from '../../types';
-import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
@@ -27,18 +27,21 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
   const [coupons, setCoupons] = useState<PublicCoupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user || isGuest) {
       setCoupons([]);
+      setError(null);
       setLoading(false);
       return;
     }
     try {
       const { data } = await couponApi.listActive();
       setCoupons(data);
+      setError(null);
     } catch (err) {
-      appAlert('Ofertas', getApiErrorMessage(err, 'No se pudieron cargar los cupones.'));
+      setError(getApiErrorMessage(err, 'No se pudieron cargar los cupones.'));
     } finally {
       setLoading(false);
     }
@@ -64,6 +67,14 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
     [navigation],
   );
 
+  if (loading && coupons.length === 0) {
+    return (
+      <ScreenContainer>
+        <ListSkeleton />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
       <FlatList
@@ -79,25 +90,34 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
           </Text>
         }
         ListEmptyComponent={
-          !loading ? (
-            isGuest || !user ? (
-              <EmptyState
-                emoji="🏷️"
-                title="Inicia sesión para ver cupones"
-                subtitle="Los códigos de descuento solo están disponibles con tu cuenta."
-                actionLabel="Iniciar sesión"
-                onAction={requestLogin}
-              />
-            ) : (
-              <EmptyState
-                emoji="🏷️"
-                title="Sin ofertas activas"
-                subtitle="Vuelve pronto o pide sin cupón"
-                actionLabel="Ver restaurantes"
-                onAction={() => navigation.navigate('Comida')}
-              />
-            )
-          ) : null
+          error ? (
+            <EmptyState
+              emoji="⚠️"
+              title="No se pudieron cargar"
+              subtitle={error}
+              actionLabel="Reintentar"
+              onAction={() => {
+                setLoading(true);
+                void load();
+              }}
+            />
+          ) : isGuest || !user ? (
+            <EmptyState
+              emoji="🏷️"
+              title="Inicia sesión para ver cupones"
+              subtitle="Los códigos de descuento solo están disponibles con tu cuenta."
+              actionLabel="Iniciar sesión"
+              onAction={requestLogin}
+            />
+          ) : (
+            <EmptyState
+              emoji="🏷️"
+              title="Sin ofertas activas"
+              subtitle="Vuelve pronto o pide sin cupón"
+              actionLabel="Ver restaurantes"
+              onAction={() => navigation.navigate('Comida')}
+            />
+          )
         }
         renderItem={({ item }) => (
           <View style={[styles.card, cardShadow]}>
@@ -126,7 +146,7 @@ export default function OffersScreen({ navigation }: OffersScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  list: { padding: spacing.screen, gap: 12, flexGrow: 1 },
+  list: { padding: spacing.screen, paddingBottom: spacing.xxl + 24, gap: 12, flexGrow: 1 },
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,

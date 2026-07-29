@@ -40,5 +40,5 @@ const styles = StyleSheet.create({
   suffix: { fontSize: 12, color: colors.textSecondary },
   badgeCompact: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 14, gap: 4 },
   dotCompact: { width: 6, height: 6, borderRadius: 3 },
-  textCompact: { fontSize: 10 },
+  textCompact: { fontSize: 12 },
 });

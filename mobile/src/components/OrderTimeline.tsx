@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     top: 12,
   },
   lineDone: { backgroundColor: colors.primary },
-  label: { fontSize: 9, color: colors.textMuted, marginTop: 6, textAlign: 'center' },
+  label: { fontSize: 12, color: colors.textMuted, marginTop: 6, textAlign: 'center' },
   labelDone: { color: colors.textSecondary, fontWeight: '500' },
   labelActive: { color: colors.primary, fontWeight: '700' },
   cancelled: {

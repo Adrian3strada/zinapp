@@ -49,26 +49,26 @@
           <td class="text-muted">{{ u.date_joined|date:"d/m/Y" }}</td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:user-edit' u.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
-                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              <a href="{% url 'gestion:user-edit' u.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar usuario">
+                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
               </a>
               {% if not u.is_superuser %}
-              <a href="{% url 'gestion:user-delete' u.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
-                <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+              <a href="{% url 'gestion:user-delete' u.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar usuario">
+                <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
               </a>
               {% endif %}
               {% if u.is_active and not u.is_superuser %}
               <form method="post" action="{% url 'gestion:user-deactivate' u.pk %}" class="d-inline">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger btn-xs zin-row-btn" title="Desactivar" onclick="return confirm('¿Desactivar {{ u.username }}?')">
-                  <i class="fas fa-user-slash"></i>
+                <button type="submit" class="btn btn-outline-danger btn-xs zin-row-btn" title="Desactivar" aria-label="Desactivar usuario" onclick="return confirm('¿Desactivar {{ u.username }}?')">
+                  <i class="fas fa-user-slash" aria-hidden="true"></i>
                 </button>
               </form>
               {% elif not u.is_active %}
               <form method="post" action="{% url 'gestion:user-activate' u.pk %}" class="d-inline">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-success btn-xs zin-row-btn" title="Activar">
-                  <i class="fas fa-user-check"></i>
+                <button type="submit" class="btn btn-outline-success btn-xs zin-row-btn" title="Activar" aria-label="Activar usuario">
+                  <i class="fas fa-user-check" aria-hidden="true"></i>
                 </button>
               </form>
               {% endif %}

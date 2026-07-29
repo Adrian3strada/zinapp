@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  trackDisabled: { opacity: 0.7 },
+  trackDisabled: { opacity: 0.48 },
   fill: {
     position: 'absolute',
     left: 0,

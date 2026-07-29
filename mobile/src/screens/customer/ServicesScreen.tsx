@@ -147,19 +147,6 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
           ))}
         </ScrollView>
 
-        <Pressable style={styles.requestCard} onPress={handleRequestListing}>
-          <View style={styles.requestIcon}>
-            <Ionicons name="storefront-outline" size={22} color={colors.serviceEnd} />
-          </View>
-          <View style={styles.requestBody}>
-            <Text style={styles.requestTitle}>¿Tienes un negocio?</Text>
-            <Text style={styles.requestText}>
-              Solicita aparecer en Servicios. Revisamos tu información y te contactamos.
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </Pressable>
-
         {loading && services.length === 0 ? (
           <ListSkeleton count={4} />
         ) : error && services.length === 0 ? (
@@ -189,6 +176,19 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
             ))}
           </View>
         )}
+
+        <Pressable style={styles.requestCard} onPress={handleRequestListing}>
+          <View style={styles.requestIcon}>
+            <Ionicons name="storefront-outline" size={22} color={colors.serviceEnd} />
+          </View>
+          <View style={styles.requestBody}>
+            <Text style={styles.requestTitle}>¿Tienes un negocio?</Text>
+            <Text style={styles.requestText}>
+              Solicita aparecer en Servicios. Revisamos tu información y te contactamos.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </Pressable>
       </ScrollView>
     </ScreenContainer>
   );

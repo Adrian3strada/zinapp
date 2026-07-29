@@ -238,5 +238,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '500',
   },
-  missingNote: { fontSize: 11, color: colors.warning, textAlign: 'center', marginTop: 6 },
+  missingNote: { fontSize: 12, color: colors.warning, textAlign: 'center', marginTop: 6 },
 });

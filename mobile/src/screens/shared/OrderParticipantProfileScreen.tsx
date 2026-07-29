@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   infoRow: { flexDirection: 'row', gap: 12, marginBottom: 14, alignItems: 'flex-start' },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.5,

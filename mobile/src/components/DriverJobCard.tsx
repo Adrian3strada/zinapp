@@ -6,6 +6,7 @@ import Button from './Button';
 import LiveBadge from './LiveBadge';
 import OrderStatusBadge from './OrderStatusBadge';
 import { colors } from '../theme/colors';
+import { radii } from '../theme/radii';
 import { cardShadow } from '../theme/shadows';
 import { formatCurrency } from '../utils/format';
 import FoodImage from './FoodImage';
@@ -74,19 +75,16 @@ export default function DriverJobCard({
           <View style={[styles.typeBadge, isFood ? styles.typeFood : styles.typeShipment]}>
             <Ionicons
               name={isFood ? 'restaurant' : 'cube'}
-              size={12}
-              color={colors.primary}
+              size={14}
+              color={isFood ? colors.primary : colors.shipmentStart}
             />
-            <Text style={[styles.typeBadgeText, isFood ? styles.typeFoodText : styles.typeShipmentText]}>
-              {isFood ? 'Comida' : 'Envío'}
-            </Text>
           </View>
           {status && statusLabel ? (
-            <View style={styles.badgeRow}>
+            isLive || isPickup ? (
+              <LiveBadge label={isLive ? 'En ruta' : 'Recogida'} />
+            ) : (
               <OrderStatusBadge status={status} label={statusLabel} />
-              {isLive && <LiveBadge label="En ruta" />}
-              {isPickup && <LiveBadge label="Recogida" />}
-            </View>
+            )
           ) : null}
         </View>
 
@@ -160,7 +158,7 @@ export default function DriverJobCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 22,
+    borderRadius: radii.card,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
@@ -168,12 +166,12 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   cardLive: {
-    borderColor: colors.primary + '55',
-    backgroundColor: colors.primaryLight,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   cardReady: {
-    borderColor: colors.warning + '55',
-    backgroundColor: '#FFFBEB66',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
   },
   pressed: { opacity: 0.94 },
   typeRow: {
@@ -184,38 +182,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   typeBadge: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    justifyContent: 'center',
   },
   typeFood: { backgroundColor: colors.primaryLight },
-  typeShipment: { backgroundColor: colors.primaryLight },
-  typeBadgeText: { fontSize: 11, fontWeight: '800' },
+  typeShipment: { backgroundColor: '#EEF2FF' },
+  typeBadgeText: { fontSize: 12, fontWeight: '700' },
   typeFoodText: { color: colors.primary },
-  typeShipmentText: { color: colors.primaryDark },
+  typeShipmentText: { color: colors.shipmentStart },
   badgeRow: { flexDirection: 'row', gap: 6, flexShrink: 1 },
   mainRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   shipmentIcon: {
     width: 48,
     height: 48,
-    borderRadius: 14,
-    backgroundColor: '#2A9D8F22',
+    borderRadius: radii.lg,
+    backgroundColor: '#EEF2FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   shipmentEmoji: { fontSize: 24 },
   info: { flex: 1, minWidth: 0 },
-  title: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2, fontWeight: '600' },
+  title: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2, fontWeight: '500' },
   linesWrap: { marginTop: 8, gap: 6 },
   lineRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   lineIcon: {
     width: 22,
     height: 22,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
@@ -223,8 +220,8 @@ const styles = StyleSheet.create({
   },
   lineText: { flex: 1, fontSize: 12, color: colors.textMuted, lineHeight: 17, fontWeight: '500' },
   totalWrap: { alignItems: 'flex-end', gap: 2 },
-  totalLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
-  total: { fontSize: 17, fontWeight: '800', color: colors.primaryDark },
+  totalLabel: { fontSize: 12, fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase' },
+  total: { fontSize: 17, fontWeight: '700', color: colors.primaryDark },
   actionBtn: { marginTop: 12 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   actionChip: {
@@ -235,13 +232,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: radii.lg,
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: colors.primary + '55',
   },
   actionChipPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
   actionChipSuccess: { backgroundColor: colors.success, borderColor: colors.success },
-  actionChipText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
+  actionChipText: { fontSize: 13, fontWeight: '700', color: colors.primaryDark },
   actionChipTextPrimary: { color: '#FFF' },
 });

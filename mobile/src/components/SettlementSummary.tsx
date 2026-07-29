@@ -78,5 +78,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: '800', color: colors.text },
   row: { fontSize: 14, color: colors.textSecondary },
   total: { fontSize: 16, fontWeight: '800', color: colors.primary, marginTop: 6 },
-  note: { fontSize: 11, color: colors.textMuted, marginTop: 8, lineHeight: 16 },
+  note: { fontSize: 12, color: colors.textMuted, marginTop: 8, lineHeight: 16 },
 });

@@ -139,11 +139,7 @@ const ProductManageRow = React.memo(function ProductManageRow({
               <View style={styles.soldOutBadge}>
                 <Text style={styles.soldOutText}>Agotado</Text>
               </View>
-            ) : (
-              <View style={styles.availableBadge}>
-                <Text style={styles.availableText}>Visible</Text>
-              </View>
-            )}
+            ) : null}
           </View>
           {!!product.description && (
             <Text style={styles.productDesc} numberOfLines={2}>
@@ -199,8 +195,6 @@ export default function RestaurantManageScreen() {
   const [editor, setEditor] = useState<ProductDraft | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const hasLoadedRef = useRef(false);
-
-  const availableCount = products.filter((p) => p.is_available).length;
 
   const load = useCallback(async () => {
     const isRefresh = hasLoadedRef.current;
@@ -436,16 +430,8 @@ export default function RestaurantManageScreen() {
             eyebrow="Menú"
             title={restaurant?.name}
             subtitle="Administra platillos, precios y disponibilidad"
-            stats={[
-              { label: 'Platillos', value: products.length, icon: 'fast-food-outline' },
-              { label: 'Disponibles', value: availableCount, icon: 'checkmark-circle-outline' },
-              {
-                label: 'Ocultos',
-                value: products.length - availableCount,
-                icon: 'eye-off-outline',
-              },
-            ]}
             actionIcon="add"
+            actionLabel="Agregar producto"
             onActionPress={openNewProduct}
           />
 
@@ -942,7 +928,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
-  productCardUnavailable: { opacity: 0.75 },
+  productCardUnavailable: { opacity: 0.58 },
   productCardPressed: { opacity: 0.92 },
   productMain: {
     flex: 1,
@@ -952,7 +938,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   productInfo: { flex: 1, minWidth: 0 },
-  editIconBtn: { padding: 4 },
+  editIconBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
   productActions: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -969,17 +961,17 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  soldOutText: { fontSize: 10, fontWeight: '700', color: colors.error },
+  soldOutText: { fontSize: 12, fontWeight: '700', color: colors.error },
   availableBadge: {
     backgroundColor: colors.success + '18',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  availableText: { fontSize: 10, fontWeight: '700', color: colors.success },
+  availableText: { fontSize: 12, fontWeight: '700', color: colors.success },
   productDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
   productCategory: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     marginTop: 6,
@@ -1038,7 +1030,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 0,
   },
-  modalBody: { flexGrow: 0, flexShrink: 1 },
+  modalBody: { flex: 1, minHeight: 0 },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -1046,15 +1038,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalEyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 2 },
-  modalClose: { padding: 4 },
-  modalScroll: { paddingBottom: 8 },
+  modalClose: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
+  modalScroll: { paddingBottom: 24 },
   photoBox: {
     height: 180,
     borderRadius: 16,
@@ -1097,9 +1095,9 @@ const styles = StyleSheet.create({
   groupToggles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
   toggleChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   toggleChipText: { fontSize: 13, fontWeight: '600', color: colors.text },
-  optionEditRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  optionNameField: { flex: 1.4 },
-  optionPriceField: { flex: 1 },
+  optionEditRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' },
+  optionNameField: { flex: 1.4, flexBasis: '45%', minWidth: 0 },
+  optionPriceField: { flex: 1, flexBasis: '40%', minWidth: 0 },
   groupActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   groupActionBtn: { flex: 1 },
   modalFooter: {

@@ -134,7 +134,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       loading={initialLoading}
       loadingSkeleton={
         <View style={[styles.skeleton, { paddingTop: insets.top + 12 }, listPaddingBottom()]}>
-          <ListSkeleton count={4} variant="order" />
+          <ListSkeleton count={4} variant="restaurant" />
         </View>
       }
       error={error && restaurants.length === 0 ? error : null}
@@ -338,13 +338,15 @@ const styles = StyleSheet.create({
   secondaryRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.sm },
   secondaryChip: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    paddingVertical: 10,
+    borderRadius: 16,
+    paddingVertical: 12,
     paddingHorizontal: 12,
+    minHeight: 48,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
@@ -355,16 +357,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  secondaryLabel: { flex: 1, fontSize: 13, fontWeight: '800', color: colors.text },
+  secondaryLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '800', color: colors.text },
   catWrap: { marginBottom: spacing.sm, flexGrow: 0 },
   catRow: { gap: 8, paddingVertical: 4 },
   catChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    minHeight: 44,
+    borderRadius: 16,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -380,6 +384,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     marginTop: spacing.xs,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '900', color: colors.text },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   sectionSub: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
 });

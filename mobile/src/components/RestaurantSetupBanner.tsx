@@ -82,6 +82,9 @@ export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props
               style={[styles.stepChip, step.done && styles.stepChipDone]}
               onPress={() => navigation.navigate(STEP_TAB[step.key] ?? 'Perfil')}
               hitSlop={HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={`${step.label}${step.done ? ', completado' : ', pendiente'}`}
+              accessibilityState={{ selected: step.done }}
             >
               <Ionicons
                 name={step.done ? 'checkmark-circle' : STEP_ICONS[step.key] ?? 'ellipse-outline'}
@@ -99,7 +102,12 @@ export default function RestaurantSetupBanner({ restaurant, setupStatus }: Props
         </View>
       </>
 
-      <Pressable style={styles.cta} onPress={goToStep} accessibilityRole="button">
+      <Pressable
+        style={styles.cta}
+        onPress={goToStep}
+        accessibilityRole="button"
+        accessibilityLabel={ctaLabel}
+      >
         <Text style={styles.ctaText}>{ctaLabel}</Text>
         <Ionicons name="arrow-forward" size={16} color="#FFF" />
       </Pressable>
@@ -130,7 +138,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  textWrap: { flex: 1, gap: 4 },
+  textWrap: { flex: 1, minWidth: 0, gap: 4 },
   title: { fontSize: 16, fontWeight: '800', color: colors.text },
   sub: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   progressLabel: {
@@ -158,8 +166,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minHeight: 44,
     borderRadius: 10,
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -172,7 +181,7 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     flex: 1,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -184,6 +193,7 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: colors.primary,
     paddingVertical: 12,
+    minHeight: 44,
     borderRadius: 12,
     marginTop: 4,
   },

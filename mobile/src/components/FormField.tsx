@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { radii } from '../theme/radii';
 import { webTextInputStyle } from '../utils/webPlatform';
 
 interface Props {
@@ -31,6 +32,7 @@ interface Props {
   embedded?: boolean;
   rightElement?: React.ReactNode;
   autoComplete?: TextInputProps['autoComplete'];
+  error?: string;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -51,14 +53,17 @@ export default function FormField({
   embedded = false,
   rightElement,
   autoComplete,
+  error,
   style,
 }: Props) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View style={[styles.wrap, style]}>
       {!hideLabel && label ? (
         <Text style={styles.label}>
           {label}
-          {required ? ' *' : ''}
+          {required ? <Text style={styles.requiredMark}> *</Text> : null}
         </Text>
       ) : null}
       <View
@@ -66,12 +71,14 @@ export default function FormField({
           styles.inputWrap,
           embedded && styles.inputWrapEmbedded,
           multiline && styles.inputWrapMultiline,
+          focused && styles.inputWrapFocused,
+          !!error && styles.inputWrapError,
         ]}
       >
         <Ionicons
           name={icon}
           size={18}
-          color={embedded ? colors.textMuted : colors.primary}
+          color={error ? colors.error : focused ? colors.primary : embedded ? colors.textMuted : colors.primary}
           style={multiline ? styles.iconTop : undefined}
         />
         <TextInput
@@ -80,43 +87,54 @@ export default function FormField({
           placeholderTextColor={colors.textMuted}
           value={value}
           onChangeText={onChangeText}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           secureTextEntry={secureTextEntry}
           multiline={multiline}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
+          accessibilityLabel={label || placeholder || 'Campo de texto'}
+          accessibilityHint={error || hint}
           {...(Platform.OS === 'web' && autoComplete ? { autoComplete } : {})}
         />
         {rightElement ? <View style={styles.rightElement}>{rightElement}</View> : null}
       </View>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 6 },
+  wrap: { marginBottom: 8 },
   label: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.textSecondary,
     marginBottom: 8,
     marginTop: 4,
   },
+  requiredMark: { color: colors.error, fontWeight: '700' },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: radii.xl,
     paddingHorizontal: 14,
     marginBottom: 6,
     gap: 10,
     minHeight: 52,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
-  inputWrapEmbedded: { backgroundColor: colors.background },
+  inputWrapFocused: {
+    borderColor: colors.primary,
+  },
+  inputWrapError: {
+    borderColor: colors.error,
+  },
+  inputWrapEmbedded: { backgroundColor: colors.surfaceElevated },
   inputWrapMultiline: { alignItems: 'flex-start', paddingVertical: 12 },
   iconTop: { marginTop: 2 },
   input: {
@@ -136,5 +154,6 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
   inputMultiline: { minHeight: 72, textAlignVertical: 'top' },
-  hint: { fontSize: 11, color: colors.textMuted, marginBottom: 8, lineHeight: 16 },
+  hint: { fontSize: 12, color: colors.textSecondary, marginBottom: 8, lineHeight: 16 },
+  errorText: { fontSize: 12, color: colors.error, marginBottom: 8, lineHeight: 16 },
 });

@@ -157,8 +157,9 @@ $html = Get-Content $indexPath -Raw -Encoding UTF8
 $manifestHref = "${assetPrefix}/manifest.webmanifest"
 $fontHref = "${assetPrefix}/fonts/ionicons.ttf"
 $inject = @"
-<meta charset="utf-8" />
-<meta name="description" content="Comida a domicilio y servicios locales en Zinapécuaro." />
+<meta name="description" content="App ZinApp para pedir comida y contactar servicios locales en Zinapécuaro. Usa la web app o instala desde las tiendas." />
+<meta name="robots" content="noindex,follow" />
+<link rel="canonical" href="https://zinapp.com.mx/app/" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="ZinApp" />
@@ -199,14 +200,18 @@ $inject = @"
   [role="button"], button, a { cursor: pointer; }
   [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] { z-index: 1000 !important; }
   @media (max-width: 767px) {
-    html, body { background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 100%); }
-    #root { justify-content: center; align-items: center; }
+    html, body { background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 100%); height: 100%; height: 100dvh; }
+    #root { justify-content: flex-start; align-items: stretch; height: 100%; height: 100dvh; }
     [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] {
       position: fixed !important;
       bottom: 0 !important;
       left: 50% !important;
+      right: auto !important;
       transform: translateX(-50%) !important;
-      width: min(520px, 100vw) !important;
+      width: min(100%, 520px) !important;
+      max-width: 520px !important;
+      margin-inline: 0 !important;
+      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
     }
   }
   @media (min-width: 768px) {
@@ -217,7 +222,16 @@ $inject = @"
 </style>
 "@
 $html = $html -replace '<meta name="description"[^>]*>\s*', ''
+$html = $html -replace '<meta name="robots"[^>]*>\s*', ''
+$html = $html -replace '<link rel="canonical"[^>]*>\s*', ''
+$html = $html -replace '<meta charset="utf-8"\s*/?>\s*', '<meta charset="utf-8" />'
+$html = $html -replace '<meta httpEquiv="X-UA-Compatible"[^>]*>\s*', '<meta http-equiv="X-UA-Compatible" content="IE=edge" />'
+$html = $html -replace '<meta http-equiv="X-UA-Compatible"[^>]*>\s*', '<meta http-equiv="X-UA-Compatible" content="IE=edge" />'
 $html = $html -replace '<noscript>\s*You need to enable JavaScript[^<]*</noscript>', '<noscript>Activa JavaScript para usar ZinApp.</noscript>'
+$html = $html -replace 'content="width=device-width, initial-scale=1, shrink-to-fit=no"', 'content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"'
+$html = $html -replace 'content="width=device-width, initial-scale=1"', 'content="width=device-width, initial-scale=1, viewport-fit=cover"'
+$html = $html -replace '<html lang="es">', '<html lang="es-MX">'
+$html = $html -replace '<title>ZinApp</title>', '<title>ZinApp — App Zinapécuaro</title>'
 $html = $html -replace '</head>', "$inject</head>"
 [System.IO.File]::WriteAllText($indexPath, $html, [System.Text.UTF8Encoding]::new($false))
 

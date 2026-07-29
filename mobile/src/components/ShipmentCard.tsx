@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
   meta: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
-  route: { fontSize: 11, color: colors.textMuted, marginTop: 6, lineHeight: 16 },
-  date: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
+  route: { fontSize: 12, color: colors.textMuted, marginTop: 6, lineHeight: 16 },
+  date: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   right: { alignItems: 'flex-end', gap: 8 },
   total: { fontSize: 16, fontWeight: '800', color: colors.primary },
 });

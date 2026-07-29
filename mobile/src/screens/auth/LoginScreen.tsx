@@ -124,6 +124,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
               onPress={() => setShowPassword(!showPassword)}
               hitSlop={8}
               style={styles.passwordToggle}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -142,23 +144,35 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           style={styles.btn}
         />
         <GoogleSignInButton onIdToken={handleGoogle} disabled={loading} />
-        <Button
-          title="Explorar sin cuenta"
-          variant="ghost"
+        <Pressable
           onPress={enterGuestMode}
           disabled={loading}
-          size="lg"
-        />
+          style={styles.guestLink}
+          accessibilityRole="button"
+          accessibilityLabel="Explorar sin cuenta"
+        >
+          <Text style={styles.guestLinkText}>Explorar sin cuenta</Text>
+        </Pressable>
         {loading && statusHint ? (
           <Text style={styles.statusHint}>{statusHint}</Text>
         ) : null}
       </FormSection>
 
-      <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgot}>
+      <Pressable
+        onPress={() => navigation.navigate('ForgotPassword')}
+        style={styles.forgot}
+        accessibilityRole="link"
+        accessibilityLabel="¿Olvidaste tu contraseña?"
+      >
         <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
       </Pressable>
 
-      <Pressable onPress={() => navigation.navigate('Register')} style={styles.link}>
+      <Pressable
+        onPress={() => navigation.navigate('Register')}
+        style={styles.link}
+        accessibilityRole="link"
+        accessibilityLabel="Regístrate"
+      >
         <Text style={styles.linkText}>¿No tienes cuenta? </Text>
         <Text style={styles.linkBold}>Regístrate</Text>
       </Pressable>
@@ -281,6 +295,7 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     paddingBottom: 48,
+    paddingHorizontal: spacing.xl,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -301,14 +316,14 @@ const styles = StyleSheet.create({
   passwordToggle: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
   },
   formWrap: {
     backgroundColor: colors.surface,
-    marginHorizontal: 20,
-    marginTop: -32,
-    borderRadius: 24,
+    marginHorizontal: spacing.xl,
+    marginTop: -20,
+    borderRadius: 20,
     padding: spacing.xl,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -321,6 +336,17 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   btn: { marginTop: 4 },
+  guestLink: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: 4,
+  },
+  guestLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
   statusHint: {
     textAlign: 'center',
     fontSize: 12,
@@ -329,14 +355,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     paddingHorizontal: 8,
   },
-  forgot: { alignItems: 'center', marginTop: 4 },
-  forgotText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
-  link: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  forgot: { alignItems: 'center', marginTop: 12, minHeight: 44, justifyContent: 'center' },
+  forgotText: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  link: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, minHeight: 44, alignItems: 'center' },
   linkText: { color: colors.textSecondary, fontSize: 15 },
   linkBold: { color: colors.primary, fontSize: 15, fontWeight: '700' },
   apiHint: {
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 12,
     color: colors.textMuted,
     marginTop: 16,
   },

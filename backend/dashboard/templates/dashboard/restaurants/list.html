@@ -50,14 +50,14 @@
           </td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Gestionar">
-                <i class="fas fa-sliders"></i><span class="d-none d-lg-inline ml-1">Gestionar</span>
+              <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Gestionar" aria-label="Gestionar restaurante">
+                <i class="fas fa-sliders" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Gestionar</span>
               </a>
-              <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar">
-                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar" aria-label="Editar restaurante">
+                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
               </a>
-              <a href="{% url 'gestion:restaurant-delete' restaurant.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
-                <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+              <a href="{% url 'gestion:restaurant-delete' restaurant.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar restaurante">
+                <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
               </a>
             </div>
           </td>

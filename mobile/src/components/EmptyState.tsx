@@ -2,8 +2,9 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { radii } from '../theme/radii';
 import { spacing } from '../theme/spacing';
-import { softShadow } from '../theme/shadows';
+import { typography } from '../theme/typography';
 import Button from './Button';
 
 interface Props {
@@ -16,11 +17,19 @@ interface Props {
 
 export default function EmptyState({ emoji, title, subtitle, actionLabel, onAction }: Props) {
   return (
-    <View style={styles.container}>
-      <View style={styles.emojiCircle}>
-        <Text style={styles.emoji}>{emoji}</Text>
+    <View
+      style={styles.container}
+      accessibilityRole="summary"
+      accessibilityLabel={`${title}${subtitle ? `. ${subtitle}` : ''}`}
+    >
+      <View style={styles.emojiCircle} accessible={false} importantForAccessibility="no">
+        <Text style={styles.emoji} accessible={false}>
+          {emoji}
+        </Text>
       </View>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
       {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       {actionLabel && onAction && (
         <Button title={actionLabel} onPress={onAction} style={styles.btn} />
@@ -34,34 +43,31 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.xxl,
-    minHeight: 280,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
+    minHeight: 220,
   },
   emojiCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: radii.sheet,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
-    ...softShadow,
+    marginBottom: spacing.md,
   },
-  emoji: { fontSize: 40 },
+  emoji: { fontSize: 28 },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.text,
+    ...typography.title,
+    fontSize: 18,
     textAlign: 'center',
-    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
+    ...typography.subtitle,
+    fontSize: 14,
     textAlign: 'center',
     marginTop: spacing.sm,
-    lineHeight: 22,
-    maxWidth: 280,
+    maxWidth: 260,
   },
-  btn: { marginTop: spacing.xl, minWidth: 220, alignSelf: 'center' },
+  btn: { marginTop: spacing.lg, minWidth: 180, alignSelf: 'center' },
 });

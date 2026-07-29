@@ -66,17 +66,17 @@
           <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'dashboard:driver-detail' profile.pk %}" class="btn btn-outline-success btn-xs zin-row-btn" title="Revisar validación">
-                <i class="fas fa-check-circle"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
+              <a href="{% url 'dashboard:driver-detail' profile.pk %}" class="btn btn-outline-success btn-xs zin-row-btn" title="Revisar validación" aria-label="Revisar validación de repartidor">
+                <i class="fas fa-check-circle" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
               </a>
-              <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar perfil de repartidor">
-                <i class="fas fa-motorcycle"></i><span class="d-none d-lg-inline ml-1">Perfil</span>
+              <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar perfil de repartidor" aria-label="Editar perfil de repartidor">
+                <i class="fas fa-motorcycle" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Perfil</span>
               </a>
-              <a href="{% url 'gestion:user-edit' profile.user.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar cuenta">
-                <i class="fas fa-user-edit"></i><span class="d-none d-lg-inline ml-1">Cuenta</span>
+              <a href="{% url 'gestion:user-edit' profile.user.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar cuenta" aria-label="Editar cuenta de repartidor">
+                <i class="fas fa-user-edit" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Cuenta</span>
               </a>
-              <a href="{% url 'gestion:user-delete' profile.user.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar cuenta">
-                <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+              <a href="{% url 'gestion:user-delete' profile.user.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar cuenta" aria-label="Eliminar cuenta de repartidor">
+                <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
               </a>
             </div>
           </td>

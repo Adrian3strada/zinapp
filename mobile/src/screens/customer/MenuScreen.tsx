@@ -271,8 +271,8 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
                 hitSlop={8}
               >
                 <Ionicons name="star-outline" size={16} color={colors.textMuted} />
-                <Text style={[styles.reviewsText, { color: colors.textSecondary }]}>Sin reseñas aún</Text>
-                <Text style={styles.reviewsLink}>Ver</Text>
+                <Text style={[styles.reviewsText, { color: colors.textSecondary }]}>Sé el primero en reseñar</Text>
+                <Text style={styles.reviewsLink}>Escribir</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </Pressable>
             )}
@@ -287,7 +287,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
                 <Text style={styles.closedBannerText}>Cerrado — no recibe pedidos ahora</Text>
               </View>
             )}
-            {isCustomer && (
+            {isCustomer && restaurant?.is_open === false && (
               <Pressable
                 style={[styles.notifyRow, favorited && styles.notifyRowActive]}
                 onPress={handleToggleFavorite}
@@ -343,7 +343,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
           <ListSkeleton count={5} variant="restaurant" />
         </View>
       }
-      error={error}
+      error={error && products.length === 0 ? error : null}
       onRetry={refresh}
     >
       <SectionList
@@ -389,11 +389,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    minHeight: 44,
+    borderRadius: 16,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: colors.border,
   },
   chipActive: {
     backgroundColor: colors.primary,

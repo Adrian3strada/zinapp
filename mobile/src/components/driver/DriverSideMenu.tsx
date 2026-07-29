@@ -253,18 +253,6 @@ export default function DriverSideMenu({
 
             <View style={styles.menuBlock}>
               <MenuItem
-                icon="map-outline"
-                label="Inicio"
-                hint="Mapa y pedidos"
-                onPress={() => handleMenu('inicio')}
-              />
-              <MenuItem
-                icon="bicycle-outline"
-                label="Mis entregas"
-                hint="Activas e historial"
-                onPress={() => handleMenu('entregas')}
-              />
-              <MenuItem
                 icon="person-outline"
                 label="Mi cuenta"
                 hint="Datos, INE y vehículo"
@@ -366,9 +354,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
-  onlineTextWrap: { flex: 1, gap: 2 },
+  onlineTextWrap: { flex: 1, minWidth: 0, gap: 2 },
   onlineTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
-  onlineSub: { fontSize: 11, color: colors.textSecondary, fontWeight: '500', lineHeight: 15 },
+  onlineSub: { fontSize: 12, color: colors.textSecondary, fontWeight: '500', lineHeight: 15 },
   earnCard: {
     backgroundColor: colors.primaryLight,
     borderRadius: 20,
@@ -378,7 +366,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary + '33',
   },
   earnEyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: colors.primaryDark,
     textTransform: 'uppercase',
@@ -434,5 +422,5 @@ const styles = StyleSheet.create({
   menuText: { flex: 1, gap: 1 },
   menuLabel: { fontSize: 15, fontWeight: '800', color: colors.text },
   menuLabelDanger: { color: colors.error },
-  menuHint: { fontSize: 11, fontWeight: '500', color: colors.textMuted },
+  menuHint: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
 });

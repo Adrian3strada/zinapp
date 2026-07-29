@@ -202,6 +202,7 @@ function CustomerTabs({ guestMode }: { guestMode?: boolean }) {
         component={HomeScreen}
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: 'Inicio',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -212,6 +213,7 @@ function CustomerTabs({ guestMode }: { guestMode?: boolean }) {
         component={guestMode ? GuestOrdersTab : LazyMyOrdersScreen}
         options={{
           title: guestMode ? 'Pedidos' : 'Mis pedidos',
+          tabBarAccessibilityLabel: guestMode ? 'Pedidos' : 'Mis pedidos',
           tabBarBadge: !guestMode && activeOrderCount > 0 ? activeOrderCount : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
@@ -223,6 +225,7 @@ function CustomerTabs({ guestMode }: { guestMode?: boolean }) {
         component={CartScreenWithBoundary}
         options={{
           title: 'Mi carrito',
+          tabBarAccessibilityLabel: 'Mi carrito',
           tabBarBadge: itemCount > 0 ? String(itemCount) : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart" size={size} color={color} />
@@ -234,6 +237,7 @@ function CustomerTabs({ guestMode }: { guestMode?: boolean }) {
         component={ProfileScreenWithBoundary}
         options={{
           title: 'Mi perfil',
+          tabBarAccessibilityLabel: 'Mi perfil',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />

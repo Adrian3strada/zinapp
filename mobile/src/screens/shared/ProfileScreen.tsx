@@ -601,8 +601,6 @@ export default function ProfileScreen() {
                   ? restaurantCtx.restaurant.accepting_orders !== false
                   : acceptingOrders
               }
-              togglingOrders={restaurantCtx?.togglingOrders ?? togglingOrders}
-              onToggleAcceptingOrders={handleToggleAcceptingOrders}
               overlap
             />
           ) : null}
@@ -1047,7 +1045,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionHeaderText: { flex: 1 },
+  sectionHeaderText: { flex: 1, minWidth: 0 },
   sectionSub: {
     fontSize: 13,
     color: colors.textSecondary,
@@ -1121,7 +1119,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: 12,
   },
-  ordersToggleInfo: { flex: 1 },
+  ordersToggleInfo: { flex: 1, minWidth: 0 },
   ordersToggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   ordersToggleHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
   warnBanner: {
@@ -1162,8 +1160,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   dayPickerChip: {
-    minWidth: 48,
+    minWidth: 44,
+    minHeight: 40,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 10,
     paddingVertical: 9,
     borderRadius: 999,
@@ -1188,7 +1188,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    minHeight: 40,
     borderRadius: 999,
     backgroundColor: colors.primaryLight,
   },
@@ -1206,9 +1207,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
+    flexWrap: 'wrap',
     marginBottom: spacing.xs,
   },
-  weekDayLabel: { fontSize: 14, fontWeight: '800', color: colors.text },
+  weekDayLabel: { fontSize: 14, fontWeight: '800', color: colors.text, flexShrink: 1 },
   dayStatusChip: {
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -1217,11 +1219,11 @@ const styles = StyleSheet.create({
   },
   dayStatusOpen: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
   dayStatusClosed: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
-  dayStatusText: { fontSize: 11, fontWeight: '800' },
+  dayStatusText: { fontSize: 12, fontWeight: '800' },
   dayStatusTextOpen: { color: colors.success },
   dayStatusTextClosed: { color: colors.error },
-  hoursRow: { flexDirection: 'row', gap: 10 },
-  hourField: { flex: 1 },
+  hoursRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  hourField: { flexGrow: 1, flexBasis: 140, minWidth: 120 },
   dangerCard: {
     borderColor: '#FECACA',
     backgroundColor: '#FEF2F2',

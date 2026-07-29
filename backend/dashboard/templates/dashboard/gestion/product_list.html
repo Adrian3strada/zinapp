@@ -18,7 +18,7 @@
       <div class="zin-search zin-search-inline">
         {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar producto…" %}
       </div>
-      <button type="submit" class="btn btn-default btn-sm" title="Aplicar filtros"><i class="fas fa-filter"></i></button>
+      <button type="submit" class="btn btn-default btn-sm" title="Aplicar filtros" aria-label="Aplicar filtros"><i class="fas fa-filter" aria-hidden="true"></i></button>
     </form>
     <div class="zin-toolbar-actions">
       <a href="{% url 'gestion:product-create' %}" class="btn btn-primary btn-sm">
@@ -46,11 +46,11 @@
           <td>{% if p.is_available %}<span class="badge badge-success">Disponible</span>{% else %}<span class="badge badge-muted">Agotado</span>{% endif %}</td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:product-edit' p.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
-                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              <a href="{% url 'gestion:product-edit' p.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar producto">
+                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
               </a>
-              <a href="{% url 'gestion:product-delete' p.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
-                <i class="fas fa-trash"></i>
+              <a href="{% url 'gestion:product-delete' p.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar producto">
+                <i class="fas fa-trash" aria-hidden="true"></i>
               </a>
             </div>
           </td>

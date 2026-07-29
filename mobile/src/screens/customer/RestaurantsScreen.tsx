@@ -266,7 +266,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
             <ListSkeleton count={5} variant="restaurant" />
           </View>
         }
-        error={error}
+        error={error && restaurants.length === 0 ? error : null}
         onRetry={refresh}
       >
         <FlatList
@@ -302,7 +302,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
           <ListSkeleton count={5} variant="restaurant" />
         </View>
       }
-      error={error}
+      error={error && restaurants.length === 0 ? error : null}
       onRetry={refresh}
     >
       <FlatList

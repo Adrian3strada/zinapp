@@ -3,7 +3,7 @@
   <div class="wrap footer-main">
     <div class="footer-brand">
       <a href="/">
-        <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="40" height="40" alt="">
+        <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="40" height="40" alt="ZinApp">
         ZinApp
       </a>
       <p>Todo Zinapécuaro en una sola app. Comida, servicios y negocios locales.</p>
@@ -37,8 +37,6 @@
           <a href="{% url 'privacy-policy' %}">Aviso de privacidad</a>
           {% if terms_url %}
             <a href="{{ terms_url }}">Términos y condiciones</a>
-          {% else %}
-            <a href="#faq" title="Configura TERMS_URL cuando exista la página">Términos y condiciones</a>
           {% endif %}
           <a href="#contacto">Contacto</a>
         </nav>
@@ -52,7 +50,7 @@
   </div>
 </footer>
 
-<div class="mobile-bar" aria-label="Acciones rápidas">
+<div class="mobile-bar" role="navigation" aria-label="Acciones rápidas">
   <a class="btn btn-primary" href="{{ app_url }}">Abrir ZinApp</a>
   {% if whatsapp_url %}
     <a

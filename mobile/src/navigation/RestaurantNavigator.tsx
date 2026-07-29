@@ -53,6 +53,7 @@ function RestaurantTabsInner({
         component={RestaurantOrdersScreen}
         options={{
           headerShown: false,
+          tabBarAccessibilityLabel: 'Pedidos',
           tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
@@ -66,6 +67,7 @@ function RestaurantTabsInner({
           title: 'Menú',
           headerShown: false,
           tabBarLabel: 'Menú',
+          tabBarAccessibilityLabel: 'Menú',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="restaurant" size={size} color={color} />
           ),
@@ -77,6 +79,7 @@ function RestaurantTabsInner({
         options={{
           title: 'Mi perfil',
           headerShown: false,
+          tabBarAccessibilityLabel: 'Mi perfil',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

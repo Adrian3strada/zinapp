@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
 
 import CartCheckoutSection, {
@@ -23,11 +25,12 @@ import { useLocation } from '../../hooks/useLocation';
 import type { CartScreenProps } from '../../navigation/types';
 import { couponApi, orderApi, restaurantApi, authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { DELIVERY_FEE } from '../../config/delivery';
 import { resolveTransferInfo } from '../../config/payments';
 import type { Restaurant, SelectedProductOption } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { formatCurrency } from '../../utils/format';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
@@ -213,20 +216,22 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
   }, [address]);
 
   const handleApplyCoupon = useCallback(async () => {
-    if (!couponCode.trim()) return;
+    if (!couponCode.trim() || couponValidating) return;
+    setCouponValidating(true);
+    setCouponError(null);
     try {
       const { data } = await couponApi.validate(couponCode.trim(), total);
       setDiscount(parseFloat(data.discount_amount));
       setCouponApplied(true);
       setCouponError(null);
-      appAlert('Cupón aplicado', data.description || data.code);
     } catch (err) {
       setDiscount(0);
       setCouponApplied(false);
       setCouponError(getApiErrorMessage(err, 'Código inválido o no aplicable.'));
-      appAlert('Cupón', getApiErrorMessage(err, 'Código inválido o no aplicable.'));
+    } finally {
+      setCouponValidating(false);
     }
-  }, [couponCode, total]);
+  }, [couponCode, total, couponValidating]);
 
   const handleUseMyLocation = useCallback(async () => {
     const coords = await getCurrentPosition();
@@ -276,26 +281,29 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
       if (user?.role !== 'customer') return;
       const trimmed = savedAddress.trim();
       if (!trimmed || trimmed === (user.address ?? '').trim()) return;
-      appAlert(
-        '¿Guardar dirección?',
-        'Usar esta dirección como tu dirección habitual para próximos pedidos.',
-        [
-          { text: 'Ahora no', style: 'cancel' },
-          {
-            text: 'Guardar',
-            onPress: async () => {
-              try {
-                const fd = new FormData();
-                fd.append('address', trimmed);
-                await authApi.updateMeForm(fd);
-                await refreshUser();
-              } catch {
-                // opcional; no bloquear flujo
-              }
+      // Diferir para no tapar el seguimiento del pedido recién creado.
+      setTimeout(() => {
+        appAlert(
+          '¿Guardar dirección?',
+          'Usar esta dirección como tu dirección habitual para próximos pedidos.',
+          [
+            { text: 'Ahora no', style: 'cancel' },
+            {
+              text: 'Guardar',
+              onPress: async () => {
+                try {
+                  const fd = new FormData();
+                  fd.append('address', trimmed);
+                  await authApi.updateMeForm(fd);
+                  await refreshUser();
+                } catch {
+                  // opcional; no bloquear flujo
+                }
+              },
             },
-          },
-        ],
-      );
+          ],
+        );
+      }, 1200);
     },
     [user?.role, user?.address, refreshUser],
   );
@@ -325,14 +333,36 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
       appAlert('Cobertura', 'La dirección está fuera de la zona de entrega.');
       return;
     }
-    if (!deliveryCoords) {
-      appAlert(
-        'Ubicación',
-        'Usa «Buscar dirección» o «Usar mi ubicación GPS» antes de confirmar.',
-      );
-      return;
+
+    let coords = deliveryCoords;
+    let covered: boolean | null = coverageOk;
+    if (!coords || covered !== true) {
+      checkoutInFlight.current = true;
+      setLoading(true);
+      try {
+        const { data } = await runWithRetry(() => restaurantApi.geocode(address));
+        coords = { latitude: data.latitude, longitude: data.longitude };
+        setDeliveryCoords(coords);
+        setAddress(data.display_name);
+        setCoverageOk(data.in_coverage);
+        setAddressApproximate(!!data.approximate);
+        covered = data.in_coverage;
+        if (!data.in_coverage) {
+          appAlert('Fuera de cobertura', 'Esta dirección está fuera de Zinapécuaro.');
+          return;
+        }
+      } catch (err) {
+        appAlert(
+          'Ubicación',
+          getApiErrorMessage(err, 'Confirma tu dirección con «Buscar dirección» o GPS antes de pedir.'),
+        );
+        return;
+      } finally {
+        checkoutInFlight.current = false;
+        setLoading(false);
+      }
     }
-    if (coverageOk !== true) {
+    if (!coords || covered !== true) {
       appAlert('Cobertura', 'Confirma tu dirección con «Buscar dirección» antes de pedir.');
       return;
     }
@@ -351,8 +381,8 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
       const { data } = await orderApi.create({
         restaurant_id: restaurantId,
         delivery_address: address,
-        delivery_latitude: deliveryCoords.latitude,
-        delivery_longitude: deliveryCoords.longitude,
+        delivery_latitude: coords.latitude,
+        delivery_longitude: coords.longitude,
         delivery_notes: notes,
         payment_method: paymentMethod,
         coupon_code: couponApplied && couponCode.trim() ? couponCode.trim() : undefined,
@@ -518,7 +548,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         <ScrollView
           contentContainerStyle={[
             styles.list,
-            { paddingBottom: tabBottomPadding(spacing.xl) },
+            { paddingBottom: tabBottomPadding(96) },
           ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -529,7 +559,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
               <Text style={styles.sectionTitle}>{cartRestaurant?.name ?? 'Tu pedido'}</Text>
               {cartRestaurant ? (
                 <Text style={styles.restaurantSub}>
-                  {items.length} artículo{items.length !== 1 ? 's' : ''} · Revisa y confirma abajo
+                  {items.length} artículo{items.length !== 1 ? 's' : ''} · Confirma abajo
                 </Text>
               ) : null}
             </View>
@@ -567,6 +597,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
             onlinePaymentsEnabled={appConfig.online_payments_enabled}
             stripeClientSecret={stripeClientSecret}
             stripePublishableKey={appConfig.stripe_publishable_key}
+            showCheckoutButton={false}
             onAddressChange={handleAddressChange}
             onNotesChange={setNotes}
             onPaymentMethodChange={setPaymentMethod}
@@ -581,6 +612,45 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
             onScheduleChange={setScheduleKey}
           />
         </ScrollView>
+
+        {!stripeClientSecret ? (
+          <View style={[styles.stickyFooter, { paddingBottom: Math.max(spacing.sm, tabBottomPadding(8)) }]}>
+            <Pressable
+              onPress={handleCheckout}
+              disabled={loading || couponValidating}
+              hitSlop={HIT_SLOP}
+              style={({ pressed }) => [
+                styles.checkoutWrap,
+                (loading || couponValidating) && styles.checkoutDisabled,
+                pressed && !loading && !couponValidating && styles.checkoutPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Confirmar pedido"
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.checkoutBtn}
+              >
+                <Text style={styles.checkoutText} numberOfLines={1}>
+                  {loading
+                    ? 'Procesando...'
+                    : couponValidating
+                      ? 'Actualizando cupón...'
+                      : paymentMethod === 'online'
+                        ? 'Confirmar y pagar'
+                        : 'Confirmar pedido'}
+                </Text>
+                <View style={styles.checkoutTotalPill}>
+                  <Text style={styles.checkoutTotal} numberOfLines={1}>
+                    {formatCurrency(grandTotal)}
+                  </Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -594,4 +664,33 @@ const styles = StyleSheet.create({
   orderHeaderText: { gap: 4 },
   sectionTitle: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
   restaurantSub: { fontSize: 14, color: colors.textSecondary, fontWeight: '500' },
+  stickyFooter: {
+    paddingHorizontal: spacing.screen,
+    paddingTop: spacing.sm,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  checkoutWrap: { borderRadius: 18, overflow: 'hidden' },
+  checkoutPressed: { opacity: 0.92 },
+  checkoutDisabled: { opacity: 0.55 },
+  checkoutBtn: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 56,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+  },
+  checkoutText: { color: '#FFF', fontSize: 16, fontWeight: '800', flex: 1, minWidth: 0 },
+  checkoutTotalPill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    flexShrink: 0,
+  },
+  checkoutTotal: { color: '#FFF', fontSize: 15, fontWeight: '800' },
 });

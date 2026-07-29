@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from './Button';
 import { colors } from '../theme/colors';
@@ -90,6 +91,7 @@ async function cropUriToAspect(
 }
 
 function CropEditor({ request }: { request: CropRequest }) {
+  const insets = useSafeAreaInsets();
   const [imageSize, setImageSize] = useState<Size | null>(null);
   const [stage, setStage] = useState<Size>({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
@@ -238,10 +240,21 @@ function CropEditor({ request }: { request: CropRequest }) {
   };
 
   return (
-    <View style={styles.sheet}>
+    <View
+      style={[
+        styles.sheet,
+        { paddingBottom: Math.max(insets.bottom, spacing.lg) },
+      ]}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>{request.title ?? 'Recortar foto'}</Text>
-        <Pressable onPress={handleCancel} hitSlop={10} accessibilityRole="button">
+        <Pressable
+          onPress={handleCancel}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Cancelar recorte"
+          style={styles.closeBtn}
+        >
           <Ionicons name="close" size={24} color={colors.text} />
         </Pressable>
       </View>
@@ -278,11 +291,11 @@ function CropEditor({ request }: { request: CropRequest }) {
       </View>
 
       <View style={styles.zoomRow}>
-        <Pressable style={styles.zoomBtn} onPress={() => changeZoom(-0.2)} accessibilityRole="button">
+        <Pressable style={styles.zoomBtn} onPress={() => changeZoom(-0.2)} accessibilityRole="button" accessibilityLabel="Alejar">
           <Ionicons name="remove" size={22} color={colors.primary} />
         </Pressable>
         <Text style={styles.zoomLabel}>{Math.round(zoom * 100)}%</Text>
-        <Pressable style={styles.zoomBtn} onPress={() => changeZoom(0.2)} accessibilityRole="button">
+        <Pressable style={styles.zoomBtn} onPress={() => changeZoom(0.2)} accessibilityRole="button" accessibilityLabel="Acercar">
           <Ionicons name="add" size={22} color={colors.primary} />
         </Pressable>
       </View>
@@ -342,7 +355,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     maxHeight: '92%',
     gap: spacing.sm,
-    ...(Platform.OS === 'web' ? ({ maxHeight: '92vh' } as object) : null),
+    ...(Platform.OS === 'web' ? ({ maxHeight: '92dvh' } as object) : null),
   },
   header: {
     flexDirection: 'row',
@@ -354,11 +367,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
   },
+  closeBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hint: {
     fontSize: 13,
     color: colors.textSecondary,
   },
   stage: {
+    flexShrink: 1,
+    maxHeight: 360,
+    minHeight: 200,
     height: 360,
     borderRadius: 16,
     backgroundColor: '#0f172a',

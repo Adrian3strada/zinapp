@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   lineLeft: { flex: 1, height: 3, borderRadius: 2, marginRight: -2 },
   lineRight: { flex: 1, height: 3, borderRadius: 2, marginLeft: -2 },
-  label: { fontSize: 10, color: colors.textMuted, marginTop: 8, fontWeight: '600', textAlign: 'center' },
+  label: { fontSize: 12, color: colors.textMuted, marginTop: 8, fontWeight: '600', textAlign: 'center' },
   labelActive: { color: colors.text, fontWeight: '700' },
   cancelled: {
     flexDirection: 'row',

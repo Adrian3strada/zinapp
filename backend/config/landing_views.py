@@ -1,7 +1,59 @@
+from datetime import date
+import json
+
 from django.conf import settings
 from django.db import OperationalError
 from django.http import HttpResponse
 from django.views.generic import TemplateView
+
+from .seo import get_site_url
+
+
+# Preguntas visibles en landing/includes/faq.html — misma fuente para Schema FAQPage.
+LANDING_FAQS = [
+    {
+        'question': '¿Necesito descargar ZinApp?',
+        'answer': (
+            'Puedes usarla desde el navegador en zinapp.com.mx/app, '
+            'pero lo más fácil es instalarla desde Google Play o App Store.'
+        ),
+    },
+    {
+        'question': '¿Cómo registro mi negocio?',
+        'answer': (
+            'Usa el botón Registrar mi negocio. Te guiaremos por WhatsApp según '
+            'la modalidad (Servicios o Restaurantes y pedidos).'
+        ),
+    },
+    {
+        'question': '¿Cuánto cuesta aparecer en Servicios?',
+        'answer': (
+            'La modalidad Servicios tiene un costo de $150 MXN mensuales e incluye publicación del negocio, '
+            'contacto, horario, dirección y ubicación en Google Maps.'
+        ),
+    },
+    {
+        'question': '¿Cómo funciona la comisión para restaurantes?',
+        'answer': (
+            'No hay mensualidad. Los precios publicados en ZinApp incluyen un 10% adicional. '
+            'El restaurante recibe el precio original de sus productos y ZinApp conserva el 10% como comisión.'
+        ),
+    },
+    {
+        'question': '¿Cómo hago un pedido?',
+        'answer': (
+            'Abre ZinApp, elige un restaurante, arma tu pedido y confirma. '
+            'Puedes recibir a domicilio (con repartidor) o seguir las indicaciones del local.'
+        ),
+    },
+    {
+        'question': '¿Cómo contacto a ZinApp?',
+        'answer': (
+            'Escríbenos por WhatsApp desde la sección Contacto. '
+            'Ahí también verás correo, teléfono o redes si están configurados.'
+        ),
+    },
+]
 
 
 def _whatsapp_link(raw: str) -> str:
@@ -194,8 +246,121 @@ class LandingView(TemplateView):
             'Horario:\n'
             'Dirección:'
         )
+        site_url = get_site_url()
+        logo_url = f'{site_url}/static/dashboard/img/logo-on-blue.png'
+        same_as = [
+            u for u in (
+                _social_url('instagram', settings.SOCIAL_INSTAGRAM),
+                _social_url('facebook', settings.SOCIAL_FACEBOOK),
+            )
+            if u
+        ]
+        organization = {
+            '@type': 'Organization',
+            '@id': f'{site_url}/#organization',
+            'name': 'ZinApp',
+            'url': f'{site_url}/',
+            'logo': logo_url,
+            'description': (
+                'ZinApp es una app local de pedidos, entregas, restaurantes, '
+                'comercios y servicios locales en Zinapécuaro, Michoacán.'
+            ),
+            'areaServed': {
+                '@type': 'City',
+                'name': 'Zinapécuaro',
+                'address': {
+                    '@type': 'PostalAddress',
+                    'addressLocality': 'Zinapécuaro',
+                    'addressRegion': 'Michoacán',
+                    'addressCountry': 'MX',
+                },
+            },
+            'contactPoint': {
+                '@type': 'ContactPoint',
+                'contactType': 'customer support',
+                'areaServed': 'MX',
+                'availableLanguage': 'Spanish',
+                **(
+                    {'telephone': settings.SUPPORT_PHONE}
+                    if settings.SUPPORT_PHONE
+                    else {}
+                ),
+                **(
+                    {'email': settings.SUPPORT_EMAIL}
+                    if settings.SUPPORT_EMAIL
+                    else {}
+                ),
+            },
+        }
+        if same_as:
+            organization['sameAs'] = same_as
+
+        seo_graph = [
+            organization,
+            {
+                '@type': 'WebSite',
+                '@id': f'{site_url}/#website',
+                'url': f'{site_url}/',
+                'name': 'ZinApp',
+                'publisher': {'@id': f'{site_url}/#organization'},
+                'inLanguage': 'es-MX',
+            },
+            {
+                '@type': 'SoftwareApplication',
+                '@id': f'{site_url}/#app',
+                'name': 'ZinApp',
+                'applicationCategory': 'LifestyleApplication',
+                'operatingSystem': 'Android, iOS, Web',
+                'url': f'{site_url}/app/',
+                'description': (
+                    'Aplicación local para pedir comida, encontrar servicios, descubrir negocios '
+                    'locales y coordinar entregas en Zinapécuaro, Michoacán.'
+                ),
+                'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'MXN'},
+                'publisher': {'@id': f'{site_url}/#organization'},
+            },
+            {
+                '@type': 'LocalBusiness',
+                '@id': f'{site_url}/#local-business',
+                'name': 'ZinApp',
+                'url': f'{site_url}/',
+                'image': logo_url,
+                'description': 'Plataforma local de pedidos, entregas y servicios para Zinapécuaro, Michoacán.',
+                'address': {
+                    '@type': 'PostalAddress',
+                    'addressLocality': 'Zinapécuaro',
+                    'addressRegion': 'Michoacán',
+                    'addressCountry': 'MX',
+                },
+                'areaServed': 'Zinapécuaro, Michoacán',
+                'priceRange': '$',
+            },
+            {
+                '@type': 'FAQPage',
+                '@id': f'{site_url}/#faq',
+                'mainEntity': [
+                    {
+                        '@type': 'Question',
+                        'name': item['question'],
+                        'acceptedAnswer': {
+                            '@type': 'Answer',
+                            'text': item['answer'],
+                        },
+                    }
+                    for item in LANDING_FAQS
+                ],
+            },
+        ]
         ctx.update(
             {
+                'site_url': site_url,
+                'seo_logo_url': logo_url,
+                'landing_faqs': LANDING_FAQS,
+                'seo_json_ld': json.dumps(
+                    {'@context': 'https://schema.org', '@graph': seo_graph},
+                    ensure_ascii=False,
+                    separators=(',', ':'),
+                ),
                 'app_url': settings.LANDING_APP_URL or '/app/',
                 'app_store_url': settings.APP_STORE_URL,
                 'play_store_url': settings.PLAY_STORE_URL,
@@ -214,36 +379,47 @@ class LandingView(TemplateView):
 
 
 def robots_txt(request):
+    site = get_site_url()
     body = '\n'.join([
         'User-agent: *',
         'Allow: /',
+        'Allow: /privacidad/',
         'Disallow: /admin/',
         'Disallow: /panel/',
         'Disallow: /api/',
-        'Sitemap: https://zinapp.com.mx/sitemap.xml',
+        'Disallow: /app/',
+        'Disallow: /media/',
+        f'Sitemap: {site}/sitemap.xml',
         '',
     ])
-    return HttpResponse(body, content_type='text/plain; charset=utf-8')
+    response = HttpResponse(body, content_type='text/plain; charset=utf-8')
+    response['Cache-Control'] = 'public, max-age=3600'
+    return response
 
 
 def sitemap_xml(request):
-    body = '''<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://zinapp.com.mx/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://zinapp.com.mx/app/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://zinapp.com.mx/privacidad/</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.4</priority>
-  </url>
-</urlset>
-'''
-    return HttpResponse(body, content_type='application/xml; charset=utf-8')
+    site = get_site_url()
+    today = date.today().isoformat()
+    urls = [
+        (f'{site}/', 'weekly', '1.0'),
+        (f'{site}/privacidad/', 'yearly', '0.4'),
+    ]
+    items = []
+    for loc, freq, prio in urls:
+        items.append(
+            f'''  <url>
+    <loc>{loc}</loc>
+    <lastmod>{today}</lastmod>
+    <changefreq>{freq}</changefreq>
+    <priority>{prio}</priority>
+  </url>'''
+        )
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + '\n'.join(items)
+        + '\n</urlset>\n'
+    )
+    response = HttpResponse(body, content_type='application/xml; charset=utf-8')
+    response['Cache-Control'] = 'public, max-age=3600'
+    return response

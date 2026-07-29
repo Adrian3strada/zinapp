@@ -164,12 +164,19 @@ export default function RestaurantOrderCard({
       ) : null}
 
       {advanceLabel && onAdvance ? (
-        <Button
-          title={advanceLabel}
-          onPress={onAdvance}
-          loading={busy}
-          style={styles.advanceBtn}
-        />
+        <View
+          onStartShouldSetResponder={() => true}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <Button
+            title={advanceLabel}
+            onPress={onAdvance}
+            loading={busy}
+            style={styles.advanceBtn}
+          />
+        </View>
       ) : null}
     </Pressable>
   );
@@ -237,7 +244,7 @@ const styles = StyleSheet.create({
   },
   itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   qty: { fontSize: 16, fontWeight: '900', color: colors.primaryDark, minWidth: 28 },
-  itemText: { flex: 1, gap: 1 },
+  itemText: { flex: 1, minWidth: 0, gap: 1 },
   itemName: { fontSize: 16, fontWeight: '800', color: colors.text },
   itemOpts: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   itemNotes: { fontSize: 12, color: colors.primaryDark, fontWeight: '700' },

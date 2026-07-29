@@ -46,6 +46,7 @@ interface Props {
   onlinePaymentsEnabled?: boolean;
   stripeClientSecret?: string | null;
   stripePublishableKey?: string;
+  showCheckoutButton?: boolean;
   onPaymentMethodChange: (method: 'cash' | 'transfer' | 'online') => void;
   onCouponChange: (text: string) => void;
   onApplyCoupon: () => void;
@@ -107,6 +108,7 @@ function CartCheckoutSection({
   onlinePaymentsEnabled = false,
   stripeClientSecret = null,
   stripePublishableKey = '',
+  showCheckoutButton = true,
   onAddressChange,
   onNotesChange,
   onPaymentMethodChange,
@@ -136,7 +138,7 @@ function CartCheckoutSection({
           placeholder="Ej. Sirani 11 o Colonia Felix Ireta"
           embedded
           required
-          hint="Escribe calle y número. Si no encuentra el número exacto, usa la calle o «Usar mi ubicación»."
+          hint="Calle y número. Al confirmar se valida la ubicación automáticamente."
         />
         <Pressable style={styles.locationBtn} onPress={onUseLocation} hitSlop={HIT_SLOP}>
           <Ionicons name="navigate" size={18} color={colors.primary} />
@@ -144,10 +146,9 @@ function CartCheckoutSection({
             {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación GPS'}
           </Text>
         </Pressable>
-        <Pressable style={styles.locationBtn} onPress={onGeocode} hitSlop={HIT_SLOP}>
-          <Ionicons name="search" size={18} color={colors.primary} />
-          <Text style={styles.locationBtnText}>
-            {geocoding ? 'Buscando dirección...' : 'Buscar dirección'}
+        <Pressable style={styles.locationLink} onPress={onGeocode} hitSlop={HIT_SLOP}>
+          <Text style={styles.locationLinkText}>
+            {geocoding ? 'Buscando…' : 'Buscar esta dirección en el mapa'}
           </Text>
         </Pressable>
         <DeliveryPinPicker coordinate={deliveryCoords} onCoordinateChange={onPinChange} />
@@ -199,11 +200,18 @@ function CartCheckoutSection({
               placeholder="Ej. ZINA10"
               embedded
               autoCapitalize="characters"
+              error={couponError ?? undefined}
               style={styles.couponFormField}
             />
           </View>
-          <Pressable style={styles.couponBtn} onPress={onApplyCoupon} hitSlop={HIT_SLOP}>
-            <Text style={styles.couponBtnText}>Aplicar</Text>
+          <Pressable
+            style={[styles.couponBtn, couponValidating && styles.couponBtnDisabled]}
+            onPress={onApplyCoupon}
+            disabled={couponValidating || !couponCode.trim()}
+            hitSlop={HIT_SLOP}
+            accessibilityState={{ disabled: couponValidating || !couponCode.trim(), busy: couponValidating }}
+          >
+            <Text style={styles.couponBtnText}>{couponValidating ? '…' : 'Aplicar'}</Text>
           </Pressable>
         </View>
         {couponApplied && discount > 0 && (
@@ -211,7 +219,6 @@ function CartCheckoutSection({
             ✓ Cupón activo — descuento {formatCurrency(discount)} (se actualiza al cambiar el carrito)
           </Text>
         )}
-        {couponError && <Text style={styles.couponErr}>{couponError}</Text>}
       </View>
 
       <View style={styles.card}>
@@ -340,7 +347,7 @@ function CartCheckoutSection({
         </View>
       </View>
 
-      {!stripeClientSecret ? (
+      {!stripeClientSecret && showCheckoutButton ? (
         <Pressable
           onPress={onCheckout}
           disabled={loading || couponValidating}
@@ -357,7 +364,7 @@ function CartCheckoutSection({
             end={{ x: 1, y: 0 }}
             style={styles.checkoutBtn}
           >
-            <Text style={styles.checkoutText}>
+            <Text style={styles.checkoutText} numberOfLines={1}>
               {loading
                 ? 'Procesando...'
                 : couponValidating
@@ -367,7 +374,9 @@ function CartCheckoutSection({
                     : 'Confirmar pedido'}
             </Text>
             <View style={styles.checkoutTotalPill}>
-              <Text style={styles.checkoutTotal}>{formatCurrency(grandTotal)}</Text>
+              <Text style={styles.checkoutTotal} numberOfLines={1}>
+                {formatCurrency(grandTotal)}
+              </Text>
             </View>
           </LinearGradient>
         </Pressable>
@@ -379,61 +388,79 @@ function CartCheckoutSection({
 export default CartCheckoutSection;
 
 const styles = StyleSheet.create({
-  footer: { marginTop: 8, gap: 14 },
+  footer: { marginTop: spacing.sm, gap: spacing.md },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 22,
+    borderRadius: 18,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
     ...cardShadow,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  cardTitle: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  cardTitle: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: -0.2, marginBottom: 4 },
   couponRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   couponHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 4,
   },
   offersLink: { fontSize: 13, fontWeight: '800', color: colors.primary },
-  couponField: { flex: 1 },
+  couponField: { flex: 1, minWidth: 0 },
   couponFormField: { marginBottom: 0 },
   locationBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 10,
-    paddingVertical: 10,
-    minHeight: 44,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
   },
-  locationBtnText: { color: colors.primary, fontWeight: '600', fontSize: 14 },
+  locationBtnText: { color: colors.primary, fontWeight: '700', fontSize: 14 },
+  locationLink: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    marginBottom: 8,
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  locationLinkText: { color: colors.primary, fontWeight: '600', fontSize: 13 },
   coordsHint: { color: colors.success, fontSize: 12, marginBottom: 10, fontWeight: '500' },
   outOfCoverage: { color: colors.error },
   couponBtn: {
     backgroundColor: colors.primaryLight,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
+    minHeight: 52,
+    justifyContent: 'center',
   },
-  couponBtnText: { color: colors.primary, fontWeight: '700' },
+  couponBtnDisabled: { opacity: 0.55 },
+  couponBtnText: { color: colors.primary, fontWeight: '800', fontSize: 14 },
   couponOk: { color: colors.success, fontSize: 12, marginTop: 8, fontWeight: '500' },
   couponErr: { color: colors.error, fontSize: 12, marginTop: 8 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    minHeight: 44,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
+    justifyContent: 'center',
   },
   chipActive: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
   },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  chipText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   chipTextActive: { color: colors.primary },
   transferBox: {
     marginTop: 12,
@@ -448,23 +475,29 @@ const styles = StyleSheet.create({
   transferNote: { fontSize: 12, color: colors.textSecondary, marginTop: 6, lineHeight: 18 },
   onlineHint: { fontSize: 12, color: colors.textMuted, marginTop: 10, lineHeight: 18 },
   stripeEmbed: { marginTop: 14 },
-  paymentRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  paymentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   payOption: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '30%',
+    minWidth: 96,
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderRadius: 14,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.border,
     gap: 8,
+    minHeight: 52,
   },
   payActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  payText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  payText: { fontSize: 13, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
   payTextActive: { color: colors.primary },
   summary: { gap: 8 },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  rowLabel: { color: colors.textSecondary, fontSize: 15 },
-  rowValue: { fontWeight: '600', color: colors.text },
+  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  rowLabel: { color: colors.textSecondary, fontSize: 15, flexShrink: 1 },
+  rowValue: { fontWeight: '600', color: colors.text, flexShrink: 0 },
   totalRow: { marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
   totalLabel: { fontSize: 18, fontWeight: '800', color: colors.text },
   totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
@@ -475,15 +508,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 18,
+    gap: 10,
+    minHeight: 56,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderRadius: 18,
   },
-  checkoutText: { color: '#FFF', fontSize: 17, fontWeight: '800' },
+  checkoutText: { color: '#FFF', fontSize: 16, fontWeight: '800', flex: 1, minWidth: 0 },
   checkoutTotalPill: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    flexShrink: 0,
   },
-  checkoutTotal: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  checkoutTotal: { color: '#FFF', fontSize: 15, fontWeight: '800' },
 });

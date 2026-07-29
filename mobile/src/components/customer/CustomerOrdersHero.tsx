@@ -1,9 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { radii } from '../../theme/radii';
 import { spacing } from '../../theme/spacing';
 
 interface Props {
@@ -20,32 +20,27 @@ export default function CustomerOrdersHero({ topInset, activeCount, totalLoaded 
       end={{ x: 1, y: 1 }}
       style={[styles.hero, { paddingTop: topInset + spacing.md }]}
     >
-      <View style={styles.decorA} />
-      <View style={styles.decorB} />
       <Text style={styles.eyebrow}>Tus pedidos</Text>
       <Text style={styles.title}>Historial y seguimiento</Text>
       <Text style={styles.sub}>
         {activeCount > 0
-          ? `${activeCount} pedido${activeCount === 1 ? '' : 's'} en curso ahora mismo`
+          ? `${activeCount} pedido${activeCount === 1 ? '' : 's'} en curso`
           : 'Revisa el estado de tus pedidos anteriores'}
       </Text>
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Ionicons name="pulse-outline" size={16} color="rgba(255,255,255,0.92)" />
-          <Text style={styles.statValue}>{activeCount}</Text>
-          <Text style={styles.statLabel}>Activos</Text>
+      {(activeCount > 0 || totalLoaded > 0) && (
+        <View style={styles.metaRow}>
+          {activeCount > 0 ? (
+            <View style={styles.metaChip}>
+              <Text style={styles.metaValue}>{activeCount}</Text>
+              <Text style={styles.metaLabel}>activos</Text>
+            </View>
+          ) : null}
+          <View style={styles.metaChip}>
+            <Text style={styles.metaValue}>{totalLoaded}</Text>
+            <Text style={styles.metaLabel}>recientes</Text>
+          </View>
         </View>
-        <View style={styles.statBox}>
-          <Ionicons name="receipt-outline" size={16} color="rgba(255,255,255,0.92)" />
-          <Text style={styles.statValue}>{totalLoaded}</Text>
-          <Text style={styles.statLabel}>Recientes</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Ionicons name="map-outline" size={16} color="rgba(255,255,255,0.92)" />
-          <Text style={styles.statValue}>Live</Text>
-          <Text style={styles.statLabel}>Mapa</Text>
-        </View>
-      </View>
+      )}
     </LinearGradient>
   );
 }
@@ -56,53 +51,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.lg,
     marginBottom: spacing.md,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: radii.sheetLg,
+    borderBottomRightRadius: radii.sheetLg,
     overflow: 'hidden',
   },
-  decorA: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -40,
-    right: -30,
-  },
-  decorB: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    bottom: 16,
-    left: -20,
-  },
   eyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.75)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.sm,
-  },
-  title: { fontSize: 22, fontWeight: '800', color: '#FFF', letterSpacing: -0.3 },
-  sub: { fontSize: 13, color: 'rgba(255,255,255,0.88)', marginTop: 6, lineHeight: 18, fontWeight: '500' },
-  statsRow: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
-  statBox: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statValue: { fontSize: 18, fontWeight: '800', color: '#FFF', marginTop: 2 },
-  statLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.82)',
+    fontSize: 12,
     fontWeight: '600',
-    textAlign: 'center',
+    color: 'rgba(255,255,255,0.72)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: spacing.xs,
   },
+  title: { fontSize: 22, fontWeight: '700', color: '#FFF', letterSpacing: -0.3 },
+  sub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: 6,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+  },
+  metaValue: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  metaLabel: { fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.8)' },
 });

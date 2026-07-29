@@ -1,26 +1,10 @@
 /* ZinApp landing — mobile-first */
 
-@font-face {
-  font-family: "Nombueang";
-  src: url("../fonts/Nombueang.woff2") format("woff2"),
-       url("../fonts/Nombueang.otf") format("opentype");
-  font-weight: 400 700;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "GoodTime Grotesk";
-  src: url("../fonts/GoodTimeGrotesk.woff2") format("woff2"),
-       url("../fonts/MADE GoodTime Grotesk.otf") format("opentype");
-  font-weight: 400 700;
-  font-display: swap;
-}
-
 :root {
-  --blue: #1A56DB;
+  --blue: #1E5DB8;
   --blue-mid: #2563EB;
   --blue-deep: #0F2D6B;
-  --blue-soft: #E8EFFC;
+  --blue-soft: #E8F1FB;
   --ink: #0B1630;
   --muted: #5B6B86;
   --line: rgba(15, 45, 107, 0.12);
@@ -28,8 +12,8 @@
   --paper: #F7F9FC;
   --accent: #F97316;
   --ok: #059669;
-  --font-display: "Nombueang", "Fredoka", system-ui, sans-serif;
-  --font-body: "GoodTime Grotesk", "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Fredoka", system-ui, sans-serif;
+  --font-body: "Space Grotesk", system-ui, sans-serif;
   --pad: clamp(1rem, 4vw, 1.5rem);
   --max: 1100px;
   --radius: 18px;
@@ -37,7 +21,7 @@
   --shadow: 0 10px 30px rgba(15, 45, 107, 0.08);
   --shadow-lg: 0 20px 50px rgba(15, 45, 107, 0.14);
   --safe-b: env(safe-area-inset-bottom, 0px);
-  --header-h: 64px;
+  --header-h: calc(64px + env(safe-area-inset-top, 0px));
   --focus: 0 0 0 3px rgba(26, 86, 219, 0.45);
 }
 
@@ -46,6 +30,7 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--header-h) + 12px);
+  overflow-x: clip;
 }
 
 body {
@@ -56,6 +41,9 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   line-height: 1.5;
+  overflow-x: clip;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 img { max-width: 100%; height: auto; display: block; }
@@ -63,7 +51,10 @@ a { color: inherit; }
 button { font: inherit; }
 
 .wrap {
-  width: min(var(--max), calc(100% - (var(--pad) * 2)));
+  width: min(
+    var(--max),
+    calc(100% - 2 * max(var(--pad), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)))
+  );
   margin-inline: auto;
 }
 
@@ -79,8 +70,31 @@ button { font: inherit; }
   border: 0;
 }
 
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 0;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--blue);
+  color: var(--white);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(-120%);
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0.75rem);
+  outline: 2px solid var(--white);
+  outline-offset: 2px;
+  box-shadow: var(--focus);
+}
+
 :focus-visible {
-  outline: none;
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
   box-shadow: var(--focus);
 }
 
@@ -103,6 +117,15 @@ button { font: inherit; }
 }
 
 .btn:active { transform: scale(0.98); }
+
+.btn:disabled,
+.btn[aria-disabled="true"],
+.btn.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  pointer-events: none;
+}
 
 .btn-primary {
   background: var(--blue);
@@ -137,14 +160,14 @@ button { font: inherit; }
 }
 
 .btn-whatsapp {
-  background: #25D366;
+  background: #0B7A4B;
   color: #fff;
-  border-color: #25D366;
+  border-color: #0B7A4B;
 }
 
 .btn-whatsapp:hover {
-  background: #1ebe57;
-  border-color: #1ebe57;
+  background: #096B42;
+  border-color: #096B42;
 }
 
 .btn-sm {
@@ -245,7 +268,7 @@ button { font: inherit; }
   display: none;
   border-top: 1px solid var(--line);
   background: var(--white);
-  padding: 0.75rem var(--pad) 1rem;
+  padding: 0.75rem max(var(--pad), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) 1rem;
 }
 
 .nav-mobile.is-open { display: grid; gap: 0.35rem; }
@@ -966,8 +989,14 @@ button { font: inherit; }
 
 .footer-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 1.5rem 1rem;
+}
+
+@media (min-width: 480px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .footer-group h3 {
@@ -993,6 +1022,12 @@ button { font: inherit; }
 .footer-group a:hover {
   color: #fff;
   text-decoration: underline;
+}
+
+.footer-group a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .footer-bottom {
@@ -1023,7 +1058,7 @@ button { font: inherit; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-  padding: 0.65rem var(--pad) calc(0.65rem + var(--safe-b));
+  padding: 0.65rem max(var(--pad), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) calc(0.65rem + var(--safe-b));
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--line);
@@ -1038,7 +1073,7 @@ button { font: inherit; }
 
 body { padding-bottom: calc(4.75rem + var(--safe-b)); }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   body { padding-bottom: 0; }
   .mobile-bar { display: none; }
 }

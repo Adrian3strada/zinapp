@@ -355,8 +355,8 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     marginVertical: 4,
   },
-  routeText: { flex: 1, paddingBottom: 4 },
-  label: { fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  routeText: { flex: 1, minWidth: 0, paddingBottom: 4 },
+  label: { fontSize: 12, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
   value: { fontSize: 15, color: colors.text, fontWeight: '600', marginTop: 2, lineHeight: 21 },
   subValue: { fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18 },
   notesBox: {

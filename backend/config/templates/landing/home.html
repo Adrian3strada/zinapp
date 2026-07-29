@@ -6,22 +6,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="ZinApp — Todo Zinapécuaro en una sola app. Pide comida, encuentra servicios y descubre negocios locales.">
   <meta name="keywords" content="ZinApp, Zinapécuaro, pedidos a domicilio, comida a domicilio, servicios locales, restaurantes en Zinapécuaro, negocios locales, repartidores">
-  <meta name="robots" content="index,follow">
+  <meta name="robots" content="index,follow,max-image-preview:large">
   <meta name="author" content="ZinApp">
   <meta name="geo.region" content="MX-MIC">
   <meta name="geo.placename" content="Zinapécuaro, Michoacán">
   <meta name="apple-mobile-web-app-title" content="ZinApp">
   <meta name="application-name" content="ZinApp">
-  <meta name="theme-color" content="#1A56DB">
-  <link rel="canonical" href="https://zinapp.com.mx/">
+  <meta name="theme-color" content="#1E5DB8">
+  <link rel="canonical" href="{{ site_url }}/">
+  <link rel="icon" type="image/png" href="{% static 'dashboard/img/logo-on-blue.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'dashboard/img/logo-on-blue.png' %}">
   <meta property="og:title" content="ZinApp — Todo Zinapécuaro en una sola app">
   <meta property="og:description" content="Pide comida, encuentra servicios y descubre negocios locales desde un solo lugar.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="es_MX">
-  <meta property="og:url" content="https://zinapp.com.mx/">
+  <meta property="og:url" content="{{ site_url }}/">
   <meta property="og:site_name" content="ZinApp">
-  <meta property="og:image" content="https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png">
-  <meta property="og:image:secure_url" content="https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png">
+  <meta property="og:image" content="{{ seo_logo_url }}">
+  <meta property="og:image:secure_url" content="{{ seo_logo_url }}">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1024">
   <meta property="og:image:height" content="1024">
@@ -29,121 +31,10 @@
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="ZinApp — Todo Zinapécuaro en una sola app">
   <meta name="twitter:description" content="Pide comida, encuentra servicios y descubre negocios locales desde un solo lugar.">
-  <meta name="twitter:image" content="https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png">
+  <meta name="twitter:image" content="{{ seo_logo_url }}">
   <meta name="twitter:image:alt" content="Logo de ZinApp">
   <title>ZinApp — Todo Zinapécuaro en una sola app</title>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        "@id": "https://zinapp.com.mx/#organization",
-        "name": "ZinApp",
-        "url": "https://zinapp.com.mx/",
-        "logo": "https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png",
-        "description": "ZinApp es una app local de pedidos, entregas, restaurantes, comercios y servicios locales en Zinapécuaro, Michoacán.",
-        "areaServed": {
-          "@type": "City",
-          "name": "Zinapécuaro",
-          "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Zinapécuaro",
-            "addressRegion": "Michoacán",
-            "addressCountry": "MX"
-          }
-        },
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "contactType": "customer support",
-          "areaServed": "MX",
-          "availableLanguage": "Spanish"
-        }
-      },
-      {
-        "@type": "WebSite",
-        "@id": "https://zinapp.com.mx/#website",
-        "url": "https://zinapp.com.mx/",
-        "name": "ZinApp",
-        "publisher": {
-          "@id": "https://zinapp.com.mx/#organization"
-        },
-        "inLanguage": "es-MX"
-      },
-      {
-        "@type": "SoftwareApplication",
-        "@id": "https://zinapp.com.mx/#app",
-        "name": "ZinApp",
-        "applicationCategory": "LifestyleApplication",
-        "operatingSystem": "Android, iOS, Web",
-        "url": "https://zinapp.com.mx/app/",
-        "description": "Aplicación local para pedir comida, encontrar servicios, descubrir negocios locales y coordinar entregas en Zinapécuaro, Michoacán.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "MXN"
-        },
-        "publisher": {
-          "@id": "https://zinapp.com.mx/#organization"
-        }
-      },
-      {
-        "@type": "LocalBusiness",
-        "@id": "https://zinapp.com.mx/#local-business",
-        "name": "ZinApp",
-        "url": "https://zinapp.com.mx/",
-        "image": "https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png",
-        "description": "Plataforma local de pedidos, entregas y servicios para Zinapécuaro, Michoacán.",
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "Zinapécuaro",
-          "addressRegion": "Michoacán",
-          "addressCountry": "MX"
-        },
-        "areaServed": "Zinapécuaro, Michoacán",
-        "priceRange": "$"
-      },
-      {
-        "@type": "FAQPage",
-        "@id": "https://zinapp.com.mx/#faq",
-        "mainEntity": [
-          {
-            "@type": "Question",
-            "name": "¿Qué es ZinApp?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "ZinApp es una app local de pedidos, entregas, restaurantes, comercios y servicios locales en Zinapécuaro, Michoacán."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "¿Dónde funciona ZinApp?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "ZinApp está enfocada en Zinapécuaro, Michoacán, conectando clientes con negocios locales y repartidores registrados."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "¿Qué puedo encontrar en ZinApp?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "En ZinApp puedes encontrar comida, restaurantes, servicios locales, comercios, ofertas y negocios de Zinapécuaro."
-            }
-          },
-          {
-            "@type": "Question",
-            "name": "¿Cómo registro mi negocio en ZinApp?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "Puedes registrar tu negocio desde zinapp.com.mx usando el botón Registrar mi negocio y contactando al equipo de ZinApp por WhatsApp."
-            }
-          }
-        ]
-      }
-    ]
-  }
-  </script>
+  <script type="application/ld+json">{{ seo_json_ld|safe }}</script>
   <script>
     /* Si Google OAuth vuelve a la landing (redirect mal configurado), reenvía al SPA. */
     (function () {
@@ -160,11 +51,11 @@
   <link rel="stylesheet" href="{% static 'landing/css/landing.css' %}">
 </head>
 <body>
-  <a class="sr-only" href="#contenido-principal">Saltar al contenido</a>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido</a>
 
   {% include 'landing/includes/header.html' %}
 
-  <main id="contenido-principal">
+  <main id="contenido-principal" tabindex="-1">
     {% include 'landing/includes/hero.html' %}
     {% include 'landing/includes/categories.html' %}
     {% include 'landing/includes/how_it_works.html' %}
@@ -189,6 +80,12 @@
         panel.hidden = !open;
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         toggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+        if (open) {
+          var first = panel.querySelector('a');
+          if (first) first.focus();
+        } else {
+          toggle.focus();
+        }
       }
 
       toggle.addEventListener('click', function () {
@@ -200,7 +97,7 @@
       });
 
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') setOpen(false);
+        if (e.key === 'Escape' && !panel.hidden) setOpen(false);
       });
     })();
   </script>

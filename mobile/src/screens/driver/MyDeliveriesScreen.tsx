@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { appAlert, appConfirm } from '../../utils/appAlert';
+import { appAlert } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import DeliveriesHeader from '../../components/driver/DeliveriesHeader';
@@ -101,23 +101,6 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     [activeItems, pastItems],
   );
 
-  const handleDelivered = (item: DeliveryItem) => {
-    appConfirm(
-      'Confirmar entrega',
-      '¿Marcar como entregado?',
-      async () => {
-        try {
-          await orderApi.markDelivered(item.order.id);
-          load(true);
-          navigation.navigate('OrderDetail', { orderId: item.order.id, promptReview: true });
-        } catch (err) {
-          appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
-        }
-      },
-      'Sí, entregado',
-    );
-  };
-
   const renderJob = (item: DeliveryItem) => {
     const order = item.order;
     const isActive = isActiveOrder(order);
@@ -145,8 +128,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
         onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
         showActions={isActive}
         onNavigate={() => navigation.navigate('Inicio')}
-        onDelivered={order.status === 'on_the_way' ? () => handleDelivered(item) : undefined}
-        navigateLabel="Continuar"
+        navigateLabel="Continuar en mapa"
       />
     );
   };
@@ -159,7 +141,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
           <ListSkeleton count={3} variant="job" />
         </View>
       }
-      error={error}
+      error={error && items.length === 0 ? error : null}
       onRetry={() => load()}
     >
       <FlatList

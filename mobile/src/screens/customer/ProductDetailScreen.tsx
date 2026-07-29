@@ -156,7 +156,7 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   return (
     <ScreenContainer>
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: spacing.xxl + insets.bottom }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: spacing.xxl + insets.bottom + 88 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -216,14 +216,12 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             </View>
           ) : null}
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Descripción</Text>
-            <Text style={styles.description}>
-              {product.description?.trim()
-                ? product.description.trim()
-                : 'Este platillo aún no tiene descripción.'}
-            </Text>
-          </View>
+          {product.description?.trim() ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Descripción</Text>
+              <Text style={styles.description}>{product.description.trim()}</Text>
+            </View>
+          ) : null}
 
           {available && groups.map((group) => (
             <View key={group.id} style={styles.section}>
@@ -285,7 +283,7 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + 4 }]}>
         {quantity > 0 ? (
           <View style={styles.qtyRow}>
             <Pressable
@@ -408,9 +406,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     zIndex: 2,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -425,7 +423,7 @@ const styles = StyleSheet.create({
   },
   body: {
     padding: spacing.screen,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   restaurant: {
     fontSize: 13,
@@ -441,7 +439,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   name: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: colors.text,
     letterSpacing: -0.3,
@@ -453,9 +451,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  promoBadgeText: { fontSize: 11, fontWeight: '800', color: colors.accentDark },
+  promoBadgeText: { fontSize: 12, fontWeight: '800', color: colors.accentDark },
   price: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: colors.primary,
     marginTop: 4,
@@ -480,7 +478,7 @@ const styles = StyleSheet.create({
   section: {
     marginTop: spacing.lg,
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -508,9 +506,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    minHeight: 48,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.borderLight,
     backgroundColor: colors.background,
@@ -519,7 +518,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
   },
-  optionName: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
+  optionName: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '600', color: colors.text },
   optionPrice: { fontSize: 13, fontWeight: '700', color: colors.primary },
   footer: {
     paddingHorizontal: spacing.screen,
@@ -550,5 +549,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.text,
   },
-  cartBtn: { flex: 1 },
+  cartBtn: { flex: 1, minWidth: 0 },
 });

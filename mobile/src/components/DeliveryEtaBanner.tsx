@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   body: { flex: 1 },
-  label: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
+  label: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
   value: { fontSize: 15, fontWeight: '800', color: colors.primary, marginTop: 2 },
   loadingText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
 });

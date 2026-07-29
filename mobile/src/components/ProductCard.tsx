@@ -73,15 +73,19 @@ function ProductCard({ product, quantity = 0, onAdd, onDecrease, onPress }: Prop
             style={styles.qtyBtn}
             onPress={onDecrease}
             hitSlop={HIT_SLOP}
+            accessibilityRole="button"
             accessibilityLabel={`Quitar ${product.name}`}
           >
             <Ionicons name="remove" size={20} color={colors.primary} />
           </Pressable>
-          <Text style={styles.qty}>{quantity}</Text>
+          <Text style={styles.qty} accessibilityLabel={`Cantidad ${quantity}`}>
+            {quantity}
+          </Text>
           <Pressable
             style={[styles.qtyBtn, styles.qtyBtnAdd]}
             onPress={onAdd}
             hitSlop={HIT_SLOP}
+            accessibilityRole="button"
             accessibilityLabel={`Agregar ${product.name}`}
           >
             <Ionicons name="add" size={20} color="#FFF" />
@@ -92,6 +96,7 @@ function ProductCard({ product, quantity = 0, onAdd, onDecrease, onPress }: Prop
           style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
           onPress={onAdd}
           hitSlop={HIT_SLOP}
+          accessibilityRole="button"
           accessibilityLabel={`Agregar ${product.name}`}
         >
           <Ionicons name="add" size={22} color="#FFF" />
@@ -119,34 +124,34 @@ const styles = StyleSheet.create({
   cardPromo: {
     borderColor: colors.accent + '55',
   },
-  mainPress: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  info: { flex: 1 },
+  mainPress: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  info: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  name: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2, flexShrink: 1 },
+  name: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.2, flexShrink: 1 },
   promoBadge: {
     backgroundColor: colors.accentLight,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  promoBadgeText: { fontSize: 10, fontWeight: '800', color: colors.accentDark },
-  desc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
-  price: { fontSize: 17, fontWeight: '800', color: colors.primary, marginTop: 8 },
+  promoBadgeText: { fontSize: 12, fontWeight: '800', color: colors.accentDark },
+  desc: { fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18 },
+  price: { fontSize: 16, fontWeight: '700', color: colors.primary, marginTop: 6 },
   addBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     ...cardShadow,
   },
   addBtnPressed: { opacity: 0.88 },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   qtyBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',

@@ -23,9 +23,11 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
 
   return (
     <Pressable
-      style={[styles.wrapper, { bottom: insets.bottom + spacing.md }]}
+      style={[styles.wrapper, { bottom: Math.max(insets.bottom, spacing.sm) + spacing.md }]}
       onPress={onPress}
       hitSlop={HIT_SLOP}
+      accessibilityRole="button"
+      accessibilityLabel={`Ver carrito, ${itemCount} productos`}
     >
       <LinearGradient
         colors={[colors.primary, colors.primaryDark]}
@@ -38,9 +40,13 @@ function FloatingCartBar({ itemCount, total, onPress }: Props) {
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{itemCount}</Text>
           </View>
-          <Text style={styles.label}>Ver carrito</Text>
+          <Text style={styles.label} numberOfLines={1}>
+            Ver carrito
+          </Text>
         </View>
-        <Text style={styles.total}>{formatCurrency(total)}</Text>
+        <Text style={styles.total} numberOfLines={1}>
+          {formatCurrency(total)}
+        </Text>
         <View style={styles.arrow}>
           <Ionicons name="arrow-forward" size={18} color={colors.primary} />
         </View>
@@ -57,17 +63,18 @@ const styles = StyleSheet.create({
     left: spacing.screen,
     right: spacing.screen,
     ...elevatedShadow,
-    borderRadius: 20,
+    borderRadius: 18,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    gap: 12,
+    minHeight: 58,
+    paddingVertical: 15,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    gap: 10,
   },
-  left: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  left: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: {
     backgroundColor: 'rgba(255,255,255,0.22)',
     minWidth: 30,
@@ -76,14 +83,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
+    flexShrink: 0,
   },
   badgeText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
-  label: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  total: { color: '#FFF', fontWeight: '800', fontSize: 17 },
+  label: { color: '#FFF', fontWeight: '700', fontSize: 16, flexShrink: 1 },
+  total: { color: '#FFF', fontWeight: '800', fontSize: 17, flexShrink: 0 },
   arrow: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',

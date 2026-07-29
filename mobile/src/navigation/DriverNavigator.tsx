@@ -71,6 +71,7 @@ function DriverTabs() {
         options={{
           title: 'Inicio',
           headerShown: false,
+          tabBarAccessibilityLabel: 'Inicio',
           tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
@@ -80,6 +81,7 @@ function DriverTabs() {
         options={{
           title: 'Mis entregas',
           headerShown: false,
+          tabBarAccessibilityLabel: 'Mis entregas',
           tabBarBadge: activeCount > 0 ? activeCount : undefined,
           tabBarIcon: ({ color, size }) => <Ionicons name="bicycle" size={size} color={color} />,
         }}
@@ -90,6 +92,7 @@ function DriverTabs() {
         options={{
           title: 'Mi perfil',
           headerShown: false,
+          tabBarAccessibilityLabel: 'Mi perfil',
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
         }}
       />

@@ -4,6 +4,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../utils/appAlert';
 
 import { colors } from '../theme/colors';
+import { radii } from '../theme/radii';
 import { spacing } from '../theme/spacing';
 import { cardShadow } from '../theme/shadows';
 import type { LocalService } from '../types';
@@ -82,7 +83,7 @@ export default function ServiceBusinessCard({ service }: Props) {
     }
   };
 
-  const actions = [
+  const primaryActions = [
     phone
       ? {
           key: 'call',
@@ -103,32 +104,39 @@ export default function ServiceBusinessCard({ service }: Props) {
           onPress: handleWhatsApp,
         }
       : null,
-    instagram
-      ? {
-          key: 'instagram',
-          label: 'Instagram',
-          icon: 'logo-instagram' as const,
-          color: '#E1306C',
-          style: [styles.actionBtn, styles.socialBtn],
-          onPress: () => handleSocial('instagram', instagram),
-        }
-      : null,
-    facebook
-      ? {
-          key: 'facebook',
-          label: 'Facebook',
-          icon: 'logo-facebook' as const,
-          color: '#1877F2',
-          style: [styles.actionBtn, styles.socialBtn],
-          onPress: () => handleSocial('facebook', facebook),
-        }
-      : null,
   ].filter(Boolean) as Array<{
     key: string;
     label: string;
     icon: keyof typeof Ionicons.glyphMap;
     color: string;
     style: object | object[];
+    onPress: () => void;
+  }>;
+
+  const socialActions = [
+    instagram
+      ? {
+          key: 'instagram',
+          icon: 'logo-instagram' as const,
+          color: '#E1306C',
+          label: 'Instagram',
+          onPress: () => handleSocial('instagram', instagram),
+        }
+      : null,
+    facebook
+      ? {
+          key: 'facebook',
+          icon: 'logo-facebook' as const,
+          color: '#1877F2',
+          label: 'Facebook',
+          onPress: () => handleSocial('facebook', facebook),
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    color: string;
+    label: string;
     onPress: () => void;
   }>;
 
@@ -144,17 +152,17 @@ export default function ServiceBusinessCard({ service }: Props) {
         />
         <View style={styles.titleBlock}>
           {!!service.category_display && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText} numberOfLines={1}>
-                {service.category_display}
-              </Text>
-            </View>
+            <Text style={styles.categoryText} numberOfLines={1}>
+              {service.category_display}
+            </Text>
           )}
           <Text style={styles.name}>{service.name}</Text>
         </View>
       </View>
 
-      <Text style={styles.description}>{description}</Text>
+      <Text style={styles.description} numberOfLines={3}>
+        {description}
+      </Text>
 
       {(schedule || address || phone) && (
         <View style={styles.metaBlock}>
@@ -164,9 +172,9 @@ export default function ServiceBusinessCard({ service }: Props) {
         </View>
       )}
 
-      {actions.length > 0 ? (
+      {primaryActions.length > 0 ? (
         <View style={styles.actions}>
-          {actions.map((action) => (
+          {primaryActions.map((action) => (
             <Pressable
               key={action.key}
               style={({ pressed }) => [
@@ -186,6 +194,22 @@ export default function ServiceBusinessCard({ service }: Props) {
       ) : (
         <Text style={styles.noContact}>Sin datos de contacto por ahora</Text>
       )}
+
+      {socialActions.length > 0 ? (
+        <View style={styles.socialRow}>
+          {socialActions.map((action) => (
+            <Pressable
+              key={action.key}
+              style={({ pressed }) => [styles.socialIconBtn, pressed && styles.actionPressed]}
+              onPress={action.onPress}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+            >
+              <Ionicons name={action.icon} size={20} color={action.color} />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -193,7 +217,7 @@ export default function ServiceBusinessCard({ service }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: radii.card,
     padding: spacing.lg,
     gap: spacing.md,
     borderWidth: 1,
@@ -207,48 +231,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: radii.lg,
     flexShrink: 0,
   },
   titleBlock: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    maxWidth: '100%',
-    backgroundColor: colors.serviceStart + '18',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    gap: 4,
   },
   categoryText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.serviceEnd,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
   },
   name: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.text,
     letterSpacing: -0.2,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   description: {
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 20,
     color: colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   metaBlock: {
-    gap: 8,
-    paddingTop: 2,
-    paddingBottom: 2,
+    gap: 6,
   },
   metaRow: {
     flexDirection: 'row',
@@ -263,8 +275,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     fontSize: 13,
-    lineHeight: 19,
-    color: colors.textSecondary,
+    lineHeight: 18,
+    color: colors.textMuted,
     fontWeight: '500',
   },
   actions: {
@@ -273,10 +285,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   actionFlex: {
-    // Dos botones por fila en pantallas angostas; no se cortan.
     flexGrow: 1,
     flexBasis: '46%',
-    minWidth: 140,
+    minWidth: 0,
     maxWidth: '100%',
   },
   actionBtn: {
@@ -287,7 +298,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: 11,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: radii.md,
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: colors.border,
@@ -303,12 +314,25 @@ const styles = StyleSheet.create({
   actionText: {
     flexShrink: 1,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text,
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  socialIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.md,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   noContact: {
     fontSize: 13,
     color: colors.textMuted,
-    fontStyle: 'italic',
   },
 });

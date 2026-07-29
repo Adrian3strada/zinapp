@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   formWrap: {
     backgroundColor: colors.surface,
-    marginHorizontal: 20,
+    marginHorizontal: spacing.xl,
     marginTop: -24,
     borderRadius: 24,
     padding: spacing.xl,

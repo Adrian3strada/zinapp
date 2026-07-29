@@ -77,8 +77,8 @@ type ParticipantNavigation = {
 };
 
 const RESTAURANT_NEXT_STATUS: Record<string, { status: string; label: string }> = {
-  accepted: { status: 'preparing', label: 'Empezar a preparar' },
-  preparing: { status: 'ready', label: 'Listo para recoger' },
+  accepted: { status: 'preparing', label: 'En preparación' },
+  preparing: { status: 'ready', label: 'Marcar listo (repartidor)' },
 };
 
 export default function OrderDetailScreen({ route, navigation }: OrderDetailScreenProps) {
@@ -625,7 +625,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
           {user?.role === 'driver' && order.status === 'on_the_way' && (
             <View style={styles.card}>
               <Button
-                title="Abrir mapa de navegación"
+                title="Abrir en Maps"
                 onPress={() => {
                   const driverNav = navigation as NativeStackNavigationProp<DriverStackParamList>;
                   driverNav.navigate('DriverMap', { orderId: order.id });
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   section: { fontSize: 17, fontWeight: '800', color: colors.text, marginBottom: 12, letterSpacing: -0.2 },
   restaurantRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   infoRow: { flexDirection: 'row', gap: 12, marginBottom: 14 },
-  label: { fontSize: 11, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: { fontSize: 12, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
   value: { fontSize: 15, color: colors.text, fontWeight: '600', marginTop: 2 },
   item: {
     flexDirection: 'row',
@@ -745,7 +745,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  itemMain: { flex: 1, gap: 2 },
+  itemMain: { flex: 1, minWidth: 0, gap: 2 },
   itemName: { fontSize: 15, color: colors.text, fontWeight: '600' },
   itemNotes: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   itemPrice: { fontWeight: '600', color: colors.text },
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   totalRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
   totalLabel: { fontSize: 18, fontWeight: '800' },
   totalValue: { fontSize: 18, fontWeight: '800', color: colors.primary },
-  restaurantActions: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  restaurantActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
   restaurantActionsCol: { gap: 10, marginBottom: 12 },
   prepLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   prepRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

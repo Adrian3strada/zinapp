@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { closeAppDialog } from '../../navigation/navigationRef';
 import type { RootStackParamList } from '../../navigation/types';
@@ -30,6 +31,7 @@ export default function AppDialogScreen({ route, navigation }: Props) {
   const closingRef = useRef(false);
   const closedProperlyRef = useRef(false);
   const [isClosing, setIsClosing] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const closeModal = useCallback(() => {
     closeAppDialog();
@@ -86,12 +88,31 @@ export default function AppDialogScreen({ route, navigation }: Props) {
   }, [isClosing, onBackdrop]);
 
   return (
-    <View style={[styles.root, Platform.OS === 'web' && styles.rootWeb]} pointerEvents={isClosing ? 'none' : 'auto'}>
+    <View
+      style={[
+        styles.root,
+        Platform.OS === 'web' && styles.rootWeb,
+        {
+          paddingTop: Math.max(insets.top, spacing.md),
+          paddingBottom: Math.max(insets.bottom, spacing.md),
+        },
+      ]}
+      pointerEvents={isClosing ? 'none' : 'auto'}
+    >
       <Pressable style={styles.backdrop} onPress={onBackdrop} accessibilityLabel="Cerrar diálogo" />
       <View style={styles.center} pointerEvents="box-none">
         <View style={[styles.card, elevatedShadow]}>
           <Text style={styles.title}>{title}</Text>
-          {message ? <Text style={styles.message}>{message}</Text> : null}
+          {message ? (
+            <ScrollView
+              style={styles.messageScroll}
+              contentContainerStyle={styles.messageScrollContent}
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.message}>{message}</Text>
+            </ScrollView>
+          ) : null}
           <View style={[styles.actions, horizontal && styles.actionsRow]}>
             {buttons.map((btn, index) => {
               const variant = buttonVariant(btn.style);
@@ -116,6 +137,7 @@ export default function AppDialogScreen({ route, navigation }: Props) {
                       variant === 'secondary' && styles.btnTextSecondary,
                       variant === 'danger' && styles.btnTextDanger,
                     ]}
+                    numberOfLines={2}
                   >
                     {btn.text}
                   </Text>
@@ -151,9 +173,11 @@ const styles = StyleSheet.create({
   center: {
     width: '100%',
     maxWidth: 360,
+    maxHeight: '100%',
   },
   card: {
     width: '100%',
+    maxHeight: '100%',
     backgroundColor: colors.surface,
     borderRadius: 24,
     paddingHorizontal: spacing.xl,
@@ -169,11 +193,17 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginBottom: spacing.sm,
   },
+  messageScroll: {
+    maxHeight: 220,
+    marginBottom: spacing.lg,
+  },
+  messageScrollContent: {
+    flexGrow: 0,
+  },
   message: {
     fontSize: 15,
     lineHeight: 22,
     color: colors.textSecondary,
-    marginBottom: spacing.lg,
   },
   actions: {
     gap: spacing.sm,
@@ -181,6 +211,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
+    flexWrap: 'wrap',
   },
   btn: {
     minHeight: 48,
@@ -212,6 +243,7 @@ const styles = StyleSheet.create({
   btnText: {
     fontSize: 16,
     fontWeight: '700',
+    textAlign: 'center',
   },
   btnTextPrimary: {
     color: '#FFF',

@@ -42,11 +42,11 @@
           <td class="text-muted">{{ c.expires_at|date:"d/m/Y H:i"|default:"—" }}</td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:coupon-edit' c.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar">
-                <i class="fas fa-pen"></i><span class="d-none d-lg-inline ml-1">Editar</span>
+              <a href="{% url 'gestion:coupon-edit' c.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar cupón">
+                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
               </a>
-              <a href="{% url 'gestion:coupon-delete' c.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
-                <i class="fas fa-trash"></i>
+              <a href="{% url 'gestion:coupon-delete' c.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar cupón">
+                <i class="fas fa-trash" aria-hidden="true"></i>
               </a>
             </div>
           </td>

@@ -13,21 +13,21 @@ export const WEB_DESKTOP_SIDEBAR_WIDTH = 240;
 /** @deprecated Usar WEB_MOBILE_FRAME_MAX o contentMaxWidth del hook. */
 export const WEB_MAX_WIDTH = WEB_MOBILE_FRAME_MAX;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BASE_WIDTH = 375;
 
 function layoutWidth(): number {
+  const { width } = Dimensions.get('window');
   if (Platform.OS === 'web') {
-    if (SCREEN_WIDTH >= WEB_BREAKPOINT_DESKTOP) {
-      return Math.min(SCREEN_WIDTH - WEB_DESKTOP_SIDEBAR_WIDTH, WEB_DESKTOP_MAX_WIDTH);
+    if (width >= WEB_BREAKPOINT_DESKTOP) {
+      return Math.min(width - WEB_DESKTOP_SIDEBAR_WIDTH, WEB_DESKTOP_MAX_WIDTH);
     }
-    return Math.min(SCREEN_WIDTH, WEB_MOBILE_FRAME_MAX);
+    return Math.min(width, WEB_MOBILE_FRAME_MAX);
   }
-  return SCREEN_WIDTH;
+  return width;
 }
 
 function layoutHeight(): number {
-  return SCREEN_HEIGHT;
+  return Dimensions.get('window').height;
 }
 
 export function scale(size: number): number {

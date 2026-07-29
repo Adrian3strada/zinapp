@@ -119,7 +119,7 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
           <ListSkeleton count={4} variant="job" />
         </View>
       }
-      error={error}
+      error={error && items.length === 0 ? error : null}
       onRetry={() => load()}
     >
       <FlatList
@@ -136,11 +136,6 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
               eyebrow="Pedidos disponibles"
               subtitle={!isApproved ? 'Completa tu validación para recibir pedidos' : isAvailable ? countLabel : 'Activa tu disponibilidad para ver pedidos'}
               isAvailable={isAvailable}
-              stats={[
-                { label: 'Listos', value: items.length, icon: 'fast-food-outline' },
-                { label: 'Estado', value: isAvailable ? 'ON' : 'OFF', icon: 'radio-button-on' },
-                { label: 'Activa', value: hasActiveDelivery ? 1 : 0, icon: 'bicycle-outline' },
-              ]}
             />
             <DriverAvailabilityBanner
               isAvailable={isAvailable}
@@ -225,16 +220,16 @@ const styles = StyleSheet.create({
   activeBanner: {
     flexDirection: 'row',
     gap: 12,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primaryLight,
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: colors.primary + '44',
   },
   activeBannerTextWrap: { flex: 1, gap: 2 },
-  activeBannerTitle: { fontSize: 14, fontWeight: '800', color: colors.shipmentStart },
+  activeBannerTitle: { fontSize: 14, fontWeight: '800', color: colors.primaryDark },
   activeBannerText: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
   tipBox: {
     flexDirection: 'row',

@@ -6,10 +6,12 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  View,
   ViewStyle,
 } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { radii } from '../theme/radii';
 import { HIT_SLOP } from '../theme/spacing';
 import { softShadow } from '../theme/shadows';
 import { webPassThroughPointerEvents } from '../utils/webPlatform';
@@ -43,36 +45,43 @@ export default function Button({
   size = 'md',
 }: Props) {
   const isDisabled = disabled || loading;
+  const showDisabledLook = !!disabled && !loading;
   const rowChild = flexChildStyle(style);
   const heightStyle = size === 'lg' ? styles.heightLg : styles.heightMd;
 
   const spinnerColor =
     variant === 'secondary' || variant === 'ghost' ? colors.primary : '#FFF';
 
-  const label = loading ? (
-    <ActivityIndicator color={spinnerColor} />
-  ) : (
-    <Text
-      style={[
-        styles.text,
-        styles[`text_${variant}`],
-        size === 'lg' && styles.textLg,
-      ]}
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.85}
-    >
-      {title}
-    </Text>
+  const label = (
+    <View style={styles.labelRow}>
+      {loading ? <ActivityIndicator color={spinnerColor} /> : null}
+      <Text
+        style={[
+          styles.text,
+          styles[`text_${variant}`],
+          size === 'lg' && styles.textLg,
+          loading && styles.textLoading,
+          showDisabledLook && styles.textDisabled,
+          showDisabledLook && variant === 'primary' && styles.textDisabledPrimary,
+        ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+      >
+        {title}
+      </Text>
+    </View>
   );
 
-  if (variant === 'primary' && !isDisabled) {
+  if (variant === 'primary' && !showDisabledLook) {
     return (
       <Pressable
         onPress={onPress}
         disabled={isDisabled}
         hitSlop={HIT_SLOP}
         accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled: isDisabled, busy: !!loading }}
         android_ripple={{ color: 'rgba(255,255,255,0.25)' }}
         style={({ pressed }) => [
           styles.base,
@@ -80,7 +89,7 @@ export default function Button({
           styles.primaryWrap,
           rowChild,
           softShadow,
-          pressed && styles.pressed,
+          pressed && !isDisabled && styles.pressed,
           style,
         ]}
       >
@@ -103,6 +112,8 @@ export default function Button({
       disabled={isDisabled}
       hitSlop={HIT_SLOP}
       accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: isDisabled, busy: !!loading }}
       android_ripple={
         variant === 'ghost'
           ? { color: colors.primaryLight }
@@ -113,9 +124,10 @@ export default function Button({
         heightStyle,
         styles[variant],
         rowChild,
-        variant === 'primary' && softShadow,
+        showDisabledLook && variant === 'primary' && styles.primaryDisabled,
+        showDisabledLook && variant === 'secondary' && styles.secondaryDisabled,
+        showDisabledLook && variant === 'ghost' && styles.ghostDisabled,
         pressed && !isDisabled && styles.pressed,
-        isDisabled && styles.disabled,
         style,
       ]}
     >
@@ -126,14 +138,14 @@ export default function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 14,
+    borderRadius: radii.lg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
     ...(Platform.OS === 'android' ? { overflow: 'hidden' as const } : {}),
   },
-  heightMd: { height: 50 },
-  heightLg: { height: 54 },
+  heightMd: { height: 52 },
+  heightLg: { height: 56 },
   primaryWrap: {
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
@@ -143,21 +155,37 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: radii.lg,
     paddingHorizontal: 18,
   },
   primary: { backgroundColor: colors.primary },
+  primaryDisabled: {
+    backgroundColor: colors.borderLight,
+  },
   secondary: {
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.primary,
+  },
+  secondaryDisabled: {
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
   },
   danger: { backgroundColor: colors.error },
   ghost: { backgroundColor: 'transparent' },
-  pressed: { opacity: 0.88, transform: [{ scale: 0.985 }] },
-  disabled: { opacity: 0.5 },
-  text: { fontWeight: '700', fontSize: 15, letterSpacing: -0.1 },
+  ghostDisabled: { opacity: 1 },
+  pressed: { opacity: 0.92 },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  text: { fontWeight: '600', fontSize: 15, letterSpacing: -0.1 },
   textLg: { fontSize: 16 },
+  textLoading: { opacity: 0.85 },
+  textDisabled: { color: colors.textMuted },
+  textDisabledPrimary: { color: colors.textMuted },
   text_primary: { color: '#FFF' },
   text_secondary: { color: colors.primary },
   text_danger: { color: '#FFF' },

@@ -6,9 +6,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../theme/spacing';
 import { WEB_BREAKPOINT_DESKTOP } from './responsive';
 
-/** Padding inferior para pantallas dentro de tabs (evita quedar bajo la barra). */
+/** Padding mínimo bajo el home indicator / gesture bar. */
+export function safeBottomPadding(insets: EdgeInsets, min: number = spacing.md): number {
+  return Math.max(insets.bottom, min);
+}
+
+/**
+ * Padding inferior para pantallas dentro de tabs.
+ * - Web móvil: la tab bar es `position: fixed` y se superpone al contenido.
+ * - Native: la escena ya queda encima de la tab bar; solo hace falta respiro.
+ */
 export function tabScreenBottomPadding(insets: EdgeInsets, extra: number = spacing.lg): number {
-  return insets.bottom + spacing.tabBar + extra;
+  if (Platform.OS === 'web') {
+    return spacing.tabBar + Math.max(insets.bottom, 0) + extra;
+  }
+  return extra;
 }
 
 /** Offset de teclado en tabs sin header nativo (Perfil, Menú restaurante). */

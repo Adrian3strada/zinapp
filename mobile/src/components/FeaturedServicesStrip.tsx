@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   category: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.serviceEnd,
     textTransform: 'uppercase',

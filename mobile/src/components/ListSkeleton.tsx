@@ -131,14 +131,15 @@ export default function ListSkeleton({ count = 4, variant = 'restaurant', style 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
   bone: {
-    backgroundColor: colors.borderLight,
-    borderRadius: 8,
+    backgroundColor: colors.border,
+    borderRadius: 10,
+    opacity: 0.55,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 22,
+    borderRadius: 18,
     padding: spacing.lg,
     gap: spacing.md,
     borderWidth: 1,
@@ -160,10 +161,12 @@ const styles = StyleSheet.create({
   statCard: {
     width: '47%',
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: spacing.lg,
     alignItems: 'center',
     gap: 6,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...cardShadow,
   },
 });

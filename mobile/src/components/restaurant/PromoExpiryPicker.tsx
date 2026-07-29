@@ -283,9 +283,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   navBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   },
   weekdayLabel: {
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
   },
@@ -376,6 +376,7 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     flex: 1,
+    minWidth: 0,
     fontSize: 13,
     fontWeight: '600',
     color: colors.primaryDark,

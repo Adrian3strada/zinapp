@@ -39,11 +39,12 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     width: '100%',
-    height: '100%',
     minHeight: viewportHeight,
+    maxHeight: viewportHeight,
   },
   pageMobile: {
-    alignItems: 'center',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
     backgroundColor: '#dbeafe',
   },
   pageDesktop: {
@@ -55,7 +56,6 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: colors.background,
     overflow: 'hidden',
-    height: '100%',
     minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
   },
   frameMobile: {
     maxWidth: WEB_MOBILE_FRAME_MAX,
+    alignSelf: 'center',
     ...mobileFrameShadow,
   },
   frameDesktop: {

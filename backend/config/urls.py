@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.http import Http404
 from django.urls import include, path, re_path
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -12,16 +13,23 @@ from .landing_views import LandingView, robots_txt, sitemap_xml
 from .legal_views import PrivacyPolicyView
 from .webapp_views import webapp_serve
 
-# Rutas que NO deben caer en la SPA (API, panel, legal, media, legacy /app/)
-_WEBAPP_EXCLUDE = r'api/|admin/|panel/|privacidad/|media/|app/'
+
+def _public_not_found(request, path=''):
+    """Rutas desconocidas fuera de /app/ → 404 real (no SPA)."""
+    raise Http404()
+
 
 urlpatterns = [
-    # Normaliza accesos compartidos sin la diagonal final antes de que caigan en la SPA.
-    path('panel', RedirectView.as_view(url='/panel/', permanent=False)),
-    path('app', RedirectView.as_view(url='/app/', permanent=False)),
-    path('privacidad', RedirectView.as_view(url='/privacidad/', permanent=False)),
+    # Normaliza accesos compartidos (301 para SEO).
+    path('panel', RedirectView.as_view(url='/panel/', permanent=True)),
+    path('app', RedirectView.as_view(url='/app/', permanent=True)),
+    path('privacidad', RedirectView.as_view(url='/privacidad/', permanent=True)),
     path('robots.txt', robots_txt, name='robots-txt'),
     path('sitemap.xml', sitemap_xml, name='sitemap-xml'),
+    path(
+        'favicon.ico',
+        RedirectView.as_view(url='/static/dashboard/img/logo-on-blue.png', permanent=True),
+    ),
     path('admin/', RedirectView.as_view(url='/panel/gestion/', permanent=True)),
     path('panel/', include([
         path('gestion/sistema/', panel_admin.urls),
@@ -38,12 +46,11 @@ urlpatterns = [
     path('api/', include('restaurants.urls')),
     path('api/', include('local_services.urls')),
     path('api/', include('orders.urls')),
-    # App web en /app/ (ruta canónica)
+    # App web solo bajo /app/ (evita URLs delgadas duplicadas fuera de /app/).
     path('app/', webapp_serve, name='webapp-root'),
     re_path(r'^app/(?P<path>.*)$', webapp_serve, name='webapp'),
-    # Landing pública (links de tiendas + WhatsApp)
+    # Landing pública
     path('', LandingView.as_view(), name='landing'),
-    re_path(rf'^(?P<path>(?!{_WEBAPP_EXCLUDE}).+)$', webapp_serve, name='webapp-catch'),
 ]
 
 if settings.API_DOCS_ENABLED:
@@ -60,4 +67,9 @@ urlpatterns += [
         r'^media/(?P<path>.*)$',
         serve_media,
     ),
+]
+
+# Catch-all al final: 404 en vez de servir la SPA en rutas públicas inventadas.
+urlpatterns += [
+    re_path(r'^(?P<path>.+)$', _public_not_found, name='public-404'),
 ]

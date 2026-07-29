@@ -1,12 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
-import type { RestaurantTabParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
-import { HIT_SLOP, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Restaurant } from '../../types';
 import { formatRestaurantSchedule } from '../../utils/restaurantMeta';
@@ -16,82 +13,68 @@ import { RESTAURANT_CATEGORY_LABELS } from '../../utils/restaurantCategories';
 interface Props {
   restaurant: Restaurant;
   acceptingOrders: boolean;
-  togglingOrders: boolean;
-  onToggleAcceptingOrders: (value: boolean) => void;
   overlap?: boolean;
 }
 
 export default function RestaurantProfileDashboard({
   restaurant,
   acceptingOrders,
-  togglingOrders,
-  onToggleAcceptingOrders,
   overlap,
 }: Props) {
-  const navigation = useNavigation<BottomTabNavigationProp<RestaurantTabParamList>>();
   const imageUri = resolveMediaUrl(restaurant.image_url ?? restaurant.image);
-  const hours = formatRestaurantSchedule(restaurant);
-  const category = RESTAURANT_CATEGORY_LABELS[restaurant.category ?? 'general'] ?? 'General';
-  const setupProgress = restaurant.setup_status
-    ? `${restaurant.setup_status.done_count}/${restaurant.setup_status.total_count}`
+  const categoryLabel = restaurant.category
+    ? RESTAURANT_CATEGORY_LABELS[restaurant.category] ?? restaurant.category
     : null;
-
-  const statusLabel = !restaurant.is_active
-    ? 'Pendiente de activación'
-    : acceptingOrders
-      ? 'Abierto a pedidos'
-      : 'Pausado';
-
-  const statusTone = !restaurant.is_active
-    ? colors.warning
-    : acceptingOrders
-      ? colors.success
-      : colors.textMuted;
+  const hours = formatRestaurantSchedule(restaurant);
+  const setup = restaurant.setup_status;
 
   return (
-    <View style={[styles.card, overlap && styles.cardOverlap]}>
+    <View style={[styles.card, overlap && styles.cardOverlap, cardShadow]}>
       <View style={styles.topRow}>
         <View style={styles.logoWrap}>
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.logo} />
           ) : (
             <View style={styles.logoPlaceholder}>
-              <Ionicons name="storefront-outline" size={32} color={colors.primary} />
+              <Ionicons name="storefront" size={28} color={colors.primary} />
             </View>
           )}
         </View>
-        <View style={styles.info}>
+        <View style={styles.titleBlock}>
           <Text style={styles.name} numberOfLines={2}>
             {restaurant.name}
           </Text>
-          <Text style={styles.category}>{category}</Text>
-          <View style={[styles.statusPill, { backgroundColor: statusTone + '18' }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusTone }]} />
-            <Text style={[styles.statusText, { color: statusTone }]}>{statusLabel}</Text>
-          </View>
+          {categoryLabel ? <Text style={styles.meta}>{categoryLabel}</Text> : null}
+          {hours ? (
+            <View style={styles.hoursRow}>
+              <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.hoursText} numberOfLines={1}>
+                {hours}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
       <View style={styles.metrics}>
         <View style={styles.metric}>
-          <Ionicons name="fast-food-outline" size={18} color={colors.primary} />
-          <Text style={styles.metricValue}>{restaurant.products_count}</Text>
-          <Text style={styles.metricLabel}>Platillos</Text>
+          <Text style={styles.metricValue}>{restaurant.is_active ? 'Activo' : 'Pendiente'}</Text>
+          <Text style={styles.metricLabel}>Cuenta</Text>
         </View>
         <View style={styles.metricDivider} />
         <View style={styles.metric}>
-          <Ionicons name="time-outline" size={18} color={colors.primary} />
-          <Text style={styles.metricValueSmall} numberOfLines={1}>
-            {hours ?? 'Sin horario'}
+          <Text style={styles.metricValue}>
+            {acceptingOrders && restaurant.is_active ? 'Abierto' : 'Cerrado'}
           </Text>
-          <Text style={styles.metricLabel}>Horario</Text>
+          <Text style={styles.metricLabel}>Pedidos</Text>
         </View>
-        {setupProgress ? (
+        {setup ? (
           <>
             <View style={styles.metricDivider} />
             <View style={styles.metric}>
-              <Ionicons name="construct-outline" size={18} color={colors.primary} />
-              <Text style={styles.metricValue}>{setupProgress}</Text>
+              <Text style={styles.metricValue}>
+                {setup.done_count}/{setup.total_count}
+              </Text>
               <Text style={styles.metricLabel}>Perfil</Text>
             </View>
           </>
@@ -100,40 +83,21 @@ export default function RestaurantProfileDashboard({
 
       <View style={styles.toggleRow}>
         <View style={styles.toggleInfo}>
-          <Text style={styles.toggleLabel}>Recibiendo pedidos</Text>
+          <Text style={styles.toggleLabel}>Estado del local</Text>
           <Text style={styles.toggleHint}>
             {!restaurant.is_active
               ? 'Disponible cuando el equipo active tu local.'
-              : acceptingOrders
-                ? 'Los clientes pueden pedir ahora.'
-                : 'Tu local aparece como cerrado.'}
+              : 'Abre o cierra desde la pestaña Pedidos.'}
           </Text>
         </View>
-        <Switch
-          value={acceptingOrders && restaurant.is_active}
-          onValueChange={onToggleAcceptingOrders}
-          disabled={togglingOrders || !restaurant.is_active}
-          trackColor={{ true: colors.primary, false: colors.border }}
-        />
-      </View>
-
-      <View style={styles.quickActions}>
-        <Pressable
-          style={styles.quickBtn}
-          onPress={() => navigation.navigate('Pedidos')}
-          hitSlop={HIT_SLOP}
+        <Text
+          style={[
+            styles.statusHintText,
+            { color: acceptingOrders && restaurant.is_active ? colors.success : colors.textMuted },
+          ]}
         >
-          <Ionicons name="receipt-outline" size={18} color={colors.primary} />
-          <Text style={styles.quickBtnText}>Pedidos</Text>
-        </Pressable>
-        <Pressable
-          style={styles.quickBtn}
-          onPress={() => navigation.navigate('MiNegocio')}
-          hitSlop={HIT_SLOP}
-        >
-          <Ionicons name="restaurant-outline" size={18} color={colors.primary} />
-          <Text style={styles.quickBtnText}>Menú</Text>
-        </Pressable>
+          {!restaurant.is_active ? 'Pendiente' : acceptingOrders ? 'Abierto' : 'Cerrado'}
+        </Text>
       </View>
     </View>
   );
@@ -153,83 +117,47 @@ const styles = StyleSheet.create({
   cardOverlap: { marginTop: -36, zIndex: 2, elevation: 4 },
   topRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
+    gap: 14,
+    alignItems: 'center',
   },
   logoWrap: {
-    width: 72,
-    height: 72,
+    width: 64,
+    height: 64,
     borderRadius: 18,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: colors.primaryLight,
   },
-  logo: { width: '100%', height: '100%', resizeMode: 'cover' },
+  logo: { width: '100%', height: '100%' },
   logoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  info: { flex: 1, minWidth: 0, gap: 4 },
-  name: { fontSize: 20, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
-  category: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    marginTop: 4,
-  },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: '800' },
+  titleBlock: { flex: 1, minWidth: 0, gap: 4 },
+  name: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  meta: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  hoursRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  hoursText: { flex: 1, fontSize: 12, color: colors.textMuted, fontWeight: '500' },
   metrics: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: spacing.lg,
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  metric: { flex: 1, alignItems: 'center', gap: 2 },
+  metricDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: colors.border },
+  metricValue: { fontSize: 15, fontWeight: '700', color: colors.text },
+  metricLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  toggleRow: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     paddingTop: spacing.md,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.borderLight,
   },
-  metric: { flex: 1, alignItems: 'center', gap: 2, paddingHorizontal: 4 },
-  metricDivider: { width: 1, height: 44, backgroundColor: colors.borderLight },
-  metricValue: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: 2 },
-  metricValueSmall: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  metricLabel: { fontSize: 10, color: colors.textMuted, fontWeight: '600' },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    gap: 12,
-  },
-  toggleInfo: { flex: 1 },
+  toggleInfo: { flex: 1, minWidth: 0 },
   toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   toggleHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: spacing.md,
-  },
-  quickBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: colors.primaryLight,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.primary + '22',
-  },
-  quickBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  statusHintText: { fontSize: 13, fontWeight: '700' },
 });

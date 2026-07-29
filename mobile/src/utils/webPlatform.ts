@@ -87,9 +87,13 @@ export function injectWebInputStyles(): void {
       appearance: none;
       -webkit-appearance: none;
     }
-    #root input:focus,
+    #root [role="button"]:focus-visible,
+    #root a:focus-visible,
+    #root button:focus-visible {
+      outline: 2px solid #1E5DB8 !important;
+      outline-offset: 2px !important;
+    }
     #root input:focus-visible,
-    #root textarea:focus,
     #root textarea:focus-visible {
       outline: none !important;
       box-shadow: none !important;

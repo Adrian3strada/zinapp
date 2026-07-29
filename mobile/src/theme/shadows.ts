@@ -7,10 +7,10 @@ export const cardShadow: ViewStyle = Platform.select({
   ios: {
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
   },
-  android: { elevation: 1 },
+  android: { elevation: 2 },
   default: {},
 }) as ViewStyle;
 
@@ -18,11 +18,11 @@ export const cardShadow: ViewStyle = Platform.select({
 export const elevatedShadow: ViewStyle = Platform.select({
   ios: {
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
-  android: { elevation: 2 },
+  android: { elevation: 4 },
   default: {},
 }) as ViewStyle;
 
@@ -31,9 +31,9 @@ export const softShadow: ViewStyle = Platform.select({
   ios: {
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.04,
     shadowRadius: 3,
   },
-  android: { elevation: 0 },
+  android: { elevation: 1 },
   default: {},
 }) as ViewStyle;

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -50,8 +50,12 @@ export default function NewOrderAlert({
   const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECS);
   const [prepMinutes, setPrepMinutes] = useState<number>(15);
   const [confirmReject, setConfirmReject] = useState(false);
+  const timedOutRef = useRef(false);
+  const onRejectRef = useRef(onReject);
+  onRejectRef.current = onReject;
 
   useEffect(() => {
+    timedOutRef.current = false;
     setSecondsLeft(COUNTDOWN_SECS);
     setPrepMinutes(15);
     setConfirmReject(false);
@@ -59,10 +63,23 @@ export default function NewOrderAlert({
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     }
     const tick = setInterval(() => {
-      setSecondsLeft((s) => (s <= 1 ? COUNTDOWN_SECS : s - 1));
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(tick);
+          return 0;
+        }
+        return s - 1;
+      });
     }, 1000);
     return () => clearInterval(tick);
   }, [order.id]);
+
+  useEffect(() => {
+    if (secondsLeft === 0 && !busy && !confirmReject && !timedOutRef.current) {
+      timedOutRef.current = true;
+      onRejectRef.current();
+    }
+  }, [secondsLeft, busy, confirmReject]);
 
   const items = useMemo(() => order.items ?? [], [order.items]);
   const urgent = secondsLeft <= 15;
@@ -258,8 +275,8 @@ const styles = StyleSheet.create({
     borderColor: colors.primary + '33',
   },
   totalLabel: { fontSize: 12, fontWeight: '700', color: colors.primaryDark },
-  totalValue: { flex: 1, fontSize: 26, fontWeight: '900', color: colors.primaryDark },
-  payment: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  totalValue: { flex: 1, minWidth: 0, fontSize: 26, fontWeight: '900', color: colors.primaryDark },
+  payment: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, flexShrink: 1 },
   prepBlock: { marginTop: 14, gap: 6 },
   prepTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
   prepSub: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
@@ -267,6 +284,8 @@ const styles = StyleSheet.create({
   prepChip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 14,
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -298,11 +317,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   qtyText: { fontSize: 14, fontWeight: '900', color: '#FFF' },
-  itemInfo: { flex: 1, gap: 2 },
+  itemInfo: { flex: 1, minWidth: 0, gap: 2 },
   itemName: { fontSize: 16, fontWeight: '800', color: colors.text },
   itemOpts: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   itemNotes: { fontSize: 12, color: colors.primaryDark, fontWeight: '600' },
-  itemPrice: { fontSize: 14, fontWeight: '800', color: colors.text },
+  itemPrice: { fontSize: 14, fontWeight: '800', color: colors.text, flexShrink: 0 },
   notesBox: {
     flexDirection: 'row',
     gap: 8,
@@ -321,8 +340,8 @@ const styles = StyleSheet.create({
   },
   detailsLinkText: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   actions: { gap: 10, paddingTop: 8 },
-  acceptBtn: { minHeight: 54 },
-  rejectBtn: { minHeight: 48 },
+  acceptBtn: { minHeight: 52 },
+  rejectBtn: { minHeight: 52 },
   confirmBox: {
     backgroundColor: colors.background,
     borderRadius: 16,
@@ -340,5 +359,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   confirmRow: { flexDirection: 'row', gap: 10 },
-  confirmBtn: { flex: 1, minHeight: 48 },
+  confirmBtn: { flex: 1, minWidth: 0, minHeight: 48 },
 });

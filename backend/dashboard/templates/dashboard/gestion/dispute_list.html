@@ -42,8 +42,8 @@
           <td>{% include "dashboard/includes/dispute_status_badge.html" with status=d.status label=d.get_status_display %}</td>
           <td class="text-muted">{{ d.created_at|date:"d/m/Y H:i" }}</td>
           <td class="text-right">
-            <a href="{% url 'gestion:dispute-detail' d.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Revisar">
-              <i class="fas fa-gavel"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
+            <a href="{% url 'gestion:dispute-detail' d.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Revisar" aria-label="Revisar disputa">
+              <i class="fas fa-gavel" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
             </a>
           </td>
         </tr>

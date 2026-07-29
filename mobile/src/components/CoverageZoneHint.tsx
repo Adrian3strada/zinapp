@@ -18,7 +18,7 @@ export default function CoverageZoneHint() {
     <View style={styles.box}>
       <Ionicons name="map-outline" size={18} color={colors.primary} />
       <Text style={styles.text}>
-        Entregamos solo en <Text style={styles.bold}>{label}</Text>. Busca tu dirección o usa GPS antes de pedir.
+        Entregamos en <Text style={styles.bold}>{label}</Text>.
       </Text>
     </View>
   );

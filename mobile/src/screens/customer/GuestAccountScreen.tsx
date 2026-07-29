@@ -18,7 +18,7 @@ const BENEFITS = [
 ];
 
 export default function GuestAccountScreen() {
-  const { requestLogin } = useAuth();
+  const { requestLogin, requestRegister } = useAuth();
   const { insets, scrollPaddingBottom, pagePadding } = useTabScreenInsets();
 
   return (
@@ -58,7 +58,7 @@ export default function GuestAccountScreen() {
             </View>
           ))}
           <Button title="Iniciar sesión" onPress={requestLogin} size="lg" style={styles.btn} />
-          <Button title="Crear cuenta gratis" variant="secondary" onPress={requestLogin} size="lg" />
+          <Button title="Crear cuenta gratis" variant="secondary" onPress={requestRegister} size="lg" />
         </View>
       </View>
     </ScrollView>

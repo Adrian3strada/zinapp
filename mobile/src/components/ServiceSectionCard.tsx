@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  badgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  badgeText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
   title: {
     fontSize: 14,
     fontWeight: '800',
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     color: colors.textSecondary,
     textAlign: 'center',

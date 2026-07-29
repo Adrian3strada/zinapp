@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  textBlock: { flex: 1, paddingRight: spacing.md },
+  textBlock: { flex: 1, minWidth: 0, paddingRight: spacing.md },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -132,17 +132,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   brandLabel: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.92)',
-    letterSpacing: 0.4,
-  },
-  greeting: {
-    fontSize: 26,
+    fontSize: 17,
     fontWeight: '800',
     color: '#FFF',
-    letterSpacing: -0.5,
-    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: -0.4,
+    marginTop: 4,
   },
   locationRow: { marginTop: spacing.sm },
   locationPill: {
@@ -152,10 +152,10 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: 'rgba(255,255,255,0.16)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingVertical: 7,
+    borderRadius: 12,
   },
-  location: { color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: '600' },
+  location: { color: 'rgba(255,255,255,0.95)', fontSize: 13, fontWeight: '600', letterSpacing: -0.1 },
   avatarBtn: {
     borderRadius: 24,
     overflow: 'hidden',
@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
   statBox: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: 'rgba(255,255,255,0.14)',
     borderRadius: 16,
     paddingVertical: 10,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 18, fontWeight: '800', color: '#FFF', marginTop: 2 },
   statLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: 'rgba(255,255,255,0.82)',
     fontWeight: '600',
     textAlign: 'center',

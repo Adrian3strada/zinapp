@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appAlert } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
@@ -119,6 +120,7 @@ function NavigationTargetButton({
 }
 
 export default function DriverMapScreen({ route }: DriverMapScreenProps) {
+  const insets = useSafeAreaInsets();
   const orderId = 'orderId' in route.params ? route.params.orderId : null;
   const shipmentId = 'shipmentId' in route.params ? route.params.shipmentId : null;
   const [job, setJob] = useState<DriverNavigationJob | null>(null);
@@ -446,7 +448,7 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
           region={region}
           height={mapHeight(0.52)}
           followMarkerId={null}
-          fitPadding={{ top: 36, right: 36, bottom: 48, left: 36 }}
+          fitPadding={{ top: 36, right: 36, bottom: 48 + insets.bottom, left: 36 }}
           emptyMessage="Sin puntos en el mapa. Verifica que tenga dirección con coordenadas."
         />
       </View>
@@ -465,7 +467,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   heroEyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.75)',
     textTransform: 'uppercase',

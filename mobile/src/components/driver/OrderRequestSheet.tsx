@@ -48,12 +48,23 @@ export default function OrderRequestSheet({
           <Ionicons name="fast-food" size={14} color={colors.primaryDark} />
           <Text style={styles.badgeText}>Nuevo pedido</Text>
         </View>
-        <Pressable onPress={onSkip} hitSlop={12} accessibilityLabel="Omitir pedido">
+        <Pressable
+          onPress={onSkip}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Omitir pedido"
+          style={styles.skipBtn}
+        >
           <Text style={styles.skip}>Ahora no</Text>
         </Pressable>
       </View>
 
-      <Pressable onPress={onDetails} style={styles.headerPress}>
+      <Pressable
+        onPress={onDetails}
+        style={styles.headerPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Ver detalle de ${formatOrderLabel(order)}`}
+      >
         <Text style={styles.orderLabel}>{formatOrderLabel(order)}</Text>
         <Text style={styles.restaurant} numberOfLines={1}>
           {restaurant}
@@ -113,9 +124,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 14,
+    paddingBottom: 16,
     gap: 14,
   },
   handle: {
@@ -141,6 +152,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: { fontSize: 12, fontWeight: '800', color: colors.primaryDark },
+  skipBtn: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
   skip: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   headerPress: { gap: 2 },
   orderLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
@@ -164,7 +181,7 @@ const styles = StyleSheet.create({
   cashText: { fontSize: 12, fontWeight: '700', color: colors.success },
   routeBlock: { gap: 0 },
   routeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  routeText: { flex: 1, gap: 2, paddingBottom: 10 },
+  routeText: { flex: 1, minWidth: 0, gap: 2, paddingBottom: 10 },
   routeTitle: { fontSize: 12, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase' },
   routeSub: { fontSize: 14, fontWeight: '600', color: colors.text, lineHeight: 19 },
   dot: { width: 12, height: 12, borderRadius: 6, marginTop: 4 },

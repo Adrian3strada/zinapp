@@ -9,7 +9,6 @@ import ListSkeleton from '../../components/ListSkeleton';
 import LiveBadge from '../../components/LiveBadge';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
 import ScreenContainer from '../../components/ScreenContainer';
-import SectionHeader from '../../components/SectionHeader';
 import { useCart } from '../../context/CartContext';
 import { usePaginatedList } from '../../hooks/usePaginatedList';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
@@ -57,6 +56,9 @@ function OrderCard({
         pressed && styles.cardPressed,
       ]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Pedido ${formatOrderLabel(item)}, ${item.restaurant_detail?.name ?? ''}, ${item.status_display}`}
+      accessibilityHint={isLive ? 'Abre el mapa en vivo' : 'Ver detalle del pedido'}
     >
       <View style={[styles.imageWrap, isLive && styles.imageWrapLive]}>
         <FoodImage emoji={visual.emoji} color={visual.color} size="sm" />
@@ -65,8 +67,11 @@ function OrderCard({
         <Text style={styles.restaurant}>{item.restaurant_detail?.name}</Text>
         <Text style={styles.orderId}>{formatOrderLabel(item)}</Text>
         <View style={styles.badgeRow}>
-          <OrderStatusBadge status={item.status} label={item.status_display} />
-          {isLive && <LiveBadge label="En camino" />}
+          {isLive ? (
+            <LiveBadge label="En camino" />
+          ) : (
+            <OrderStatusBadge status={item.status} label={item.status_display} />
+          )}
         </View>
         <Text style={styles.date}>
           {new Date(item.created_at).toLocaleDateString('es-MX', {
@@ -88,6 +93,9 @@ function OrderCard({
             }}
             disabled={reordering}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Pedir de nuevo"
+            accessibilityState={{ busy: !!reordering, disabled: !!reordering }}
           >
             <Ionicons name="refresh-outline" size={14} color={colors.primary} />
             <Text style={styles.reorderText}>
@@ -98,9 +106,7 @@ function OrderCard({
       </View>
       <View style={styles.right}>
         <Text style={styles.total}>{formatCurrency(item.total)}</Text>
-        <View style={styles.chevron}>
-          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
     </Pressable>
   );
@@ -197,12 +203,6 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
           activeCount={activeCount}
           totalLoaded={orders.length}
         />
-        {activeCount > 0 ? (
-          <SectionHeader
-            title="Seguimiento en vivo"
-            subtitle={`${activeCount} pedido${activeCount > 1 ? 's' : ''} en curso · Toca para ver el mapa`}
-          />
-        ) : null}
       </>
     ),
     [activeCount, insets.top, orders.length],
@@ -216,7 +216,7 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
           <ListSkeleton count={4} variant="order" />
         </View>
       }
-      error={error}
+      error={error && orders.length === 0 ? error : null}
       onRetry={refresh}
     >
       <FlatList
@@ -256,56 +256,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 22,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 12,
     gap: 14,
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
     borderLeftColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.borderLight,
     ...cardShadow,
   },
-  cardActive: { backgroundColor: '#FAFBFF' },
-  cardLive: {
-    backgroundColor: colors.primaryLight + '88',
-    borderColor: colors.primary + '44',
-  },
-  cardPressed: { opacity: 0.94, transform: [{ scale: 0.996 }] },
+  cardActive: {},
+  cardLive: {},
+  cardPressed: { opacity: 0.94 },
   imageWrap: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   imageWrapLive: {
     borderWidth: 2,
     borderColor: colors.primary + '55',
   },
-  content: { flex: 1, gap: 5 },
-  restaurant: { fontSize: 16, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
-  orderId: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  content: { flex: 1, minWidth: 0, gap: 4 },
+  restaurant: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  orderId: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  date: { fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
-  trackHint: { fontSize: 11, color: colors.primary, fontWeight: '700', marginTop: 2 },
+  date: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
+  trackHint: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 2 },
   reorderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 4,
-    marginTop: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minHeight: 40,
+    borderRadius: 12,
     backgroundColor: colors.primaryLight,
   },
-  reorderText: { fontSize: 12, fontWeight: '800', color: colors.primary },
-  right: { alignItems: 'flex-end', gap: 8 },
-  total: { fontSize: 16, fontWeight: '800', color: colors.primary },
-  chevron: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  reorderText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  right: { alignItems: 'flex-end', gap: 6, justifyContent: 'center' },
+  total: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

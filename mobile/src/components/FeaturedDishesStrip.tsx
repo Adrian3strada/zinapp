@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
-  promoBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  promoBadgeText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
   name: {
     fontSize: 14,
     fontWeight: '800',
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   restaurant: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
   },

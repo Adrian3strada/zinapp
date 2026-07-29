@@ -20,7 +20,15 @@ function StarRow({ value, onChange }: { value: number; onChange: (n: number) => 
   return (
     <View style={styles.stars}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => onChange(n)} accessibilityLabel={`${n} estrellas`}>
+        <Pressable
+          key={n}
+          onPress={() => onChange(n)}
+          accessibilityRole="button"
+          accessibilityLabel={`${n} estrellas`}
+          accessibilityState={{ selected: n === value }}
+          style={styles.starBtn}
+          hitSlop={4}
+        >
           <Ionicons
             name={n <= value ? 'star' : 'star-outline'}
             size={28}
@@ -99,4 +107,10 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: colors.textSecondary, marginBottom: 8, lineHeight: 18 },
   label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginTop: 8 },
   stars: { flexDirection: 'row', gap: 4, marginBottom: 4 },
+  starBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

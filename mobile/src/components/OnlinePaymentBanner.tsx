@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   },
   pending: { borderColor: colors.primary },
   paid: { borderColor: colors.success },
-  body: { flex: 1, gap: 6 },
+  body: { flex: 1, minWidth: 0, gap: 6 },
   title: { fontSize: 15, fontWeight: '800', color: colors.text },
   sub: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
   btn: { alignSelf: 'flex-start', marginTop: 4 },

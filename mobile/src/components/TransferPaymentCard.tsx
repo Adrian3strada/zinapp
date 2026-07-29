@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 4,
   },
-  clabe: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1, letterSpacing: 0.5 },
+  clabe: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1, minWidth: 0, letterSpacing: 0.5 },
   note: { fontSize: 12, color: colors.textSecondary, lineHeight: 18, marginTop: 4 },
   waBtn: { marginTop: 10 },
 });

@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.borderLight,
   },
-  sender: { fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 2 },
+  sender: { fontSize: 12, fontWeight: '700', color: colors.primary, marginBottom: 2 },
   body: { fontSize: 14, color: colors.text, lineHeight: 20 },
   inputRow: {
     flexDirection: 'row',
@@ -153,6 +153,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     minHeight: 40,
     maxHeight: 90,
     borderWidth: 1,
@@ -165,9 +166,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',

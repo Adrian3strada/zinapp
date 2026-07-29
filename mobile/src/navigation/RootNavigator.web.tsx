@@ -46,7 +46,7 @@ function RoleNavigator({ role }: { role: string }) {
 }
 
 function MainRoutes() {
-  const { user, isGuest, isLoading, requestLogin } = useAuth();
+  const { user, isGuest, isLoading, requestLogin, pendingAuthRoute } = useAuth();
   const [deferPush, setDeferPush] = React.useState(false);
 
   React.useEffect(() => {
@@ -67,7 +67,7 @@ function MainRoutes() {
     return (
       <AuthStack.Navigator
         screenOptions={stackScreenDefaults}
-        initialRouteName={resetToken ? 'ResetPassword' : 'Login'}
+        initialRouteName={resetToken ? 'ResetPassword' : pendingAuthRoute}
       >
         <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <AuthStack.Screen

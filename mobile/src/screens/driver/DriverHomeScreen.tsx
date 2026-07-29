@@ -509,13 +509,13 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       setPickupTick((n) => n + 1);
       await refreshActive();
       await loadOrders(true);
-      navigation.navigate('OrderDetail', { orderId, promptReview: true });
+      appAlert('Entrega completada', 'Buen trabajo. Ya puedes aceptar otro pedido.');
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar entregado'));
     } finally {
       setDelivering(false);
     }
-  }, [activeOrder, delivering, refreshActive, loadOrders, navigation]);
+  }, [activeOrder, delivering, refreshActive, loadOrders]);
 
   const greeting = user?.first_name?.trim()
     ? `Hola, ${user.first_name}`
@@ -531,9 +531,12 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         ? 'Conectado · recibiendo pedidos'
         : 'Desconectado';
 
-  // Siempre dejar libre el alto de la tab bar: en web es fixed y tapa el slide.
+  // Web: tab bar fixed overlays content. Native: scene already sits above tab bar.
   const bottomPad = {
-    paddingBottom: Math.max(tabBarHeight, spacing.tabBar + Math.max(insets.bottom, 0)) + 12,
+    paddingBottom:
+      Platform.OS === 'web'
+        ? Math.max(tabBarHeight, spacing.tabBar + Math.max(insets.bottom, 0)) + 12
+        : 12 + Math.max(insets.bottom, 0),
   };
 
   const online = !!(activeOrder || (isAvailable && isApproved));
@@ -742,9 +745,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   menuBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center',
     justifyContent: 'center',

@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import Button from '../../components/Button';
+import EmptyState from '../../components/EmptyState';
+import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { adminApi } from '../../services/api';
@@ -11,6 +13,7 @@ import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { AdminStats } from '../../types';
 import { formatCurrency } from '../../utils/format';
+import { getApiErrorMessage } from '../../utils/apiErrors';
 import { getPanelLoginUrl } from '../../utils/panelUrl';
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap }) {
@@ -26,11 +29,20 @@ function StatCard({ label, value, icon }: { label: string; value: string | numbe
 export default function AdminHomeScreen() {
   const { logout } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data } = await adminApi.stats();
-    setStats(data);
+    try {
+      const { data } = await adminApi.stats();
+      setStats(data);
+      setError(null);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'No se pudo cargar el resumen.'));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -52,6 +64,14 @@ export default function AdminHomeScreen() {
     void Linking.openURL(url);
   };
 
+  if (loading && !stats) {
+    return (
+      <ScreenContainer>
+        <ListSkeleton />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer>
       <ScrollView
@@ -62,6 +82,19 @@ export default function AdminHomeScreen() {
       >
         <Text style={styles.title}>Panel ZinApp</Text>
         <Text style={styles.subtitle}>Resumen de operación en tiempo real</Text>
+
+        {error && !stats ? (
+          <EmptyState
+            emoji="⚠️"
+            title="No se pudo cargar"
+            subtitle={error}
+            actionLabel="Reintentar"
+            onAction={() => {
+              setLoading(true);
+              void load();
+            }}
+          />
+        ) : null}
 
         {stats && (
           <View style={styles.grid}>
@@ -93,10 +126,10 @@ export default function AdminHomeScreen() {
             <StatCard label="Usuarios" value={stats.users} icon="people-outline" />
             <StatCard label="Restaurantes" value={stats.restaurants} icon="restaurant-outline" />
             <StatCard label="Activos" value={stats.restaurants_active ?? 0} icon="checkmark-circle-outline" />
-            <StatCard label="Pendientes" value={stats.restaurants_pending ?? 0} icon="time-outline" />
+            <StatCard label="Locales pendientes" value={stats.restaurants_pending ?? 0} icon="time-outline" />
             <StatCard label="Pedidos" value={stats.orders} icon="receipt-outline" />
             <StatCard label="En curso" value={stats.orders_active} icon="bicycle-outline" />
-            <StatCard label="Pendientes" value={stats.orders_pending} icon="hourglass-outline" />
+            <StatCard label="Pedidos pendientes" value={stats.orders_pending} icon="hourglass-outline" />
             <StatCard label="Cupones" value={stats.coupons} icon="pricetag-outline" />
             <StatCard label="Disputas" value={stats.disputes_pending ?? 0} icon="alert-circle-outline" />
           </View>
@@ -117,7 +150,10 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   stat: {
-    width: '47%',
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 0,
+    maxWidth: '100%',
     backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,

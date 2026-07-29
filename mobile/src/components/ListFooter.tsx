@@ -34,12 +34,14 @@ export default React.memo(ListFooter);
 
 const styles = StyleSheet.create({
   footer: {
-    paddingVertical: 20,
+    paddingVertical: 24,
     alignItems: 'center',
     gap: 8,
   },
   text: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });

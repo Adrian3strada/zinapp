@@ -32,8 +32,8 @@ type Props = CompositeScreenProps<
 >;
 
 const NEXT_STATUS: Record<string, { status: string; label: string }> = {
-  accepted: { status: 'preparing', label: 'Empezar a preparar' },
-  preparing: { status: 'ready', label: 'Listo para recoger' },
+  accepted: { status: 'preparing', label: 'En preparación' },
+  preparing: { status: 'ready', label: 'Marcar listo (repartidor)' },
 };
 
 const KITCHEN_STATUSES = ['accepted', 'preparing'];
@@ -148,10 +148,6 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     [counts],
   );
 
-  const isOpen =
-    !!restaurant?.is_active
-    && restaurant.accepting_orders !== false;
-
   const handleAccept = async (order: Order, prepMinutes: number) => {
     if (busyOrderId != null) return;
     setBusyOrderId(order.id);
@@ -208,7 +204,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
           <ListSkeleton count={3} variant="order" />
         </View>
       }
-      error={error}
+      error={error && orders.length === 0 ? error : null}
       onRetry={load}
     >
       {alertOrder ? (
@@ -247,13 +243,6 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
               onToggleOpen={(open) => toggleAcceptingOrders(open)}
             />
 
-            {!isOpen && restaurant?.is_active ? (
-              <View style={styles.closedBanner}>
-                <Text style={styles.closedText}>
-                  Estás cerrado. Desliza para abrir y recibir pedidos.
-                </Text>
-              </View>
-            ) : null}
             {restaurant?.setup_status ? (
               <RestaurantSetupBanner
                 restaurant={restaurant}

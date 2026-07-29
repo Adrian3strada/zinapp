@@ -33,6 +33,9 @@ export default function RestaurantFilterChips({ options, selected, onChange }: P
             style={[styles.chip, active && styles.chipActive]}
             onPress={() => onChange(option.key)}
             accessibilityRole="button"
+            accessibilityLabel={
+              option.count > 0 ? `${option.label}, ${option.count}` : option.label
+            }
             accessibilityState={{ selected: active }}
           >
             <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>
@@ -63,7 +66,8 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 22,
+    minHeight: 44,
+    borderRadius: 16,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -88,6 +92,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   badgeActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  badgeText: { fontSize: 11, fontWeight: '800', color: colors.primaryDark },
+  badgeText: { fontSize: 12, fontWeight: '800', color: colors.primaryDark },
   badgeTextActive: { color: '#FFF' },
 });

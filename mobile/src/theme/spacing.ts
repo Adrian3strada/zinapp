@@ -8,7 +8,7 @@ export const spacing = {
   screen: 16,
   card: 16,
   gap: 12,
-  tabBar: 56,
+  tabBar: 60,
   floatingBar: 72,
 } as const;
 

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { HIT_SLOP } from '../theme/spacing';
@@ -14,6 +14,7 @@ interface Props {
   onClear?: () => void;
   /** Estilo flotante sobre hero (fondo blanco, sombra). */
   elevated?: boolean;
+  accessibilityLabel?: string;
 }
 
 export default function SearchField({
@@ -22,10 +23,16 @@ export default function SearchField({
   placeholder = 'Buscar…',
   onClear,
   elevated = false,
+  accessibilityLabel,
 }: Props) {
   return (
     <View style={[styles.wrap, elevated && styles.wrapElevated]}>
-      <Ionicons name="search" size={20} color={elevated ? colors.primary : colors.textMuted} />
+      <Ionicons
+        name="search"
+        size={20}
+        color={elevated ? colors.primary : colors.textMuted}
+        accessible={false}
+      />
       <TextInput
         style={[styles.input, webTextInputStyle()]}
         placeholder={placeholder}
@@ -35,12 +42,16 @@ export default function SearchField({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
+        accessibilityLabel={accessibilityLabel || placeholder}
+        accessibilityRole="search"
       />
       {value.length > 0 && (
         <Pressable
           onPress={() => (onClear ? onClear() : onChangeText(''))}
           hitSlop={HIT_SLOP}
+          accessibilityRole="button"
           accessibilityLabel="Limpiar búsqueda"
+          style={styles.clearBtn}
         >
           <Ionicons name="close-circle" size={20} color={colors.textMuted} />
         </Pressable>
@@ -57,7 +68,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 16,
     gap: 10,
-    minHeight: 50,
+    minHeight: 52,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -66,4 +77,10 @@ const styles = StyleSheet.create({
     ...elevatedShadow,
   },
   input: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '500' },
+  clearBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

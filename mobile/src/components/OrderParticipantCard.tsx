@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.94 },
   info: { flex: 1, minWidth: 0 },
   label: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textMuted,
     textTransform: 'uppercase',

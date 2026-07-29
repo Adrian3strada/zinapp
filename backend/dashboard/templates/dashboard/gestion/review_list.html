@@ -50,8 +50,8 @@
           <td class="text-muted">{{ r.comment|truncatechars:60|default:"—" }}</td>
           <td class="text-muted">{{ r.created_at|date:"d/m/Y" }}</td>
           <td class="text-right">
-            <a href="{% url 'gestion:review-delete' r.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar">
-              <i class="fas fa-trash"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
+            <a href="{% url 'gestion:review-delete' r.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar reseña">
+              <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
             </a>
           </td>
         </tr>

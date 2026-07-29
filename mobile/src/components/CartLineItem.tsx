@@ -4,8 +4,9 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { normalizeCartNotes } from '../context/CartContext';
 import { colors } from '../theme/colors';
-import { HIT_SLOP, spacing } from '../theme/spacing';
+import { radii } from '../theme/radii';
 import { cardShadow } from '../theme/shadows';
+import { HIT_SLOP, spacing } from '../theme/spacing';
 import type { CartItem, SelectedProductOption } from '../types';
 import { formatCurrency } from '../utils/format';
 import { getProductEmoji } from '../utils/foodVisuals';
@@ -39,6 +40,7 @@ interface Props {
 function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
   const { product, quantity, notes, selectedOptions } = item;
   const [draftNotes, setDraftNotes] = useState(notes ?? '');
+  const [notesOpen, setNotesOpen] = useState(!!normalizeCartNotes(notes));
   const lineTotal = calculateCartLineTotal(item);
   const lineNotes = normalizeCartNotes(notes);
   const optionsLabel = (selectedOptions ?? [])
@@ -47,6 +49,7 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
 
   useEffect(() => {
     setDraftNotes(notes ?? '');
+    if (normalizeCartNotes(notes)) setNotesOpen(true);
   }, [notes]);
 
   const commitNotes = () => {
@@ -74,7 +77,7 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
               {optionsLabel}
             </Text>
           ) : null}
-          <Text style={styles.unitPrice}>{formatCurrency(product.price)} c/u base</Text>
+          <Text style={styles.unitPrice}>{formatCurrency(product.price)}</Text>
           <Text style={styles.lineTotal}>{formatCurrency(lineTotal)}</Text>
         </View>
         <View style={styles.qtyRow}>
@@ -82,34 +85,57 @@ function CartLineItem({ item, onDecrease, onIncrease, onNotesChange }: Props) {
             style={styles.qtyBtn}
             onPress={() => onDecrease(product.id, quantity, lineNotes, selectedOptions)}
             hitSlop={HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel={`Quitar ${product.name}`}
           >
             <Ionicons name="remove" size={18} color={colors.primary} />
           </Pressable>
-          <Text style={styles.qty}>{quantity}</Text>
+          <Text style={styles.qty} accessibilityLabel={`Cantidad ${quantity}`}>
+            {quantity}
+          </Text>
           <Pressable
             style={[styles.qtyBtn, styles.qtyBtnAdd]}
             onPress={() => onIncrease(product.id, quantity, lineNotes, selectedOptions)}
             hitSlop={HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel={`Agregar ${product.name}`}
           >
             <Ionicons name="add" size={18} color="#FFF" />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.notesRow}>
-        <Ionicons name="create-outline" size={16} color={colors.textMuted} />
-        <TextInput
-          style={[styles.notesInput, webTextInputStyle()]}
-          value={draftNotes}
-          onChangeText={setDraftNotes}
-          onBlur={commitNotes}
-          onSubmitEditing={commitNotes}
-          placeholder="Notas para cocina (opcional)"
-          placeholderTextColor={colors.textMuted}
-          maxLength={255}
-          returnKeyType="done"
-        />
-      </View>
+      {onNotesChange ? (
+        notesOpen ? (
+          <View style={styles.notesRow}>
+            <Ionicons name="create-outline" size={16} color={colors.textMuted} />
+            <TextInput
+              style={[styles.notesInput, webTextInputStyle()]}
+              value={draftNotes}
+              onChangeText={setDraftNotes}
+              onBlur={commitNotes}
+              onSubmitEditing={commitNotes}
+              placeholder="Notas para cocina (opcional)"
+              placeholderTextColor={colors.textMuted}
+              accessibilityLabel={`Notas para cocina de ${product.name}`}
+              maxLength={255}
+              returnKeyType="done"
+              autoFocus={!lineNotes}
+            />
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setNotesOpen(true)}
+            style={styles.notesToggle}
+            hitSlop={HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel={`Añadir nota a ${product.name}`}
+          >
+            <Ionicons name="create-outline" size={14} color={colors.primary} />
+            <Text style={styles.notesToggleText}>Añadir nota</Text>
+          </Pressable>
+        )
+      ) : null}
     </View>
   );
 }
@@ -120,7 +146,7 @@ const styles = StyleSheet.create({
   item: {
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 18,
+    borderRadius: radii.card,
     marginBottom: spacing.sm,
     gap: spacing.sm,
     borderWidth: 1,
@@ -132,38 +158,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
-  itemInfo: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
+  itemInfo: { flex: 1, minWidth: 0 },
+  name: { fontSize: 15, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
   options: { color: colors.textSecondary, marginTop: 2, fontSize: 12, lineHeight: 16 },
   unitPrice: { color: colors.textMuted, marginTop: 2, fontSize: 12, fontWeight: '500' },
-  lineTotal: { color: colors.primary, marginTop: 4, fontWeight: '800', fontSize: 15 },
+  lineTotal: { color: colors.primary, marginTop: 4, fontWeight: '700', fontSize: 15 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   qtyBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   qtyBtnAdd: { backgroundColor: colors.primary },
-  qty: { fontSize: 16, fontWeight: '800', minWidth: 22, textAlign: 'center' },
+  qty: { fontSize: 16, fontWeight: '700', minWidth: 22, textAlign: 'center' },
   notesRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    minHeight: 40,
   },
   notesInput: {
     flex: 1,
     fontSize: 13,
     color: colors.text,
-    paddingVertical: 0,
+    paddingVertical: 4,
     minHeight: 22,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
+  notesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    minHeight: 36,
+  },
+  notesToggleText: { fontSize: 13, fontWeight: '600', color: colors.primary },
 });

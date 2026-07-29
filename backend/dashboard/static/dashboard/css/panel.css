@@ -8,11 +8,11 @@
   --surface: #ffffff;
   --text: #1c1c1e;
   --text-secondary: #636366;
-  --text-muted: #aeaeb2;
+  --text-muted: #6b7280;
   --border: #e5e5ea;
-  --success: #34c759;
-  --warning: #ff9500;
-  --error: #ff3b30;
+  --success: #15803d;
+  --warning: #b45309;
+  --error: #b91c1c;
   --sidebar-w: 260px;
   --radius: 14px;
   --shadow: 0 4px 24px rgba(15, 61, 122, 0.08);
@@ -33,6 +33,7 @@ body {
   color: var(--text);
   background: var(--bg);
   line-height: 1.5;
+  overflow-x: clip;
 }
 
 a {
@@ -47,10 +48,14 @@ a:hover {
 /* ——— Login ——— */
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: max(24px, env(safe-area-inset-top, 0px))
+    max(24px, env(safe-area-inset-right, 0px))
+    max(24px, env(safe-area-inset-bottom, 0px))
+    max(24px, env(safe-area-inset-left, 0px));
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
 }
 
@@ -175,6 +180,7 @@ a:hover {
 .layout {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidebar {

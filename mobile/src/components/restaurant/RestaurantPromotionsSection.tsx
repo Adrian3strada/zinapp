@@ -277,7 +277,11 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
                 </Pressable>
               </View>
 
-              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScroll}>
+              <ScrollView
+                style={styles.modalBody}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.modalScroll}
+              >
                 <Text style={styles.fieldLabel}>Platillo</Text>
                 <View style={styles.productPicker}>
                   {products.map((product) => {
@@ -411,9 +415,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     minHeight: 44,
   },
-  addBtnDisabled: { opacity: 0.45 },
+  addBtnDisabled: { opacity: 0.5 },
   addText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
-  emptyHint: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', paddingVertical: spacing.md },
+  emptyHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 21,
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+  },
   promoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -422,7 +433,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  promoRowInactive: { opacity: 0.65 },
+  promoRowInactive: { opacity: 0.5 },
   dateBadge: {
     width: 48,
     height: 52,
@@ -436,7 +447,7 @@ const styles = StyleSheet.create({
   },
   dateBadgeInactive: { backgroundColor: colors.background, borderColor: colors.border },
   dateBadgeDay: { fontSize: 18, fontWeight: '800', color: colors.primaryDark, lineHeight: 20 },
-  dateBadgeMonth: { fontSize: 10, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
+  dateBadgeMonth: { fontSize: 12, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
   dateBadgeMuted: { color: colors.textMuted },
   promoInfo: { flex: 1, minWidth: 0 },
   promoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -448,17 +459,23 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   promoTypeBadgeInactive: { backgroundColor: colors.background },
-  promoTypeBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+  promoTypeBadgeText: { fontSize: 12, fontWeight: '800', color: '#FFF' },
   promoTypeBadgeTextInactive: { color: colors.textMuted },
   promoUntil: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 16 },
-  deactivateBtn: { padding: 4 },
+  deactivateBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+  },
   expiredBadge: {
     backgroundColor: colors.background,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  expiredText: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
+  expiredText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
   modalOverlayDesktop: { justifyContent: 'center', paddingHorizontal: spacing.lg },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
@@ -471,6 +488,7 @@ const styles = StyleSheet.create({
     maxHeight: '92%',
   },
   modalDesktop: { width: '100%', maxWidth: 520, alignSelf: 'center', borderRadius: 24 },
+  modalBody: { flex: 1, minHeight: 0 },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -478,14 +496,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalEyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   modalTitle: { fontSize: 20, fontWeight: '800', color: colors.text, marginTop: 2 },
-  modalScroll: { paddingBottom: 8 },
+  modalScroll: { paddingBottom: 24 },
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
@@ -511,6 +529,7 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
   typeChip: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     paddingVertical: 12,
     borderRadius: 12,

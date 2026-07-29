@@ -1,13 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import SlideAction from '../driver/SlideAction';
-import type { RestaurantTabParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
-import { HIT_SLOP } from '../../theme/spacing';
+import { radii } from '../../theme/radii';
 import { cardShadow } from '../../theme/shadows';
 import type { Restaurant } from '../../types';
 import { formatCurrency } from '../../utils/format';
@@ -31,7 +27,7 @@ interface Props {
   onToggleOpen: (open: boolean) => void | Promise<void>;
 }
 
-/** Home del negocio: abrir/cerrar + resumen del día + atajos. */
+/** Home del negocio: abrir/cerrar + resumen del día. */
 export default function StoreHomeHeader({
   topInset,
   restaurant,
@@ -42,9 +38,9 @@ export default function StoreHomeHeader({
   toggling,
   onToggleOpen,
 }: Props) {
-  const navigation = useNavigation<BottomTabNavigationProp<RestaurantTabParamList>>();
   const isActive = !!restaurant?.is_active;
   const isOpen = isActive && restaurant?.accepting_orders !== false;
+  const activeOrders = today?.orders_active ?? kitchenCount + readyCount + deliveryCount;
 
   return (
     <View style={[styles.wrap, { paddingTop: topInset + 12 }]}>
@@ -99,36 +95,8 @@ export default function StoreHomeHeader({
             accent={colors.success}
           />
           <View style={styles.dayDivider} />
-          <DayMetric
-            label="Activos"
-            value={String(today?.orders_active ?? kitchenCount + readyCount + deliveryCount)}
-            accent={colors.primary}
-          />
+          <DayMetric label="Activos" value={String(activeOrders)} accent={colors.primary} />
         </View>
-        <View style={styles.pipeline}>
-          <PipeChip icon="flame-outline" label="Cocina" count={kitchenCount} />
-          <PipeChip icon="bag-check-outline" label="Listos" count={readyCount} />
-          <PipeChip icon="bicycle-outline" label="Camino" count={deliveryCount} />
-        </View>
-      </View>
-
-      <View style={styles.shortcuts}>
-        <Pressable
-          style={styles.shortcut}
-          onPress={() => navigation.navigate('MiNegocio')}
-          hitSlop={HIT_SLOP}
-        >
-          <Ionicons name="restaurant-outline" size={18} color={colors.primaryDark} />
-          <Text style={styles.shortcutText}>Menú</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.shortcut, styles.shortcutPrimary]}
-          onPress={() => navigation.navigate('Perfil')}
-          hitSlop={HIT_SLOP}
-        >
-          <Ionicons name="settings-outline" size={18} color="#FFF" />
-          <Text style={[styles.shortcutText, styles.shortcutTextPrimary]}>Negocio</Text>
-        </Pressable>
       </View>
     </View>
   );
@@ -153,26 +121,6 @@ function DayMetric({
   );
 }
 
-function PipeChip({
-  icon,
-  label,
-  count,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  count: number;
-}) {
-  return (
-    <View style={styles.pipeChip}>
-      <Ionicons name={icon} size={14} color={colors.primaryDark} />
-      <Text style={styles.pipeLabel}>{label}</Text>
-      <View style={styles.pipeBadge}>
-        <Text style={styles.pipeCount}>{count}</Text>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   wrap: { marginBottom: 8, gap: 12 },
   titleRow: {
@@ -183,28 +131,28 @@ const styles = StyleSheet.create({
   },
   titleBlock: { flex: 1, minWidth: 0, gap: 2 },
   eyebrow: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.primaryDark,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
-  title: { fontSize: 24, fontWeight: '900', color: colors.text, letterSpacing: -0.4 },
+  title: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.4 },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: radii.pill,
   },
   statusOn: { backgroundColor: colors.success + '18' },
   statusOff: { backgroundColor: colors.background },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { fontSize: 11, fontWeight: '800' },
+  statusText: { fontSize: 12, fontWeight: '700' },
   openCard: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: radii.card,
     padding: 14,
     gap: 10,
     borderWidth: 1,
@@ -212,67 +160,28 @@ const styles = StyleSheet.create({
   },
   openHint: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.textSecondary,
     textAlign: 'center',
   },
   dayCard: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 18,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
     padding: 14,
-    gap: 12,
+    gap: 10,
     borderWidth: 1,
-    borderColor: colors.primary + '33',
+    borderColor: colors.borderLight,
   },
   dayTitle: {
     fontSize: 12,
-    fontWeight: '800',
-    color: colors.primaryDark,
+    fontWeight: '600',
+    color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   dayMetrics: { flexDirection: 'row', alignItems: 'center' },
   dayMetric: { flex: 1, alignItems: 'center', gap: 2 },
-  dayValue: { fontSize: 16, fontWeight: '900' },
-  dayLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted },
-  dayDivider: { width: 1, height: 28, backgroundColor: colors.primary + '44' },
-  pipeline: { flexDirection: 'row', gap: 8 },
-  pipeChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-  },
-  pipeLabel: { fontSize: 11, fontWeight: '700', color: colors.text },
-  pipeBadge: {
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  pipeCount: { fontSize: 10, fontWeight: '900', color: '#FFF' },
-  shortcuts: { flexDirection: 'row', gap: 10 },
-  shortcut: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.primary + '55',
-  },
-  shortcutPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
-  shortcutText: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
-  shortcutTextPrimary: { color: '#FFF' },
+  dayValue: { fontSize: 16, fontWeight: '700' },
+  dayLabel: { fontSize: 12, fontWeight: '500', color: colors.textMuted },
+  dayDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: colors.border },
 });

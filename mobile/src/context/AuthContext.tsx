@@ -13,6 +13,7 @@ interface AuthContextValue {
   user: User | null;
   isGuest: boolean;
   isLoading: boolean;
+  pendingAuthRoute: 'Login' | 'Register';
   login: (data: LoginPayload) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   register: (data: RegisterPayload) => Promise<void>;
@@ -20,6 +21,7 @@ interface AuthContextValue {
   refreshUser: () => Promise<void>;
   enterGuestMode: () => void;
   requestLogin: () => void;
+  requestRegister: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -28,12 +30,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingAuthRoute, setPendingAuthRoute] = useState<'Login' | 'Register'>('Login');
 
   const enterGuestMode = useCallback(() => {
     setIsGuest(true);
   }, []);
 
   const requestLogin = useCallback(() => {
+    setPendingAuthRoute('Login');
+    setIsGuest(false);
+  }, []);
+
+  const requestRegister = useCallback(() => {
+    setPendingAuthRoute('Register');
     setIsGuest(false);
   }, []);
 
@@ -190,6 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshUser,
         enterGuestMode,
         requestLogin,
+        requestRegister,
+        pendingAuthRoute,
       }}
     >
       {children}

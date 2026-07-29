@@ -186,6 +186,8 @@ SUPPORT_PHONE = config('SUPPORT_PHONE', default='').strip()
 SOCIAL_INSTAGRAM = config('SOCIAL_INSTAGRAM', default='').strip()
 SOCIAL_FACEBOOK = config('SOCIAL_FACEBOOK', default='').strip()
 TERMS_URL = config('TERMS_URL', default='').strip()
+# URL canónica del sitio público (sin / al final). Usada en SEO: canonical, OG, sitemap, robots.
+SITE_URL = config('SITE_URL', default='https://zinapp.com.mx').strip().rstrip('/')
 DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)
 
 # Google Sign-In: Client IDs OAuth (Web y/o Android/iOS), separados por coma.
