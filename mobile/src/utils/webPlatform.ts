@@ -7,10 +7,11 @@ export function isWebPlatform(): boolean {
   return Platform.OS === 'web';
 }
 
-/** En web el teclado no necesita KeyboardAvoidingView (rompe el layout). */
+/** En web el teclado no necesita KeyboardAvoidingView (rompe el layout).
+ *  En Android con softwareKeyboardLayoutMode=pan el SO ya desplaza; behavior height pelea con eso.
+ */
 export function keyboardAvoidingBehavior(): 'padding' | 'height' | undefined {
   if (Platform.OS === 'ios') return 'padding';
-  if (Platform.OS === 'android') return 'height';
   return undefined;
 }
 

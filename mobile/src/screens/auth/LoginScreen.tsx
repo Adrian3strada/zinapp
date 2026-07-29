@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +16,7 @@ import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
 import GoogleSignInButton from '../../components/GoogleSignInButton';
+import KeyboardForm from '../../components/KeyboardForm';
 import { useAuth } from '../../context/AuthContext';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import type { LoginScreenProps } from '../../navigation/types';
@@ -27,7 +27,6 @@ import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { contentWidth } from '../../utils/responsive';
 import { cardShadow } from '../../theme/shadows';
-import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const { login, loginWithGoogle, enterGuestMode } = useAuth();
@@ -219,15 +218,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={keyboardAvoidingBehavior()}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        showsVerticalScrollIndicator={false}
-      >
+    <KeyboardForm bottomPadding={insets.bottom + 24} keyboardVerticalOffset={insets.top}>
         <HeroBackground
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 32 }]}
@@ -247,8 +238,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         </HeroBackground>
 
         {formCard}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardForm>
   );
 }
 

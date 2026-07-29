@@ -15,6 +15,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import type { OrderMessage } from '../types';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { useKeyboardForm } from './KeyboardForm';
 
 interface Props {
   orderId: number;
@@ -27,6 +28,7 @@ export default function OrderChatPanel({ orderId, closed }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList>(null);
+  const keyboardForm = useKeyboardForm();
 
   const load = useCallback(async () => {
     try {
@@ -99,6 +101,7 @@ export default function OrderChatPanel({ orderId, closed }: Props) {
             placeholder="Escribe un mensaje..."
             maxLength={1000}
             multiline
+            onFocus={(e) => keyboardForm?.onInputFocus(e)}
           />
           <Pressable style={styles.sendBtn} onPress={send} disabled={sending || !body.trim()}>
             {sending ? (

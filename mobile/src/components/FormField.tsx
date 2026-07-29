@@ -14,6 +14,7 @@ import {
 import { colors } from '../theme/colors';
 import { radii } from '../theme/radii';
 import { webTextInputStyle } from '../utils/webPlatform';
+import { useKeyboardForm } from './KeyboardForm';
 
 interface Props {
   label?: string;
@@ -34,6 +35,8 @@ interface Props {
   autoComplete?: TextInputProps['autoComplete'];
   error?: string;
   style?: StyleProp<ViewStyle>;
+  onFocus?: TextInputProps['onFocus'];
+  onBlur?: TextInputProps['onBlur'];
 }
 
 export default function FormField({
@@ -55,8 +58,11 @@ export default function FormField({
   autoComplete,
   error,
   style,
+  onFocus,
+  onBlur,
 }: Props) {
   const [focused, setFocused] = useState(false);
+  const keyboardForm = useKeyboardForm();
 
   return (
     <View style={[styles.wrap, style]}>
@@ -87,8 +93,15 @@ export default function FormField({
           placeholderTextColor={colors.textMuted}
           value={value}
           onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={(e) => {
+            setFocused(true);
+            keyboardForm?.onInputFocus(e);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
           secureTextEntry={secureTextEntry}
           multiline={multiline}
           keyboardType={keyboardType}

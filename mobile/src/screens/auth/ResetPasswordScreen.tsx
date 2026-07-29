@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -9,6 +9,7 @@ import BrandLogo from '../../components/BrandLogo';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
+import KeyboardForm from '../../components/KeyboardForm';
 import type { ResetPasswordScreenProps } from '../../navigation/types';
 import { authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -67,15 +68,7 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+    <KeyboardForm bottomPadding={insets.bottom + 24} keyboardVerticalOffset={insets.top}>
         <LinearGradient
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 28 }]}
@@ -138,8 +131,7 @@ export default function ResetPasswordScreen({ navigation, route }: ResetPassword
           </FormSection>
           <Button title="Volver" variant="ghost" onPress={() => navigation.goBack()} />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardForm>
   );
 }
 

@@ -2,10 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -18,6 +16,7 @@ import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
 import GoogleSignInButton from '../../components/GoogleSignInButton';
+import KeyboardForm from '../../components/KeyboardForm';
 import VehicleTypePicker from '../../components/VehicleTypePicker';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
@@ -190,15 +189,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+    <KeyboardForm bottomPadding={insets.bottom + 32} keyboardVerticalOffset={insets.top}>
         <LinearGradient
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 24 }]}
@@ -402,8 +393,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
           style={{ marginTop: 8 }}
         />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardForm>
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
+import KeyboardForm from '../../components/KeyboardForm';
 import { useAppConfig } from '../../hooks/useAppConfig';
 import type { ForgotPasswordScreenProps } from '../../navigation/types';
 import { authApi } from '../../services/api';
@@ -55,15 +56,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+    <KeyboardForm bottomPadding={insets.bottom + 24} keyboardVerticalOffset={insets.top}>
         <LinearGradient
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 28 }]}
@@ -144,8 +137,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
 
           <Button title="Volver al login" variant="ghost" onPress={() => navigation.goBack()} />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardForm>
   );
 }
 

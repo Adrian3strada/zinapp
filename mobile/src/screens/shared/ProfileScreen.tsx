@@ -3,10 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Image,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -21,6 +19,7 @@ import CustomerProfileDashboard from '../../components/customer/CustomerProfileD
 import DriverProfileDashboard from '../../components/driver/DriverProfileDashboard';
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
+import KeyboardForm from '../../components/KeyboardForm';
 import ProfileAvatarPicker from '../../components/ProfileAvatarPicker';
 import RestaurantProfileDashboard from '../../components/restaurant/RestaurantProfileDashboard';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
@@ -38,7 +37,6 @@ import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { DeliveryProfile, Restaurant, RestaurantBusinessHour } from '../../types';
-import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
 import { appendImage, pickImageFromLibrary, pickRestaurantCoverImage, ASPECT_DOCUMENT, ASPECT_SQUARE } from '../../utils/imagePicker';
 import type { MapCoordinate } from '../../utils/maps';
@@ -576,10 +574,6 @@ export default function ProfileScreen() {
   const addressLabel =
     user.role === 'customer' ? 'Dirección habitual de entrega' : 'Dirección personal';
 
-  const scrollPadding = {
-    paddingBottom: tabBottomPadding(spacing.xxl),
-  };
-
   const isRestaurant = user.role === 'restaurant';
   const isDriver = user.role === 'driver';
   const isCustomer = user.role === 'customer';
@@ -601,17 +595,11 @@ export default function ProfileScreen() {
 
   return (
     <ScreenContainer>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={keyboardAvoidingBehavior()}
+      <KeyboardForm
+        contentContainerStyle={styles.container}
+        bottomPadding={tabBottomPadding(spacing.xxl)}
         keyboardVerticalOffset={keyboardHeaderless()}
       >
-        <ScrollView
-          contentContainerStyle={[styles.container, scrollPadding]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
           <LinearGradient
             colors={
               isDriver
@@ -1024,8 +1012,7 @@ export default function ProfileScreen() {
           </View>
 
           <Button title="Cerrar sesión" variant="danger" onPress={logout} style={styles.logout} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardForm>
     </ScreenContainer>
   );
 }

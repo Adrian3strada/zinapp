@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable, Platform } from 'react-native';
+import { StyleSheet, Text, View, Pressable, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appAlert, appConfirm } from '../../utils/appAlert';
@@ -11,6 +11,7 @@ import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import DeliveryEtaBanner from '../../components/DeliveryEtaBanner';
 import DriverNearbyBanner from '../../components/DriverNearbyBanner';
 import HeroBackground from '../../components/HeroBackground';
+import KeyboardForm from '../../components/KeyboardForm';
 import LiveBadge from '../../components/LiveBadge';
 import OrderMap from '../../components/OrderMap';
 import OrderParticipantCard from '../../components/OrderParticipantCard';
@@ -28,6 +29,7 @@ import { useCart } from '../../context/CartContext';
 import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import { useAppConfig } from '../../hooks/useAppConfig';
 import type { CustomerStackParamList, DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
+import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -316,10 +318,10 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
       }}
     >
       {order && (
-        <ScrollView
-          contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <KeyboardForm
+          contentContainerStyle={styles.container}
+          bottomPadding={insets.bottom + 24}
+          keyboardVerticalOffset={keyboardOffsetWithHeader(insets)}
         >
           <HeroBackground colors={[colors.gradientStart, colors.gradientEnd]} style={styles.hero}>
             <Text style={styles.heroRestaurant}>{order.restaurant_detail?.name}</Text>
@@ -697,7 +699,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               />
             </View>
           )}
-        </ScrollView>
+        </KeyboardForm>
       )}
     </ScreenContainer>
   );

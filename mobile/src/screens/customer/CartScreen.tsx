@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +16,7 @@ import CartCheckoutSection, {
 } from '../../components/CartCheckoutSection';
 import CartLineItem from '../../components/CartLineItem';
 import EmptyState from '../../components/EmptyState';
+import KeyboardForm from '../../components/KeyboardForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -31,7 +31,6 @@ import { resolveTransferInfo } from '../../config/payments';
 import type { Restaurant, SelectedProductOption } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
-import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
@@ -540,20 +539,51 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
 
   return (
     <ScreenContainer>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={keyboardAvoidingBehavior()}
+      <KeyboardForm
+        contentContainerStyle={styles.list}
+        bottomPadding={tabBottomPadding(96)}
         keyboardVerticalOffset={keyboardWithHeader()}
+        footer={
+          !stripeClientSecret ? (
+            <View style={[styles.stickyFooter, { paddingBottom: Math.max(spacing.sm, tabBottomPadding(8)) }]}>
+              <Pressable
+                onPress={handleCheckout}
+                disabled={loading || couponValidating}
+                hitSlop={HIT_SLOP}
+                style={({ pressed }) => [
+                  styles.checkoutWrap,
+                  (loading || couponValidating) && styles.checkoutDisabled,
+                  pressed && !loading && !couponValidating && styles.checkoutPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Confirmar pedido"
+              >
+                <LinearGradient
+                  colors={[colors.primary, colors.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.checkoutBtn}
+                >
+                  <Text style={styles.checkoutText} numberOfLines={1}>
+                    {loading
+                      ? 'Procesando...'
+                      : couponValidating
+                        ? 'Actualizando cupón...'
+                        : paymentMethod === 'online'
+                          ? 'Confirmar y pagar'
+                          : 'Confirmar pedido'}
+                  </Text>
+                  <View style={styles.checkoutTotalPill}>
+                    <Text style={styles.checkoutTotal} numberOfLines={1}>
+                      {formatCurrency(grandTotal)}
+                    </Text>
+                  </View>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          ) : null
+        }
       >
-        <ScrollView
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: tabBottomPadding(96) },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
           <View style={styles.orderHeader}>
             <View style={styles.orderHeaderText}>
               <Text style={styles.sectionTitle}>{cartRestaurant?.name ?? 'Tu pedido'}</Text>
@@ -611,47 +641,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
             onTipChange={setTipAmount}
             onScheduleChange={setScheduleKey}
           />
-        </ScrollView>
-
-        {!stripeClientSecret ? (
-          <View style={[styles.stickyFooter, { paddingBottom: Math.max(spacing.sm, tabBottomPadding(8)) }]}>
-            <Pressable
-              onPress={handleCheckout}
-              disabled={loading || couponValidating}
-              hitSlop={HIT_SLOP}
-              style={({ pressed }) => [
-                styles.checkoutWrap,
-                (loading || couponValidating) && styles.checkoutDisabled,
-                pressed && !loading && !couponValidating && styles.checkoutPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Confirmar pedido"
-            >
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.checkoutBtn}
-              >
-                <Text style={styles.checkoutText} numberOfLines={1}>
-                  {loading
-                    ? 'Procesando...'
-                    : couponValidating
-                      ? 'Actualizando cupón...'
-                      : paymentMethod === 'online'
-                        ? 'Confirmar y pagar'
-                        : 'Confirmar pedido'}
-                </Text>
-                <View style={styles.checkoutTotalPill}>
-                  <Text style={styles.checkoutTotal} numberOfLines={1}>
-                    {formatCurrency(grandTotal)}
-                  </Text>
-                </View>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardForm>
     </ScreenContainer>
   );
 }

@@ -1,14 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
+  SectionList,
   StyleSheet,
   Switch,
   Text,
@@ -22,10 +21,12 @@ import Button from '../../components/Button';
 import EmptyState from '../../components/EmptyState';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
+import KeyboardForm from '../../components/KeyboardForm';
 import RestaurantHeroHeader from '../../components/restaurant/RestaurantHeroHeader';
 import RestaurantPromotionsSection from '../../components/restaurant/RestaurantPromotionsSection';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
+import SearchField from '../../components/SearchField';
 import { useRestaurantContext } from '../../context/RestaurantContext';
 import { productApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -33,18 +34,28 @@ import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Product, Restaurant } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
-import { formatCurrency, parsePriceInput } from '../../utils/format';
+import {
+  formatCurrency,
+  normalizeForSearch,
+  parseExtraPriceInput,
+  parsePriceInput,
+} from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { appendImage, pickProductImage } from '../../utils/imagePicker';
 import { resolveMediaUrl } from '../../utils/media';
 import {
+  groupProductsForManageCatalog,
+  manageCategoryLabel,
   normalizeProductCategory,
   PRODUCT_CATEGORIES,
-  productCategoryLabel,
+  resolveManageCategory,
   sortProductsByCategory,
+  type ManageCategoryKey,
   type ProductCategoryKey,
 } from '../../utils/productCategories';
+import { FLATLIST_TUNING } from '../../utils/responsive';
+
+type AvailabilityFilter = 'all' | 'available' | 'hidden';
 
 interface OptionDraft {
   name: string;
@@ -72,6 +83,13 @@ interface ProductDraft {
   optionGroups: GroupDraft[];
 }
 
+type CatalogSection = {
+  key: ManageCategoryKey;
+  title: string;
+  emoji: string;
+  data: Product[];
+};
+
 function groupsFromProduct(product: Product): GroupDraft[] {
   return (product.option_groups ?? []).map((g) => ({
     name: g.name,
@@ -82,6 +100,69 @@ function groupsFromProduct(product: Product): GroupDraft[] {
       price_delta: o.price_delta,
     })),
   }));
+}
+
+function buildGroupsPayload(optionGroups: GroupDraft[]) {
+  return optionGroups
+    .filter((g) => g.name.trim() && g.options.some((o) => o.name.trim()))
+    .map((g) => {
+      const options = g.options
+        .filter((o) => o.name.trim())
+        .map((o) => ({
+          name: o.name.trim(),
+          price_delta: (parseExtraPriceInput(o.price_delta) ?? 0).toFixed(2),
+        }));
+      return {
+        name: g.name.trim(),
+        min_select: g.required ? 1 : 0,
+        max_select: g.multiple ? Math.max(options.length, 1) : 1,
+        options,
+      };
+    });
+}
+
+function validateOptionDrafts(optionGroups: GroupDraft[]): string | null {
+  const seenNames = new Set<string>();
+  for (const group of optionGroups) {
+    const groupName = group.name.trim();
+    const namedOptions = group.options.filter((o) => o.name.trim());
+    const hasPartialOptions = group.options.some((o) => o.name.trim() || o.price_delta.trim());
+
+    if (!groupName && namedOptions.length === 0 && !hasPartialOptions) {
+      continue;
+    }
+    if (!groupName) {
+      return 'Cada grupo de opciones necesita un nombre.';
+    }
+    if (namedOptions.length === 0) {
+      return `El grupo «${groupName}» necesita al menos una opción.`;
+    }
+    const key = normalizeForSearch(groupName);
+    if (seenNames.has(key)) {
+      return `Hay grupos duplicados: «${groupName}».`;
+    }
+    seenNames.add(key);
+
+    const optionNames = new Set<string>();
+    for (const opt of group.options) {
+      const optName = opt.name.trim();
+      if (!optName) {
+        if (opt.price_delta.trim()) {
+          return `Hay una opción sin nombre en «${groupName}».`;
+        }
+        continue;
+      }
+      const optKey = normalizeForSearch(optName);
+      if (optionNames.has(optKey)) {
+        return `Opción duplicada «${optName}» en «${groupName}».`;
+      }
+      optionNames.add(optKey);
+      if (parseExtraPriceInput(opt.price_delta) === null) {
+        return `Precio extra inválido en «${optName}». Usa 0 o un monto positivo.`;
+      }
+    }
+  }
+  return null;
 }
 
 const ProductManageRow = React.memo(function ProductManageRow({
@@ -123,48 +204,48 @@ const ProductManageRow = React.memo(function ProductManageRow({
       <Pressable
         style={({ pressed }) => [styles.productMain, pressed && styles.productCardPressed]}
         onPress={handleEdit}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar ${product.name}`}
       >
         <FoodImage
           emoji={getProductEmoji(product.name)}
           color={colors.primary}
-          size="md"
+          size="sm"
           imageUri={resolveMediaUrl(product.image_url ?? product.image)}
         />
         <View style={styles.productInfo}>
-          <View style={styles.nameRow}>
-            <Text style={[styles.productName, unavailable && styles.unavailableText]} numberOfLines={1}>
-              {product.name}
-            </Text>
-            {unavailable ? (
-              <View style={styles.soldOutBadge}>
-                <Text style={styles.soldOutText}>Agotado</Text>
-              </View>
-            ) : null}
-          </View>
-          {!!product.description && (
-            <Text style={styles.productDesc} numberOfLines={2}>
-              {product.description}
-            </Text>
-          )}
-          <Text style={styles.productCategory}>
-            {productCategoryLabel(product.category, product.category_display)}
+          <Text
+            style={[styles.productName, unavailable && styles.unavailableText]}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {product.name}
           </Text>
-          <Text style={styles.productPrice}>{formatCurrency(product.price)}</Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.productPrice}>{formatCurrency(product.price)}</Text>
+            <Text style={styles.metaDot}>·</Text>
+            <Text style={styles.productCategory} numberOfLines={1}>
+              {manageCategoryLabel(product.category, product.category_display)}
+            </Text>
+          </View>
+          <View
+            style={[styles.statusBadge, unavailable ? styles.hiddenBadge : styles.availableBadge]}
+          >
+            <Text style={[styles.statusText, unavailable ? styles.hiddenText : styles.availableText]}>
+              {unavailable ? 'Oculto' : 'Disponible'}
+            </Text>
+          </View>
         </View>
       </Pressable>
-      <Pressable
-        onPress={handleEdit}
-        hitSlop={HIT_SLOP}
-        style={styles.editIconBtn}
-        accessibilityLabel={`Editar ${product.name}`}
-      >
-        <Ionicons name="create-outline" size={20} color={colors.textMuted} />
-      </Pressable>
-      <View
-        style={styles.productActions}
-        pointerEvents="box-none"
-        {...stopSwitchPointer}
-      >
+      <View style={styles.productActions} pointerEvents="box-none">
+        <Pressable
+          onPress={handleEdit}
+          hitSlop={HIT_SLOP}
+          style={styles.editIconBtn}
+          accessibilityLabel={`Editar ${product.name}`}
+        >
+          <Ionicons name="create-outline" size={20} color={colors.textMuted} />
+        </Pressable>
         <View pointerEvents="auto" {...stopSwitchPointer}>
           <Switch
             value={product.is_available}
@@ -181,7 +262,7 @@ const ProductManageRow = React.memo(function ProductManageRow({
 
 export default function RestaurantManageScreen() {
   const { isDesktopWeb } = useResponsiveLayout();
-  const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
+  const { insets, tabBottomPadding } = useTabScreenInsets();
   const { refresh: refreshRestaurant } = useRestaurantContext();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -194,7 +275,15 @@ export default function RestaurantManageScreen() {
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<ProductDraft | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<ManageCategoryKey | 'all'>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all');
+  const [collapsedSections, setCollapsedSections] = useState<Set<ManageCategoryKey>>(
+    () => new Set(),
+  );
   const hasLoadedRef = useRef(false);
+  const savingRef = useRef(false);
+  const togglingIdRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     const isRefresh = hasLoadedRef.current;
@@ -214,12 +303,13 @@ export default function RestaurantManageScreen() {
     }
   }, []);
 
-  React.useEffect(() => {
-    load();
+  useEffect(() => {
+    void load();
   }, [load]);
 
-  const toggleProduct = async (product: Product, available: boolean) => {
-    if (togglingId === product.id) return;
+  const toggleProduct = useCallback(async (product: Product, available: boolean) => {
+    if (togglingIdRef.current === product.id) return;
+    togglingIdRef.current = product.id;
     setTogglingId(product.id);
     setProducts((prev) =>
       prev.map((p) => (p.id === product.id ? { ...p, is_available: available } : p)),
@@ -233,11 +323,12 @@ export default function RestaurantManageScreen() {
       );
       appAlert('Error', getApiErrorMessage(err, 'No se pudo actualizar el producto.'));
     } finally {
+      togglingIdRef.current = null;
       setTogglingId(null);
     }
-  };
+  }, [refreshRestaurant]);
 
-  const openNewProduct = () => {
+  const openNewProduct = useCallback(() => {
     setConfirmDelete(false);
     setConfirmDiscard(false);
     setEditor({
@@ -249,9 +340,9 @@ export default function RestaurantManageScreen() {
       imageUri: null,
       optionGroups: [],
     });
-  };
+  }, []);
 
-  const openEditProduct = (product: Product) => {
+  const openEditProduct = useCallback((product: Product) => {
     setConfirmDelete(false);
     setConfirmDiscard(false);
     setEditor({
@@ -265,11 +356,11 @@ export default function RestaurantManageScreen() {
       imageUri: null,
       optionGroups: groupsFromProduct(product),
     });
-  };
+  }, []);
 
   const closeEditor = useCallback(() => {
     Keyboard.dismiss();
-    if (!editor) return;
+    if (!editor || savingRef.current) return;
 
     const isNewDraft =
       !editor.id &&
@@ -279,7 +370,6 @@ export default function RestaurantManageScreen() {
         editor.imageUri);
 
     if (isNewDraft) {
-      // Confirmación dentro del Modal (appConfirm queda detrás en web).
       setConfirmDiscard(true);
       setConfirmDelete(false);
       return;
@@ -290,25 +380,45 @@ export default function RestaurantManageScreen() {
   }, [editor]);
 
   const pickImage = async () => {
-    const uri = await pickProductImage();
-    if (uri && editor) {
-      setEditor({ ...editor, imageUri: uri });
+    try {
+      const uri = await pickProductImage();
+      if (uri && editor) {
+        setEditor({ ...editor, imageUri: uri });
+      }
+    } catch {
+      appAlert('Imagen', 'No se pudo cargar la foto. Intenta con otra imagen.');
     }
   };
 
+  const upsertLocalProduct = useCallback((saved: Product) => {
+    setProducts((prev) => {
+      const others = prev.filter((p) => p.id !== saved.id);
+      return sortProductsByCategory([...others, saved]);
+    });
+  }, []);
+
   const saveProduct = async () => {
-    if (!restaurant || !editor) return;
+    if (!restaurant || !editor || savingRef.current) return;
     if (!editor.name.trim() || !editor.price.trim()) {
       appAlert('Producto', 'Nombre y precio son obligatorios.');
       return;
     }
     const parsedPrice = parsePriceInput(editor.price);
     if (parsedPrice === null) {
-      appAlert('Producto', 'Indica un precio válido (ej. 85.00).');
+      appAlert('Producto', 'Indica un precio válido mayor a cero (ej. 85.00).');
       return;
     }
+    const optionsError = validateOptionDrafts(editor.optionGroups);
+    if (optionsError) {
+      appAlert('Opciones', optionsError);
+      return;
+    }
+
     const wasEdit = !!editor.id;
+    const groupsPayload = buildGroupsPayload(editor.optionGroups);
+    savingRef.current = true;
     setSaving(true);
+    let saved: Product | null = null;
     try {
       const fd = new FormData();
       fd.append('name', editor.name.trim());
@@ -317,9 +427,14 @@ export default function RestaurantManageScreen() {
       fd.append('price', parsedPrice.toFixed(2));
       fd.append('is_available', editor.is_available ? 'true' : 'false');
       if (editor.imageUri) {
-        await appendImage(fd, 'image', editor.imageUri, 'product.jpg');
+        try {
+          await appendImage(fd, 'image', editor.imageUri, 'product.jpg');
+        } catch {
+          appAlert('Imagen', 'No se pudo preparar la foto. Intenta elegirla de nuevo.');
+          return;
+        }
       }
-      let saved: Product;
+
       if (editor.id) {
         const { data } = await productApi.update(editor.id, fd);
         saved = data;
@@ -329,46 +444,55 @@ export default function RestaurantManageScreen() {
         saved = data;
       }
 
-      const groupsPayload = editor.optionGroups
-        .filter((g) => g.name.trim() && g.options.some((o) => o.name.trim()))
-        .map((g) => {
-          const options = g.options
-            .filter((o) => o.name.trim())
-            .map((o) => ({
-              name: o.name.trim(),
-              price_delta: (parsePriceInput(o.price_delta) ?? 0).toFixed(2),
-            }));
-          return {
-            name: g.name.trim(),
-            min_select: g.required ? 1 : 0,
-            max_select: g.multiple ? Math.max(options.length, 1) : 1,
-            options,
-          };
-        });
-
-      const { data: withOptions } = await productApi.replaceOptionGroups(
-        saved.id,
-        groupsPayload,
+      // Conservar id para reintentar opciones sin duplicar el producto.
+      setEditor((e) =>
+        e
+          ? {
+              ...e,
+              id: saved!.id,
+              image_url: saved!.image_url,
+              imageUri: null,
+              name: saved!.name,
+              description: saved!.description,
+              category: normalizeProductCategory(saved!.category),
+              price: saved!.price,
+              is_available: saved!.is_available,
+            }
+          : e,
       );
-      setProducts((prev) => {
-        const others = prev.filter((p) => p.id !== withOptions.id);
-        return sortProductsByCategory([...others, withOptions]);
+      upsertLocalProduct({
+        ...saved,
+        option_groups: saved.option_groups ?? [],
       });
-      setConfirmDelete(false);
-      setConfirmDiscard(false);
-      setEditor(null);
-      await refreshRestaurant();
-      appAlert('Listo', wasEdit ? 'Producto actualizado' : 'Producto agregado');
+
+      try {
+        const { data: withOptions } = await productApi.replaceOptionGroups(
+          saved.id,
+          groupsPayload,
+        );
+        upsertLocalProduct(withOptions);
+        setConfirmDelete(false);
+        setConfirmDiscard(false);
+        setEditor(null);
+        await refreshRestaurant();
+        appAlert('Listo', wasEdit ? 'Producto actualizado' : 'Producto agregado');
+      } catch (optErr) {
+        await refreshRestaurant();
+        appAlert(
+          'Opciones',
+          `${getApiErrorMessage(optErr, 'No se pudieron guardar los sabores/extras.')}\n\nEl producto sí se guardó. Puedes corregir las opciones y pulsar Guardar de nuevo.`,
+        );
+      }
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo guardar el producto'));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
 
   const deleteProduct = () => {
-    if (!editor?.id || deleting) return;
-    // Confirmación dentro del Modal (appConfirm queda detrás en web).
+    if (!editor?.id || deleting || savingRef.current) return;
     setConfirmDelete(true);
     setConfirmDiscard(false);
   };
@@ -391,111 +515,345 @@ export default function RestaurantManageScreen() {
     }
   };
 
+  const clearFilters = useCallback(() => {
+    setSearch('');
+    setCategoryFilter('all');
+    setAvailabilityFilter('all');
+  }, []);
+
+  const hasActiveFilters =
+    search.trim().length > 0 || categoryFilter !== 'all' || availabilityFilter !== 'all';
+
+  const filteredProducts = useMemo(() => {
+    const q = normalizeForSearch(search);
+    return products.filter((product) => {
+      if (availabilityFilter === 'available' && !product.is_available) return false;
+      if (availabilityFilter === 'hidden' && product.is_available) return false;
+      if (categoryFilter !== 'all' && resolveManageCategory(product.category) !== categoryFilter) {
+        return false;
+      }
+      if (q && !normalizeForSearch(product.name).includes(q)) return false;
+      return true;
+    });
+  }, [availabilityFilter, categoryFilter, products, search]);
+
+  const sections = useMemo((): CatalogSection[] => {
+    return groupProductsForManageCatalog(filteredProducts).map((section) => ({
+      ...section,
+      data: collapsedSections.has(section.key) ? [] : section.data,
+    }));
+  }, [collapsedSections, filteredProducts]);
+
+  const sectionCounts = useMemo(() => {
+    const map = new Map<ManageCategoryKey, number>();
+    for (const section of groupProductsForManageCatalog(filteredProducts)) {
+      map.set(section.key, section.data.length);
+    }
+    return map;
+  }, [filteredProducts]);
+
+  const availableCategoryKeys = useMemo(() => {
+    const keys = new Set<ManageCategoryKey>();
+    for (const product of products) {
+      keys.add(resolveManageCategory(product.category));
+    }
+    return keys;
+  }, [products]);
+
+  const availableCount = useMemo(
+    () => products.filter((p) => p.is_available).length,
+    [products],
+  );
+  const hiddenCount = products.length - availableCount;
+
+  const toggleSection = useCallback((key: ManageCategoryKey) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: Product }) => (
+      <ProductManageRow
+        product={item}
+        onEdit={openEditProduct}
+        onToggle={toggleProduct}
+        toggling={togglingId === item.id}
+      />
+    ),
+    [openEditProduct, toggleProduct, togglingId],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: CatalogSection }) => {
+      const count = sectionCounts.get(section.key) ?? section.data.length;
+      const collapsed = collapsedSections.has(section.key);
+      return (
+        <Pressable
+          style={styles.sectionHeader}
+          onPress={() => toggleSection(section.key)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: !collapsed }}
+          accessibilityLabel={`${section.title}, ${count} productos`}
+        >
+          <View style={styles.sectionHeaderLeft}>
+            <Text style={styles.sectionEmoji}>{section.emoji}</Text>
+            <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
+            <View style={styles.sectionCountBadge}>
+              <Text style={styles.sectionCountText}>{count}</Text>
+            </View>
+          </View>
+          <Ionicons
+            name={collapsed ? 'chevron-forward' : 'chevron-down'}
+            size={18}
+            color={colors.textMuted}
+          />
+        </Pressable>
+      );
+    },
+    [collapsedSections, sectionCounts, toggleSection],
+  );
+
+  const listHeader = useMemo(
+    () => (
+      <View>
+        <RestaurantHeroHeader
+          restaurant={restaurant}
+          topInset={insets.top}
+          eyebrow="Menú"
+          title={restaurant?.name}
+          subtitle="Administra platillos, precios y disponibilidad"
+          actionIcon="add"
+          actionLabel="Agregar producto"
+          onActionPress={openNewProduct}
+        />
+
+        {restaurant?.setup_status ? (
+          <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
+        ) : null}
+
+        <View style={styles.tipCard}>
+          <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+          <Text style={styles.tipText}>
+            Logo, horario y ubicación del local se configuran en la pestaña{' '}
+            <Text style={styles.tipBold}>Perfil</Text>.
+          </Text>
+        </View>
+
+        {products.length === 0 ? (
+          <EmptyState
+            emoji="🍽️"
+            title="Sin platillos aún"
+            subtitle="Agrega tu primer producto para que los clientes puedan pedir"
+            actionLabel="Agregar primer platillo"
+            onAction={openNewProduct}
+          />
+        ) : (
+          <View style={styles.catalogToolbar}>
+            <View style={styles.catalogTitleRow}>
+              <View style={styles.sectionCopy}>
+                <Text style={styles.sectionTitle}>Catálogo</Text>
+                <Text style={styles.sectionSub}>
+                  {products.length} producto{products.length === 1 ? '' : 's'}
+                  {hasActiveFilters
+                    ? ` · ${filteredProducts.length} visible${filteredProducts.length === 1 ? '' : 's'}`
+                    : ''}
+                </Text>
+              </View>
+              <Pressable style={styles.addBtn} onPress={openNewProduct} hitSlop={HIT_SLOP}>
+                <Ionicons name="add" size={20} color="#FFF" />
+                <Text style={styles.addText}>Nuevo producto</Text>
+              </Pressable>
+            </View>
+
+            <SearchField
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Buscar por nombre…"
+              onClear={() => setSearch('')}
+            />
+
+            <Text style={styles.filterLabel}>Categoría</Text>
+            <View style={styles.chipWrap}>
+              <Pressable
+                style={[styles.filterChip, categoryFilter === 'all' && styles.filterChipActive]}
+                onPress={() => setCategoryFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    categoryFilter === 'all' && styles.filterChipTextActive,
+                  ]}
+                >
+                  Todas
+                </Text>
+              </Pressable>
+              {PRODUCT_CATEGORIES.filter((c) => availableCategoryKeys.has(c.key)).map((cat) => (
+                <Pressable
+                  key={cat.key}
+                  style={[
+                    styles.filterChip,
+                    categoryFilter === cat.key && styles.filterChipActive,
+                  ]}
+                  onPress={() => setCategoryFilter(cat.key)}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      categoryFilter === cat.key && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {cat.emoji} {cat.label}
+                  </Text>
+                </Pressable>
+              ))}
+              {availableCategoryKeys.has('unknown') ? (
+                <Pressable
+                  style={[
+                    styles.filterChip,
+                    categoryFilter === 'unknown' && styles.filterChipActive,
+                  ]}
+                  onPress={() => setCategoryFilter('unknown')}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      categoryFilter === 'unknown' && styles.filterChipTextActive,
+                    ]}
+                  >
+                    📦 Sin categoría
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            <Text style={styles.filterLabel}>Disponibilidad</Text>
+            <View style={styles.chipWrap}>
+              {(
+                [
+                  { key: 'all', label: 'Todos', count: products.length },
+                  { key: 'available', label: 'Disponibles', count: availableCount },
+                  { key: 'hidden', label: 'Ocultos', count: hiddenCount },
+                ] as const
+              ).map((opt) => {
+                const active = availabilityFilter === opt.key;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    style={[styles.filterChip, active && styles.filterChipActive]}
+                    onPress={() => setAvailabilityFilter(opt.key)}
+                  >
+                    <Text
+                      style={[styles.filterChipText, active && styles.filterChipTextActive]}
+                    >
+                      {opt.label}
+                    </Text>
+                    <View style={[styles.filterBadge, active && styles.filterBadgeActive]}>
+                      <Text
+                        style={[
+                          styles.filterBadgeText,
+                          active && styles.filterBadgeTextActive,
+                        ]}
+                      >
+                        {opt.count}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+      </View>
+    ),
+    [
+      availabilityFilter,
+      availableCategoryKeys,
+      availableCount,
+      categoryFilter,
+      filteredProducts.length,
+      hasActiveFilters,
+      hiddenCount,
+      insets.top,
+      openNewProduct,
+      products.length,
+      restaurant,
+      search,
+    ],
+  );
+
+  const listEmpty = useMemo(() => {
+    if (products.length === 0 || filteredProducts.length > 0) return null;
+    return (
+      <View style={styles.emptyFilters}>
+        <Text style={styles.emptyFiltersTitle}>Sin resultados</Text>
+        <Text style={styles.emptyFiltersSub}>
+          Ningún producto coincide con la búsqueda o los filtros.
+        </Text>
+        <Button title="Limpiar filtros" variant="secondary" onPress={clearFilters} />
+      </View>
+    );
+  }, [clearFilters, filteredProducts.length, products.length]);
+
+  const listFooter = useMemo(
+    () => (
+      <RestaurantPromotionsSection
+        products={products}
+        onChanged={() => {
+          void load();
+          void refreshRestaurant();
+        }}
+      />
+    ),
+    [load, products, refreshRestaurant],
+  );
+
   if (loading) {
     return <ScreenContainer loading />;
   }
 
-  const scrollPadding = {
-    paddingHorizontal: spacing.screen,
-    paddingBottom: tabBottomPadding(spacing.xxl),
-  };
-
   return (
     <ScreenContainer error={error} onRetry={load}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={keyboardAvoidingBehavior()}
-        keyboardVerticalOffset={keyboardHeaderless()}
-      >
-        <ScrollView
-          contentContainerStyle={scrollPadding}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                void load();
-                void refreshRestaurant();
-              }}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          }
-        >
-          <RestaurantHeroHeader
-            restaurant={restaurant}
-            topInset={insets.top}
-            eyebrow="Menú"
-            title={restaurant?.name}
-            subtitle="Administra platillos, precios y disponibilidad"
-            actionIcon="add"
-            actionLabel="Agregar producto"
-            onActionPress={openNewProduct}
-          />
-
-          {restaurant?.setup_status ? (
-            <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
-          ) : null}
-
-          <View style={styles.tipCard}>
-            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-            <Text style={styles.tipText}>
-              Logo, horario y ubicación del local se configuran en la pestaña{' '}
-              <Text style={styles.tipBold}>Perfil</Text>.
-            </Text>
-          </View>
-
-          {products.length === 0 ? (
-            <EmptyState
-              emoji="🍽️"
-              title="Sin platillos aún"
-              subtitle="Agrega tu primer producto para que los clientes puedan pedir"
-              actionLabel="Agregar primer platillo"
-              onAction={openNewProduct}
-            />
-          ) : (
-            <View style={styles.menuSection}>
-              <View style={styles.sectionRow}>
-                <View style={styles.sectionCopy}>
-                  <Text style={styles.sectionTitle}>Catálogo</Text>
-                  <Text style={styles.sectionSub}>
-                    Toca un platillo para editarlo · usa el switch para ocultarlo
-                  </Text>
-                </View>
-                <Pressable style={styles.addBtn} onPress={openNewProduct} hitSlop={HIT_SLOP}>
-                  <Ionicons name="add" size={20} color="#FFF" />
-                  <Text style={styles.addText}>Nuevo</Text>
-                </Pressable>
-              </View>
-              {products.map((item) => (
-                <ProductManageRow
-                  key={item.id}
-                  product={item}
-                  onEdit={openEditProduct}
-                  onToggle={toggleProduct}
-                  toggling={togglingId === item.id}
-                />
-              ))}
-            </View>
-          )}
-
-          <RestaurantPromotionsSection
-            products={products}
-            onChanged={() => {
+      <SectionList
+        sections={products.length === 0 ? [] : sections}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderItem}
+        renderSectionHeader={products.length === 0 ? undefined : renderSectionHeader}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          products.length > 0 && filteredProducts.length === 0 ? listEmpty : null
+        }
+        ListFooterComponent={listFooter}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: tabBottomPadding(spacing.xxl) },
+        ]}
+        style={styles.list}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
               void load();
               void refreshRestaurant();
             }}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        }
+        initialNumToRender={FLATLIST_TUNING.initialNumToRender}
+        maxToRenderPerBatch={FLATLIST_TUNING.maxToRenderPerBatch}
+        windowSize={FLATLIST_TUNING.windowSize}
+        removeClippedSubviews={FLATLIST_TUNING.removeClippedSubviews}
+      />
 
       <Modal visible={!!editor} animationType="slide" transparent onRequestClose={closeEditor}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={keyboardAvoidingBehavior()}
-        >
+        <View style={styles.flex}>
           <View style={[styles.modalOverlay, isDesktopWeb && styles.modalOverlayDesktop]}>
             <Pressable style={styles.modalBackdrop} onPress={closeEditor} />
             <View
@@ -506,11 +864,11 @@ export default function RestaurantManageScreen() {
               ]}
             >
               <View style={styles.modalHeader}>
-                <View>
+                <View style={styles.modalHeaderCopy}>
                   <Text style={styles.modalEyebrow}>
                     {editor?.id ? 'Editar platillo' : 'Nuevo platillo'}
                   </Text>
-                  <Text style={styles.modalTitle}>
+                  <Text style={styles.modalTitle} numberOfLines={2}>
                     {editor?.id ? editor.name || 'Producto' : 'Agregar al menú'}
                   </Text>
                 </View>
@@ -519,17 +877,101 @@ export default function RestaurantManageScreen() {
                   hitSlop={HIT_SLOP}
                   style={styles.modalClose}
                   accessibilityLabel="Cerrar"
+                  disabled={saving}
                 >
                   <Ionicons name="close" size={26} color={colors.textSecondary} />
                 </Pressable>
               </View>
 
-              <ScrollView
+              <KeyboardForm
+                fill={false}
                 style={styles.modalBody}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
-                showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.modalScroll}
+                bottomPadding={8}
+                keyboardVerticalOffset={0}
+                footer={
+                  <View style={styles.modalFooter}>
+                    {confirmDiscard ? (
+                      <View style={styles.confirmBox}>
+                        <Text style={styles.confirmTitle}>¿Descartar el producto nuevo?</Text>
+                        <Text style={styles.confirmSub}>Se perderán los datos del formulario.</Text>
+                        <View style={styles.modalActions}>
+                          <Button
+                            title="Seguir editando"
+                            variant="secondary"
+                            onPress={() => setConfirmDiscard(false)}
+                            style={styles.modalActionBtn}
+                          />
+                          <Button
+                            title="Descartar"
+                            variant="danger"
+                            onPress={() => {
+                              setConfirmDiscard(false);
+                              setConfirmDelete(false);
+                              setEditor(null);
+                            }}
+                            style={styles.modalActionBtn}
+                          />
+                        </View>
+                      </View>
+                    ) : confirmDelete ? (
+                      <View style={styles.confirmBox}>
+                        <Text style={styles.confirmTitle}>¿Eliminar producto?</Text>
+                        <Text style={styles.confirmSub}>
+                          {`Se quitará "${editor?.name || 'este producto'}" del menú.`}
+                        </Text>
+                        <View style={styles.modalActions}>
+                          <Button
+                            title="Cancelar"
+                            variant="secondary"
+                            onPress={() => setConfirmDelete(false)}
+                            disabled={deleting}
+                            style={styles.modalActionBtn}
+                          />
+                          <Button
+                            title="Sí, eliminar"
+                            variant="danger"
+                            onPress={() => {
+                              void confirmDeleteProduct();
+                            }}
+                            loading={deleting}
+                            style={styles.modalActionBtn}
+                          />
+                        </View>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.modalActions}>
+                          <Button
+                            title="Cancelar"
+                            variant="secondary"
+                            onPress={closeEditor}
+                            disabled={saving}
+                            style={styles.modalActionBtn}
+                          />
+                          <Button
+                            title="Guardar"
+                            onPress={() => {
+                              void saveProduct();
+                            }}
+                            loading={saving}
+                            style={styles.modalActionBtn}
+                          />
+                        </View>
+                        {editor?.id ? (
+                          <Button
+                            title="Eliminar producto"
+                            variant="danger"
+                            onPress={deleteProduct}
+                            loading={deleting}
+                            disabled={saving}
+                            style={styles.deleteBtn}
+                          />
+                        ) : null}
+                      </>
+                    )}
+                  </View>
+                }
               >
                 <Pressable style={styles.photoBox} onPress={pickImage} hitSlop={HIT_SLOP}>
                   {editor?.imageUri || editor?.image_url ? (
@@ -788,88 +1230,10 @@ export default function RestaurantManageScreen() {
                     trackColor={{ true: colors.primary, false: colors.border }}
                   />
                 </View>
-              </ScrollView>
-
-              <View style={styles.modalFooter}>
-                {confirmDiscard ? (
-                  <View style={styles.confirmBox}>
-                    <Text style={styles.confirmTitle}>¿Descartar el producto nuevo?</Text>
-                    <Text style={styles.confirmSub}>Se perderán los datos del formulario.</Text>
-                    <View style={styles.modalActions}>
-                      <Button
-                        title="Seguir editando"
-                        variant="secondary"
-                        onPress={() => setConfirmDiscard(false)}
-                        style={styles.modalActionBtn}
-                      />
-                      <Button
-                        title="Descartar"
-                        variant="danger"
-                        onPress={() => {
-                          setConfirmDiscard(false);
-                          setConfirmDelete(false);
-                          setEditor(null);
-                        }}
-                        style={styles.modalActionBtn}
-                      />
-                    </View>
-                  </View>
-                ) : confirmDelete ? (
-                  <View style={styles.confirmBox}>
-                    <Text style={styles.confirmTitle}>¿Eliminar producto?</Text>
-                    <Text style={styles.confirmSub}>
-                      {`Se quitará "${editor?.name || 'este producto'}" del menú.`}
-                    </Text>
-                    <View style={styles.modalActions}>
-                      <Button
-                        title="Cancelar"
-                        variant="secondary"
-                        onPress={() => setConfirmDelete(false)}
-                        disabled={deleting}
-                        style={styles.modalActionBtn}
-                      />
-                      <Button
-                        title="Sí, eliminar"
-                        variant="danger"
-                        onPress={() => {
-                          void confirmDeleteProduct();
-                        }}
-                        loading={deleting}
-                        style={styles.modalActionBtn}
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.modalActions}>
-                      <Button
-                        title="Cancelar"
-                        variant="secondary"
-                        onPress={closeEditor}
-                        style={styles.modalActionBtn}
-                      />
-                      <Button
-                        title="Guardar"
-                        onPress={saveProduct}
-                        loading={saving}
-                        style={styles.modalActionBtn}
-                      />
-                    </View>
-                    {editor?.id ? (
-                      <Button
-                        title="Eliminar producto"
-                        variant="danger"
-                        onPress={deleteProduct}
-                        loading={deleting}
-                        style={styles.deleteBtn}
-                      />
-                    ) : null}
-                  </>
-                )}
-              </View>
+              </KeyboardForm>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </ScreenContainer>
   );
@@ -877,6 +1241,11 @@ export default function RestaurantManageScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  list: { flex: 1 },
+  listContent: {
+    paddingHorizontal: spacing.screen,
+    flexGrow: 1,
+  },
   tipCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -890,20 +1259,22 @@ const styles = StyleSheet.create({
   },
   tipText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
   tipBold: { fontWeight: '800', color: colors.primary },
-  menuSection: {
+  catalogToolbar: {
     backgroundColor: colors.surface,
     borderRadius: 22,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
     ...cardShadow,
   },
-  sectionRow: {
+  catalogTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 12,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   sectionCopy: { flex: 1, minWidth: 0 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: -0.2 },
@@ -913,72 +1284,183 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.primary,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 12,
     minHeight: 44,
-    flexShrink: 0,
+    flexShrink: 1,
+    maxWidth: '48%',
   },
-  addText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
-  productCard: {
+  addText: { color: '#FFF', fontWeight: '700', fontSize: 13, flexShrink: 1 },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginTop: 4,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minHeight: 40,
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  filterChipTextActive: { color: '#FFF' },
+  filterBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  filterBadgeActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  filterBadgeText: { fontSize: 11, fontWeight: '800', color: colors.primaryDark },
+  filterBadgeTextActive: { color: '#FFF' },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginTop: 4,
+  },
+  sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 14,
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionEmoji: { fontSize: 16 },
+  sectionHeaderTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    flexShrink: 1,
+  },
+  sectionCountBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionCountText: { fontSize: 12, fontWeight: '800', color: colors.textSecondary },
+  productCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
+    backgroundColor: colors.surface,
   },
-  productCardUnavailable: { opacity: 0.58 },
+  productCardUnavailable: { opacity: 0.72 },
   productCardPressed: { opacity: 0.92 },
   productMain: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     minWidth: 0,
   },
-  productInfo: { flex: 1, minWidth: 0 },
+  productInfo: { flex: 1, minWidth: 0, gap: 4 },
+  productActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 2,
+  },
   editIconBtn: {
-    minWidth: 44,
+    minWidth: 40,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 0,
   },
-  productActions: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: 8,
-    minWidth: 56,
-    zIndex: 2,
+  productName: {
+    fontWeight: '800',
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 19,
   },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  productName: { fontWeight: '800', fontSize: 15, color: colors.text, flexShrink: 1 },
   unavailableText: { color: colors.textSecondary },
-  soldOutBadge: {
-    backgroundColor: colors.error + '18',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    minWidth: 0,
   },
-  soldOutText: { fontSize: 12, fontWeight: '700', color: colors.error },
-  availableBadge: {
-    backgroundColor: colors.success + '18',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  availableText: { fontSize: 12, fontWeight: '700', color: colors.success },
-  productDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 4, lineHeight: 17 },
+  metaDot: { color: colors.textMuted, fontSize: 12 },
   productCategory: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textMuted,
-    marginTop: 6,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
+    flexShrink: 1,
   },
-  productPrice: { color: colors.primary, fontWeight: '800', fontSize: 16, marginTop: 6 },
+  productPrice: { color: colors.primary, fontWeight: '800', fontSize: 14 },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  availableBadge: {
+    backgroundColor: colors.success + '18',
+  },
+  hiddenBadge: {
+    backgroundColor: colors.error + '18',
+  },
+  statusText: { fontSize: 11, fontWeight: '700' },
+  availableText: { color: colors.success },
+  hiddenText: { color: colors.error },
+  emptyFilters: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    marginBottom: spacing.md,
+  },
+  emptyFiltersTitle: { fontSize: 16, fontWeight: '800', color: colors.text },
+  emptyFiltersSub: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
   categoryLabel: {
     fontSize: 13,
     fontWeight: '700',
@@ -1030,7 +1512,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 0,
   },
-  // flexGrow:0 — el modal solo tiene maxHeight; flex:1 colapsa el ScrollView a 0.
   modalBody: { flexGrow: 0, flexShrink: 1 },
   modalHeader: {
     flexDirection: 'row',
@@ -1038,6 +1519,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  modalHeaderCopy: { flex: 1, minWidth: 0, paddingRight: 8 },
   modalEyebrow: {
     fontSize: 12,
     fontWeight: '700',

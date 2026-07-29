@@ -4,7 +4,6 @@ import {
   Image,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,9 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../../components/Button';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
+import KeyboardForm from '../../components/KeyboardForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import { normalizeCartNotes, optionsKey, useCart } from '../../context/CartContext';
 import type { ProductDetailScreenProps } from '../../navigation/types';
+import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
@@ -155,10 +156,53 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
 
   return (
     <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: spacing.xxl + insets.bottom + 88 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardForm
+        contentContainerStyle={[styles.scroll, { paddingBottom: spacing.xxl + 24 }]}
+        bottomPadding={spacing.xxl + 24}
+        keyboardVerticalOffset={keyboardOffsetWithHeader(insets)}
+        footer={
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + 4 }]}>
+        {quantity > 0 ? (
+          <View style={styles.qtyRow}>
+            <Pressable
+              style={styles.qtyBtn}
+              onPress={handleDecrease}
+              hitSlop={HIT_SLOP}
+              accessibilityLabel={`Quitar ${product.name}`}
+            >
+              <Ionicons name="remove" size={22} color={colors.primary} />
+            </Pressable>
+            <Text style={styles.qty}>{quantity}</Text>
+            <Pressable
+              style={[styles.qtyBtn, styles.qtyBtnAdd, !available && styles.qtyDisabled]}
+              onPress={handleAdd}
+              disabled={!available}
+              hitSlop={HIT_SLOP}
+              accessibilityLabel={`Agregar ${product.name}`}
+            >
+              <Ionicons name="add" size={22} color="#FFF" />
+            </Pressable>
+            <Button
+              title="Ver carrito"
+              variant="secondary"
+              onPress={() =>
+                (navigation as { navigate: (a: string, b?: object) => void }).navigate('Main', {
+                  screen: 'Carrito',
+                })
+              }
+              style={styles.cartBtn}
+            />
+          </View>
+        ) : (
+          <Button
+            title={available ? 'Agregar al carrito' : 'No disponible'}
+            onPress={handleAdd}
+            disabled={!available}
+            size="lg"
+          />
+        )}
+      </View>
+        }
       >
         <Pressable
           style={styles.heroWrap}
@@ -281,49 +325,7 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             </View>
           ) : null}
         </View>
-      </ScrollView>
-
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) + 4 }]}>
-        {quantity > 0 ? (
-          <View style={styles.qtyRow}>
-            <Pressable
-              style={styles.qtyBtn}
-              onPress={handleDecrease}
-              hitSlop={HIT_SLOP}
-              accessibilityLabel={`Quitar ${product.name}`}
-            >
-              <Ionicons name="remove" size={22} color={colors.primary} />
-            </Pressable>
-            <Text style={styles.qty}>{quantity}</Text>
-            <Pressable
-              style={[styles.qtyBtn, styles.qtyBtnAdd, !available && styles.qtyDisabled]}
-              onPress={handleAdd}
-              disabled={!available}
-              hitSlop={HIT_SLOP}
-              accessibilityLabel={`Agregar ${product.name}`}
-            >
-              <Ionicons name="add" size={22} color="#FFF" />
-            </Pressable>
-            <Button
-              title="Ver carrito"
-              variant="secondary"
-              onPress={() =>
-                (navigation as { navigate: (a: string, b?: object) => void }).navigate('Main', {
-                  screen: 'Carrito',
-                })
-              }
-              style={styles.cartBtn}
-            />
-          </View>
-        ) : (
-          <Button
-            title={available ? 'Agregar al carrito' : 'No disponible'}
-            onPress={handleAdd}
-            disabled={!available}
-            size="lg"
-          />
-        )}
-      </View>
+      </KeyboardForm>
 
       <Modal
         visible={imageOpen}

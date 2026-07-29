@@ -16,6 +16,24 @@ export function parsePriceInput(value: string): number | null {
   return num;
 }
 
+/** Extra de opción: permite 0; vacío = 0; inválido o negativo = null. */
+export function parseExtraPriceInput(value: string): number | null {
+  const normalized = normalizePriceInput(value);
+  if (!normalized) return 0;
+  const num = parseFloat(normalized);
+  if (!Number.isFinite(num) || num < 0) return null;
+  return num;
+}
+
+/** Búsqueda local: minúsculas y sin acentos (sin dependencias extra). */
+export function normalizeForSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 export function formatTimeAgo(isoDate: string | null | undefined): string | null {
   if (!isoDate) return null;
   const diffMs = Date.now() - new Date(isoDate).getTime();

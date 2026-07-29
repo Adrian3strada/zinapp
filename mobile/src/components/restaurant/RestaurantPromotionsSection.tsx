@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -15,13 +14,13 @@ import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import Button from '../Button';
 import EmptyState from '../EmptyState';
 import FormField from '../FormField';
+import KeyboardForm from '../KeyboardForm';
 import { promotionApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Product, ProductPromotion, PromoType } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import {
   buildValidUntilIso,
   defaultPromoEndDate,
@@ -31,7 +30,6 @@ import {
   PROMO_TYPE_OPTIONS,
 } from '../../utils/promo';
 import PromoExpiryPicker from './PromoExpiryPicker';
-import { KeyboardAvoidingView } from 'react-native';
 
 interface Props {
   products: Product[];
@@ -257,7 +255,7 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
       </View>
 
       <Modal visible={editorOpen} animationType="slide" transparent onRequestClose={() => setEditorOpen(false)}>
-        <KeyboardAvoidingView style={styles.flex} behavior={keyboardAvoidingBehavior()}>
+        <View style={styles.flex}>
           <View style={[styles.modalOverlay, isDesktopWeb && styles.modalOverlayDesktop]}>
             <Pressable style={styles.modalBackdrop} onPress={() => setEditorOpen(false)} />
             <View
@@ -277,10 +275,23 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
                 </Pressable>
               </View>
 
-              <ScrollView
+              <KeyboardForm
+                fill={false}
                 style={styles.modalBody}
-                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.modalScroll}
+                bottomPadding={8}
+                keyboardVerticalOffset={0}
+                footer={
+                  <View style={styles.modalFooter}>
+                    <Button
+                      title="Cancelar"
+                      variant="secondary"
+                      onPress={() => setEditorOpen(false)}
+                      style={styles.modalBtn}
+                    />
+                    <Button title="Publicar" onPress={savePromo} loading={saving} style={styles.modalBtn} />
+                  </View>
+                }
               >
                 <Text style={styles.fieldLabel}>Platillo</Text>
                 <View style={styles.productPicker}>
@@ -366,20 +377,10 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
                 <Text style={styles.typeHint}>
                   Toca un día en el calendario. La promo se oculta sola al vencer.
                 </Text>
-              </ScrollView>
-
-              <View style={styles.modalFooter}>
-                <Button
-                  title="Cancelar"
-                  variant="secondary"
-                  onPress={() => setEditorOpen(false)}
-                  style={styles.modalBtn}
-                />
-                <Button title="Publicar" onPress={savePromo} loading={saving} style={styles.modalBtn} />
-              </View>
+              </KeyboardForm>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </>
   );

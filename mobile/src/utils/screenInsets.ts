@@ -25,12 +25,14 @@ export function tabScreenBottomPadding(insets: EdgeInsets, extra: number = spaci
 
 /** Offset de teclado en tabs sin header nativo (Perfil, Menú restaurante). */
 export function keyboardOffsetHeaderless(insets: EdgeInsets): number {
-  return insets.top + 8;
+  if (Platform.OS !== 'ios') return 0;
+  return Math.max(insets.top, 0);
 }
 
 /** Offset cuando hay header de stack/tab visible (~44pt + status). */
 export function keyboardOffsetWithHeader(insets: EdgeInsets): number {
-  return insets.top + 44;
+  if (Platform.OS !== 'ios') return 0;
+  return Math.max(insets.top, 0) + 44;
 }
 
 function useLayoutTabHints() {
