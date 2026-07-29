@@ -55,12 +55,14 @@ class OrderApiTests(TestCase):
             'email': 'newrest@example.com',
             'password': 'test1234',
             'password_confirm': 'test1234',
+            'first_name': 'María',
+            'last_name': 'López',
             'role': 'restaurant',
             'phone': '4431234567',
             'restaurant_name': 'Mi Fonda',
             'restaurant_address': 'Av. Principal, Zinapécuaro',
         }, format='json')
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 201, response.data)
         user = User.objects.get(username='newrest')
         rest = Restaurant.objects.get(owner=user, name='Mi Fonda')
         self.assertFalse(rest.is_active)
