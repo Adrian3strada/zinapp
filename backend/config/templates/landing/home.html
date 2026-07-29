@@ -5,8 +5,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="description" content="ZinApp — Todo Zinapécuaro en una sola app. Pide comida, encuentra servicios y descubre negocios locales.">
+  <meta name="keywords" content="ZinApp, Zinapécuaro, pedidos a domicilio, comida a domicilio, servicios locales, restaurantes en Zinapécuaro, negocios locales, repartidores">
   <meta name="robots" content="index,follow">
   <meta name="author" content="ZinApp">
+  <meta name="geo.region" content="MX-MIC">
+  <meta name="geo.placename" content="Zinapécuaro, Michoacán">
   <meta name="apple-mobile-web-app-title" content="ZinApp">
   <meta name="application-name" content="ZinApp">
   <meta name="theme-color" content="#1A56DB">
@@ -29,6 +32,118 @@
   <meta name="twitter:image" content="https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png">
   <meta name="twitter:image:alt" content="Logo de ZinApp">
   <title>ZinApp — Todo Zinapécuaro en una sola app</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://zinapp.com.mx/#organization",
+        "name": "ZinApp",
+        "url": "https://zinapp.com.mx/",
+        "logo": "https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png",
+        "description": "ZinApp es una app local de pedidos, entregas, restaurantes, comercios y servicios locales en Zinapécuaro, Michoacán.",
+        "areaServed": {
+          "@type": "City",
+          "name": "Zinapécuaro",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Zinapécuaro",
+            "addressRegion": "Michoacán",
+            "addressCountry": "MX"
+          }
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "areaServed": "MX",
+          "availableLanguage": "Spanish"
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://zinapp.com.mx/#website",
+        "url": "https://zinapp.com.mx/",
+        "name": "ZinApp",
+        "publisher": {
+          "@id": "https://zinapp.com.mx/#organization"
+        },
+        "inLanguage": "es-MX"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://zinapp.com.mx/#app",
+        "name": "ZinApp",
+        "applicationCategory": "LifestyleApplication",
+        "operatingSystem": "Android, iOS, Web",
+        "url": "https://zinapp.com.mx/app/",
+        "description": "Aplicación local para pedir comida, encontrar servicios, descubrir negocios locales y coordinar entregas en Zinapécuaro, Michoacán.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "MXN"
+        },
+        "publisher": {
+          "@id": "https://zinapp.com.mx/#organization"
+        }
+      },
+      {
+        "@type": "LocalBusiness",
+        "@id": "https://zinapp.com.mx/#local-business",
+        "name": "ZinApp",
+        "url": "https://zinapp.com.mx/",
+        "image": "https://zinapp.com.mx/static/dashboard/img/logo-on-blue.png",
+        "description": "Plataforma local de pedidos, entregas y servicios para Zinapécuaro, Michoacán.",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Zinapécuaro",
+          "addressRegion": "Michoacán",
+          "addressCountry": "MX"
+        },
+        "areaServed": "Zinapécuaro, Michoacán",
+        "priceRange": "$"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://zinapp.com.mx/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "¿Qué es ZinApp?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ZinApp es una app local de pedidos, entregas, restaurantes, comercios y servicios locales en Zinapécuaro, Michoacán."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Dónde funciona ZinApp?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ZinApp está enfocada en Zinapécuaro, Michoacán, conectando clientes con negocios locales y repartidores registrados."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Qué puedo encontrar en ZinApp?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "En ZinApp puedes encontrar comida, restaurantes, servicios locales, comercios, ofertas y negocios de Zinapécuaro."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "¿Cómo registro mi negocio en ZinApp?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Puedes registrar tu negocio desde zinapp.com.mx usando el botón Registrar mi negocio y contactando al equipo de ZinApp por WhatsApp."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <script>
     /* Si Google OAuth vuelve a la landing (redirect mal configurado), reenvía al SPA. */
     (function () {

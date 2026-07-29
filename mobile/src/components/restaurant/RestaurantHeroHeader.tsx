@@ -6,7 +6,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import type { Restaurant } from '../../types';
-import { formatRestaurantHours } from '../../utils/restaurantMeta';
+import { formatRestaurantSchedule } from '../../utils/restaurantMeta';
 import { resolveMediaUrl } from '../../utils/media';
 
 export interface RestaurantStatItem {
@@ -56,9 +56,7 @@ export default function RestaurantHeroHeader({
   children,
 }: Props) {
   const status = storeStatus(restaurant);
-  const hours = restaurant
-    ? formatRestaurantHours(restaurant.opening_time, restaurant.closing_time)
-    : null;
+  const hours = restaurant ? formatRestaurantSchedule(restaurant) : null;
   const displayTitle = title ?? restaurant?.name ?? 'Tu restaurante';
   const imageUri = resolveMediaUrl(restaurant?.image_url ?? restaurant?.image);
 

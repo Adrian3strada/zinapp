@@ -8,7 +8,7 @@ from dashboard.panel_admin import panel_admin
 
 from .cron_views import order_reminders_cron, restaurant_opens_cron, run_all_cron
 from .health import app_config, health
-from .landing_views import LandingView
+from .landing_views import LandingView, robots_txt, sitemap_xml
 from .legal_views import PrivacyPolicyView
 from .webapp_views import webapp_serve
 
@@ -20,6 +20,8 @@ urlpatterns = [
     path('panel', RedirectView.as_view(url='/panel/', permanent=False)),
     path('app', RedirectView.as_view(url='/app/', permanent=False)),
     path('privacidad', RedirectView.as_view(url='/privacidad/', permanent=False)),
+    path('robots.txt', robots_txt, name='robots-txt'),
+    path('sitemap.xml', sitemap_xml, name='sitemap-xml'),
     path('admin/', RedirectView.as_view(url='/panel/gestion/', permanent=True)),
     path('panel/', include([
         path('gestion/sistema/', panel_admin.urls),

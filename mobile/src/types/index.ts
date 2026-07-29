@@ -79,6 +79,14 @@ export interface RestaurantSetupStatus {
   ready_for_orders: boolean;
 }
 
+export interface RestaurantBusinessHour {
+  id?: number;
+  day_of_week: number;
+  is_closed: boolean;
+  opening_time: string | null;
+  closing_time: string | null;
+}
+
 export interface Restaurant {
   id: number;
   name: string;
@@ -99,6 +107,7 @@ export interface Restaurant {
   reviews_count?: number;
   opening_time?: string | null;
   closing_time?: string | null;
+  business_hours?: RestaurantBusinessHour[];
   products_count: number;
   setup_status?: RestaurantSetupStatus;
 }

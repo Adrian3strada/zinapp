@@ -1,9 +1,12 @@
+from datetime import datetime, time
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 
 from restaurants.geo import geocode_address, is_in_coverage, looks_like_street_address
-from restaurants.models import Restaurant
+from restaurants.models import Restaurant, RestaurantBusinessHour
 from restaurants.serializers import RestaurantSerializer
 
 User = get_user_model()
@@ -65,6 +68,49 @@ class RestaurantPaymentInfoTests(TestCase):
         self.assertTrue(any(s['key'] == 'menu' and not s['done'] for s in status['steps']))
         for private_field in ('bank_name', 'account_holder', 'clabe', 'has_transfer_info'):
             self.assertNotIn(private_field, data)
+
+
+class RestaurantBusinessHourTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username='hours_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Weekend Birria',
+            address='Centro',
+            is_active=True,
+            accepting_orders=True,
+        )
+
+    def test_closed_day_overrides_accepting_orders(self):
+        RestaurantBusinessHour.objects.create(
+            restaurant=self.restaurant,
+            day_of_week=0,
+            is_closed=True,
+        )
+        RestaurantBusinessHour.objects.create(
+            restaurant=self.restaurant,
+            day_of_week=5,
+            opening_time=time(8, 0),
+            closing_time=time(13, 0),
+        )
+
+        with patch('restaurants.models.timezone.localtime', return_value=datetime(2026, 7, 27, 10, 0)):
+            self.assertFalse(self.restaurant.is_open_now())
+
+    def test_open_day_uses_configured_hours(self):
+        RestaurantBusinessHour.objects.create(
+            restaurant=self.restaurant,
+            day_of_week=5,
+            opening_time=time(8, 0),
+            closing_time=time(13, 0),
+        )
+
+        with patch('restaurants.models.timezone.localtime', return_value=datetime(2026, 8, 1, 10, 0)):
+            self.assertTrue(self.restaurant.is_open_now())
 
 
 class RestaurantLocationTests(TestCase):

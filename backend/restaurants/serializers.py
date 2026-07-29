@@ -1,3 +1,5 @@
+import json
+
 from django.db.models import Avg
 from rest_framework import serializers
 
@@ -5,7 +7,15 @@ from accounts.serializers import UserSerializer
 
 from .fields import CoordinateField
 from .geo import geocode_address, is_in_coverage
-from .models import Product, ProductOption, ProductOptionGroup, ProductPromotion, PromoType, Restaurant
+from .models import (
+    Product,
+    ProductOption,
+    ProductOptionGroup,
+    ProductPromotion,
+    PromoType,
+    Restaurant,
+    RestaurantBusinessHour,
+)
 from .promotions import get_active_promotion, promo_label
 from .setup import restaurant_setup_status
 
@@ -171,6 +181,45 @@ class ProductSerializer(serializers.ModelSerializer):
         return ProductPromotionPublicSerializer(promo).data
 
 
+class RestaurantBusinessHourSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestaurantBusinessHour
+        fields = ('id', 'day_of_week', 'is_closed', 'opening_time', 'closing_time')
+        read_only_fields = ('id',)
+
+    def validate(self, attrs):
+        is_closed = attrs.get('is_closed', getattr(self.instance, 'is_closed', False))
+        opening_time = attrs.get('opening_time', getattr(self.instance, 'opening_time', None))
+        closing_time = attrs.get('closing_time', getattr(self.instance, 'closing_time', None))
+        if not is_closed and (not opening_time or not closing_time):
+            raise serializers.ValidationError('Indica hora de apertura y cierre, o marca el día como cerrado.')
+        return attrs
+
+
+class RestaurantBusinessHoursField(serializers.Field):
+    def to_representation(self, value):
+        queryset = value.all() if hasattr(value, 'all') else value
+        return RestaurantBusinessHourSerializer(queryset, many=True).data
+
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError('Formato de horarios inválido.') from exc
+        if not isinstance(data, list):
+            raise serializers.ValidationError('Los horarios deben enviarse como una lista.')
+        serializer = RestaurantBusinessHourSerializer(data=data, many=True)
+        serializer.is_valid(raise_exception=True)
+        days = [item['day_of_week'] for item in serializer.validated_data]
+        if len(days) != len(set(days)):
+            raise serializers.ValidationError('No repitas días en el horario.')
+        invalid_days = [day for day in days if day < 0 or day > 6]
+        if invalid_days:
+            raise serializers.ValidationError('Los días deben estar entre 0 y 6.')
+        return serializer.validated_data
+
+
 class RestaurantSerializer(serializers.ModelSerializer):
     owner_detail = UserSerializer(source='owner', read_only=True)
     products_count = serializers.SerializerMethodField()
@@ -180,6 +229,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
     setup_status = serializers.SerializerMethodField()
+    business_hours = RestaurantBusinessHoursField(required=False)
 
     class Meta:
         model = Restaurant
@@ -187,7 +237,8 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'id', 'owner', 'owner_detail', 'name', 'category', 'description', 'address',
             'phone', 'whatsapp',
             'image', 'image_url', 'latitude', 'longitude', 'location_pinned', 'is_active',
-            'accepting_orders', 'opening_time', 'closing_time', 'is_open', 'is_favorited',
+            'accepting_orders', 'opening_time', 'closing_time', 'business_hours',
+            'is_open', 'is_favorited',
             'rating_average',
             'reviews_count', 'products_count', 'setup_status',
             'created_at', 'updated_at',
@@ -245,7 +296,33 @@ class RestaurantSerializer(serializers.ModelSerializer):
             })
         return attrs
 
+    def _sync_business_hours(self, restaurant, business_hours):
+        provided_days = []
+        for hours in business_hours:
+            day = hours['day_of_week']
+            provided_days.append(day)
+            is_closed = hours.get('is_closed', False)
+            RestaurantBusinessHour.objects.update_or_create(
+                restaurant=restaurant,
+                day_of_week=day,
+                defaults={
+                    'is_closed': is_closed,
+                    'opening_time': None if is_closed else hours.get('opening_time'),
+                    'closing_time': None if is_closed else hours.get('closing_time'),
+                },
+            )
+        restaurant.business_hours.exclude(day_of_week__in=provided_days).delete()
+        getattr(restaurant, '_prefetched_objects_cache', {}).pop('business_hours', None)
+
+    def create(self, validated_data):
+        business_hours = validated_data.pop('business_hours', None)
+        restaurant = super().create(validated_data)
+        if business_hours is not None:
+            self._sync_business_hours(restaurant, business_hours)
+        return restaurant
+
     def update(self, instance, validated_data):
+        business_hours = validated_data.pop('business_hours', None)
         address_changed = (
             'address' in validated_data
             and validated_data['address'].strip() != (instance.address or '').strip()
@@ -263,6 +340,8 @@ class RestaurantSerializer(serializers.ModelSerializer):
             ):
                 restaurant.location_pinned = True
                 restaurant.save(update_fields=['location_pinned', 'updated_at'])
+            if business_hours is not None:
+                self._sync_business_hours(restaurant, business_hours)
             return restaurant
 
         if address_changed and not had_coords:
@@ -271,6 +350,9 @@ class RestaurantSerializer(serializers.ModelSerializer):
                 restaurant.latitude = geo['latitude']
                 restaurant.longitude = geo['longitude']
                 restaurant.save(update_fields=['latitude', 'longitude', 'updated_at'])
+
+        if business_hours is not None:
+            self._sync_business_hours(restaurant, business_hours)
 
         return restaurant
 
@@ -297,13 +379,14 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
     is_favorited = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
+    business_hours = RestaurantBusinessHoursField(read_only=True)
 
     class Meta:
         model = Restaurant
         fields = (
             'id', 'name', 'category', 'description', 'address', 'phone', 'whatsapp',
             'image', 'image_url', 'latitude', 'longitude', 'is_active',
-            'accepting_orders', 'opening_time', 'closing_time', 'is_open',
+            'accepting_orders', 'opening_time', 'closing_time', 'business_hours', 'is_open',
             'is_favorited', 'rating_average', 'reviews_count', 'products_count',
         )
 

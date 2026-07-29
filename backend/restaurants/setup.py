@@ -4,7 +4,9 @@
 def restaurant_setup_status(restaurant) -> dict:
     available_products = restaurant.products.filter(is_available=True).count()
     has_logo = bool(restaurant.image)
-    has_hours = bool(restaurant.opening_time and restaurant.closing_time)
+    configured_hours = list(getattr(restaurant, '_prefetched_objects_cache', {}).get('business_hours', []))
+    has_structured_hours = bool(configured_hours) or restaurant.business_hours.exists()
+    has_hours = has_structured_hours or bool(restaurant.opening_time and restaurant.closing_time)
     has_location = (
         restaurant.latitude is not None
         and restaurant.longitude is not None

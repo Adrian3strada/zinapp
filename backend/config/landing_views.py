@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import OperationalError
+from django.http import HttpResponse
 from django.views.generic import TemplateView
 
 
@@ -210,3 +211,39 @@ class LandingView(TemplateView):
             }
         )
         return ctx
+
+
+def robots_txt(request):
+    body = '\n'.join([
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /admin/',
+        'Disallow: /panel/',
+        'Disallow: /api/',
+        'Sitemap: https://zinapp.com.mx/sitemap.xml',
+        '',
+    ])
+    return HttpResponse(body, content_type='text/plain; charset=utf-8')
+
+
+def sitemap_xml(request):
+    body = '''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://zinapp.com.mx/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://zinapp.com.mx/app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://zinapp.com.mx/privacidad/</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+</urlset>
+'''
+    return HttpResponse(body, content_type='application/xml; charset=utf-8')

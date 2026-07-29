@@ -15,6 +15,31 @@ export function formatRestaurantHours(
   return `${formatTimeLabel(opening)} – ${formatTimeLabel(closing)}`;
 }
 
+const WEEKDAY_SHORT_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+export function formatRestaurantSchedule(restaurant: Restaurant): string | null {
+  const businessHours = restaurant.business_hours ?? [];
+  if (businessHours.length === 0) {
+    return formatRestaurantHours(restaurant.opening_time, restaurant.closing_time);
+  }
+  const openDays = businessHours.filter((day) => !day.is_closed && day.opening_time && day.closing_time);
+  if (openDays.length === 0) return 'Horario cerrado';
+  if (openDays.length === 7) {
+    const first = openDays[0];
+    const sameHours = openDays.every(
+      (day) => day.opening_time === first.opening_time && day.closing_time === first.closing_time,
+    );
+    if (sameHours) {
+      return `Todos los días ${formatTimeLabel(first.opening_time!)} – ${formatTimeLabel(first.closing_time!)}`;
+    }
+  }
+  return openDays
+    .map((day) => (
+      `${WEEKDAY_SHORT_LABELS[day.day_of_week] ?? ''} ${formatTimeLabel(day.opening_time!)}–${formatTimeLabel(day.closing_time!)}`
+    ))
+    .join(' · ');
+}
+
 export function formatRatingLabel(restaurant: Restaurant): string | null {
   if (restaurant.rating_average == null) return null;
   const count = restaurant.reviews_count ?? 0;

@@ -35,12 +35,11 @@ import { authApi, deliveryApi, orderApi, restaurantApi } from '../../services/ap
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
-import type { DeliveryProfile, Restaurant } from '../../types';
+import type { DeliveryProfile, Restaurant, RestaurantBusinessHour } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { keyboardAvoidingBehavior } from '../../utils/webPlatform';
 import { formatCurrency } from '../../utils/format';
 import { appendImage, pickImageFromLibrary, pickRestaurantCoverImage, ASPECT_DOCUMENT, ASPECT_SQUARE } from '../../utils/imagePicker';
-import { formatRestaurantHours } from '../../utils/restaurantMeta';
 import type { MapCoordinate } from '../../utils/maps';
 import { toCoordinate } from '../../utils/maps';
 
@@ -50,6 +49,16 @@ const ROLE_LABELS: Record<string, string> = {
   driver: 'Repartidor',
   admin: 'Administrador',
 };
+
+const WEEKDAYS = [
+  { day_of_week: 0, label: 'Lunes' },
+  { day_of_week: 1, label: 'Martes' },
+  { day_of_week: 2, label: 'Miércoles' },
+  { day_of_week: 3, label: 'Jueves' },
+  { day_of_week: 4, label: 'Viernes' },
+  { day_of_week: 5, label: 'Sábado' },
+  { day_of_week: 6, label: 'Domingo' },
+];
 
 function fromApiTime(value?: string | null): string {
   if (!value) return '';
@@ -64,6 +73,48 @@ function toApiTime(value: string): string | null {
   const minute = Number(match[2]);
   if (hour > 23 || minute > 59) return null;
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+}
+
+function normalizeBusinessHours(restaurant: Restaurant): RestaurantBusinessHour[] {
+  const byDay = new Map((restaurant.business_hours ?? []).map((hours) => [hours.day_of_week, hours]));
+  const legacyOpening = fromApiTime(restaurant.opening_time);
+  const legacyClosing = fromApiTime(restaurant.closing_time);
+  return WEEKDAYS.map(({ day_of_week }) => {
+    const existing = byDay.get(day_of_week);
+    if (existing) {
+      return {
+        id: existing.id,
+        day_of_week,
+        is_closed: existing.is_closed,
+        opening_time: fromApiTime(existing.opening_time) || '09:00',
+        closing_time: fromApiTime(existing.closing_time) || '22:00',
+      };
+    }
+    return {
+      day_of_week,
+      is_closed: false,
+      opening_time: legacyOpening || '09:00',
+      closing_time: legacyClosing || '22:00',
+    };
+  });
+}
+
+function formatBusinessHoursSummary(hours: RestaurantBusinessHour[]): string {
+  const openDays = hours.filter((day) => !day.is_closed);
+  if (openDays.length === 0) return 'Todos los días cerrados';
+  if (openDays.length === 7) {
+    const first = openDays[0];
+    const sameHours = openDays.every(
+      (day) => day.opening_time === first.opening_time && day.closing_time === first.closing_time,
+    );
+    if (sameHours) return `Todos los días ${first.opening_time} - ${first.closing_time}`;
+  }
+  return openDays
+    .map((day) => {
+      const label = WEEKDAYS.find((item) => item.day_of_week === day.day_of_week)?.label.slice(0, 3) ?? '';
+      return `${label} ${day.opening_time} - ${day.closing_time}`;
+    })
+    .join(' · ');
 }
 
 export default function ProfileScreen() {
@@ -106,9 +157,13 @@ export default function ProfileScreen() {
     phone: '',
     whatsapp: '',
     address: '',
-    opening_time: '',
-    closing_time: '',
   });
+  const [restaurantHours, setRestaurantHours] = useState<RestaurantBusinessHour[]>([]);
+  const [scheduleTemplate, setScheduleTemplate] = useState({
+    opening_time: '09:00',
+    closing_time: '22:00',
+  });
+  const [showAdvancedHours, setShowAdvancedHours] = useState(false);
   const [restaurantImageUri, setRestaurantImageUri] = useState<string | null>(null);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [togglingOrders, setTogglingOrders] = useState(false);
@@ -146,9 +201,15 @@ export default function ProfileScreen() {
           phone: data.phone ?? '',
           whatsapp: data.whatsapp ?? '',
           address: data.address ?? '',
-          opening_time: fromApiTime(data.opening_time),
-          closing_time: fromApiTime(data.closing_time),
         });
+        const normalizedHours = normalizeBusinessHours(data);
+        const firstOpenDay = normalizedHours.find((day) => !day.is_closed) ?? normalizedHours[0];
+        setRestaurantHours(normalizedHours);
+        setScheduleTemplate({
+          opening_time: firstOpenDay?.opening_time ?? '09:00',
+          closing_time: firstOpenDay?.closing_time ?? '22:00',
+        });
+        setShowAdvancedHours(false);
         setAcceptingOrders(data.accepting_orders !== false);
         setRestaurantCategory(data.category ?? 'general');
         setRestaurantCoords(toCoordinate(data.latitude, data.longitude));
@@ -289,6 +350,57 @@ export default function ProfileScreen() {
     }
   };
 
+  const updateRestaurantHour = (
+    dayOfWeek: number,
+    patch: Partial<Pick<RestaurantBusinessHour, 'is_closed' | 'opening_time' | 'closing_time'>>,
+  ) => {
+    setRestaurantHours((current) =>
+      current.map((item) => (
+        item.day_of_week === dayOfWeek
+          ? { ...item, ...patch }
+          : item
+      )),
+    );
+  };
+
+  const updateScheduleTemplate = (field: 'opening_time' | 'closing_time', value: string) => {
+    setScheduleTemplate((current) => ({ ...current, [field]: value }));
+    setRestaurantHours((current) =>
+      current.map((item) => (
+        item.is_closed ? item : { ...item, [field]: value }
+      )),
+    );
+  };
+
+  const toggleRestaurantDay = (dayOfWeek: number) => {
+    setRestaurantHours((current) =>
+      current.map((item) => {
+        if (item.day_of_week !== dayOfWeek) return item;
+        const willOpen = item.is_closed;
+        return {
+          ...item,
+          is_closed: !willOpen,
+          opening_time: willOpen ? scheduleTemplate.opening_time : item.opening_time,
+          closing_time: willOpen ? scheduleTemplate.closing_time : item.closing_time,
+        };
+      }),
+    );
+  };
+
+  const applyTemplateToOpenDays = () => {
+    setRestaurantHours((current) =>
+      current.map((item) => (
+        item.is_closed
+          ? item
+          : {
+              ...item,
+              opening_time: scheduleTemplate.opening_time,
+              closing_time: scheduleTemplate.closing_time,
+            }
+      )),
+    );
+  };
+
   const handleSaveRestaurant = async () => {
     if (!restaurant) return;
     if (!restaurantForm.name.trim() || !restaurantForm.address.trim()) {
@@ -302,6 +414,21 @@ export default function ProfileScreen() {
       );
       return;
     }
+    const hoursPayload: RestaurantBusinessHour[] = [];
+    for (const day of restaurantHours) {
+      const openingTime = toApiTime(day.opening_time ?? '');
+      const closingTime = toApiTime(day.closing_time ?? '');
+      if (!day.is_closed && (!openingTime || !closingTime)) {
+        appAlert('Horario inválido', 'Usa formato HH:MM en los días abiertos.');
+        return;
+      }
+      hoursPayload.push({
+        day_of_week: day.day_of_week,
+        is_closed: day.is_closed,
+        opening_time: day.is_closed ? null : openingTime,
+        closing_time: day.is_closed ? null : closingTime,
+      });
+    }
     setSaving(true);
     try {
       const fd = new FormData();
@@ -314,15 +441,13 @@ export default function ProfileScreen() {
       fd.append('longitude', String(restaurantCoords.longitude));
       fd.append('category', restaurantCategory);
       fd.append('accepting_orders', acceptingOrders ? 'true' : 'false');
-      const openTime = toApiTime(restaurantForm.opening_time);
-      const closeTime = toApiTime(restaurantForm.closing_time);
-      if (openTime) fd.append('opening_time', openTime);
-      if (closeTime) fd.append('closing_time', closeTime);
+      fd.append('business_hours', JSON.stringify(hoursPayload));
       if (restaurantImageUri) {
         await appendImage(fd, 'image', restaurantImageUri, 'restaurant.jpg');
       }
       const { data } = await restaurantApi.update(restaurant.id, fd);
       setRestaurant(data);
+      setRestaurantHours(normalizeBusinessHours(data));
       setRestaurantCoords(toCoordinate(data.latitude, data.longitude));
       setRestaurantImageUri(null);
       await restaurantCtx?.refresh();
@@ -570,31 +695,147 @@ export default function ProfileScreen() {
               />
               <Text style={styles.subsection}>Horario del local</Text>
               <Text style={styles.hint}>
-                Horario actual: {formatRestaurantHours(restaurant.opening_time, restaurant.closing_time) ?? 'Sin definir (siempre abierto si recibes pedidos)'}
+                Configura días y horas reales. El botón de recibir pedidos se mantiene para pausar o activar pedidos manualmente.
               </Text>
-              <View style={styles.hoursRow}>
-                <View style={styles.hourField}>
-                  <FormField
-                    label="Abre"
-                    value={restaurantForm.opening_time}
-                    onChangeText={(v) => setRestaurantForm((f) => ({ ...f, opening_time: v }))}
-                    icon="time-outline"
-                    embedded
-                    placeholder="09:00"
-                  />
+              <Text style={styles.hoursSummary}>
+                Actual: {formatBusinessHoursSummary(restaurantHours)}
+              </Text>
+              <View style={styles.scheduleQuickCard}>
+                <Text style={styles.scheduleQuickTitle}>Horario general</Text>
+                <View style={styles.hoursRow}>
+                  <View style={styles.hourField}>
+                    <FormField
+                      label="Abre"
+                      value={scheduleTemplate.opening_time}
+                      onChangeText={(v) => updateScheduleTemplate('opening_time', v)}
+                      icon="time-outline"
+                      embedded
+                      placeholder="09:00"
+                      keyboardType="numbers-and-punctuation"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                  <View style={styles.hourField}>
+                    <FormField
+                      label="Cierra"
+                      value={scheduleTemplate.closing_time}
+                      onChangeText={(v) => updateScheduleTemplate('closing_time', v)}
+                      icon="time-outline"
+                      embedded
+                      placeholder="22:00"
+                      keyboardType="numbers-and-punctuation"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
                 </View>
-                <View style={styles.hourField}>
-                  <FormField
-                    label="Cierra"
-                    value={restaurantForm.closing_time}
-                    onChangeText={(v) => setRestaurantForm((f) => ({ ...f, closing_time: v }))}
-                    icon="time-outline"
-                    embedded
-                    placeholder="22:00"
-                  />
+                <Text style={styles.fieldLabel}>Días abiertos</Text>
+                <View style={styles.dayPickerGrid}>
+                  {restaurantHours.map((day) => {
+                    const label = WEEKDAYS.find((item) => item.day_of_week === day.day_of_week)?.label.slice(0, 3) ?? '';
+                    const isOpen = !day.is_closed;
+                    return (
+                      <Pressable
+                        key={day.day_of_week}
+                        style={[styles.dayPickerChip, isOpen && styles.dayPickerChipActive]}
+                        onPress={() => toggleRestaurantDay(day.day_of_week)}
+                        hitSlop={HIT_SLOP}
+                      >
+                        <Text style={[styles.dayPickerText, isOpen && styles.dayPickerTextActive]}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <View style={styles.scheduleActionsRow}>
+                  <Pressable
+                    style={styles.scheduleAction}
+                    onPress={applyTemplateToOpenDays}
+                    hitSlop={HIT_SLOP}
+                  >
+                    <Ionicons name="copy-outline" size={14} color={colors.primary} />
+                    <Text style={styles.scheduleActionText}>Aplicar a días abiertos</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.scheduleAction}
+                    onPress={() => setShowAdvancedHours((value) => !value)}
+                    hitSlop={HIT_SLOP}
+                  >
+                    <Ionicons
+                      name={showAdvancedHours ? 'chevron-up-outline' : 'options-outline'}
+                      size={14}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.scheduleActionText}>
+                      {showAdvancedHours ? 'Ocultar ajustes' : 'Ajustes por día'}
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
-              <FormField label="Descripción" value={restaurantForm.description} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, description: v }))} icon="text-outline" embedded multiline placeholder="Qué ofreces, horarios, especialidades…" />
+              {showAdvancedHours ? (
+              <View style={styles.weekHoursList}>
+                {restaurantHours.map((day) => {
+                  const label = WEEKDAYS.find((item) => item.day_of_week === day.day_of_week)?.label ?? '';
+                  return (
+                    <View key={day.day_of_week} style={styles.weekHourCard}>
+                      <View style={styles.weekHourHeader}>
+                        <Text style={styles.weekDayLabel}>{label}</Text>
+                        <Pressable
+                          style={[
+                            styles.dayStatusChip,
+                            day.is_closed ? styles.dayStatusClosed : styles.dayStatusOpen,
+                          ]}
+                          onPress={() => updateRestaurantHour(day.day_of_week, { is_closed: !day.is_closed })}
+                          hitSlop={HIT_SLOP}
+                        >
+                          <Text
+                            style={[
+                              styles.dayStatusText,
+                              day.is_closed ? styles.dayStatusTextClosed : styles.dayStatusTextOpen,
+                            ]}
+                          >
+                            {day.is_closed ? 'Cerrado' : 'Abierto'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                      {!day.is_closed ? (
+                        <View style={styles.hoursRow}>
+                          <View style={styles.hourField}>
+                            <FormField
+                              label="Abre"
+                              value={day.opening_time ?? ''}
+                              onChangeText={(v) => updateRestaurantHour(day.day_of_week, { opening_time: v })}
+                              icon="time-outline"
+                              embedded
+                              placeholder="09:00"
+                              keyboardType="numbers-and-punctuation"
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                            />
+                          </View>
+                          <View style={styles.hourField}>
+                            <FormField
+                              label="Cierra"
+                              value={day.closing_time ?? ''}
+                              onChangeText={(v) => updateRestaurantHour(day.day_of_week, { closing_time: v })}
+                              icon="time-outline"
+                              embedded
+                              placeholder="22:00"
+                              keyboardType="numbers-and-punctuation"
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                            />
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+              ) : null}
+              <FormField label="Descripción" value={restaurantForm.description} onChangeText={(v) => setRestaurantForm((f) => ({ ...f, description: v }))} icon="text-outline" embedded multiline placeholder="Qué ofreces, especialidades…" />
               <Text style={styles.fieldLabel}>Categoría</Text>
               <View style={styles.categoryRow}>
                 {RESTAURANT_CATEGORIES.filter((c) => c.key).map((cat) => (
@@ -893,6 +1134,92 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   warnText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+  hoursSummary: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    lineHeight: 17,
+  },
+  scheduleQuickCard: {
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    marginBottom: spacing.md,
+  },
+  scheduleQuickTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  dayPickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: spacing.sm,
+  },
+  dayPickerChip: {
+    minWidth: 48,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dayPickerChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dayPickerText: { fontSize: 12, fontWeight: '800', color: colors.textSecondary },
+  dayPickerTextActive: { color: '#FFF' },
+  scheduleActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  scheduleAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+  },
+  scheduleActionText: { fontSize: 12, fontWeight: '800', color: colors.primary },
+  weekHoursList: { gap: spacing.sm, marginBottom: spacing.md },
+  weekHourCard: {
+    backgroundColor: colors.background,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  weekHourHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: spacing.xs,
+  },
+  weekDayLabel: { fontSize: 14, fontWeight: '800', color: colors.text },
+  dayStatusChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+  },
+  dayStatusOpen: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  dayStatusClosed: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  dayStatusText: { fontSize: 11, fontWeight: '800' },
+  dayStatusTextOpen: { color: colors.success },
+  dayStatusTextClosed: { color: colors.error },
   hoursRow: { flexDirection: 'row', gap: 10 },
   hourField: { flex: 1 },
   dangerCard: {

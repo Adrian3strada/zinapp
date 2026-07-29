@@ -9,7 +9,7 @@ import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
 import type { Restaurant } from '../../types';
-import { formatRestaurantHours } from '../../utils/restaurantMeta';
+import { formatRestaurantSchedule } from '../../utils/restaurantMeta';
 import { resolveMediaUrl } from '../../utils/media';
 import { RESTAURANT_CATEGORY_LABELS } from '../../utils/restaurantCategories';
 
@@ -30,7 +30,7 @@ export default function RestaurantProfileDashboard({
 }: Props) {
   const navigation = useNavigation<BottomTabNavigationProp<RestaurantTabParamList>>();
   const imageUri = resolveMediaUrl(restaurant.image_url ?? restaurant.image);
-  const hours = formatRestaurantHours(restaurant.opening_time, restaurant.closing_time);
+  const hours = formatRestaurantSchedule(restaurant);
   const category = RESTAURANT_CATEGORY_LABELS[restaurant.category ?? 'general'] ?? 'General';
   const setupProgress = restaurant.setup_status
     ? `${restaurant.setup_status.done_count}/${restaurant.setup_status.total_count}`

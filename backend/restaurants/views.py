@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import BooleanField, Case, Count, F, Prefetch, Q, Value, When
+from django.db.models import BooleanField, Case, Count, Exists, F, OuterRef, Prefetch, Q, Value, When
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -12,7 +12,7 @@ from drf_spectacular.utils import extend_schema
 from accounts.permissions import IsAdmin, IsRestaurantOwner
 
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
-from .models import Product, ProductOption, ProductOptionGroup, ProductPromotion, Restaurant
+from .models import Product, ProductOption, ProductOptionGroup, ProductPromotion, Restaurant, RestaurantBusinessHour
 from .options import replace_product_option_groups
 from .serializers import (
     ProductOptionGroupsReplaceSerializer,
@@ -27,8 +27,10 @@ from .serializers import (
 
 def annotate_is_open_now(queryset, now_time=None):
     """Marca restaurantes abiertos ahora (misma lógica que Restaurant.is_open_now)."""
-    now = now_time or timezone.localtime().time()
-    open_schedule = (
+    now_dt = timezone.localtime()
+    now = now_time or now_dt.time()
+    weekday = now_dt.weekday()
+    legacy_open_schedule = (
         Q(opening_time__isnull=True)
         | Q(closing_time__isnull=True)
         | (
@@ -41,10 +43,25 @@ def annotate_is_open_now(queryset, now_time=None):
             & (Q(opening_time__lte=now) | Q(closing_time__gte=now))
         )
     )
+    business_hours = RestaurantBusinessHour.objects.filter(restaurant=OuterRef('pk'))
+    open_today = business_hours.filter(
+        day_of_week=weekday,
+        is_closed=False,
+    ).filter(
+        Q(opening_time__lte=F('closing_time')) & Q(opening_time__lte=now, closing_time__gte=now)
+        | Q(opening_time__gt=F('closing_time')) & (Q(opening_time__lte=now) | Q(closing_time__gte=now))
+    )
     return queryset.annotate(
+        has_business_hours=Exists(business_hours),
+        has_open_business_hour=Exists(open_today),
+    ).annotate(
         is_open_now_sort=Case(
             When(
-                Q(is_active=True, accepting_orders=True) & open_schedule,
+                Q(is_active=True, accepting_orders=True, has_open_business_hour=True),
+                then=Value(True),
+            ),
+            When(
+                Q(is_active=True, accepting_orders=True, has_business_hours=False) & legacy_open_schedule,
                 then=Value(True),
             ),
             default=Value(False),
@@ -130,7 +147,7 @@ class RouteView(APIView):
 
 
 class RestaurantViewSet(viewsets.ModelViewSet):
-    queryset = Restaurant.objects.select_related('owner').prefetch_related('products')
+    queryset = Restaurant.objects.select_related('owner').prefetch_related('products', 'business_hours')
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 

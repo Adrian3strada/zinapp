@@ -10,6 +10,16 @@ class RestaurantCategory(models.TextChoices):
     MEXICANA = 'mexicana', 'Mexicana'
 
 
+class Weekday(models.IntegerChoices):
+    MONDAY = 0, 'Lunes'
+    TUESDAY = 1, 'Martes'
+    WEDNESDAY = 2, 'Miércoles'
+    THURSDAY = 3, 'Jueves'
+    FRIDAY = 4, 'Viernes'
+    SATURDAY = 5, 'Sábado'
+    SUNDAY = 6, 'Domingo'
+
+
 class ProductCategory(models.TextChoices):
     ENTRADAS = 'entradas', 'Entradas'
     COMIDA = 'comida', 'Comida'
@@ -77,12 +87,55 @@ class Restaurant(models.Model):
     def is_open_now(self) -> bool:
         if not self.is_active or not self.accepting_orders:
             return False
+        now_dt = timezone.localtime()
+        configured_hours = list(getattr(self, '_prefetched_objects_cache', {}).get('business_hours', []))
+        if not configured_hours:
+            configured_hours = list(self.business_hours.all())
+        if configured_hours:
+            today_hours = next(
+                (hours for hours in configured_hours if hours.day_of_week == now_dt.weekday()),
+                None,
+            )
+            return bool(today_hours and today_hours.is_open_at(now_dt.time()))
         if not self.opening_time or not self.closing_time:
             return True
-        now = timezone.localtime().time()
+        now = now_dt.time()
         if self.opening_time <= self.closing_time:
             return self.opening_time <= now <= self.closing_time
         return now >= self.opening_time or now <= self.closing_time
+
+
+class RestaurantBusinessHour(models.Model):
+    restaurant = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name='business_hours',
+    )
+    day_of_week = models.PositiveSmallIntegerField(choices=Weekday.choices)
+    is_closed = models.BooleanField(default=False)
+    opening_time = models.TimeField(null=True, blank=True)
+    closing_time = models.TimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Horario de restaurante'
+        verbose_name_plural = 'Horarios de restaurante'
+        ordering = ['day_of_week']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['restaurant', 'day_of_week'],
+                name='unique_restaurant_business_hour_day',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.restaurant.name} · {self.get_day_of_week_display()}'
+
+    def is_open_at(self, at_time) -> bool:
+        if self.is_closed or not self.opening_time or not self.closing_time:
+            return False
+        if self.opening_time <= self.closing_time:
+            return self.opening_time <= at_time <= self.closing_time
+        return at_time >= self.opening_time or at_time <= self.closing_time
 
 
 class RestaurantFavorite(models.Model):
