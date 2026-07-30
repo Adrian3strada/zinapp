@@ -2,22 +2,18 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
   type RefObject,
 } from 'react';
 import {
   findNodeHandle,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   UIManager,
-  View,
   type NativeSyntheticEvent,
   type NativeScrollEvent,
   type StyleProp,
@@ -66,7 +62,13 @@ type Props = {
 
 /**
  * Contenedor unificado para formularios con teclado.
- * iOS: padding + scroll al foco. Android: pan del SO + scroll al foco (sin behavior height).
+ *
+ * Una sola estrategia de avoidance:
+ * - iOS: KeyboardAvoidingView (padding) + scroll al foco
+ * - Android/web: pan del SO / layout web + scroll al foco
+ *
+ * No combina KAV + automaticallyAdjustKeyboardInsets + padding manual
+ * (eso inflaba contentSize y provocaba saltos al deslizar).
  */
 export default function KeyboardForm({
   children,
@@ -83,27 +85,9 @@ export default function KeyboardForm({
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
-  const [keyboardPad, setKeyboardPad] = useState(0);
   const offset = keyboardVerticalOffset ?? (Platform.OS === 'ios' ? insets.top : 0);
   const layoutStyle = fill ? styles.flex : styles.shrink;
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return undefined;
-
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onShow = Keyboard.addListener(showEvent, (e) => {
-      const h = e.endCoordinates?.height ?? 0;
-      setKeyboardPad(Math.max(0, h - Math.max(insets.bottom, 0)));
-    });
-    const onHide = Keyboard.addListener(hideEvent, () => setKeyboardPad(0));
-
-    return () => {
-      onShow.remove();
-      onHide.remove();
-    };
-  }, [insets.bottom]);
+  const behavior = keyboardAvoidingBehavior();
 
   const scrollFocusedIntoView = useCallback(
     (reactTag: number) => {
@@ -173,11 +157,6 @@ export default function KeyboardForm({
     [onInputFocus],
   );
 
-  const behavior = keyboardAvoidingBehavior();
-  // Evita hueco enorme: tope suave al padding extra del teclado.
-  const keyboardExtra = Platform.OS === 'web' ? 0 : Math.min(keyboardPad, 280);
-  const padBottom = bottomPadding + (keyboardExtra > 0 ? Math.round(keyboardExtra * 0.35) : 0);
-
   return (
     <KeyboardFormContext.Provider value={ctx}>
       <KeyboardAvoidingView
@@ -188,16 +167,15 @@ export default function KeyboardForm({
         <ScrollView
           ref={scrollRef}
           style={layoutStyle}
-          contentContainerStyle={[contentContainerStyle, { paddingBottom: padBottom }]}
+          contentContainerStyle={[contentContainerStyle, { paddingBottom: bottomPadding }]}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           onScroll={onScroll}
           scrollEventThrottle={16}
           refreshControl={refreshControl}
         >
-          <View style={styles.inner}>{children}</View>
+          {children}
         </ScrollView>
         {footer}
       </KeyboardAvoidingView>
@@ -208,5 +186,4 @@ export default function KeyboardForm({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   shrink: { flexGrow: 0, flexShrink: 1 },
-  inner: { flexGrow: 1 },
 });

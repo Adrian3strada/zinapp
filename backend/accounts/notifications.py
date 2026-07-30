@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import urllib.error
 import urllib.request
 
@@ -8,6 +9,101 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
+
+# Errores de ticket Expo que indican token inválido / dispositivo dado de baja.
+_INVALID_TOKEN_ERRORS = frozenset({'DeviceNotRegistered'})
+_TOKEN_IN_MESSAGE_RE = re.compile(r'ExponentPushToken\[[^\]]*\]')
+
+
+def _sanitize_provider_message(message) -> str:
+    """Quita tokens Expo del mensaje del proveedor para logs seguros."""
+    text = str(message or '').strip()
+    if not text:
+        return ''
+    return _TOKEN_IN_MESSAGE_RE.sub('ExponentPushToken[REDACTED]', text)[:500]
+
+
+def _data_type_name(value) -> str:
+    if value is None:
+        return 'none'
+    if isinstance(value, list):
+        return f'list(len={len(value)})'
+    if isinstance(value, dict):
+        return 'dict'
+    return type(value).__name__
+
+
+def _summarize_expo_response(result) -> dict:
+    """Resumen seguro de la respuesta Expo (sin tokens ni payloads sensibles)."""
+    if not isinstance(result, dict):
+        return {'result_type': type(result).__name__}
+
+    data = result.get('data')
+    summary = {
+        'result_keys': sorted(str(k) for k in result.keys()),
+        'data_type': _data_type_name(data),
+    }
+    errors = result.get('errors')
+    if errors is not None:
+        summary['errors_type'] = _data_type_name(errors)
+        if isinstance(errors, list):
+            summary['errors'] = [
+                {
+                    'code': err.get('code') if isinstance(err, dict) else None,
+                    'message': _sanitize_provider_message(
+                        err.get('message') if isinstance(err, dict) else err
+                    ),
+                }
+                for err in errors[:5]
+            ]
+    return summary
+
+
+def _extract_push_ticket(result) -> dict | None:
+    """
+    Expo puede devolver `data` como:
+    - lista de tickets (envío múltiple o formato array)
+    - un único objeto ticket (un mensaje a un destinatario)
+    """
+    if not isinstance(result, dict):
+        return None
+
+    data = result.get('data')
+    if data is None:
+        return None
+
+    if isinstance(data, list):
+        if not data:
+            return None
+        first = data[0]
+        return first if isinstance(first, dict) else None
+
+    if isinstance(data, dict):
+        # Ticket único: tiene status (ok/error).
+        if 'status' in data:
+            return data
+        # Mapa inesperado: primer valor que parezca ticket.
+        for value in data.values():
+            if isinstance(value, dict) and 'status' in value:
+                return value
+        return None
+
+    return None
+
+
+def _ticket_error_code(ticket: dict) -> str | None:
+    details = ticket.get('details')
+    if isinstance(details, dict):
+        error = details.get('error')
+        if isinstance(error, str) and error:
+            return error
+    return None
+
+
+def _clear_user_push_token(user) -> None:
+    """Marca el token como inactivo limpiándolo (no hay campo is_active aparte)."""
+    user.expo_push_token = ''
+    user.save(update_fields=['expo_push_token'])
 
 ORDER_CUSTOMER_MESSAGES = {
     'pending': 'Recibimos tu pedido. El restaurante lo confirmará pronto.',
@@ -93,31 +189,94 @@ def send_push_to_user(
                     'Push HTTP %s para %s: %s',
                     resp.status,
                     user.username,
-                    raw[:500],
+                    _sanitize_provider_message(raw),
                 )
                 return False
-            result = json.loads(raw) if raw else {}
-            ticket = (result.get('data') or [{}])[0]
-            if ticket.get('status') == 'error':
-                details = ticket.get('details') or {}
-                err_code = details.get('error', ticket)
-                if details.get('error') == 'DeviceNotRegistered':
-                    user.expo_push_token = ''
-                    user.save(update_fields=['expo_push_token'])
+            try:
+                result = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                logger.error(
+                    'Push JSON inválido para %s: data_type=raw preview=%s',
+                    user.username,
+                    _sanitize_provider_message(raw),
+                )
+                return False
+
+            summary = _summarize_expo_response(result)
+            logger.debug(
+                'Push respuesta Expo para %s: %s',
+                user.username,
+                summary,
+            )
+
+            if isinstance(result, dict) and result.get('errors'):
+                logger.error(
+                    'Push error de solicitud Expo para %s: data_type=%s errors=%s',
+                    user.username,
+                    summary.get('data_type'),
+                    summary.get('errors'),
+                )
+                return False
+
+            ticket = _extract_push_ticket(result)
+            if ticket is None:
+                logger.error(
+                    'Push respuesta malformada para %s: data_type=%s summary=%s',
+                    user.username,
+                    summary.get('data_type'),
+                    summary,
+                )
+                return False
+
+            status = ticket.get('status')
+            message = _sanitize_provider_message(ticket.get('message'))
+            details = ticket.get('details') if isinstance(ticket.get('details'), dict) else {}
+            err_code = _ticket_error_code(ticket)
+
+            if status == 'error':
+                if err_code in _INVALID_TOKEN_ERRORS:
+                    _clear_user_push_token(user)
                     logger.warning(
-                        'Push DeviceNotRegistered para %s — token limpiado',
+                        'Push token inválido para %s — marcado inactivo '
+                        '(status=%s error=%s message=%s details=%s)',
                         user.username,
+                        status,
+                        err_code,
+                        message,
+                        details,
                     )
                     return True
-                logger.error('Push rechazado para %s: %s', user.username, err_code)
+                logger.error(
+                    'Push rechazado para %s: data_type=%s status=%s error=%s '
+                    'message=%s details=%s',
+                    user.username,
+                    summary.get('data_type'),
+                    status,
+                    err_code,
+                    message,
+                    details,
+                )
                 return False
+
+            if status != 'ok':
+                logger.error(
+                    'Push status inesperado para %s: data_type=%s status=%s '
+                    'message=%s details=%s',
+                    user.username,
+                    summary.get('data_type'),
+                    status,
+                    message,
+                    details,
+                )
+                return False
+
             if getattr(settings, 'DEBUG', False):
                 logger.info('Push [%s]: %s — %s', user.username, title, body)
             return True
     except urllib.error.HTTPError as exc:
         body_preview = ''
         try:
-            body_preview = exc.read().decode()[:500]
+            body_preview = _sanitize_provider_message(exc.read().decode())
         except Exception:
             pass
         logger.error(

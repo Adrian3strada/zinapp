@@ -24,4 +24,6 @@ export const modalPresentationOptions: NativeStackNavigationOptions = {
   }),
   gestureEnabled: Platform.OS !== 'web',
   gestureDirection: 'vertical',
+  // Evita que el dismiss vertical capture el drag en todo el sheet y pelee con ScrollView/FlatList.
+  fullScreenGestureEnabled: false,
 };
