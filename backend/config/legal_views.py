@@ -56,6 +56,9 @@ class PrivacyPolicyView(TemplateView):
                     ensure_ascii=False,
                     separators=(',', ':'),
                 ),
+                'stripe_payments_enabled': bool(
+                    (getattr(settings, 'STRIPE_SECRET_KEY', '') or '').strip()
+                ),
             }
         )
         return ctx

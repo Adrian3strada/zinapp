@@ -118,6 +118,11 @@ button { font: inherit; }
 
 .btn:active { transform: scale(0.98); }
 
+.btn:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
 .btn:disabled,
 .btn[aria-disabled="true"],
 .btn.disabled {
@@ -623,7 +628,8 @@ button { font: inherit; }
   min-height: 0;
 }
 
-.biz-body h3 {
+.biz-body h3,
+.biz-name {
   margin: 0;
   font-size: 1.05rem;
   font-family: var(--font-display);
@@ -634,6 +640,7 @@ button { font: inherit; }
   overflow: hidden;
   min-height: 2.5em;
   line-height: 1.25;
+  word-break: break-word;
 }
 
 .biz-meta {
@@ -822,7 +829,67 @@ button { font: inherit; }
   .install-actions .btn { width: auto; }
 }
 
+.install-note {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
 /* —— Trust —— */
+.trust-metrics {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  margin: 0 0 1.25rem;
+}
+
+.trust-metric {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.trust-metric-value {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--blue);
+  font-family: var(--font-display);
+}
+
+.trust-testimonials,
+.trust-promos {
+  display: grid;
+  gap: 1rem;
+  margin: 0 0 1.5rem;
+}
+
+.trust-quote,
+.trust-promo {
+  margin: 0;
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  background: rgba(30, 93, 184, 0.06);
+}
+
+.trust-quote cite {
+  display: block;
+  margin-top: 0.5rem;
+  font-style: normal;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.trust-metric-label {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .trust-grid {
   display: grid;
   gap: 0.85rem;

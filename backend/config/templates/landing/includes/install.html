@@ -4,16 +4,22 @@
       <p class="section-kicker">En tu celular</p>
       <h2 class="section-title" id="install-title">Instala ZinApp en tu celular</h2>
       <p class="section-lead">
-        Descarga ZinApp desde Google Play o App Store y empieza a pedir en Zinapécuaro.
+        {% if google_play_enabled and play_store_url %}
+          Descarga ZinApp desde Google Play o App Store y empieza a pedir en Zinapécuaro.
+        {% else %}
+          Disponible en App Store. Próximamente en Google Play. Mientras tanto, úsala en Android desde el navegador.
+        {% endif %}
       </p>
     </div>
 
     <div class="install-actions">
-      {% if play_store_url %}
+      {% if google_play_enabled and play_store_url %}
         <a class="btn btn-primary" href="{{ play_store_url }}" rel="noopener noreferrer" target="_blank">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.6 2.7c-.3.2-.5.6-.5 1.1v16.4c0 .5.2.9.5 1.1l.1.1 9.1-9.1v-.2L3.7 2.6l-.1.1zm11.3 6.5L12.1 12l2.8 2.8 3.5-2c.6-.3.6-1.2 0-1.6l-3.5-2zm-1.5 3.6-9.4 9.4c.2 0 .4 0 .6-.1l10.6-6.1-1.8-3.2zm0-1.6 1.8-3.2L5.6 2.1c-.2-.1-.4-.1-.6-.1l9.4 9.2z"/></svg>
           Google Play
         </a>
+      {% else %}
+        <a class="btn btn-primary" href="{{ app_url }}">Usar ZinApp en Android</a>
       {% endif %}
       {% if app_store_url %}
         <a class="btn btn-secondary" href="{{ app_store_url }}" rel="noopener noreferrer" target="_blank">
@@ -23,20 +29,38 @@
       {% endif %}
       <a class="btn btn-ghost" href="{{ app_url }}">Abrir en el navegador</a>
     </div>
+    <p class="install-note">
+      Disponible en App Store.
+      {% if google_play_enabled and play_store_url %}
+        Disponible en Google Play.
+      {% else %}
+        Próximamente en Google Play.
+      {% endif %}
+    </p>
 
     <div class="accordion">
-      <details id="instalar-android" {% if not play_store_url %}open{% endif %}>
+      <details id="instalar-android" {% if not google_play_enabled or not play_store_url %}open{% endif %}>
         <summary>Instrucciones para Android</summary>
         <div class="acc-body">
-          <ol>
-            <li>Abre la app <strong>Google Play Store</strong> en tu celular.</li>
-            <li>Busca <strong>ZinApp</strong>.</li>
-            <li>Toca <strong>Instalar</strong> y espera a que termine la descarga.</li>
-            <li>Abre ZinApp desde tu pantalla de inicio y crea tu cuenta o inicia sesión.</li>
-          </ol>
-          {% if play_store_url %}
+          {% if google_play_enabled and play_store_url %}
+            <ol>
+              <li>Abre la app <strong>Google Play Store</strong> en tu celular.</li>
+              <li>Busca <strong>ZinApp</strong>.</li>
+              <li>Toca <strong>Instalar</strong> y espera a que termine la descarga.</li>
+              <li>Abre ZinApp desde tu pantalla de inicio y crea tu cuenta o inicia sesión.</li>
+            </ol>
             <p style="margin: 0.85rem 0 0;">
               <a class="btn btn-primary btn-sm" href="{{ play_store_url }}" rel="noopener noreferrer" target="_blank">Descargar en Google Play</a>
+            </p>
+          {% else %}
+            <ol>
+              <li>Abre el navegador de tu celular Android (Chrome, Firefox, etc.).</li>
+              <li>Entra a <strong>zinapp.com.mx/app</strong> o toca el botón de abajo.</li>
+              <li>Inicia sesión o crea tu cuenta para pedir comida y ver negocios.</li>
+              <li>Cuando ZinApp esté en Google Play, podrás instalarla desde la tienda.</li>
+            </ol>
+            <p style="margin: 0.85rem 0 0;">
+              <a class="btn btn-primary btn-sm" href="{{ app_url }}">Usar ZinApp en Android</a>
             </p>
           {% endif %}
         </div>

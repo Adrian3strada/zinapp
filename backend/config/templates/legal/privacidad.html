@@ -494,9 +494,17 @@
       </div>
 
       <div class="notice">
-        <strong>Datos que no recopilamos:</strong> no solicitamos número de tarjeta bancaria ni procesamos
-        pagos con tarjeta dentro de la app. Los pagos por transferencia se realizan fuera de la Plataforma
-        hacia la cuenta de ZinApp; la app muestra los datos bancarios de la plataforma para ese fin.
+        {% if stripe_payments_enabled %}
+          <strong>Pagos con tarjeta:</strong> cuando eliges pagar con tarjeta, el cobro se procesa
+          mediante <strong>Stripe</strong>, un proveedor de pagos externo. ZinApp no almacena
+          directamente los datos completos de tu tarjeta (número, CVV ni fecha de vencimiento).
+          Stripe trata esa información bajo sus propios términos y políticas.
+          También puedes pagar en efectivo o por transferencia según las opciones disponibles en la app.
+        {% else %}
+          <strong>Datos que no recopilamos:</strong> no solicitamos número de tarjeta bancaria ni procesamos
+          pagos con tarjeta dentro de la app. Los pagos por transferencia se realizan fuera de la Plataforma
+          hacia la cuenta de ZinApp; la app muestra los datos bancarios de la plataforma para ese fin.
+        {% endif %}
       </div>
     </section>
 
@@ -926,6 +934,27 @@
     <!-- 19 -->
     <section class="card" id="pagos">
       <h2>19. Pagos, transferencias y datos financieros</h2>
+      {% if stripe_payments_enabled %}
+      <p>
+        ZinApp facilita pagos en efectivo, transferencia bancaria SPEI y, cuando está disponible,
+        pago con tarjeta procesado por <strong>Stripe</strong>. Es importante que comprendas lo siguiente:
+      </p>
+      <ul>
+        <li>ZinApp <strong>no es una institución financiera</strong>.</li>
+        <li>
+          El procesamiento de pagos con tarjeta lo realiza Stripe. ZinApp <strong>no almacena</strong>
+          el número completo de tu tarjeta, CVV ni fecha de vencimiento en sus servidores.
+        </li>
+        <li>
+          Stripe puede tratar datos necesarios para autorizar el pago (incluido identificadores técnicos)
+          conforme a su política de privacidad.
+          <!-- Revisión jurídica recomendada: alinear con el DPA/TOS vigente de Stripe en México. -->
+        </li>
+        <li>Los datos bancarios (CLABE, banco, titular) que ves al pagar por transferencia pertenecen a ZinApp, no al restaurante.</li>
+        <li>Los comprobantes de transferencia que adjuntas se almacenan para validar tu pago.</li>
+        <li>El intercambio de comprobantes por WhatsApp u otro canal externo queda bajo tu responsabilidad y la política del proveedor correspondiente.</li>
+      </ul>
+      {% else %}
       <p>
         ZinApp facilita la coordinación de pagos en efectivo contra entrega o mediante transferencia
         bancaria SPEI hacia la cuenta de ZinApp. Es importante que comprendas lo siguiente:
@@ -937,6 +966,7 @@
         <li>El intercambio de comprobantes por WhatsApp u otro canal externo queda bajo tu responsabilidad y la política del proveedor correspondiente.</li>
         <li>ZinApp no almacena números de tarjeta de crédito o débito porque no procesa ese método de pago.</li>
       </ul>
+      {% endif %}
       <div class="warn">
         Verifica siempre que los datos bancarios coincidan con los publicados en la app antes de
         realizar una transferencia. Ante cualquier discrepancia, contacta a soporte

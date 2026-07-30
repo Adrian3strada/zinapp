@@ -6,6 +6,45 @@
       <p class="section-lead">Una plataforma local, clara y fácil de usar.</p>
     </div>
 
+    {% if trust_metrics.show_metrics %}
+      <div class="trust-metrics" aria-label="Datos de la plataforma">
+        {% if trust_metrics.business_count %}
+          <div class="trust-metric">
+            <p class="trust-metric-value">{{ trust_metrics.business_count }}</p>
+            <p class="trust-metric-label">Negocios registrados</p>
+          </div>
+        {% endif %}
+        {% if trust_metrics.order_count %}
+          <div class="trust-metric">
+            <p class="trust-metric-value">{{ trust_metrics.order_count }}</p>
+            <p class="trust-metric-label">Pedidos realizados</p>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if trust_metrics.testimonials %}
+      <div class="trust-testimonials" aria-label="Opiniones de usuarios">
+        {% for item in trust_metrics.testimonials %}
+          <blockquote class="trust-quote">
+            <p>{{ item.quote }}</p>
+            {% if item.author %}<cite>{{ item.author }}</cite>{% endif %}
+          </blockquote>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if trust_metrics.active_promotions %}
+      <div class="trust-promos" aria-label="Promociones activas">
+        {% for promo in trust_metrics.active_promotions %}
+          <article class="trust-promo">
+            <h3>{{ promo.title }}</h3>
+            {% if promo.summary %}<p>{{ promo.summary }}</p>{% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <div class="trust-grid">
       <article class="trust-item">
         <div class="trust-icon" aria-hidden="true">
@@ -22,8 +61,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1 12.4-10.3 8.4 8.4 0 0 1 3.7 6.5z"/></svg>
         </div>
         <div>
-          <h3>Atención por WhatsApp</h3>
-          <p>Soporte cercano para clientes y negocios.</p>
+          <h3>Contacto directo</h3>
+          <p>Atención por WhatsApp y soporte cercano para clientes y negocios.</p>
         </div>
       </article>
 
@@ -42,8 +81,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="2.5"/></svg>
         </div>
         <div>
-          <h3>Servicio en Zinapécuaro</h3>
-          <p>Enfocado en tu pueblo, no en ciudades lejanas.</p>
+          <h3>Creada para Zinapécuaro</h3>
+          <p>Enfocada en tu pueblo, no en ciudades lejanas.</p>
         </div>
       </article>
 

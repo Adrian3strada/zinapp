@@ -66,6 +66,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'config.canonical_redirect.CanonicalHostRedirectMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -183,6 +184,8 @@ API_DOCS_ENABLED = config('API_DOCS_ENABLED', default=DEBUG, cast=bool)
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
 APP_STORE_URL = config('APP_STORE_URL', default='').strip()
 PLAY_STORE_URL = config('PLAY_STORE_URL', default='').strip()
+# false mientras la ficha de Play no esté pública (evita botones a 404).
+GOOGLE_PLAY_ENABLED = config('GOOGLE_PLAY_ENABLED', default=False, cast=bool)
 # Landing: URL pública de la app web y contacto opcional (vacío = no mostrar)
 LANDING_APP_URL = config('LANDING_APP_URL', default='https://zinapp.com.mx/app/').strip()
 SUPPORT_EMAIL = config('SUPPORT_EMAIL', default='').strip()
@@ -192,6 +195,12 @@ SOCIAL_FACEBOOK = config('SOCIAL_FACEBOOK', default='').strip()
 TERMS_URL = config('TERMS_URL', default='').strip()
 # URL canónica del sitio público (sin / al final). Usada en SEO: canonical, OG, sitemap, robots.
 SITE_URL = config('SITE_URL', default='https://zinapp.com.mx').strip().rstrip('/')
+# 301 Railway/Render → SITE_URL solo para landing/SEO (no API/panel/app).
+CANONICAL_HOST_REDIRECT = config('CANONICAL_HOST_REDIRECT', default=True, cast=bool)
+# Lista opcional de hosts a redirigir (vacío = *.railway.app / *.onrender.com).
+CANONICAL_REDIRECT_HOSTS = config('CANONICAL_REDIRECT_HOSTS', default='', cast=Csv())
+# Mostrar conteos reales de negocios en la sección confianza (si hay datos).
+LANDING_SHOW_LIVE_STATS = config('LANDING_SHOW_LIVE_STATS', default=False, cast=bool)
 DEMO_ACCOUNTS_ENABLED = config('DEMO_ACCOUNTS_ENABLED', default=DEBUG, cast=bool)
 
 # Google Sign-In: Client IDs OAuth (Web y/o Android/iOS), separados por coma.

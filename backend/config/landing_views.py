@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, time
 import json
+import re
 
 from django.conf import settings
 from django.db import OperationalError
@@ -14,8 +15,10 @@ LANDING_FAQS = [
     {
         'question': '¿Necesito descargar ZinApp?',
         'answer': (
-            'Puedes usarla desde el navegador en zinapp.com.mx/app, '
-            'pero lo más fácil es instalarla desde Google Play o App Store.'
+            'Puedes usarla desde el navegador en zinapp.com.mx/app. '
+            'En iPhone también puedes instalarla desde App Store. '
+            'En Android, mientras la ficha de Google Play no esté pública, '
+            'usa ZinApp en el navegador.'
         ),
     },
     {
@@ -26,10 +29,10 @@ LANDING_FAQS = [
         ),
     },
     {
-        'question': '¿Cuánto cuesta aparecer en Servicios?',
+        'question': '¿Qué incluye la modalidad Servicios?',
         'answer': (
-            'La modalidad Servicios tiene un costo de $150 MXN mensuales e incluye publicación del negocio, '
-            'contacto, horario, dirección y ubicación en Google Maps.'
+            'Publicación del negocio, contacto, horario, dirección y ubicación en Google Maps. '
+            'Para registrarte o conocer las condiciones actuales, contáctanos por WhatsApp.'
         ),
     },
     {
@@ -65,14 +68,79 @@ def _whatsapp_link(raw: str) -> str:
     return f'https://wa.me/{digits}'
 
 
+_DAY_SHORT = {
+    0: 'Lun',
+    1: 'Mar',
+    2: 'Mié',
+    3: 'Jue',
+    4: 'Vie',
+    5: 'Sáb',
+    6: 'Dom',
+}
+
+
+def _format_clock(value: time) -> str:
+    hour = value.hour % 12 or 12
+    minute = value.strftime('%M')
+    suffix = 'a. m.' if value.hour < 12 else 'p. m.'
+    return f'{hour}:{minute} {suffix}'
+
+
 def _format_schedule(opening, closing) -> str:
     if not opening or not closing:
-        return 'Consulta horario en la app'
-    return f'{opening.strftime("%H:%M")} – {closing.strftime("%H:%M")}'
+        return 'Horario no disponible'
+    return f'{_format_clock(opening)}–{_format_clock(closing)}'
 
 
-def _category_label(choices, value: str) -> str:
-    return dict(choices).get(value, value or 'Local')
+def _format_business_hours(hours) -> str:
+    """Resume días consecutivos con el mismo horario."""
+    open_days = [
+        h for h in hours
+        if not getattr(h, 'is_closed', False) and h.opening_time and h.closing_time
+    ]
+    if not open_days:
+        return 'Horario no disponible'
+
+    open_days.sort(key=lambda h: h.day_of_week)
+    groups: list[tuple[int, int, time, time]] = []
+    start = prev = open_days[0]
+    for current in open_days[1:]:
+        same_hours = (
+            current.opening_time == start.opening_time
+            and current.closing_time == start.closing_time
+        )
+        consecutive = current.day_of_week == prev.day_of_week + 1
+        if same_hours and consecutive:
+            prev = current
+            continue
+        groups.append((start.day_of_week, prev.day_of_week, start.opening_time, start.closing_time))
+        start = prev = current
+    groups.append((start.day_of_week, prev.day_of_week, start.opening_time, start.closing_time))
+
+    parts = []
+    for day_from, day_to, opening, closing in groups[:3]:
+        if day_from == day_to:
+            label = _DAY_SHORT.get(day_from, str(day_from))
+        else:
+            label = f'{_DAY_SHORT.get(day_from, day_from)}–{_DAY_SHORT.get(day_to, day_to)}'
+        parts.append(f'{label} · {_format_schedule(opening, closing)}')
+    return ' · '.join(parts)
+
+
+def _shorten_schedule_text(raw: str) -> str:
+    text = re.sub(r'\s+', ' ', (raw or '').strip())
+    if not text:
+        return 'Horario no disponible'
+    if len(text) > 72:
+        return text[:69].rstrip(' ,;.') + '…'
+    return text
+
+
+def _category_label(choices, value: str, *, fallback: str = 'Local') -> str:
+    label = dict(choices).get(value, value or fallback)
+    if (label or '').strip().lower() == 'general':
+        return fallback
+    return label or fallback
 
 
 def _restaurant_cards(limit: int = 6) -> list[dict]:
@@ -84,7 +152,9 @@ def _restaurant_cards(limit: int = 6) -> list[dict]:
 
     try:
         restaurants = list(
-            Restaurant.objects.filter(is_active=True).order_by('name')[:limit]
+            Restaurant.objects.filter(is_active=True)
+            .prefetch_related('business_hours')
+            .order_by('name')[:limit]
         )
     except (OperationalError, Exception):
         # Landing no debe fallar si la BD no responde.
@@ -98,12 +168,21 @@ def _restaurant_cards(limit: int = 6) -> list[dict]:
                 image_url = r.image.url
             except ValueError:
                 image_url = ''
+        hours = list(r.business_hours.all())
+        if hours:
+            schedule = _format_business_hours(hours)
+        else:
+            schedule = _format_schedule(r.opening_time, r.closing_time)
         cards.append(
             {
                 'id': f'restaurant-{r.pk}',
                 'name': r.name,
-                'category': _category_label(RestaurantCategory.choices, r.category),
-                'schedule': _format_schedule(r.opening_time, r.closing_time),
+                'category': _category_label(
+                    RestaurantCategory.choices,
+                    r.category,
+                    fallback='Restaurante',
+                ),
+                'schedule': schedule,
                 'location': (r.address or 'Zinapécuaro').strip(),
                 'image_url': image_url,
                 'cta_label': 'Pedir ahora',
@@ -142,8 +221,12 @@ def _service_cards(limit: int = 6) -> list[dict]:
             {
                 'id': f'service-{s.pk}',
                 'name': s.name,
-                'category': _category_label(LocalServiceCategory.choices, s.category),
-                'schedule': (s.schedule or 'Consulta horario en la app').strip(),
+                'category': _category_label(
+                    LocalServiceCategory.choices,
+                    s.category,
+                    fallback='Servicio',
+                ),
+                'schedule': _shorten_schedule_text(s.schedule),
                 'location': (s.address or 'Zinapécuaro').strip(),
                 'image_url': image_url,
                 'cta_label': 'Ver negocio',
@@ -161,8 +244,8 @@ def _demo_featured_businesses() -> list[dict]:
         {
             'id': 'demo-1',
             'name': 'Ejemplo: Taquería El Centro',
-            'category': 'Comida',
-            'schedule': '11:00 – 22:00',
+            'category': 'Restaurante',
+            'schedule': 'Lun–Dom · 11:00 a. m.–10:00 p. m.',
             'location': 'Centro, Zinapécuaro',
             'image_url': '',
             'cta_label': 'Pedir ahora',
@@ -172,9 +255,9 @@ def _demo_featured_businesses() -> list[dict]:
         },
         {
             'id': 'demo-2',
-            'name': 'Ejemplo: Salon María Belleza',
-            'category': 'Servicios',
-            'schedule': 'Lun–Sáb 10:00–19:00',
+            'name': 'Ejemplo: Salón María Belleza',
+            'category': 'Servicio',
+            'schedule': 'Lun–Sáb · 10:00 a. m.–7:00 p. m.',
             'location': 'Col. Independencia',
             'image_url': '',
             'cta_label': 'Ver negocio',
@@ -186,7 +269,7 @@ def _demo_featured_businesses() -> list[dict]:
             'id': 'demo-3',
             'name': 'Ejemplo: Abarrotes Don Luis',
             'category': 'Comercio',
-            'schedule': '8:00 – 21:00',
+            'schedule': 'Lun–Dom · 8:00 a. m.–9:00 p. m.',
             'location': 'Av. Principal',
             'image_url': '',
             'cta_label': 'Ver negocio',
@@ -195,6 +278,52 @@ def _demo_featured_businesses() -> list[dict]:
             'is_demo': True,
         },
     ]
+
+
+def _live_trust_metrics() -> dict:
+    """Métricas reales opcionales; ocultas sin flag o sin datos."""
+    empty = {
+        'business_count': None,
+        'order_count': None,
+        'show_metrics': False,
+        'testimonials': [],
+        'active_promotions': [],
+    }
+    if not getattr(settings, 'LANDING_SHOW_LIVE_STATS', False):
+        return empty
+    business_count = 0
+    order_count = 0
+    try:
+        from restaurants.models import Restaurant
+        business_count += Restaurant.objects.filter(is_active=True).count()
+    except Exception:
+        pass
+    try:
+        from local_services.models import LocalService
+        business_count += LocalService.objects.filter(is_active=True).count()
+    except Exception:
+        pass
+    try:
+        from orders.models import Order
+        order_count = Order.objects.count()
+    except Exception:
+        pass
+    # testimonials / active_promotions: reservados para datos reales futuros (sin inventar).
+    return {
+        'business_count': business_count if business_count > 0 else None,
+        'order_count': order_count if order_count > 0 else None,
+        'show_metrics': business_count > 0 or order_count > 0,
+        'testimonials': [],
+        'active_promotions': [],
+    }
+
+
+def _play_store_context() -> dict:
+    enabled = bool(getattr(settings, 'GOOGLE_PLAY_ENABLED', False))
+    url = (getattr(settings, 'PLAY_STORE_URL', '') or '').strip()
+    if enabled and url:
+        return {'google_play_enabled': True, 'play_store_url': url}
+    return {'google_play_enabled': False, 'play_store_url': ''}
 
 
 def _featured_businesses(limit: int = 6) -> tuple[list[dict], bool]:
@@ -351,6 +480,7 @@ class LandingView(TemplateView):
                 ],
             },
         ]
+        play = _play_store_context()
         ctx.update(
             {
                 'site_url': site_url,
@@ -363,7 +493,8 @@ class LandingView(TemplateView):
                 ),
                 'app_url': settings.LANDING_APP_URL or '/app/',
                 'app_store_url': settings.APP_STORE_URL,
-                'play_store_url': settings.PLAY_STORE_URL,
+                'google_play_enabled': play['google_play_enabled'],
+                'play_store_url': play['play_store_url'],
                 'whatsapp_url': _whatsapp_link(whatsapp),
                 'support_email': settings.SUPPORT_EMAIL,
                 'support_phone': settings.SUPPORT_PHONE,
@@ -373,6 +504,7 @@ class LandingView(TemplateView):
                 'register_whatsapp_text': register_msg,
                 'featured_businesses': featured,
                 'featured_is_demo': using_demo,
+                'trust_metrics': _live_trust_metrics(),
             }
         )
         return ctx

@@ -4,10 +4,10 @@
     <div class="hero-copy">
       <p class="hero-badge" role="note">Compra local. Apoya a Zinapécuaro.</p>
       <p class="hero-brand">ZinApp</p>
-      <h1 id="hero-title">Todo Zinapécuaro en una sola app.</h1>
-      <p class="hero-lead">Pide comida, encuentra servicios y descubre negocios locales desde un solo lugar.</p>
+      <h1 id="hero-title">Todo Zinapécuaro en una sola app</h1>
+      <p class="hero-lead">Pide comida local, encuentra servicios y descubre negocios cerca de ti.</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="{{ app_url }}">Abrir ZinApp</a>
+        <a class="btn btn-primary" href="{{ app_url }}">Pedir comida ahora</a>
         {% if whatsapp_url %}
           <a
             class="btn btn-secondary"
@@ -18,7 +18,15 @@
           <a class="btn btn-secondary" href="#negocios">Registrar mi negocio</a>
         {% endif %}
       </div>
-      <p class="hero-note">Disponible en Google Play y App Store. También puedes abrirla en el navegador.</p>
+      <p class="hero-note">
+        {% if app_store_url %}Disponible en App Store.{% endif %}
+        {% if google_play_enabled and play_store_url %}
+          Disponible en Google Play.
+        {% else %}
+          Próximamente en Google Play.
+        {% endif %}
+        También puedes abrirla en el navegador.
+      </p>
     </div>
 
     <div class="hero-visual">
@@ -27,7 +35,7 @@
           <div class="phone-notch"></div>
           <img
             src="{% static 'landing/screenshots/home.png' %}"
-            alt=""
+            alt="Vista previa de ZinApp mostrando restaurantes y pedidos en Zinapécuaro"
             width="472"
             height="1024"
             loading="eager"

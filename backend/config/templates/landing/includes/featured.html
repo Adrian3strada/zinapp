@@ -21,10 +21,10 @@
           </div>
           <div class="biz-body">
             <span class="biz-cat">{{ biz.category }}</span>
-            <h3>{{ biz.name }}</h3>
+            <h3 class="biz-name">{{ biz.name }}</h3>
             <div class="biz-meta">
-              <span>Horario: {{ biz.schedule }}</span>
-              <span>Ubicación: {{ biz.location }}</span>
+              <span title="{{ biz.schedule }}">Horario: {{ biz.schedule }}</span>
+              <span title="{{ biz.location }}">Ubicación: {{ biz.location }}</span>
             </div>
             <a class="btn btn-primary btn-sm" href="{{ biz.cta_url }}">{{ biz.cta_label }}</a>
           </div>
