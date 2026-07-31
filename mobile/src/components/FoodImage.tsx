@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, ImageStyle, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Image, ImageStyle, Platform, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { colors } from '../theme/colors';
 
@@ -31,6 +31,10 @@ export default function FoodImage({ emoji, color, size = 'md', imageUri, style }
         style={[{ width: dim, height: dim, borderRadius: dim * 0.2 }, style as ImageStyle]}
         onError={() => setFailed(true)}
         resizeMode="cover"
+        // Android: menos trabajo al decodificar fotos grandes en listas del menú.
+        {...(Platform.OS === 'android'
+          ? { fadeDuration: 0, resizeMethod: 'resize' as const }
+          : null)}
       />
     );
   }

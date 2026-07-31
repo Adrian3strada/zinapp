@@ -147,7 +147,7 @@ class RouteView(APIView):
 
 
 class RestaurantViewSet(viewsets.ModelViewSet):
-    queryset = Restaurant.objects.select_related('owner').prefetch_related('products', 'business_hours')
+    queryset = Restaurant.objects.select_related('owner').prefetch_related('business_hours')
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -67,6 +67,9 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const [favorited, setFavorited] = useState(false);
   const [togglingFavorite, setTogglingFavorite] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<ProductCategoryKey | null>(null);
+  // Ref estable: evita recrear handleDecrease / renderItem en cada cambio del carrito.
+  const cartItemsRef = useRef(items);
+  cartItemsRef.current = items;
 
   const visual = getRestaurantVisual(restaurant?.name ?? restaurantName);
   const imageUri = resolveMediaUrl(restaurant?.image_url ?? restaurant?.image);
@@ -148,18 +151,19 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   }, [addItem, handleOpenDetail, productNeedsOptions]);
 
   const handleDecrease = useCallback((product: Product) => {
+    const cartItems = cartItemsRef.current;
     // Prefiere la línea sin notas/opciones; si no, la primera del producto.
-    const plain = items.find(
+    const plain = cartItems.find(
       (i) =>
         i.product.id === product.id
         && !(i.notes ?? '').trim()
         && !(i.selectedOptions?.length),
     );
-    const line = plain ?? items.find((i) => i.product.id === product.id);
+    const line = plain ?? cartItems.find((i) => i.product.id === product.id);
     if (!line) return;
     updateQuantity(product.id, line.quantity - 1, line.notes, line.selectedOptions);
     void impactLight();
-  }, [items, updateQuantity]);
+  }, [updateQuantity]);
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
@@ -172,6 +176,17 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
       />
     ),
     [handleAdd, handleDecrease, handleOpenDetail, quantityByProduct],
+  );
+
+  const listTuning = useMemo(
+    () => ({
+      ...FLATLIST_TUNING,
+      // En el menú Android, recortar vistas fuera de pantalla ayuda al scroll.
+      ...(Platform.OS === 'android'
+        ? { removeClippedSubviews: true, windowSize: 5, maxToRenderPerBatch: 6, initialNumToRender: 8 }
+        : null),
+    }),
+    [],
   );
 
   const availableCategoryKeys = useMemo(() => {
@@ -366,7 +381,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
             <EmptyState emoji="🍽️" title="Menú vacío" subtitle="Este restaurante aún no tiene platillos publicados." />
           ) : null
         }
-        {...FLATLIST_TUNING}
+        {...listTuning}
       />
 
       {isCustomer && (

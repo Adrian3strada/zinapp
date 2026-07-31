@@ -440,13 +440,11 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
 
 
 class RestaurantPublicDetailSerializer(RestaurantPublicSerializer):
-    products = serializers.SerializerMethodField()
+    """Detalle público liviano: el menú se carga por /api/products/ (paginado).
+
+    Evita serializar todos los productos + option_groups al abrir el restaurante,
+    que en Android duplicaba trabajo con la lista paginada y hacía trabar el menú.
+    """
 
     class Meta(RestaurantPublicSerializer.Meta):
-        fields = RestaurantPublicSerializer.Meta.fields + ('products',)
-
-    def get_products(self, obj):
-        products = obj.products.all()
-        if hasattr(obj, '_prefetched_objects_cache') and 'products' in obj._prefetched_objects_cache:
-            products = obj._prefetched_objects_cache['products']
-        return ProductSerializer(products, many=True, context=self.context).data
+        fields = RestaurantPublicSerializer.Meta.fields
