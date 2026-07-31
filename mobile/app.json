@@ -61,7 +61,7 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 154,
+      "versionCode": 155,
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
