@@ -3,7 +3,7 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.26",
+    "version": "1.1.27",
     "scheme": [
       "zinapp",
       "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd",
@@ -61,7 +61,7 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 151,
+      "versionCode": 152,
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
@@ -122,6 +122,12 @@
       ],
       "expo-secure-store",
       "expo-web-browser",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd"
+        }
+      ],
       [
         "@stripe/stripe-react-native",
         {

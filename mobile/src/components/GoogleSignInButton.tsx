@@ -8,6 +8,7 @@ import {
   consumeGoogleWebRedirect,
   extractGoogleIdToken,
   isGoogleSignInConfigured,
+  signInWithGoogleNative,
   startGoogleWebRedirect,
   useGoogleIdTokenRequest,
 } from '../utils/googleAuth';
@@ -26,10 +27,11 @@ export default function GoogleSignInButton({
   const [busy, setBusy] = useState(false);
   const handledRef = useRef<string | null>(null);
   const webReturnHandled = useRef(false);
+  const isWeb = Platform.OS === 'web';
   const [request, response, promptAsync] = useGoogleIdTokenRequest();
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || webReturnHandled.current) return;
+    if (!isWeb || webReturnHandled.current) return;
     const result = consumeGoogleWebRedirect();
     if (!result) return;
     webReturnHandled.current = true;
@@ -50,10 +52,10 @@ export default function GoogleSignInButton({
         setBusy(false);
       }
     })();
-  }, [onIdToken]);
+  }, [isWeb, onIdToken]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (!isWeb) return;
     if (!response || response.type !== 'success') {
       if (response?.type === 'error') {
         appAlert('Google', 'No se pudo completar el inicio con Google.');
@@ -82,25 +84,35 @@ export default function GoogleSignInButton({
         setBusy(false);
       }
     })();
-  }, [onIdToken, response]);
+  }, [isWeb, onIdToken, response]);
 
   if (!isGoogleSignInConfigured()) {
     return null;
   }
 
   const handlePress = async () => {
-    if (disabled || busy || !request) return;
+    if (disabled || busy) return;
+    if (isWeb && !request) return;
     setBusy(true);
     handledRef.current = null;
     try {
-      if (Platform.OS === 'web') {
+      if (isWeb) {
         startGoogleWebRedirect(request);
         return;
       }
-      await promptAsync();
-    } catch {
+      const idToken = await signInWithGoogleNative();
+      if (handledRef.current === idToken) return;
+      handledRef.current = idToken;
+      await onIdToken(idToken);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '';
+      if (message === 'CANCELLED') {
+        // Usuario cerró el selector; no alertar.
+      } else {
+        appAlert('Google', message || 'No se pudo abrir el inicio con Google.');
+      }
+    } finally {
       setBusy(false);
-      appAlert('Google', 'No se pudo abrir el inicio con Google.');
     }
   };
 
@@ -112,9 +124,9 @@ export default function GoogleSignInButton({
         <View style={styles.line} />
       </View>
       <Pressable
-        style={[styles.btn, (disabled || busy || !request) && styles.btnDisabled]}
+        style={[styles.btn, (disabled || busy || (isWeb && !request)) && styles.btnDisabled]}
         onPress={handlePress}
-        disabled={disabled || busy || !request}
+        disabled={disabled || busy || (isWeb && !request)}
         accessibilityRole="button"
         accessibilityLabel={label}
       >

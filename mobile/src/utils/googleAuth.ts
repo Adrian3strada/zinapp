@@ -5,7 +5,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 
-if (Platform.OS !== 'web') {
+if (Platform.OS === 'web') {
   WebBrowser.maybeCompleteAuthSession({ skipRedirectCheck: true });
 }
 
@@ -46,12 +46,13 @@ export function getGoogleAndroidClientId(): string {
   ).trim();
 }
 
-/** Web: Client ID web. Nativo: hace falta el Client ID iOS/Android (tipo nativo). */
+/** Web: Client ID web. Nativo: web + iOS/Android según plataforma. */
 export function isGoogleSignInConfigured(): boolean {
   const web = getGoogleWebClientId();
   if (!web) return false;
   if (Platform.OS === 'ios') return Boolean(getGoogleIosClientId());
-  if (Platform.OS === 'android') return Boolean(getGoogleAndroidClientId());
+  // Android nativo usa Play Services + webClientId (idToken); el client Android (SHA) vive en Google Cloud.
+  if (Platform.OS === 'android') return true;
   return true;
 }
 
@@ -84,26 +85,15 @@ export function getGoogleRedirectUri(): string | undefined {
   return `${window.location.origin}${normalized}`;
 }
 
-/** Google exige el scheme invertido del Client ID nativo, no el applicationId. */
-export function getGoogleNativeRedirectUri(): string | undefined {
-  const clientId = Platform.OS === 'ios'
-    ? getGoogleIosClientId()
-    : Platform.OS === 'android'
-      ? getGoogleAndroidClientId()
-      : '';
-  if (!clientId) return undefined;
-  const guid = clientId.replace(/\.apps\.googleusercontent\.com$/i, '').trim();
-  if (!guid || guid === clientId) return undefined;
-  return `com.googleusercontent.apps.${guid}:/oauthredirect`;
-}
-
-/** Hook de Expo AuthSession para obtener id_token de Google. */
+/**
+ * Hook AuthSession (web). En nativo el botón usa signInWithGoogleNative;
+ * igual pasamos client IDs para que el hook no falle por Rules of Hooks.
+ */
 export function useGoogleIdTokenRequest() {
   const webClientId = getGoogleWebClientId();
   const iosClientId = getGoogleIosClientId();
-  const androidClientId = getGoogleAndroidClientId();
-  // Web: origin /app. Nativo: scheme invertido (expo por defecto usa applicationId y Google responde 400).
-  const redirectUri = getGoogleRedirectUri() || getGoogleNativeRedirectUri();
+  const androidClientId = getGoogleAndroidClientId() || webClientId;
+  const redirectUri = getGoogleRedirectUri();
 
   return Google.useIdTokenAuthRequest({
     webClientId: webClientId || undefined,
@@ -111,6 +101,74 @@ export function useGoogleIdTokenRequest() {
     androidClientId: androidClientId || undefined,
     ...(redirectUri ? { redirectUri } : {}),
   });
+}
+
+let nativeConfigured = false;
+
+function ensureNativeGoogleConfigured(): void {
+  if (nativeConfigured || Platform.OS === 'web') return;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { GoogleSignin } = require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+  GoogleSignin.configure({
+    webClientId: getGoogleWebClientId(),
+    iosClientId: getGoogleIosClientId() || undefined,
+    offlineAccess: false,
+  });
+  nativeConfigured = true;
+}
+
+/**
+ * Login nativo (Android/iOS) con Play Services / Google Sign-In SDK.
+ * Evita el Error 400 invalid_request del flujo AuthSession en Custom Tabs.
+ */
+export async function signInWithGoogleNative(): Promise<string> {
+  if (Platform.OS === 'web') {
+    throw new Error('signInWithGoogleNative no aplica en web');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const {
+    GoogleSignin,
+    isSuccessResponse,
+    isCancelledResponse,
+    statusCodes,
+    isErrorWithCode,
+  } = require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+
+  ensureNativeGoogleConfigured();
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+  try {
+    const response = await GoogleSignin.signIn();
+    if (isCancelledResponse(response)) {
+      throw new Error('CANCELLED');
+    }
+    if (!isSuccessResponse(response)) {
+      throw new Error('No se pudo completar el inicio con Google.');
+    }
+    let idToken = response.data.idToken;
+    if (!idToken) {
+      const tokens = await GoogleSignin.getTokens();
+      idToken = tokens.idToken;
+    }
+    if (!idToken) {
+      throw new Error('No se recibió el token de Google. Intenta de nuevo.');
+    }
+    return idToken;
+  } catch (err) {
+    if (err instanceof Error && err.message === 'CANCELLED') {
+      throw err;
+    }
+    if (isErrorWithCode(err) && err.code === statusCodes.SIGN_IN_CANCELLED) {
+      throw new Error('CANCELLED');
+    }
+    if (isErrorWithCode(err) && err.code === statusCodes.IN_PROGRESS) {
+      throw new Error('Ya hay un inicio de sesión con Google en curso.');
+    }
+    if (isErrorWithCode(err) && err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      throw new Error('Google Play Services no está disponible en este dispositivo.');
+    }
+    throw err instanceof Error ? err : new Error('No se pudo iniciar sesión con Google.');
+  }
 }
 
 export function extractGoogleIdToken(
@@ -169,7 +227,6 @@ export function consumeGoogleWebRedirect():
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   if (!hash.includes('id_token') && !hash.includes('error') && !search.includes('id_token') && !search.includes('error')) {
-    // Aún no llegó el retorno (p. ej. montaje normal).
     return null;
   }
 

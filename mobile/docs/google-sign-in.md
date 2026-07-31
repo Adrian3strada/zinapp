@@ -50,9 +50,13 @@ SHA-1 Play (certificado de firma de aplicaciones) — apps instaladas desde Play
 
 El cliente OAuth Android de producción debe usar el SHA-1 de Play. Opcional: un segundo cliente Android con el SHA de EAS para pruebas.
 
-En `app.json`, `scheme` incluye los reversed client IDs iOS y Android
-(`com.googleusercontent.apps.…`) para el redirect nativo. Expo AuthSession, si no se
-sobrescribe, usa `applicationId:/oauthredirect` y Google responde **Error 400: invalid_request**.
+En nativo (Android/iOS) el login usa `@react-native-google-signin/google-signin`
+(Play Services / SDK), no Custom Tabs. AuthSession solo se usa en **web**.
+
+Requisitos Android nativo:
+1. Cliente OAuth **Android** con package `com.zinapp.delivery` + SHA-1 de Play.
+2. Cliente OAuth **Web** (`webClientId`) — obligatorio para obtener `id_token`.
+3. `GOOGLE_OAUTH_CLIENT_IDS` en Railway debe incluir el Client ID **web** (audience del token).
 
 ## 2. Railway (API)
 
