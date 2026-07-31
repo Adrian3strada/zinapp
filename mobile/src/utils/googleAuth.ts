@@ -167,6 +167,15 @@ export async function signInWithGoogleNative(): Promise<string> {
     if (isErrorWithCode(err) && err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
       throw new Error('Google Play Services no está disponible en este dispositivo.');
     }
+    const raw = err instanceof Error ? err.message : String(err ?? '');
+    const code = isErrorWithCode(err) ? String(err.code) : '';
+    if (code === '10' || /DEVELOPER_ERROR/i.test(raw)) {
+      throw new Error(
+        'DEVELOPER_ERROR: el SHA-1 de la app no coincide con Google Cloud. '
+        + 'En Play Console → Firma de apps copia el SHA-1 de “Certificado de firma de aplicaciones” '
+        + 'y pégalo en el cliente OAuth Android (package com.zinapp.delivery).',
+      );
+    }
     throw err instanceof Error ? err : new Error('No se pudo iniciar sesión con Google.');
   }
 }

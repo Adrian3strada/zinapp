@@ -4,28 +4,52 @@ import { openExternalUrl } from './navigationLinks';
 
 export type TransferKind = 'order' | 'shipment';
 
-export function buildWhatsAppUrl(phone: string, message: string): string {
+function normalizeWhatsAppPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
-  const withCountry = digits.startsWith('52') ? digits : `52${digits}`;
+  return digits.startsWith('52') ? digits : `52${digits}`;
+}
+
+export function buildWhatsAppUrl(phone: string, message: string): string {
+  const withCountry = normalizeWhatsAppPhone(phone);
   return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
+}
+
+function buildWhatsAppNativeUrl(phone: string, message: string): string {
+  const withCountry = normalizeWhatsAppPhone(phone);
+  return `whatsapp://send?phone=${withCountry}&text=${encodeURIComponent(message)}`;
 }
 
 export async function openWhatsApp(phone: string, message: string): Promise<void> {
   if (!phone?.trim()) {
     throw new Error('No hay número de contacto disponible.');
   }
-  const url = buildWhatsAppUrl(phone, message);
+  const httpsUrl = buildWhatsAppUrl(phone, message);
   if (Platform.OS === 'web') {
-    if (!openExternalUrl(url)) {
+    if (!openExternalUrl(httpsUrl)) {
       throw new Error('No se pudo abrir WhatsApp en este dispositivo.');
     }
     return;
   }
-  const supported = await Linking.canOpenURL(url);
-  if (!supported) {
-    throw new Error('No se pudo abrir WhatsApp en este dispositivo.');
+
+  // Android 11+: canOpenURL(https://wa.me/…) suele fallar sin <queries>.
+  // Intentamos abrir directo (scheme nativo y wa.me) en lugar de confiar solo en canOpenURL.
+  const candidates = Platform.OS === 'android'
+    ? [buildWhatsAppNativeUrl(phone, message), httpsUrl]
+    : [httpsUrl, buildWhatsAppNativeUrl(phone, message)];
+
+  let lastError: unknown;
+  for (const url of candidates) {
+    try {
+      await Linking.openURL(url);
+      return;
+    } catch (err) {
+      lastError = err;
+    }
   }
-  await Linking.openURL(url);
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('No se pudo abrir WhatsApp en este dispositivo. ¿Tienes WhatsApp instalado?');
 }
 
 export function transferReceiptMessage(

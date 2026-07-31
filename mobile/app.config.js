@@ -23,16 +23,23 @@ const ANDROID_QUERIES = [
   { scheme: 'google.navigation' },
   { scheme: 'comgooglemaps' },
   { scheme: 'waze' },
+  { scheme: 'whatsapp' },
+  { scheme: 'https', host: 'wa.me' },
+  { scheme: 'https', host: 'api.whatsapp.com' },
   { package: 'com.google.android.apps.maps' },
   { package: 'com.waze' },
+  { package: 'com.whatsapp' },
+  { package: 'com.whatsapp.w4b' },
 ];
 
 function androidQueryNode(query) {
   if (query.scheme) {
+    const dataAttrs = { 'android:scheme': query.scheme };
+    if (query.host) dataAttrs['android:host'] = query.host;
     return {
       intent: [{
         action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
-        data: [{ $: { 'android:scheme': query.scheme } }],
+        data: [{ $: dataAttrs }],
       }],
     };
   }
