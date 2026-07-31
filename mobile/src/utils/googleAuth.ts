@@ -57,8 +57,7 @@ export function isGoogleSignInConfigured(): boolean {
 
 /**
  * Solo web: Expo Linking usa el origin y Google debe volver a /app.
- * En iOS/Android NO forzamos redirect: el provider usa el scheme del Client ID nativo
- * (com.googleusercontent.apps.…:/oauthredirect). Un Client ID web + zinapp:// = Error 400.
+ * Un Client ID web + zinapp:// = Error 400.
  */
 export function getGoogleRedirectUri(): string | undefined {
   if (Platform.OS !== 'web' || typeof window === 'undefined') {
@@ -85,12 +84,26 @@ export function getGoogleRedirectUri(): string | undefined {
   return `${window.location.origin}${normalized}`;
 }
 
+/** Google exige el scheme invertido del Client ID nativo, no el applicationId. */
+export function getGoogleNativeRedirectUri(): string | undefined {
+  const clientId = Platform.OS === 'ios'
+    ? getGoogleIosClientId()
+    : Platform.OS === 'android'
+      ? getGoogleAndroidClientId()
+      : '';
+  if (!clientId) return undefined;
+  const guid = clientId.replace(/\.apps\.googleusercontent\.com$/i, '').trim();
+  if (!guid || guid === clientId) return undefined;
+  return `com.googleusercontent.apps.${guid}:/oauthredirect`;
+}
+
 /** Hook de Expo AuthSession para obtener id_token de Google. */
 export function useGoogleIdTokenRequest() {
   const webClientId = getGoogleWebClientId();
   const iosClientId = getGoogleIosClientId();
   const androidClientId = getGoogleAndroidClientId();
-  const redirectUri = getGoogleRedirectUri();
+  // Web: origin /app. Nativo: scheme invertido (expo por defecto usa applicationId y Google responde 400).
+  const redirectUri = getGoogleRedirectUri() || getGoogleNativeRedirectUri();
 
   return Google.useIdTokenAuthRequest({
     webClientId: webClientId || undefined,

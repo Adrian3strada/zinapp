@@ -3,10 +3,11 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.25",
+    "version": "1.1.26",
     "scheme": [
       "zinapp",
-      "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd"
+      "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd",
+      "com.googleusercontent.apps.470068451846-lrh08ejsbr6i9j0vjibnshqvb5spe81e"
     ],
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -60,7 +61,7 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 149,
+      "versionCode": 150,
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [

@@ -42,10 +42,17 @@ En `app.json`, el `scheme` incluye el reversed client ID
 Client ID Android actual:
 `470068451846-lrh08ejsbr6i9j0vjibnshqvb5spe81e.apps.googleusercontent.com`
 
-SHA-1 EAS (upload keystore):
+SHA-1 EAS (upload keystore) — builds locales / EAS directos:
 `F8:99:EF:7C:6D:37:20:B0:5B:3B:EB:4C:B1:6B:C5:E5:11:72:58:CB`
 
-La app mantiene `scheme: zinapp` en `app.json` (deep links generales). El login Google nativo usa el scheme del Client ID iOS/Android (`com.googleusercontent.apps.…`), no el Client ID web.
+SHA-1 Play (certificado de firma de aplicaciones) — apps instaladas desde Play:
+`91:25:D4:11:23:7B:58:7D:A1:80:F2:E5:3C:2A:71:0C:90:AA:72:CA`
+
+El cliente OAuth Android de producción debe usar el SHA-1 de Play. Opcional: un segundo cliente Android con el SHA de EAS para pruebas.
+
+En `app.json`, `scheme` incluye los reversed client IDs iOS y Android
+(`com.googleusercontent.apps.…`) para el redirect nativo. Expo AuthSession, si no se
+sobrescribe, usa `applicationId:/oauthredirect` y Google responde **Error 400: invalid_request**.
 
 ## 2. Railway (API)
 
