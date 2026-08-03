@@ -10,12 +10,20 @@ export const NOTIFICATION_SOUND = 'alert.wav';
 /**
  * IDs de canal con versión: Android cachea el sonido del canal.
  * Al cambiar el tono hay que subir el sufijo (_v2, _v3…) o los usuarios
- * seguirán oyendo el anterior hasta reinstalar / borrar datos.
+ * seguirán oyendo el anterior (o silencio) hasta reinstalar / borrar datos.
  */
 export const NOTIFICATION_CHANNELS = {
-  orders: 'orders_v2',
-  deliveries: 'deliveries_v2',
+  orders: 'orders_v3',
+  deliveries: 'deliveries_v3',
 } as const;
+
+/** Canales anteriores a borrar para no dejar entradas mudas en Ajustes. */
+const LEGACY_NOTIFICATION_CHANNELS = [
+  'orders',
+  'orders_v2',
+  'deliveries',
+  'deliveries_v2',
+] as const;
 
 export function resolveNotificationChannel(
   data?: Record<string, unknown> | null,
@@ -40,6 +48,9 @@ export async function configureNotifications(): Promise<void> {
       shouldShowList: true,
     }),
   });
+
+  // Crear canales cuanto antes (no requiere permiso POST_NOTIFICATIONS).
+  await setupNotificationChannels();
 }
 
 export async function setupNotificationChannels(): Promise<void> {
@@ -47,13 +58,32 @@ export async function setupNotificationChannels(): Promise<void> {
 
   const Notifications = await import('expo-notifications');
 
+  for (const legacyId of LEGACY_NOTIFICATION_CHANNELS) {
+    try {
+      await Notifications.deleteNotificationChannelAsync(legacyId);
+    } catch {
+      // Canal inexistente o API no disponible
+    }
+  }
+
   const channelBase = {
     sound: NOTIFICATION_SOUND,
     enableVibrate: true,
+    enableLights: true,
+    bypassDnd: false,
     // Más largo e insistente que el patrón anterior.
     vibrationPattern: [0, 400, 120, 400, 120, 500, 160, 500],
     lightColor: colors.primary,
     showBadge: true,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    audioAttributes: {
+      usage: Notifications.AndroidAudioUsage.NOTIFICATION,
+      contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+      flags: {
+        enforceAudibility: true,
+        requestHardwareAudioVideoSynchronization: false,
+      },
+    },
   };
 
   await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNELS.orders, {
@@ -89,7 +119,7 @@ async function playAlertSound(): Promise<void> {
     if (!alertPlayer) {
       alertPlayer = createAudioPlayer(alertSource);
     } else {
-      alertPlayer.seekTo(0);
+      await alertPlayer.seekTo(0);
     }
     alertPlayer.volume = 1;
     alertPlayer.play();
@@ -97,6 +127,12 @@ async function playAlertSound(): Promise<void> {
       alertPlaying = false;
     }, 2000);
   } catch {
+    try {
+      alertPlayer?.remove();
+    } catch {
+      // ignore
+    }
+    alertPlayer = null;
     alertPlaying = false;
   }
 }

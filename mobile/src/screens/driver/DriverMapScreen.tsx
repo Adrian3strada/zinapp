@@ -359,8 +359,23 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     return [];
   }, [remainingCoords, polylines, routeFrom, nextStopCoord]);
 
-  // Paradas fijas solamente; el pin GPS en movimiento hace parecer bug.
-  const mapMarkers = markers;
+  /** Pin del repartidor anclado al tip de la ruta restante (o GPS si aún no hay ruta). */
+  const mapMarkers = useMemo((): MapMarker[] => {
+    const driver =
+      (remainingCoords.length > 0 && remainingCoords[0]) ||
+      userLocation ||
+      routeFrom;
+    if (!driver) return markers;
+    return [
+      {
+        id: 'me',
+        coordinate: driver,
+        title: 'Tú',
+        pinType: 'driver',
+      },
+      ...markers,
+    ];
+  }, [markers, remainingCoords, userLocation, routeFrom]);
 
   useEffect(() => {
     if (!job) {

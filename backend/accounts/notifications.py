@@ -105,27 +105,23 @@ def _clear_user_push_token(user) -> None:
     user.expo_push_token = ''
     user.save(update_fields=['expo_push_token'])
 
+# Solo hitos útiles: evita cascada accepted→preparing→ready→en camino→entregado.
 ORDER_CUSTOMER_MESSAGES = {
     'pending': 'Recibimos tu pedido. El restaurante lo confirmará pronto.',
     'accepted': 'Tu pedido fue aceptado por el restaurante.',
-    'preparing': 'El restaurante está preparando tu pedido.',
-    'ready': 'Tu pedido está listo. Esperando repartidor.',
     'on_the_way': '¡Tu pedido va en camino!',
     'delivered': 'Pedido entregado. ¡Buen provecho!',
     'cancelled': 'Tu pedido fue cancelado.',
 }
 
+# Al dueño solo lo que requiere acción (nuevo / cancelado). El resto lo ve en la app.
 ORDER_OWNER_MESSAGES = {
     'pending': 'Nuevo pedido pendiente. Confírmalo cuando puedas.',
-    'ready': 'Pedido listo — esperando repartidor.',
-    'on_the_way': 'El repartidor recogió el pedido.',
-    'delivered': 'Pedido entregado al cliente.',
     'cancelled': 'Pedido cancelado.',
 }
 
 SHIPMENT_CUSTOMER_MESSAGES = {
     'pending': 'Tu envío fue registrado. Buscando repartidor…',
-    'picked_up': 'El repartidor va a recoger tu paquete.',
     'on_the_way': '¡Tu paquete va en camino!',
     'delivered': 'Envío entregado correctamente.',
     'cancelled': 'Tu envío fue cancelado.',
@@ -145,7 +141,7 @@ def send_push_to_user(
     body: str,
     data: dict | None = None,
     *,
-    channel_id: str = 'orders_v2',
+    channel_id: str = 'orders_v3',
 ) -> bool:
     """
     True = entregado o omitido de forma permanente (sin token / dispositivo baja).
@@ -159,6 +155,9 @@ def send_push_to_user(
         )
         return True
 
+    # En Android 8+ el tono lo define el canal (channelId). El sound del
+    # payload aplica sobre todo a iOS; no forzar alert.wav en android.* para
+    # evitar que FCM trate el push como silencioso si no resuelve el asset.
     payload = {
         'to': token,
         'title': title,
@@ -167,12 +166,11 @@ def send_push_to_user(
         'priority': 'high',
         'channelId': channel_id,
         'data': data or {},
-    }
-    payload['android'] = {
-        'channelId': channel_id,
-        'priority': 'high',
-        'sound': 'alert.wav',
-        'vibrate': [0, 400, 120, 400, 120, 500, 160, 500],
+        'android': {
+            'channelId': channel_id,
+            'priority': 'high',
+            'vibrate': [0, 400, 120, 400, 120, 500, 160, 500],
+        },
     }
 
     try:
@@ -304,7 +302,7 @@ def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> bool:
         logger.warning('Broadcast drivers: nadie disponible con push token')
         return True
     results = [
-        send_push_to_user(driver, title, body, data, channel_id='deliveries_v2')
+        send_push_to_user(driver, title, body, data, channel_id='deliveries_v3')
         for driver in drivers
     ]
     return any(results)
@@ -314,7 +312,7 @@ def _order_ref(order) -> str:
     return order.code or f'#{order.id}'
 
 
-def notify_order_status(order):
+def notify_order_status(order, previous_status=None):
     # En línea sin pagar: el pedido aún no se "realiza" para el restaurante.
     if getattr(order, 'awaits_online_payment', False):
         notify_awaiting_online_payment(order)
@@ -327,7 +325,15 @@ def notify_order_status(order):
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
     total_label = f'${order.total:.2f}'
 
-    customer_msg = ORDER_CUSTOMER_MESSAGES.get(status)
+    # Confirmación única: accepted, o salto directo pending→preparing.
+    # Sin push en preparing/ready intermedios (evita cascada tediosa).
+    if status == 'preparing' and previous_status in (None, 'pending'):
+        customer_msg = ORDER_CUSTOMER_MESSAGES['accepted']
+    elif status in ('preparing', 'ready'):
+        customer_msg = None
+    else:
+        customer_msg = ORDER_CUSTOMER_MESSAGES.get(status)
+
     if status == 'pending':
         customer_msg = (
             f'¡Encargaste en {restaurant_name}! '
@@ -347,7 +353,7 @@ def notify_order_status(order):
         else:
             customer_msg = ORDER_CUSTOMER_MESSAGES['cancelled']
     if customer_msg:
-        send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders_v2')
+        send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders_v3')
 
     if order.restaurant and order.restaurant.owner:
         owner_msg = ORDER_OWNER_MESSAGES.get(status)
@@ -360,7 +366,8 @@ def notify_order_status(order):
             owner_title = f'Pedido {ref}'
             send_push_to_user(order.restaurant.owner, owner_title, owner_msg, data)
 
-    if status == 'ready':
+    # Broadcast a repartidores solo al pasar a ready (una vez por transición).
+    if status == 'ready' and previous_status != 'ready':
         _broadcast_to_available_drivers(
             'Entrega disponible',
             f'Pedido {ref} listo en {order.restaurant.name}.',
@@ -374,7 +381,7 @@ def notify_order_status(order):
                 title,
                 f'Entrega {ref} completada.',
                 data,
-                channel_id='deliveries_v2',
+                channel_id='deliveries_v3',
             )
         elif status == 'cancelled':
             send_push_to_user(
@@ -382,11 +389,11 @@ def notify_order_status(order):
                 title,
                 f'El pedido {ref} fue cancelado.',
                 data,
-                channel_id='deliveries_v2',
+                channel_id='deliveries_v3',
             )
 
 
-def notify_shipment_status(shipment):
+def notify_shipment_status(shipment, previous_status=None):
     title = f'Envío #{shipment.id}'
     data = {'shipmentId': shipment.id, 'status': shipment.status, 'type': 'shipment'}
     status = shipment.status
@@ -395,9 +402,10 @@ def notify_shipment_status(shipment):
     if status == 'on_the_way' and shipment.driver:
         customer_msg = f'¡Tu paquete va en camino! {_driver_name(shipment.driver)} te lo lleva.'
     if customer_msg:
-        send_push_to_user(shipment.customer, title, customer_msg, data, channel_id='deliveries_v2')
+        send_push_to_user(shipment.customer, title, customer_msg, data, channel_id='deliveries_v3')
 
-    if status == 'pending':
+    # Solo al crear / llegar a pending (no re-broadcast si ya estaba pending).
+    if status == 'pending' and previous_status != 'pending':
         _broadcast_to_available_drivers(
             'Envío disponible',
             f'Envío #{shipment.id}: {shipment.description[:60]}',
@@ -413,7 +421,7 @@ def notify_shipment_status(shipment):
         }
         driver_msg = driver_messages.get(status)
         if driver_msg:
-            send_push_to_user(shipment.driver, title, driver_msg, data, channel_id='deliveries_v2')
+            send_push_to_user(shipment.driver, title, driver_msg, data, channel_id='deliveries_v3')
 
 
 def _format_nearby_distance(distance_meters: float) -> str:
@@ -434,7 +442,7 @@ def notify_driver_nearby_order(order, distance_meters: float) -> None:
             'status': 'on_the_way',
             'type': 'driver_nearby',
         },
-        channel_id='orders_v2',
+        channel_id='orders_v3',
     )
 
 
@@ -449,7 +457,7 @@ def notify_driver_nearby_shipment(shipment, distance_meters: float) -> None:
             'status': 'on_the_way',
             'type': 'driver_nearby',
         },
-        channel_id='deliveries_v2',
+        channel_id='deliveries_v3',
     )
 
 
@@ -467,7 +475,7 @@ def notify_restaurant_opened(restaurant) -> None:
         restaurant=restaurant,
     ).select_related('user').exclude(user__expo_push_token='')
     for favorite in favorites:
-        send_push_to_user(favorite.user, title, body, data, channel_id='orders_v2')
+        send_push_to_user(favorite.user, title, body, data, channel_id='orders_v3')
 
 
 def notify_awaiting_online_payment(order) -> None:
@@ -492,7 +500,7 @@ def notify_payment_confirmed(order) -> None:
         title,
         f'Pago recibido ({total_label}). {restaurant_name} confirmará pronto.',
         data,
-        channel_id='orders_v2',
+        channel_id='orders_v3',
     )
 
     if order.restaurant and order.restaurant.owner:
@@ -551,7 +559,7 @@ def notify_review_reminder(order) -> bool:
             'status': 'delivered',
             'type': 'review_reminder',
         },
-        channel_id='orders_v2',
+        channel_id='orders_v3',
     )
 
 
@@ -565,5 +573,5 @@ def notify_shipment_pending_reminder(shipment) -> bool:
             'status': 'pending',
             'type': 'shipment_pending_reminder',
         },
-        channel_id='deliveries_v2',
+        channel_id='deliveries_v3',
     )

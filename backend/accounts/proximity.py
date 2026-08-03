@@ -32,9 +32,13 @@ def check_driver_nearby_deliveries(user, latitude: float, longitude: float) -> N
         )
         if distance > NEARBY_THRESHOLD_METERS:
             continue
+        claimed = Order.objects.filter(
+            pk=order.pk,
+            driver_nearby_notified=False,
+        ).update(driver_nearby_notified=True)
+        if not claimed:
+            continue
         notify_driver_nearby_order(order, distance)
-        order.driver_nearby_notified = True
-        order.save(update_fields=['driver_nearby_notified'])
         logger.info('Nearby push sent for order #%s (%.0f m)', order.id, distance)
 
     shipments = Shipment.objects.filter(
@@ -54,7 +58,11 @@ def check_driver_nearby_deliveries(user, latitude: float, longitude: float) -> N
         )
         if distance > NEARBY_THRESHOLD_METERS:
             continue
+        claimed = Shipment.objects.filter(
+            pk=shipment.pk,
+            driver_nearby_notified=False,
+        ).update(driver_nearby_notified=True)
+        if not claimed:
+            continue
         notify_driver_nearby_shipment(shipment, distance)
-        shipment.driver_nearby_notified = True
-        shipment.save(update_fields=['driver_nearby_notified'])
         logger.info('Nearby push sent for shipment #%s (%.0f m)', shipment.id, distance)

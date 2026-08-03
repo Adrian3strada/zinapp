@@ -8,12 +8,16 @@ def _minutes_since_midnight(value) -> int:
 
 
 def notify_restaurant_opened_if_needed(restaurant, *, manual: bool = False) -> bool:
-    """Envía push a favoritos cuando el local abre. Retorna True si notificó."""
+    """Envía push a favoritos cuando el local abre. Máximo una vez por día.
+
+    `manual=True` (toggle accepting_orders) también respeta el tope diario,
+    para no spamear si el dueño abre/cierra varias veces.
+    """
     if not restaurant.is_open_now():
         return False
 
     today = timezone.localdate()
-    if not manual and restaurant.last_open_notification_date == today:
+    if restaurant.last_open_notification_date == today:
         return False
 
     if not manual and restaurant.opening_time:

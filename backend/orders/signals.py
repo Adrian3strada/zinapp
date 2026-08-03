@@ -71,7 +71,7 @@ def order_status_changed(sender, instance, created, **kwargs):
     # Skip notify on create: OrderCreateSerializer notifies after items + totals exist.
     # Otherwise push shows $0.00 because default total fires before recalculate_totals().
     if not created and previous != instance.status:
-        notify_order_status(instance)
+        notify_order_status(instance, previous_status=previous)
 
 
 @receiver(pre_save, sender=Shipment)
@@ -95,4 +95,4 @@ def cache_previous_shipment_status(sender, instance, **kwargs):
 def shipment_status_changed(sender, instance, created, **kwargs):
     previous = getattr(instance, '_previous_status', None)
     if created or previous != instance.status:
-        notify_shipment_status(instance)
+        notify_shipment_status(instance, previous_status=None if created else previous)

@@ -321,11 +321,29 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     return [];
   }, [activeOrder, remainingCoords, polylines, routeFrom, nextStopCoord]);
 
+  /** Pin del repartidor: en entrega se ancla al tip de la ruta (menos temblor que GPS crudo). */
+  const driverCoord = useMemo((): MapCoordinate | null => {
+    if (activeOrder && remainingCoords.length > 0 && isValidCoordinate(remainingCoords[0])) {
+      return remainingCoords[0];
+    }
+    if (isValidCoordinate(userLocation)) return userLocation;
+    if (isValidCoordinate(routeFrom)) return routeFrom;
+    return null;
+  }, [activeOrder, remainingCoords, userLocation, routeFrom]);
+
   const markers = useMemo((): MapMarker[] => {
     const list: MapMarker[] = [];
 
+    if (isValidCoordinate(driverCoord)) {
+      list.push({
+        id: 'me',
+        coordinate: driverCoord,
+        title: 'Tú',
+        pinType: 'driver',
+      });
+    }
+
     if (activeOrder) {
-      // Entrega activa: solo paradas fijas + ruta restante (sin pin GPS que tiembla).
       if (deliveryStep === 'pickup' && restaurantCoord) {
         list.push({
           id: 'restaurant',
@@ -344,15 +362,6 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         });
       }
       return list;
-    }
-
-    if (isValidCoordinate(userLocation)) {
-      list.push({
-        id: 'me',
-        coordinate: userLocation,
-        title: 'Tú',
-        pinType: 'driver',
-      });
     }
 
     for (const order of visibleOrders.slice(0, 8)) {
@@ -381,7 +390,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       }
     }
     return list;
-  }, [userLocation, activeOrder, deliveryStep, restaurantCoord, deliveryCoord, visibleOrders]);
+  }, [driverCoord, activeOrder, deliveryStep, restaurantCoord, deliveryCoord, visibleOrders]);
 
   const [deliveryMapRegion, setDeliveryMapRegion] = useState<MapRegion | null>(null);
   /** Altura del sheet inferior: el mapa deja ese hueco libre al encuadrar la ruta. */
