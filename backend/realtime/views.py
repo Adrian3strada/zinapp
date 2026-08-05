@@ -2,10 +2,13 @@ import logging
 import time
 
 from django.conf import settings
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -14,12 +17,14 @@ from realtime.tickets import TicketStoreUnavailable, create_ws_ticket, ticket_tt
 logger = logging.getLogger(__name__)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class WebsocketTicketView(APIView):
     """
     Emite un ticket de un solo uso para conectar al WebSocket.
     Requiere Bearer JWT; el ticket vive <= WS_TICKET_TTL_SECONDS.
     """
 
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
