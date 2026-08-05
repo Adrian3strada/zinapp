@@ -80,6 +80,16 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
         connected, code = await communicator.connect()
         return communicator, connected, code
 
+    async def _assert_rejected(self, communicator, connected, code, expected_close: int):
+        """accept()+close(code) puede reportar connected=True y luego websocket.close."""
+        if connected:
+            close_msg = await communicator.receive_output(timeout=2)
+            self.assertEqual(close_msg['type'], 'websocket.close')
+            self.assertEqual(close_msg['code'], expected_close)
+        else:
+            self.assertEqual(code, expected_close)
+        await communicator.disconnect()
+
     def test_rest_issues_ticket(self):
         self.client.credentials(**self._auth_header(self.customer))
         response = self.client.post('/api/realtime/ws-ticket/')
@@ -104,9 +114,7 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
         issued = self._issue_ticket(self.customer)
         cache.delete(f'{TICKET_KEY_PREFIX}{issued["ticket"]}')
         communicator, connected, code = await self._connect_ticket(issued['ticket'])
-        self.assertFalse(connected)
-        self.assertEqual(code, 4001)
-        await communicator.disconnect()
+        await self._assert_rejected(communicator, connected, code, 4001)
 
     async def test_reused_ticket_rejected(self):
         issued = self._issue_ticket(self.customer)
@@ -116,9 +124,7 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
         await first.disconnect()
 
         second, connected2, code = await self._connect_ticket(issued['ticket'])
-        self.assertFalse(connected2)
-        self.assertEqual(code, 4001)
-        await second.disconnect()
+        await self._assert_rejected(second, connected2, code, 4001)
 
     async def test_ticket_binds_to_issuing_user_not_other(self):
         """El ticket autentica como el user_id asociado, no como otro usuario."""
@@ -139,9 +145,7 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
 
         await sync_to_async(_deactivate)()
         communicator, connected, code = await self._connect_ticket(issued['ticket'])
-        self.assertFalse(connected)
-        self.assertEqual(code, 4004)
-        await communicator.disconnect()
+        await self._assert_rejected(communicator, connected, code, 4004)
 
     def test_inactive_user_cannot_issue_ticket(self):
         self.customer.is_active = False
@@ -164,9 +168,7 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
     async def test_connection_without_ticket_rejected(self):
         communicator = WebsocketCommunicator(self._application(), '/ws/v1/')
         connected, code = await communicator.connect()
-        self.assertFalse(connected)
-        self.assertEqual(code, 4001)
-        await communicator.disconnect()
+        await self._assert_rejected(communicator, connected, code, 4001)
 
     def test_redis_unavailable_on_ticket_endpoint(self):
         self.client.credentials(**self._auth_header(self.customer))
@@ -183,9 +185,7 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
             side_effect=TicketStoreUnavailable('redis down'),
         ):
             communicator, connected, code = await self._connect_ticket('any-ticket')
-        self.assertFalse(connected)
-        self.assertEqual(code, 4002)
-        await communicator.disconnect()
+        await self._assert_rejected(communicator, connected, code, 4002)
 
     async def test_legacy_jwt_query_disabled_by_default(self):
         token = str(AccessToken.for_user(self.customer))
@@ -194,9 +194,7 @@ class WebsocketTicketSecurityTests(TransactionTestCase):
             f'/ws/v1/?token={token}',
         )
         connected, code = await communicator.connect()
-        self.assertFalse(connected)
-        self.assertEqual(code, 4001)
-        await communicator.disconnect()
+        await self._assert_rejected(communicator, connected, code, 4001)
 
     @override_settings(WS_LEGACY_JWT_QUERY_AUTH=True)
     async def test_legacy_jwt_query_works_when_enabled(self):

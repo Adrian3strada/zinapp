@@ -26,33 +26,38 @@ CLOSE_INACTIVE = 4004
 class RealtimeConsumer(AsyncJsonWebsocketConsumer):
     """Authenticated multiplexed realtime channel (ticket auth)."""
 
+    async def _reject(self, code: int):
+        """Accept then close so clients reciben el close code 4xxx (no HTTP 403)."""
+        await self.accept()
+        await self.close(code=code)
+
     async def connect(self):
         user = self.scope.get('user')
         auth_error = self.scope.get('ws_auth_error')
         auth_expires_at = self.scope.get('ws_auth_expires_at')
 
         if auth_error == 'store_unavailable':
-            await self.close(code=CLOSE_STORE)
+            await self._reject(CLOSE_STORE)
             return
         if auth_error == 'inactive_or_missing':
-            await self.close(code=CLOSE_INACTIVE)
+            await self._reject(CLOSE_INACTIVE)
             return
         if (
             user is None
             or isinstance(user, AnonymousUser)
             or not getattr(user, 'is_authenticated', False)
         ):
-            await self.close(code=CLOSE_AUTH)
+            await self._reject(CLOSE_AUTH)
             return
 
         # Defensa extra: is_active
         if not await self._user_is_active(user.id):
-            await self.close(code=CLOSE_INACTIVE)
+            await self._reject(CLOSE_INACTIVE)
             return
 
         now = time.time()
         if auth_expires_at is not None and float(auth_expires_at) <= now:
-            await self.close(code=CLOSE_SESSION_EXPIRED)
+            await self._reject(CLOSE_SESSION_EXPIRED)
             return
 
         self.user = user
