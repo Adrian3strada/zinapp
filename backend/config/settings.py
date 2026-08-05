@@ -282,7 +282,7 @@ REST_FRAMEWORK = {
         'anon': '120/min',
         'user': '400/min',
         'login': '10/min',
-        'register': '5/hour',
+        'register': config('THROTTLE_REGISTER_RATE', default='5/hour'),
         'forgot_password': '8/hour',
         'reset_password': '15/hour',
         'token_refresh': '30/min',
