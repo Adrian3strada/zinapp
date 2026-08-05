@@ -17,7 +17,7 @@ personales. Sigue el proceso de [SECURITY.md](../SECURITY.md).
   como pagado.
 - Mantén `SERVE_MEDIA=false` salvo que haya un proxy o almacenamiento diseñado
   para media. Nunca hagas públicos los documentos de repartidores.
-- Configura `REDIS_URL` para rate limits compartidos si Gunicorn se ejecuta con
+- Configura `REDIS_URL` para rate limits y Channels (WebSockets) si Uvicorn se ejecuta con
   varios workers o réplicas; sin esa variable el backend usa cache local solo
   apta para desarrollo.
 - Las acciones sensibles de pedidos, pagos, envíos y verificación de

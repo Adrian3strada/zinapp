@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { appAlert } from '../utils/appAlert';
 
 import { deliveryApi } from '../services/api';
+import { realtimeClient } from '../services/realtime';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import type { DeliveryProfile } from '../types';
 
@@ -48,6 +49,7 @@ export function DriverProfileProvider({ children }: { children: React.ReactNode 
     setUpdating(true);
     try {
       await deliveryApi.setAvailability(value);
+      realtimeClient.setDriverAvailable(value);
     } catch (err) {
       setIsAvailable(previous);
       setProfile((prev) => (prev ? { ...prev, is_available: previous } : prev));

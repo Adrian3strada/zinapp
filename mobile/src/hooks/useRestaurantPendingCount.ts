@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { useRealtimeEvent, useRealtimeRestaurant } from './useRealtime';
+import { useOptionalRestaurantContext } from '../context/RestaurantContext';
 import { orderApi } from '../services/api';
 
-export function useRestaurantPendingCount(pollMs = 12000) {
+export function useRestaurantPendingCount(pollMs = 45000) {
   const [count, setCount] = useState(0);
+  const restaurantCtx = useOptionalRestaurantContext();
+  const restaurantId = restaurantCtx?.restaurant?.id;
 
   const refresh = useCallback(async () => {
     try {
@@ -19,6 +23,22 @@ export function useRestaurantPendingCount(pollMs = 12000) {
     const interval = setInterval(refresh, pollMs);
     return () => clearInterval(interval);
   }, [refresh, pollMs]);
+
+  useRealtimeRestaurant(restaurantId, !!restaurantId);
+  useRealtimeEvent(
+    'restaurant.orders',
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    !!restaurantId,
+  );
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    !!restaurantId,
+  );
 
   return count;
 }

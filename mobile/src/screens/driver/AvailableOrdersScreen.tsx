@@ -14,6 +14,7 @@ import SectionHeader from '../../components/SectionHeader';
 import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
+import { useRealtimeEvent } from '../../hooks/useRealtime';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
 import { deliveryApi, orderApi } from '../../services/api';
@@ -59,9 +60,22 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
 
   useEffect(() => {
     load();
-    const interval = setInterval(() => load(true), 15000);
+    const interval = setInterval(() => load(true), 45000);
     return () => clearInterval(interval);
   }, [load]);
+
+  useRealtimeEvent(
+    'drivers.job',
+    useCallback(() => {
+      void load(true);
+    }, [load]),
+  );
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(() => {
+      void load(true);
+    }, [load]),
+  );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => load(true));

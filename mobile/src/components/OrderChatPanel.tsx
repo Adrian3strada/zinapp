@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { useRealtimeEvent, useRealtimeOrder } from '../hooks/useRealtime';
 import { chatApi } from '../services/api';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
@@ -44,9 +45,24 @@ export default function OrderChatPanel({ orderId, closed }: Props) {
 
   useEffect(() => {
     load();
-    const timer = setInterval(load, 5000);
+    const timer = setInterval(load, 45000);
     return () => clearInterval(timer);
   }, [load]);
+
+  useRealtimeOrder(orderId, !closed);
+  useRealtimeEvent(
+    'order.message',
+    useCallback(
+      (data) => {
+        if (Number(data.orderId) !== orderId) return;
+        void load().then(() => {
+          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+        });
+      },
+      [orderId, load],
+    ),
+    !closed,
+  );
 
   const send = async () => {
     const text = body.trim();

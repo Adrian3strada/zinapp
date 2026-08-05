@@ -9,6 +9,7 @@ import EmptyState from '../../components/EmptyState';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
+import { useRealtimeEvent } from '../../hooks/useRealtime';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import { orderApi } from '../../services/api';
@@ -78,9 +79,22 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
 
   useEffect(() => {
     load();
-    const interval = setInterval(() => load(true), activeItems.length > 0 ? 8000 : 20000);
+    const interval = setInterval(() => load(true), activeItems.length > 0 ? 30000 : 60000);
     return () => clearInterval(interval);
   }, [load, activeItems.length]);
+
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(() => {
+      void load(true);
+    }, [load]),
+  );
+  useRealtimeEvent(
+    'drivers.job',
+    useCallback(() => {
+      void load(true);
+    }, [load]),
+  );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => load(true));

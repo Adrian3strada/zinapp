@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
     'corsheaders',
+    'channels',
+    'realtime',
     'restaurants.apps.RestaurantsConfig',
     'local_services.apps.LocalServicesConfig',
     'orders',
@@ -98,6 +100,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
 
 USE_SQLITE = config('USE_SQLITE', default=False, cast=bool)
 DATABASE_URL = config('DATABASE_URL', default='').strip()
@@ -228,10 +231,25 @@ if REDIS_URL:
             },
         },
     }
+    # Obligatoria en producción con >1 worker (pub/sub entre procesos ASGI).
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [REDIS_URL],
+            },
+        },
+    }
 else:
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        },
+    }
+    # Solo desarrollo local con un worker. En producción configura REDIS_URL.
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
     }
 

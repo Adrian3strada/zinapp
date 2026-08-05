@@ -28,6 +28,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
 import { useAppConfig } from '../../hooks/useAppConfig';
+import { useRealtimeEvent, useRealtimeOrder } from '../../hooks/useRealtime';
 import type { CustomerStackParamList, DriverStackParamList, OrderDetailScreenProps } from '../../navigation/types';
 import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -68,8 +69,9 @@ function statusHintForOrder(order: Order): string | undefined {
   }
   return STATUS_HINTS[order.status];
 }
-const TRACKING_POLL_MS = 2000;
-const DEFAULT_POLL_MS = 6000;
+/** Fallback si el WebSocket está caído; con WS activo se refresca por eventos. */
+const TRACKING_POLL_MS = 30000;
+const DEFAULT_POLL_MS = 60000;
 
 type ParticipantNavigation = {
   navigate: (
@@ -143,6 +145,42 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     useCallback(() => {
       load(() => true);
     }, [load]),
+  );
+
+  useRealtimeOrder(orderId, true);
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(
+      (data) => {
+        if (Number(data.orderId) !== orderId) return;
+        void load(() => true);
+      },
+      [orderId, load],
+    ),
+  );
+  useRealtimeEvent(
+    'driver.location',
+    useCallback(
+      (data) => {
+        if (Number(data.orderId) !== orderId) return;
+        const lat = data.latitude;
+        const lng = data.longitude;
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          void load(() => true);
+          return;
+        }
+        setOrder((prev) =>
+          prev
+            ? {
+                ...prev,
+                driver_latitude: String(lat),
+                driver_longitude: String(lng),
+              }
+            : prev,
+        );
+      },
+      [orderId, load],
+    ),
   );
 
   const handleCancel = useCallback(() => {

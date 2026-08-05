@@ -385,5 +385,35 @@ class DeliveryProfileViewSet(viewsets.ModelViewSet):
         lon = profile.current_longitude
         if lat is not None and lon is not None:
             from accounts.proximity import check_driver_nearby_deliveries
+            from orders.models import Order, OrderStatus, Shipment, ShipmentStatus
+            from realtime.broadcast import broadcast_driver_location
+
             check_driver_nearby_deliveries(request.user, float(lat), float(lon))
+            order_ids = list(
+                Order.objects.filter(
+                    driver=request.user,
+                    status__in=[OrderStatus.READY, OrderStatus.ON_THE_WAY],
+                ).values_list('id', flat=True),
+            )
+            shipment_ids = list(
+                Shipment.objects.filter(
+                    driver=request.user,
+                    status__in=[
+                        ShipmentStatus.PENDING,
+                        ShipmentStatus.PICKED_UP,
+                        ShipmentStatus.ON_THE_WAY,
+                    ],
+                ).values_list('id', flat=True),
+            )
+            if order_ids or shipment_ids:
+                try:
+                    broadcast_driver_location(
+                        request.user,
+                        float(lat),
+                        float(lon),
+                        order_ids=order_ids,
+                        shipment_ids=shipment_ids,
+                    )
+                except Exception:
+                    pass
         return Response(serializer.data)

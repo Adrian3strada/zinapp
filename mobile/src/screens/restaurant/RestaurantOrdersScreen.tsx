@@ -18,6 +18,7 @@ import { useRestaurantContext } from '../../context/RestaurantContext';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useRealtimeEvent, useRealtimeRestaurant } from '../../hooks/useRealtime';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { RestaurantStackParamList, RestaurantTabParamList } from '../../navigation/types';
 import { orderApi } from '../../services/api';
@@ -100,9 +101,25 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
 
   React.useEffect(() => {
     load();
-    const interval = setInterval(load, 10000);
+    const interval = setInterval(load, 45000);
     return () => clearInterval(interval);
   }, [load]);
+
+  useRealtimeRestaurant(restaurant?.id, !!restaurant?.id);
+  useRealtimeEvent(
+    'restaurant.orders',
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    !!restaurant?.id,
+  );
+  useRealtimeEvent(
+    'order.updated',
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    !!restaurant?.id,
+  );
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {

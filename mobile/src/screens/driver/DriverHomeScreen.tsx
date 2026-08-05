@@ -24,6 +24,7 @@ import HeroBackground from '../../components/HeroBackground';
 import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
+import { useRealtimeEvent } from '../../hooks/useRealtime';
 import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
 import { deliveryApi, orderApi } from '../../services/api';
@@ -94,9 +95,24 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
 
   useEffect(() => {
     loadOrders();
-    const interval = setInterval(() => loadOrders(true), 12000);
+    const interval = setInterval(() => loadOrders(true), 45000);
     return () => clearInterval(interval);
   }, [loadOrders]);
+
+  useRealtimeEvent(
+    'drivers.job',
+    useCallback(() => {
+      void loadOrders(true);
+      void refreshActive();
+    }, [loadOrders, refreshActive]),
+  );
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(() => {
+      void loadOrders(true);
+      void refreshActive();
+    }, [loadOrders, refreshActive]),
+  );
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {

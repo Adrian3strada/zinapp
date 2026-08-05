@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { appAlert } from '../../utils/appAlert';
@@ -10,6 +10,7 @@ import { formatOrderLabel } from '../../utils/orderDisplay';
 import AppMap, { MapMarker } from '../../components/AppMap';
 import RouteStatsBar from '../../components/RouteStatsBar';
 import ScreenContainer from '../../components/ScreenContainer';
+import { useRealtimeEvent, useRealtimeOrder, useRealtimeShipment } from '../../hooks/useRealtime';
 import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { DriverMapScreenProps } from '../../navigation/types';
 import { orderApi, shipmentApi } from '../../services/api';
@@ -211,9 +212,32 @@ export default function DriverMapScreen({ route }: DriverMapScreenProps) {
     };
 
     load(true);
-    const interval = setInterval(() => load(false), 5000);
+    const interval = setInterval(() => load(false), 30000);
     return () => clearInterval(interval);
   }, [orderId, shipmentId]);
+
+  useRealtimeOrder(orderId ?? null, orderId != null);
+  useRealtimeShipment(shipmentId ?? null, shipmentId != null);
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(
+      (data) => {
+        if (orderId != null && Number(data.orderId) === orderId) {
+          // soft refresh without loading spinner
+          void (async () => {
+            try {
+              const { data: order } = await orderApi.get(orderId);
+              setJob((prev) => prev && prev.kind === 'order' ? { ...prev, status: order.status } : prev);
+            } catch {
+              // ignore
+            }
+          })();
+        }
+      },
+      [orderId],
+    ),
+    orderId != null,
+  );
 
   const {
     markers,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { InteractionManager } from 'react-native';
 
+import { useRealtimeEvent } from './useRealtime';
 import { orderApi } from '../services/api';
 import type { OrderActiveSummary } from '../types';
 import { formatOrderLabel } from '../utils/orderDisplay';
@@ -84,7 +85,7 @@ export function useCustomerActiveDeliveriesState(enabled = true) {
     );
   }, [activeOrders]);
 
-  const pollMs = hasLiveTracking ? 3000 : 45000;
+  const pollMs = hasLiveTracking ? 30000 : 60000;
 
   useEffect(() => {
     if (!enabled) {
@@ -107,6 +108,21 @@ export function useCustomerActiveDeliveriesState(enabled = true) {
       if (interval) clearInterval(interval);
     };
   }, [load, pollMs, enabled]);
+
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(() => {
+      void load();
+    }, [load]),
+    enabled,
+  );
+  useRealtimeEvent(
+    'driver.location',
+    useCallback(() => {
+      void load();
+    }, [load]),
+    enabled && hasLiveTracking,
+  );
 
   if (!enabled) {
     return {

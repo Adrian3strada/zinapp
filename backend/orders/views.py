@@ -600,6 +600,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             sender=request.user,
             body=serializer.validated_data['body'],
         )
+        try:
+            from realtime.broadcast import broadcast_order_message
+
+            broadcast_order_message(msg)
+        except Exception:
+            pass
         return Response(
             OrderMessageSerializer(msg).data,
             status=status.HTTP_201_CREATED,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { useRealtimeEvent } from './useRealtime';
 import { orderApi } from '../services/api';
 import type { Order } from '../types';
 
@@ -17,7 +18,7 @@ function pickActiveOrder(orders: Order[]): Order | null {
   return active[0] ?? null;
 }
 
-export function useDriverActiveDeliveries(pollMs = 5000) {
+export function useDriverActiveDeliveries(pollMs = 20000) {
   const [activeCount, setActiveCount] = useState(0);
   const [hasActiveDelivery, setHasActiveDelivery] = useState(false);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -43,11 +44,24 @@ export function useDriverActiveDeliveries(pollMs = 5000) {
     return () => clearInterval(interval);
   }, [check, pollMs]);
 
+  useRealtimeEvent(
+    'order.updated',
+    useCallback(() => {
+      void check();
+    }, [check]),
+  );
+  useRealtimeEvent(
+    'drivers.job',
+    useCallback(() => {
+      void check();
+    }, [check]),
+  );
+
   return { hasActiveDelivery, activeCount, activeOrder, refreshActive: check };
 }
 
 /** @deprecated use useDriverActiveDeliveries */
-export function useDriverHasActiveDelivery(pollMs = 5000) {
+export function useDriverHasActiveDelivery(pollMs = 20000) {
   const { hasActiveDelivery } = useDriverActiveDeliveries(pollMs);
   return hasActiveDelivery;
 }

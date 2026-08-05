@@ -292,6 +292,14 @@ def send_push_to_user(
 
 def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> bool:
     from accounts.models import User, UserRole
+    from realtime.broadcast import broadcast_drivers_job
+
+    kind = 'shipment' if data.get('shipmentId') or data.get('type') == 'shipment' else 'order'
+    ref_id = data.get('orderId') or data.get('shipmentId') or 0
+    try:
+        broadcast_drivers_job(kind=kind, ref_id=int(ref_id), title=title, body=body)
+    except Exception:
+        logger.exception('realtime drivers.job failed')
 
     drivers = list(User.objects.filter(
         role=UserRole.DRIVER,
@@ -317,6 +325,13 @@ def notify_order_status(order, previous_status=None):
     if getattr(order, 'awaits_online_payment', False):
         notify_awaiting_online_payment(order)
         return
+
+    try:
+        from realtime.broadcast import broadcast_order_updated
+
+        broadcast_order_updated(order)
+    except Exception:
+        logger.exception('realtime order.updated failed for order %s', getattr(order, 'id', None))
 
     ref = _order_ref(order)
     title = f'Pedido {ref}'
@@ -394,6 +409,16 @@ def notify_order_status(order, previous_status=None):
 
 
 def notify_shipment_status(shipment, previous_status=None):
+    try:
+        from realtime.broadcast import broadcast_shipment_updated
+
+        broadcast_shipment_updated(shipment)
+    except Exception:
+        logger.exception(
+            'realtime shipment.updated failed for shipment %s',
+            getattr(shipment, 'id', None),
+        )
+
     title = f'Envío #{shipment.id}'
     data = {'shipmentId': shipment.id, 'status': shipment.status, 'type': 'shipment'}
     status = shipment.status
@@ -489,6 +514,13 @@ def notify_awaiting_online_payment(order) -> None:
 
 def notify_payment_confirmed(order) -> None:
     """Tras cobrar: el pedido se realiza y el restaurante puede aceptarlo."""
+    try:
+        from realtime.broadcast import broadcast_order_updated
+
+        broadcast_order_updated(order)
+    except Exception:
+        logger.exception('realtime order.updated (payment) failed for order %s', getattr(order, 'id', None))
+
     ref = _order_ref(order)
     title = f'Pedido {ref}'
     data = {'orderId': order.id, 'status': order.status, 'type': 'payment_confirmed'}

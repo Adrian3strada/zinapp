@@ -15,6 +15,7 @@ import StripeReturnHandler from './src/components/StripeReturnHandler';
 import WebShell from './src/components/WebShell';
 import { AuthProvider } from './src/context/AuthContext';
 import { CartProvider } from './src/context/CartContext';
+import { RealtimeProvider } from './src/context/RealtimeContext';
 import { prefetchAppConfig } from './src/hooks/useAppConfig';
 import { navigationRef } from './src/navigation/navigationRef';
 import RootNavigator from './src/navigation/RootNavigator';
@@ -99,6 +100,7 @@ export default function App() {
       <SafeAreaProvider>
         <WebShell>
           <AuthProvider>
+            <RealtimeProvider>
             <BackendWake />
             <CartProvider>
               <StripeAppProvider>
@@ -121,6 +123,7 @@ export default function App() {
               </View>
               </StripeAppProvider>
             </CartProvider>
+            </RealtimeProvider>
           </AuthProvider>
         </WebShell>
       </SafeAreaProvider>

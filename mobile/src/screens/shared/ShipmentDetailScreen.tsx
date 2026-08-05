@@ -18,6 +18,7 @@ import ShipmentTimeline from '../../components/ShipmentTimeline';
 import TransferPaymentCard from '../../components/TransferPaymentCard';
 import { useAuth } from '../../context/AuthContext';
 import { useOptionalCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
+import { useRealtimeEvent, useRealtimeShipment } from '../../hooks/useRealtime';
 import type { DriverStackParamList, ShipmentDetailScreenProps } from '../../navigation/types';
 import { shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
@@ -81,9 +82,45 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
       if (!shipment || ACTIVE_STATUSES.includes(shipment.status)) {
         load();
       }
-    }, isDriverTracking ? 2000 : 6000);
+    }, isDriverTracking ? 30000 : 60000);
     return () => clearInterval(interval);
   }, [load, shipment?.status, isDriverTracking]);
+
+  useRealtimeShipment(shipmentId, true);
+  useRealtimeEvent(
+    'shipment.updated',
+    useCallback(
+      (data) => {
+        if (Number(data.shipmentId) !== shipmentId) return;
+        void load();
+      },
+      [shipmentId, load],
+    ),
+  );
+  useRealtimeEvent(
+    'driver.location',
+    useCallback(
+      (data) => {
+        if (Number(data.shipmentId) !== shipmentId) return;
+        const lat = data.latitude;
+        const lng = data.longitude;
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+          void load();
+          return;
+        }
+        setShipment((prev) =>
+          prev
+            ? {
+                ...prev,
+                driver_latitude: String(lat),
+                driver_longitude: String(lng),
+              }
+            : prev,
+        );
+      },
+      [shipmentId, load],
+    ),
+  );
 
   const handleCancel = () => {
     if (!shipment || actionBusy) return;
