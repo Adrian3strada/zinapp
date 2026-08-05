@@ -1,15 +1,25 @@
 type SessionListener = () => void;
 
-const listeners = new Set<SessionListener>();
+const expiredListeners = new Set<SessionListener>();
+const accountInactiveListeners = new Set<SessionListener>();
 
 export const sessionEvents = {
   onExpired(listener: SessionListener) {
-    listeners.add(listener);
+    expiredListeners.add(listener);
     return () => {
-      listeners.delete(listener);
+      expiredListeners.delete(listener);
     };
   },
   emitExpired() {
-    listeners.forEach((fn) => fn());
+    expiredListeners.forEach((fn) => fn());
+  },
+  onAccountInactive(listener: SessionListener) {
+    accountInactiveListeners.add(listener);
+    return () => {
+      accountInactiveListeners.delete(listener);
+    };
+  },
+  emitAccountInactive() {
+    accountInactiveListeners.forEach((fn) => fn());
   },
 };

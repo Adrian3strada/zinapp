@@ -28,4 +28,4 @@ OpenAPI está disponible en `/api/schema/` y Swagger UI en `/api/docs/` cuando
 Para producción multi-worker configura `REDIS_URL` (cache + Channels/WebSockets).
 Sin Redis los rate limits y el channel layer usan memoria local (solo desarrollo,
 un worker). El entrypoint sirve ASGI con Uvicorn (`config.asgi:application`);
-clientes se conectan a `wss://…/ws/v1/?token=<jwt>`.
+clientes piden un ticket en `POST /api/realtime/ws-ticket/` (Bearer JWT) y conectan a `wss://…/ws/v1/?ticket=<ticket>`.

@@ -1,5 +1,6 @@
-import json
+import asyncio
 import logging
+import time
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
@@ -15,32 +16,83 @@ from realtime.broadcast import (
 
 logger = logging.getLogger(__name__)
 
+# Close codes (app-specific 4xxx)
+CLOSE_AUTH = 4001
+CLOSE_STORE = 4002
+CLOSE_SESSION_EXPIRED = 4003
+CLOSE_INACTIVE = 4004
+
 
 class RealtimeConsumer(AsyncJsonWebsocketConsumer):
-    """Authenticated multiplexed realtime channel."""
+    """Authenticated multiplexed realtime channel (ticket auth)."""
 
     async def connect(self):
         user = self.scope.get('user')
-        if user is None or isinstance(user, AnonymousUser) or not user.is_authenticated:
-            await self.close(code=4001)
+        auth_error = self.scope.get('ws_auth_error')
+        auth_expires_at = self.scope.get('ws_auth_expires_at')
+
+        if auth_error == 'store_unavailable':
+            await self.close(code=CLOSE_STORE)
+            return
+        if auth_error == 'inactive_or_missing':
+            await self.close(code=CLOSE_INACTIVE)
+            return
+        if (
+            user is None
+            or isinstance(user, AnonymousUser)
+            or not getattr(user, 'is_authenticated', False)
+        ):
+            await self.close(code=CLOSE_AUTH)
+            return
+
+        # Defensa extra: is_active
+        if not await self._user_is_active(user.id):
+            await self.close(code=CLOSE_INACTIVE)
+            return
+
+        now = time.time()
+        if auth_expires_at is not None and float(auth_expires_at) <= now:
+            await self.close(code=CLOSE_SESSION_EXPIRED)
             return
 
         self.user = user
+        self.auth_expires_at = float(auth_expires_at) if auth_expires_at else None
         self.joined_groups: set[str] = set()
+        self._expire_task: asyncio.Task | None = None
+
         await self.accept()
         await self._join(user_group(user.id))
 
         if await self._is_available_driver():
             await self._join(DRIVERS_AVAILABLE_GROUP)
 
-        await self.send_json({'type': 'connected', 'data': {'userId': user.id}})
+        await self.send_json({
+            'type': 'connected',
+            'data': {
+                'userId': user.id,
+                'authExpiresAt': self.auth_expires_at,
+            },
+        })
+
+        if self.auth_expires_at is not None:
+            self._expire_task = asyncio.create_task(self._watch_auth_expiry())
 
     async def disconnect(self, code):
+        task = getattr(self, '_expire_task', None)
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
         for group in list(getattr(self, 'joined_groups', set())):
             await self.channel_layer.group_discard(group, self.channel_name)
         self.joined_groups = set()
 
     async def receive_json(self, content, **kwargs):
+        if await self._session_expired():
+            await self.close(code=CLOSE_SESSION_EXPIRED)
+            return
         if not isinstance(content, dict):
             return
         action = content.get('action')
@@ -57,10 +109,29 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             await self._handle_driver_available(bool(content.get('available')))
 
     async def realtime_event(self, event):
+        if await self._session_expired():
+            await self.close(code=CLOSE_SESSION_EXPIRED)
+            return
         await self.send_json({
             'type': event.get('event'),
             'data': event.get('data') or {},
         })
+
+    async def _watch_auth_expiry(self):
+        try:
+            delay = (self.auth_expires_at or 0) - time.time()
+            if delay > 0:
+                await asyncio.sleep(delay)
+            await self.close(code=CLOSE_SESSION_EXPIRED)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception('ws auth expiry watch failed')
+
+    async def _session_expired(self) -> bool:
+        if self.auth_expires_at is None:
+            return False
+        return time.time() >= self.auth_expires_at
 
     async def _handle_subscribe(self, content):
         order_id = content.get('orderId')
@@ -136,6 +207,12 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             return
         await self.channel_layer.group_discard(group, self.channel_name)
         self.joined_groups.discard(group)
+
+    @database_sync_to_async
+    def _user_is_active(self, user_id: int) -> bool:
+        from django.contrib.auth import get_user_model
+
+        return get_user_model().objects.filter(pk=user_id, is_active=True).exists()
 
     @database_sync_to_async
     def _is_driver(self) -> bool:

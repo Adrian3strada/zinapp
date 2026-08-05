@@ -102,6 +102,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
+# WebSocket tickets (Fase 1 seguridad). TTL del ticket de conexión (un solo uso).
+WS_TICKET_TTL_SECONDS = config('WS_TICKET_TTL_SECONDS', default=60, cast=int)
+# Si True, permite ?token=<JWT> (legacy). Desactivado por defecto.
+WS_LEGACY_JWT_QUERY_AUTH = config('WS_LEGACY_JWT_QUERY_AUTH', default=False, cast=bool)
+# Exigir REDIS_URL para tickets (True en producción). En DEBUG/tests puede usarse locmem.
+WS_TICKETS_REQUIRE_REDIS = config(
+    'WS_TICKETS_REQUIRE_REDIS',
+    default=not DEBUG,
+    cast=bool,
+)
+
 USE_SQLITE = config('USE_SQLITE', default=False, cast=bool)
 DATABASE_URL = config('DATABASE_URL', default='').strip()
 
@@ -348,6 +359,11 @@ else:
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'redact_secrets': {
+            '()': 'realtime.log_filters.RedactSecretsFilter',
+        },
+    },
     'formatters': {
         'simple': {
             'format': '[{levelname}] {name}: {message}',
@@ -358,6 +374,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['redact_secrets'],
         },
     },
     'root': {
@@ -381,6 +398,22 @@ LOGGING = {
             'propagate': False,
         },
         'accounts.views': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'realtime': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        # Access logs de uvicorn (path+query) — redactar ticket/token.
+        'uvicorn.access': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'uvicorn.error': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,

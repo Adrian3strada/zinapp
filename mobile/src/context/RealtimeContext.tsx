@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 
 import { useAuth } from './AuthContext';
 import { realtimeClient, type RealtimeEventType, type RealtimeHandler } from '../services/realtime';
@@ -19,15 +19,32 @@ const RealtimeContext = createContext<RealtimeContextValue | undefined>(undefine
 
 export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const { user, isGuest } = useAuth();
+  const activeUserIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!user || isGuest) {
+    const nextId = user && !isGuest ? user.id : null;
+    const prevId = activeUserIdRef.current;
+
+    // Cambio de cuenta o logout: cortar siempre la sesión WS anterior.
+    if (prevId != null && prevId !== nextId) {
+      realtimeClient.stop();
+    }
+
+    if (nextId == null) {
+      activeUserIdRef.current = null;
       realtimeClient.stop();
       return;
     }
+
+    activeUserIdRef.current = nextId;
     void realtimeClient.start();
+
     return () => {
+      // Cleanup del effect (incluye cambio rápido de user.id).
       realtimeClient.stop();
+      if (activeUserIdRef.current === nextId) {
+        activeUserIdRef.current = null;
+      }
     };
   }, [user?.id, isGuest]);
 

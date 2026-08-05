@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import { authApi, ensureFreshAccessToken, LoginPayload, RegisterPayload } from '../services/api';
 import { clearPushToken, registerPushNotifications } from '../services/pushRegistration';
+import { realtimeClient } from '../services/realtime';
 import { sessionEvents } from '../services/sessionEvents';
 import { tokenStorage } from '../services/tokenStorage';
 import { userCache } from '../services/userCache';
@@ -47,6 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // Cortar WS y cancelar ticket pendiente antes de borrar tokens.
+    realtimeClient.stop();
     await clearPushToken();
     await tokenStorage.clear();
     await userCache.clear();
@@ -133,9 +136,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser, logout]);
 
   useEffect(() => {
-    return sessionEvents.onExpired(() => {
+    const offExpired = sessionEvents.onExpired(() => {
       logout();
     });
+    const offInactive = sessionEvents.onAccountInactive(() => {
+      logout();
+    });
+    return () => {
+      offExpired();
+      offInactive();
+    };
   }, [logout]);
 
   const applyAuthResponse = async (response: {

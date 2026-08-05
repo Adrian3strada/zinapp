@@ -105,6 +105,28 @@ export async function ensureFreshAccessToken(): Promise<string | null> {
   return tokenStorage.getAccessToken();
 }
 
+/**
+ * Renueva el access para reconexión WS (4001/4003).
+ * Si no se puede renovar, limpia sesión y emite expired.
+ */
+export async function renewAccessTokenForSession(): Promise<string | null> {
+  const refresh = await tokenStorage.getRefreshToken();
+  if (!refresh) {
+    await tokenStorage.clear();
+    sessionEvents.emitExpired();
+    return null;
+  }
+  const fresh = await refreshAccessToken();
+  if (fresh) return fresh;
+  // refreshAccessToken ya emite expired en 401/403; en otros fallos también cerramos.
+  const stillHasRefresh = await tokenStorage.getRefreshToken();
+  if (stillHasRefresh) {
+    await tokenStorage.clear();
+    sessionEvents.emitExpired();
+  }
+  return null;
+}
+
 function requestHadAuthHeader(headers?: Record<string, string> | unknown): boolean {
   if (!headers || typeof headers !== 'object') return false;
   const h = headers as Record<string, string> & {
@@ -526,6 +548,18 @@ export interface AppConfig {
   google_sign_in_enabled?: boolean;
   coverage_label: string;
 }
+
+export const realtimeApi = {
+  createWsTicket: async (signal?: AbortSignal) => {
+    const { data } = await api.post<{
+      ticket: string;
+      expires_in: number;
+      auth_expires_at: number;
+      ws_path: string;
+    }>('/realtime/ws-ticket/', undefined, { signal });
+    return data;
+  },
+};
 
 export const configApi = {
   get: () => api.get<AppConfig>('/config/'),
