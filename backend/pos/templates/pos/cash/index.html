@@ -1,0 +1,49 @@
+{% extends "pos/base.html" %}
+{% block title %}Caja · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <h1>Caja</h1>
+
+  {% if open_sessions %}
+  <div class="pos-stat is-open" style="margin-bottom:1rem;">
+    <span class="pos-stat-label">Sesión abierta</span>
+    <span class="pos-stat-value">{{ open_sessions.0.cash_register.name }}</span>
+    <span class="pos-stat-meta">
+      Apertura ${{ open_sessions.0.opening_amount }} ·
+      {{ open_sessions.0.opened_at|date:"d/m/Y H:i" }} ·
+      {{ open_sessions.0.opened_by.username }}
+    </span>
+    {% if expected_amount != None %}
+    <span class="pos-stat-meta">Efectivo esperado: ${{ expected_amount }}</span>
+    {% endif %}
+  </div>
+
+  <div class="pos-quick-actions" style="margin-bottom:1.25rem;">
+    <a class="pos-btn pos-btn-primary pos-btn-large" href="{% url 'pos:cash_cut' %}">Ir a corte</a>
+  </div>
+
+  <h2>Movimiento manual</h2>
+  <form method="post" action="{% url 'pos:cash_movement' %}" class="pos-form">
+    {% csrf_token %}
+    <label class="pos-label">Tipo</label>
+    {{ movement_form.type }}
+    <label class="pos-label">Monto</label>
+    {{ movement_form.amount }}
+    <label class="pos-label">Descripción</label>
+    {{ movement_form.description }}
+    <button type="submit" class="pos-btn">Registrar</button>
+  </form>
+  {% else %}
+  <p>No hay sesión de caja abierta.</p>
+  <h2>Abrir caja</h2>
+  <form method="post" action="{% url 'pos:cash_open' %}" class="pos-form">
+    {% csrf_token %}
+    <label class="pos-label">Caja</label>
+    {{ open_form.cash_register }}
+    <label class="pos-label">Monto inicial</label>
+    {{ open_form.opening_amount }}
+    <button type="submit" class="pos-btn pos-btn-primary pos-btn-large">Abrir caja</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

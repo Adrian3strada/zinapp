@@ -29,6 +29,7 @@ from .models import (
     Order,
     OrderDispute,
     OrderMessage,
+    OrderSource,
     OrderStatus,
     PaymentMethod,
     PaymentStatus,
@@ -110,11 +111,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                 return queryset.filter(
                     status=OrderStatus.READY,
                     driver__isnull=True,
+                    source=OrderSource.ZINAPP,
                 )
             if self.action == 'retrieve':
                 return queryset.filter(
                     Q(driver=user)
-                    | Q(status=OrderStatus.READY, driver__isnull=True),
+                    | Q(status=OrderStatus.READY, driver__isnull=True, source=OrderSource.ZINAPP),
                 )
             return queryset.filter(driver=user)
 
@@ -339,6 +341,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         orders = Order.objects.filter(
             status=OrderStatus.READY,
             driver__isnull=True,
+            source=OrderSource.ZINAPP,
         ).select_related('restaurant', 'customer').prefetch_related('items')
         serializer = OrderSerializer(orders, many=True, context={'request': request})
         return Response(serializer.data)

@@ -70,6 +70,10 @@ class Restaurant(models.Model):
     )
     is_active = models.BooleanField(default=False)
     accepting_orders = models.BooleanField(default=False)
+    pos_enabled = models.BooleanField(
+        default=False,
+        help_text='Si True, el restaurante puede usar ZinApp POS.',
+    )
     opening_time = models.TimeField(null=True, blank=True)
     closing_time = models.TimeField(null=True, blank=True)
     last_open_notification_date = models.DateField(null=True, blank=True)
@@ -182,6 +186,14 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     is_available = models.BooleanField(default=True)
+    track_inventory = models.BooleanField(
+        default=False,
+        help_text='Si True, el POS descuenta stock al vender y bloquea sin existencia.',
+    )
+    stock_quantity = models.PositiveIntegerField(
+        default=0,
+        help_text='Existencia actual cuando track_inventory está activo.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

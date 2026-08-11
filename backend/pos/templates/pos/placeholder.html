@@ -1,0 +1,9 @@
+{% extends "pos/base.html" %}
+{% block title %}{{ section_title }} · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <h1>{{ section_title }}</h1>
+  <p>{{ section_message }}</p>
+  <a class="pos-btn" href="{% url 'pos:dashboard' %}">Volver al dashboard</a>
+</section>
+{% endblock %}

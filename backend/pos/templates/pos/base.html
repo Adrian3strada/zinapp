@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}ZinApp POS{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'pos/css/pos.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="pos-body {% block body_class %}{% endblock %}">
+  {% if user.is_authenticated and pos_restaurant %}
+  <header class="pos-topbar">
+    <div class="pos-brand">
+      <a href="{% url 'pos:dashboard' %}">ZinApp POS</a>
+      <span class="pos-restaurant-name">{{ pos_restaurant.name }}</span>
+    </div>
+    <nav class="pos-nav">
+      {% if 'sale' in pos_perms %}<a href="{% url 'pos:sale' %}">Venta</a>{% endif %}
+      {% if 'orders' in pos_perms %}<a href="{% url 'pos:orders' %}">Pedidos</a>{% endif %}
+      {% if 'kitchen' in pos_perms %}<a href="{% url 'pos:kitchen' %}">Cocina</a>{% endif %}
+      {% if 'cash' in pos_perms %}<a href="{% url 'pos:cash' %}">Caja</a>{% endif %}
+      {% if 'cash' in pos_perms %}<a href="{% url 'pos:cash_cut' %}">Corte</a>{% endif %}
+      {% if 'reports' in pos_perms %}<a href="{% url 'pos:reports' %}">Reportes</a>{% endif %}
+    </nav>
+    <div class="pos-user">
+      <span>{{ user.get_full_name|default:user.username }}</span>
+      <a class="pos-link" href="{% url 'pos:select_restaurant' %}">Cambiar</a>
+      <a class="pos-btn pos-btn-ghost" href="{% url 'pos:logout' %}">Salir</a>
+    </div>
+  </header>
+  {% endif %}
+
+  {% if messages %}
+  <div class="pos-messages">
+    {% for message in messages %}
+    <div class="pos-flash pos-flash-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <main class="pos-main">
+    {% block content %}{% endblock %}
+  </main>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

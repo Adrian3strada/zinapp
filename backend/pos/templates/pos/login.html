@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · ZinApp POS</title>
+  <link rel="stylesheet" href="{% static 'pos/css/pos.css' %}">
+</head>
+<body class="pos-body pos-login-page">
+  <div class="pos-login-card">
+    <h1 class="pos-login-title">ZinApp POS</h1>
+    <p class="pos-login-sub">Punto de venta para restaurantes</p>
+
+    {% if form.errors %}
+    <div class="pos-flash pos-flash-error">
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      {% else %}
+        Usuario o contraseña incorrectos.
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="post" class="pos-form">
+      {% csrf_token %}
+      <label class="pos-label">Usuario</label>
+      {{ form.username }}
+      <label class="pos-label">Contraseña</label>
+      {{ form.password }}
+      <button type="submit" class="pos-btn pos-btn-primary pos-btn-block">Entrar</button>
+    </form>
+  </div>
+</body>
+</html>

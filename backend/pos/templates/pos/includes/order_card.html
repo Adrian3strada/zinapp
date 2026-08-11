@@ -1,0 +1,78 @@
+<article class="pos-order-card status-{{ order.status }} source-{{ order.source }}" data-order-id="{{ order.id }}">
+  <header class="pos-order-card-head">
+    <strong>{{ order.display_ref }}</strong>
+    <span class="pos-pill">{{ order.get_status_display }}</span>
+    <span class="pos-pill pos-pill-muted">{{ order.get_source_display }}</span>
+  </header>
+  <div class="pos-order-meta">
+    {% if order.customer %}
+      {{ order.customer.get_full_name|default:order.customer.username }}
+    {% else %}
+      Mostrador
+    {% endif %}
+    · ${{ order.total }}
+    · {{ order.get_payment_method_display }}
+  </div>
+  <ul class="pos-order-items">
+    {% for item in order.items.all %}
+    <li>
+      <strong>{{ item.quantity }}x</strong> {{ item.product.name }}
+      {% if item.selected_options %}
+      <div class="pos-order-opts">
+        {% for opt in item.selected_options %}· {{ opt.name }} {% endfor %}
+      </div>
+      {% endif %}
+      {% if item.notes %}<div class="pos-order-notes">{{ item.notes }}</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if order.delivery_notes %}
+  <p class="pos-order-notes"><strong>Notas:</strong> {{ order.delivery_notes }}</p>
+  {% endif %}
+
+  <div class="pos-order-actions">
+    {% if order.status == 'pending' %}
+    <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="accept">
+      <label class="pos-label" style="margin:0;">Prep</label>
+      <select name="prep_minutes" class="pos-input pos-input-sm" style="width:auto;display:inline-block;">
+        <option value="10">10m</option>
+        <option value="15" selected>15m</option>
+        <option value="20">20m</option>
+        <option value="30">30m</option>
+        <option value="45">45m</option>
+      </select>
+      <button type="submit" class="pos-btn pos-btn-primary">Aceptar</button>
+    </form>
+    <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form" onsubmit="return confirm('¿Rechazar este pedido?');">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reject">
+      <button type="submit" class="pos-btn">Rechazar</button>
+    </form>
+    {% elif order.status == 'accepted' or order.status == 'preparing' %}
+    <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="status">
+      <input type="hidden" name="status" value="ready">
+      <button type="submit" class="pos-btn pos-btn-primary">Listo</button>
+    </form>
+    <a class="pos-btn" href="{% url 'pos:ticket_kitchen' order.id %}?autoprint=1">Imprimir</a>
+    {% elif order.status == 'ready' %}
+      {% if order.source != 'zinapp' %}
+      <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="status">
+        <input type="hidden" name="status" value="delivered">
+        <button type="submit" class="pos-btn pos-btn-primary">Entregar / Completar</button>
+      </form>
+      {% else %}
+      <span class="pos-hint">Esperando repartidor</span>
+      {% endif %}
+      <a class="pos-btn" href="{% url 'pos:ticket_kitchen' order.id %}">Ticket cocina</a>
+    {% endif %}
+    {% if order.source == 'pos' and order.status != 'cancelled' and mode != 'kitchen' %}
+    <a class="pos-btn" href="{% url 'pos:sale_cancel' order.id %}">Cancelar</a>
+    {% endif %}
+  </div>
+</article>

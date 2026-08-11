@@ -14,7 +14,7 @@ from restaurants.fields import CoordinateField
 from restaurants.geo import is_in_coverage, round_coordinate
 from restaurants.serializers import ProductSerializer, RestaurantPublicSerializer
 
-from .models import Coupon, Order, OrderDispute, OrderItem, OrderMessage, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentSize, ShipmentStatus, get_shipment_fee
+from .models import Coupon, Order, OrderDispute, OrderItem, OrderMessage, OrderSource, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentSize, ShipmentStatus, get_shipment_fee
 
 
 class PublicReviewAuthorSerializer(serializers.ModelSerializer):
@@ -143,6 +143,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'code', 'customer', 'customer_detail', 'restaurant', 'restaurant_detail',
             'driver', 'driver_detail', 'driver_delivery_profile', 'status', 'status_display',
+            'source', 'created_by',
             'payment_method', 'payment_method_display', 'payment_status',
             'payment_status_display', 'delivery_address',
             'delivery_latitude', 'delivery_longitude', 'delivery_notes',
@@ -154,7 +155,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'prep_minutes', 'estimated_ready_at',
         )
         read_only_fields = (
-            'id', 'code', 'customer', 'restaurant', 'driver', 'status', 'subtotal',
+            'id', 'code', 'customer', 'restaurant', 'driver', 'status', 'source', 'created_by',
+            'subtotal',
             'delivery_fee', 'total', 'payment_status', 'payment_method',
             'discount_amount', 'delivery_address', 'delivery_latitude',
             'delivery_longitude', 'coupon',
@@ -409,6 +411,7 @@ class OrderCreateSerializer(serializers.Serializer):
             order = Order.objects.create(
                 customer=customer,
                 restaurant=restaurant,
+                source=OrderSource.ZINAPP,
                 delivery_address=validated_data['delivery_address'],
                 delivery_latitude=validated_data.get('delivery_latitude'),
                 delivery_longitude=validated_data.get('delivery_longitude'),

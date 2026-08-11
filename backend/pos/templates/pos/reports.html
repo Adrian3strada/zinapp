@@ -1,0 +1,81 @@
+{% extends "pos/base.html" %}
+{% block title %}Reportes · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <h1>Reportes — {{ report.day|date:"d/m/Y" }}</h1>
+
+  <div class="pos-stat-grid">
+    <div class="pos-stat">
+      <span class="pos-stat-label">Ventas de hoy</span>
+      <span class="pos-stat-value">${{ report.sales_total }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Número de ventas</span>
+      <span class="pos-stat-value">{{ report.sales_count }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Ticket promedio</span>
+      <span class="pos-stat-value">${{ report.avg_ticket }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Canceladas</span>
+      <span class="pos-stat-value">{{ report.cancelled_count }}</span>
+    </div>
+  </div>
+
+  <div class="pos-stat-grid">
+    <div class="pos-stat">
+      <span class="pos-stat-label">Ventas POS</span>
+      <span class="pos-stat-value">${{ report.pos_total }}</span>
+      <span class="pos-stat-meta">{{ report.pos_count }} ventas</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Pedidos ZinApp</span>
+      <span class="pos-stat-value">${{ report.zinapp_total }}</span>
+      <span class="pos-stat-meta">{{ report.zinapp_count }} pedidos</span>
+    </div>
+  </div>
+
+  <h2>Desglose por método de pago</h2>
+  {% if report.payment_breakdown %}
+  <table class="pos-table">
+    <thead><tr><th>Método</th><th>Ventas</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for row in report.payment_breakdown %}
+      <tr><td>{{ row.label }}</td><td>{{ row.count }}</td><td>${{ row.total }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pos-empty">Sin ventas hoy.</p>
+  {% endif %}
+
+  <h2>Productos más vendidos</h2>
+  {% if report.top_products %}
+  <table class="pos-table">
+    <thead><tr><th>Producto</th><th>Cant.</th><th>Ingreso</th></tr></thead>
+    <tbody>
+      {% for row in report.top_products %}
+      <tr><td>{{ row.name }}</td><td>{{ row.qty }}</td><td>${{ row.revenue }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pos-empty">Sin productos vendidos hoy.</p>
+  {% endif %}
+
+  <h2>Ventas por hora</h2>
+  {% if report.sales_by_hour %}
+  <table class="pos-table">
+    <thead><tr><th>Hora</th><th>Ventas</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for row in report.sales_by_hour %}
+      <tr><td>{{ row.hour }}</td><td>{{ row.count }}</td><td>${{ row.total }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pos-empty">Sin datos por hora.</p>
+  {% endif %}
+</section>
+{% endblock %}

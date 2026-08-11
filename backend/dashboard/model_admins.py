@@ -92,16 +92,20 @@ class ProductInline(admin.TabularInline):
 
 
 class RestaurantAdmin(PanelModelAdmin):
-    list_display = ('name', 'owner', 'phone', 'is_active', 'created_at')
-    list_filter = ('is_active',)
+    list_display = ('name', 'owner', 'phone', 'is_active', 'pos_enabled', 'created_at')
+    list_filter = ('is_active', 'pos_enabled')
     search_fields = ('name', 'owner__username', 'address')
     inlines = [ProductInline]
 
 
 class ProductAdmin(PanelModelAdmin):
-    list_display = ('name', 'restaurant', 'category', 'price', 'is_available')
-    list_filter = ('is_available', 'category', 'restaurant')
+    list_display = (
+        'name', 'restaurant', 'category', 'price', 'is_available',
+        'track_inventory', 'stock_quantity',
+    )
+    list_filter = ('is_available', 'track_inventory', 'category', 'restaurant')
     search_fields = ('name', 'restaurant__name')
+    list_editable = ('is_available', 'track_inventory', 'stock_quantity')
 
 
 class ProductPromotionAdmin(PanelModelAdmin):
@@ -121,10 +125,10 @@ class OrderItemInline(admin.TabularInline):
 
 class OrderAdmin(PanelModelAdmin):
     list_display = (
-        'id', 'code', 'customer', 'restaurant', 'driver', 'status',
+        'id', 'code', 'customer', 'restaurant', 'driver', 'status', 'source',
         'payment_method', 'total', 'created_at',
     )
-    list_filter = ('status', 'payment_method', 'created_at')
+    list_filter = ('status', 'payment_method', 'source', 'created_at')
     search_fields = ('code', 'customer__username', 'restaurant__name')
     inlines = [OrderItemInline]
     readonly_fields = ('code', 'subtotal', 'total', 'created_at', 'updated_at')

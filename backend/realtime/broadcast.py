@@ -67,7 +67,8 @@ def broadcast_order_updated(order) -> None:
             data['driverLongitude'] = float(profile.current_longitude)
 
     _send(order_group(order.id), 'order.updated', data)
-    _send(user_group(order.customer_id), 'order.updated', data)
+    if order.customer_id:
+        _send(user_group(order.customer_id), 'order.updated', data)
     if order.driver_id:
         _send(user_group(order.driver_id), 'order.updated', data)
     if order.restaurant_id:

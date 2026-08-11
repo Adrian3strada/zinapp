@@ -36,6 +36,7 @@ urlpatterns = [
         path('gestion/', include('dashboard.gestion_urls')),
         path('', include('dashboard.urls')),
     ])),
+    path('pos/', include('pos.urls')),
     path('privacidad/', PrivacyPolicyView.as_view(), name='privacy-policy'),
     path('api/health/', health, name='health'),
     path('api/config/', app_config, name='app-config'),

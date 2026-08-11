@@ -367,7 +367,7 @@ def notify_order_status(order, previous_status=None):
             )
         else:
             customer_msg = ORDER_CUSTOMER_MESSAGES['cancelled']
-    if customer_msg:
+    if customer_msg and order.customer_id and order.customer:
         send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders_v3')
 
     if order.restaurant and order.restaurant.owner:
@@ -382,7 +382,12 @@ def notify_order_status(order, previous_status=None):
             send_push_to_user(order.restaurant.owner, owner_title, owner_msg, data)
 
     # Broadcast a repartidores solo al pasar a ready (una vez por transición).
-    if status == 'ready' and previous_status != 'ready':
+    # Pedidos POS / mostrador no deben entrar al pool de delivery.
+    if (
+        status == 'ready'
+        and previous_status != 'ready'
+        and getattr(order, 'source', 'zinapp') == 'zinapp'
+    ):
         _broadcast_to_available_drivers(
             'Entrega disponible',
             f'Pedido {ref} listo en {order.restaurant.name}.',
@@ -456,6 +461,8 @@ def _format_nearby_distance(distance_meters: float) -> str:
 
 
 def notify_driver_nearby_order(order, distance_meters: float) -> None:
+    if not order.customer_id or not order.customer:
+        return
     dist = _format_nearby_distance(distance_meters)
     ref = _order_ref(order)
     send_push_to_user(
@@ -527,13 +534,14 @@ def notify_payment_confirmed(order) -> None:
     total_label = f'${order.total:.2f}'
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
 
-    send_push_to_user(
-        order.customer,
-        title,
-        f'Pago recibido ({total_label}). {restaurant_name} confirmará pronto.',
-        data,
-        channel_id='orders_v3',
-    )
+    if order.customer_id and order.customer:
+        send_push_to_user(
+            order.customer,
+            title,
+            f'Pago recibido ({total_label}). {restaurant_name} confirmará pronto.',
+            data,
+            channel_id='orders_v3',
+        )
 
     if order.restaurant and order.restaurant.owner:
         send_push_to_user(
@@ -558,6 +566,8 @@ def notify_pending_order_reminder(order) -> bool:
 
 
 def notify_ready_no_driver(order) -> bool:
+    if getattr(order, 'source', 'zinapp') != 'zinapp':
+        return True
     ref = _order_ref(order)
     data = {'orderId': order.id, 'status': order.status, 'type': 'ready_no_driver'}
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el local'
@@ -580,6 +590,8 @@ def notify_ready_no_driver(order) -> bool:
 
 
 def notify_review_reminder(order) -> bool:
+    if not order.customer_id or not order.customer:
+        return True
     ref = _order_ref(order)
     restaurant_name = order.restaurant.name if order.restaurant_id else 'el restaurante'
     return send_push_to_user(

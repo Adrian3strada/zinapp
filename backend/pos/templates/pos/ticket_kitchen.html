@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <title>Cocina {{ order.display_ref }}</title>
+  <link rel="stylesheet" href="{% static 'pos/css/pos.css' %}">
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff !important; }
+    }
+    body { background: #fff; }
+    .ticket {
+      width: 72mm;
+      margin: 0 auto;
+      font-family: "Courier New", ui-monospace, Consolas, monospace;
+      font-size: 13px;
+      color: #111;
+      line-height: 1.4;
+    }
+    .ticket h1 { font-size: 18px; text-align: center; margin: 0 0 4px; }
+    .ticket .muted { text-align: center; margin-bottom: 6px; }
+    .ticket .item { margin: 8px 0; font-size: 14px; font-weight: 700; }
+    .ticket .opts { font-weight: 400; font-size: 12px; padding-left: 8px; }
+    .ticket hr { border: none; border-top: 1px dashed #333; margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="text-align:center;padding:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+    <button onclick="window.print()" class="pos-btn pos-btn-primary">Imprimir cocina</button>
+    <a href="{% url 'pos:ticket' order.id %}" class="pos-btn">Ticket cliente</a>
+    <a href="{% url 'pos:kitchen' %}" class="pos-btn">Cocina</a>
+  </div>
+  <div class="ticket">
+    <h1>COCINA</h1>
+    <div class="muted"><strong>{{ order.display_ref }}</strong></div>
+    <div class="muted">{{ order.created_at|date:"H:i" }} · {{ order.get_source_display }}</div>
+    <hr>
+    {% for item in order.items.all %}
+    <div class="item">{{ item.quantity }}x {{ item.product.name }}</div>
+    {% if item.selected_options %}
+    <div class="opts">
+      {% for opt in item.selected_options %}· {{ opt.name }}<br>{% endfor %}
+    </div>
+    {% endif %}
+    {% if item.notes %}
+    <div class="opts">Nota: {{ item.notes }}</div>
+    {% endif %}
+    {% endfor %}
+    {% if order.delivery_notes %}
+    <hr>
+    <div class="opts"><strong>Pedido:</strong> {{ order.delivery_notes }}</div>
+    {% endif %}
+    <hr>
+    <div class="muted">*** FIN ***</div>
+  </div>
+  {% if autoprint %}
+  <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });</script>
+  {% endif %}
+</body>
+</html>

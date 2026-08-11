@@ -1,0 +1,34 @@
+{% extends "pos/base.html" %}
+{% load static %}
+{% block title %}Cocina · ZinApp POS{% endblock %}
+{% block body_class %}pos-kitchen-page{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <div class="pos-section-head">
+    <h1>Cocina</h1>
+    <span class="pos-live-badge" id="pos-live-badge">Conectando…</span>
+  </div>
+  <div class="pos-order-grid pos-kitchen-grid" id="pos-order-grid"
+       data-feed-url="{% url 'pos:kitchen_feed' %}"
+       data-action-url-template="{% url 'pos:kitchen_action' order_id=0 %}"
+       data-mode="kitchen">
+    {% for order in orders %}
+    {% include "pos/includes/order_card.html" with order=order mode="kitchen" %}
+    {% empty %}
+    <p class="pos-empty" id="pos-empty">No hay pedidos activos en cocina.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+  window.POS_REALTIME = {
+    restaurantId: {{ realtime_restaurant_id }},
+    ticketUrl: "{% url 'pos:ws_ticket' %}",
+    csrfToken: "{{ csrf_token }}",
+    pollSeconds: 45,
+  };
+</script>
+<script src="{% static 'pos/js/realtime.js' %}"></script>
+<script src="{% static 'pos/js/orders.js' %}"></script>
+{% endblock %}

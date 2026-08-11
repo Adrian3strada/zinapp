@@ -199,7 +199,7 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
             'owner', 'name', 'category', 'description', 'address', 'phone',
             'whatsapp',
             'image', 'latitude', 'longitude', 'location_pinned',
-            'opening_time', 'closing_time', 'is_active', 'accepting_orders',
+            'opening_time', 'closing_time', 'is_active', 'accepting_orders', 'pos_enabled',
         )
         widgets = {
             'description': forms.Textarea(attrs={'rows': 3}),

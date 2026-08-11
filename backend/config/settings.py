@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'local_services.apps.LocalServicesConfig',
     'orders',
     'dashboard',
+    'pos.apps.PosConfig',
 ]
 
 MIDDLEWARE = [
@@ -94,6 +95,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'dashboard.context_processors.panel_nav',
+                'pos.context_processors.pos_nav',
             ],
         },
     },

@@ -155,7 +155,11 @@ def get_financial_report(params=None):
         order_rows.append({
             'id': order.id,
             'restaurant_name': order.restaurant.name,
-            'customer_name': order.customer.get_full_name() or order.customer.username,
+            'customer_name': (
+                (order.customer.get_full_name() or order.customer.username)
+                if order.customer_id and order.customer
+                else 'POS / Mostrador'
+            ),
             'delivered_at': order.delivered_at,
             'product_sales': order_product_sales,
             'restaurant_amount': order_restaurant_amount,

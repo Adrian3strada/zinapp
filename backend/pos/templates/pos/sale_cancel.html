@@ -1,0 +1,18 @@
+{% extends "pos/base.html" %}
+{% block title %}Cancelar venta · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <h1>Cancelar venta {{ order.display_ref }}</h1>
+  <p>Total: <strong>${{ order.total }}</strong> · {{ order.get_payment_method_display }}</p>
+  <p class="pos-hint">La venta no se elimina. Se registra quién canceló, cuándo y el motivo. Si fue en efectivo, se revierte el movimiento de caja.</p>
+  <form method="post" class="pos-form" onsubmit="return confirm('¿Confirmas cancelar esta venta?');">
+    {% csrf_token %}
+    <label class="pos-label">Motivo</label>
+    <input type="text" name="reason" class="pos-input" maxlength="255" required placeholder="Ej. cobro duplicado, cliente canceló…">
+    <div class="pos-dialog-actions" style="justify-content:flex-start;margin-top:1rem;">
+      <button type="submit" class="pos-btn pos-btn-primary">Confirmar cancelación</button>
+      <a class="pos-btn" href="{% url 'pos:ticket' order.id %}">Volver</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

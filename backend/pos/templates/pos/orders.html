@@ -1,0 +1,46 @@
+{% extends "pos/base.html" %}
+{% load static %}
+{% block title %}Pedidos · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <div class="pos-section-head">
+    <h1>Pedidos</h1>
+    <span class="pos-live-badge" id="pos-live-badge">Conectando…</span>
+  </div>
+
+  <div class="pos-category-row">
+    {% for value, label in status_filters %}
+    <a href="?status={{ value }}{% if source_filter %}&source={{ source_filter }}{% endif %}"
+       class="pos-chip {% if status_filter == value %}is-active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="pos-category-row">
+    <a href="?status={{ status_filter }}" class="pos-chip {% if not source_filter %}is-active{% endif %}">Todos</a>
+    <a href="?status={{ status_filter }}&source=zinapp" class="pos-chip {% if source_filter == 'zinapp' %}is-active{% endif %}">ZinApp</a>
+    <a href="?status={{ status_filter }}&source=pos" class="pos-chip {% if source_filter == 'pos' %}is-active{% endif %}">POS</a>
+  </div>
+
+  <div class="pos-order-grid" id="pos-order-grid"
+       data-feed-url="{% url 'pos:orders_feed' %}?status={{ status_filter }}{% if source_filter %}&source={{ source_filter }}{% endif %}"
+       data-action-url-template="{% url 'pos:order_action' order_id=0 %}"
+       data-mode="orders">
+    {% for order in orders %}
+    {% include "pos/includes/order_card.html" with order=order mode="orders" %}
+    {% empty %}
+    <p class="pos-empty" id="pos-empty">No hay pedidos en este filtro.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+  window.POS_REALTIME = {
+    restaurantId: {{ realtime_restaurant_id }},
+    ticketUrl: "{% url 'pos:ws_ticket' %}",
+    csrfToken: "{{ csrf_token }}",
+    pollSeconds: 45,
+  };
+</script>
+<script src="{% static 'pos/js/realtime.js' %}"></script>
+<script src="{% static 'pos/js/orders.js' %}"></script>
+{% endblock %}

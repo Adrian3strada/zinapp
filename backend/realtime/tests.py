@@ -254,6 +254,7 @@ class RealtimeWebsocketFlowTests(TransactionTestCase):
             address='Centro',
             is_active=True,
             accepting_orders=True,
+            pos_enabled=True,
         )
         self.order = Order.objects.create(
             customer=self.customer,
@@ -262,6 +263,19 @@ class RealtimeWebsocketFlowTests(TransactionTestCase):
             payment_method=PaymentMethod.CASH,
             payment_status=PaymentStatus.PENDING,
             delivery_address='Calle 1',
+        )
+        from pos.models import POSStaffMembership, POSStaffRole
+
+        self.pos_cashier = User.objects.create_user(
+            username='rt_pos_cashier',
+            password='test1234',
+            role=UserRole.CUSTOMER,
+        )
+        POSStaffMembership.objects.create(
+            user=self.pos_cashier,
+            restaurant=self.restaurant,
+            role=POSStaffRole.CASHIER,
+            is_active=True,
         )
 
     def _application(self):
@@ -308,6 +322,32 @@ class RealtimeWebsocketFlowTests(TransactionTestCase):
         self.assertTrue(connected)
         await communicator.receive_json_from(timeout=2)
         await communicator.send_json_to({'action': 'subscribe', 'orderId': self.order.id})
+        err = await communicator.receive_json_from(timeout=2)
+        self.assertEqual(err['type'], 'error')
+        self.assertEqual(err['data']['code'], 'forbidden')
+        await communicator.disconnect()
+
+    async def test_pos_staff_can_subscribe_restaurant(self):
+        communicator, connected = await self._connect(self.pos_cashier)
+        self.assertTrue(connected)
+        await communicator.receive_json_from(timeout=2)
+        await communicator.send_json_to({
+            'action': 'subscribe',
+            'restaurantId': self.restaurant.id,
+        })
+        sub = await communicator.receive_json_from(timeout=2)
+        self.assertEqual(sub['type'], 'subscribed')
+        self.assertEqual(sub['data']['restaurantId'], self.restaurant.id)
+        await communicator.disconnect()
+
+    async def test_outsider_cannot_subscribe_restaurant(self):
+        communicator, connected = await self._connect(self.other)
+        self.assertTrue(connected)
+        await communicator.receive_json_from(timeout=2)
+        await communicator.send_json_to({
+            'action': 'subscribe',
+            'restaurantId': self.restaurant.id,
+        })
         err = await communicator.receive_json_from(timeout=2)
         self.assertEqual(err['type'], 'error')
         self.assertEqual(err['data']['code'], 'forbidden')

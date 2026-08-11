@@ -276,4 +276,11 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             return False
         if getattr(self.user, 'is_admin_user', False):
             return True
-        return restaurant.owner_id == self.user.id
+        if restaurant.owner_id == self.user.id:
+            return True
+        # Staff POS del restaurante (cajeros / cocina / admin membership).
+        if restaurant.pos_enabled:
+            from pos.access import user_can_access_pos_restaurant
+
+            return user_can_access_pos_restaurant(self.user, restaurant)
+        return False

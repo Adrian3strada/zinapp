@@ -18,6 +18,15 @@ class PaymentMethod(models.TextChoices):
     CASH = 'cash', 'Efectivo'
     TRANSFER = 'transfer', 'Transferencia'
     ONLINE = 'online', 'Pago en línea'
+    CARD = 'card', 'Tarjeta'
+    OTHER = 'other', 'Otro'
+
+
+class OrderSource(models.TextChoices):
+    ZINAPP = 'zinapp', 'ZinApp'
+    POS = 'pos', 'POS'
+    PHONE = 'phone', 'Teléfono'
+    TAKEAWAY = 'takeaway', 'Para llevar'
 
 
 class PaymentStatus(models.TextChoices):
@@ -29,6 +38,7 @@ class PaymentStatus(models.TextChoices):
 class CancellationSource(models.TextChoices):
     RESTAURANT_REJECT = 'restaurant_reject', 'Rechazo restaurante'
     CUSTOMER = 'customer', 'Cliente'
+    POS = 'pos', 'Cancelación POS'
 
 
 class Coupon(models.Model):
@@ -113,6 +123,9 @@ class Order(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='orders',
+        null=True,
+        blank=True,
+        help_text='Cliente app. Nullable solo para ventas POS de mostrador.',
     )
     restaurant = models.ForeignKey(
         'restaurants.Restaurant',
@@ -125,6 +138,21 @@ class Order(models.Model):
         null=True,
         blank=True,
         related_name='deliveries',
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=OrderSource.choices,
+        default=OrderSource.ZINAPP,
+        db_index=True,
+        help_text='Origen del pedido (ZinApp, POS, teléfono, etc.).',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='orders_created',
+        help_text='Usuario que creó la venta (cajero/staff POS).',
     )
     status = models.CharField(
         max_length=20,
@@ -167,7 +195,11 @@ class Order(models.Model):
     discount_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal('0.00')
     )
-    delivery_address = models.TextField()
+    delivery_address = models.TextField(
+        blank=True,
+        default='',
+        help_text='Dirección de entrega. Vacío en ventas POS de mostrador.',
+    )
     delivery_latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
     )

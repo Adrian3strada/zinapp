@@ -1,0 +1,37 @@
+{% extends "pos/base.html" %}
+{% block title %}Dashboard · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-dashboard">
+  <h1>{{ pos_restaurant.name }}</h1>
+  <div class="pos-stat-grid">
+    <div class="pos-stat">
+      <span class="pos-stat-label">Caja</span>
+      <span class="pos-stat-value {% if cash_open %}is-open{% else %}is-closed{% endif %}">
+        {% if cash_open %}ABIERTA{% else %}CERRADA{% endif %}
+      </span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Ventas POS hoy</span>
+      <span class="pos-stat-value">${{ pos_sales_today_total|floatformat:2 }}</span>
+      <span class="pos-stat-meta">{{ pos_sales_today_count }} venta{{ pos_sales_today_count|pluralize }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Pedidos ZinApp nuevos</span>
+      <span class="pos-stat-value">{{ zinapp_new_orders }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Preparando</span>
+      <span class="pos-stat-value">{{ preparing_orders }}</span>
+    </div>
+  </div>
+
+  <div class="pos-quick-actions">
+    {% if 'sale' in pos_perms %}<a class="pos-btn pos-btn-primary pos-btn-large" href="{% url 'pos:sale' %}">Nueva venta</a>{% endif %}
+    {% if 'orders' in pos_perms %}<a class="pos-btn pos-btn-large" href="{% url 'pos:orders' %}">Pedidos</a>{% endif %}
+    {% if 'kitchen' in pos_perms %}<a class="pos-btn pos-btn-large" href="{% url 'pos:kitchen' %}">Cocina</a>{% endif %}
+    {% if 'cash' in pos_perms %}<a class="pos-btn pos-btn-large" href="{% url 'pos:cash' %}">Caja</a>{% endif %}
+    {% if 'cash' in pos_perms %}<a class="pos-btn pos-btn-large" href="{% url 'pos:cash_cut' %}">Corte</a>{% endif %}
+    {% if 'reports' in pos_perms %}<a class="pos-btn pos-btn-large" href="{% url 'pos:reports' %}">Reportes</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "pos/base.html" %}
+{% block title %}Elegir restaurante · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <h1>Selecciona restaurante</h1>
+  <p>Tienes acceso a más de un restaurante con POS.</p>
+  <form method="post" class="pos-restaurant-list">
+    {% csrf_token %}
+    {% for r in restaurants %}
+    <button type="submit" name="restaurant_id" value="{{ r.id }}" class="pos-btn pos-btn-large pos-btn-block">
+      {{ r.name }}
+    </button>
+    {% endfor %}
+  </form>
+</section>
+{% endblock %}

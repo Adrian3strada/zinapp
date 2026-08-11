@@ -1,0 +1,66 @@
+{% extends "pos/base.html" %}
+{% block title %}Corte de caja · ZinApp POS{% endblock %}
+{% block content %}
+<section class="pos-panel">
+  <div class="pos-section-head">
+    <h1>Corte de caja</h1>
+    <a class="pos-btn" href="{% url 'pos:cash' %}">Volver a caja</a>
+  </div>
+
+  {% if not summary %}
+  <p>No hay sesión de caja abierta. Ábrela desde Caja para generar el corte.</p>
+  {% else %}
+  <div class="pos-stat-grid">
+    <div class="pos-stat">
+      <span class="pos-stat-label">Monto inicial</span>
+      <span class="pos-stat-value">${{ summary.opening_amount }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">+ Ventas efectivo</span>
+      <span class="pos-stat-value">${{ summary.cash_sales }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">+ Entradas</span>
+      <span class="pos-stat-value">${{ summary.cash_in }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">− Retiros</span>
+      <span class="pos-stat-value">${{ summary.cash_out }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">− Cancelaciones</span>
+      <span class="pos-stat-value">${{ summary.cancellations }}</span>
+    </div>
+    <div class="pos-stat">
+      <span class="pos-stat-label">Efectivo esperado</span>
+      <span class="pos-stat-value is-open">${{ summary.expected_amount }}</span>
+    </div>
+  </div>
+
+  <h2>Desglose por método de pago</h2>
+  <div class="pos-stat-grid">
+    <div class="pos-stat"><span class="pos-stat-label">Efectivo</span><span class="pos-stat-value">${{ summary.payment_breakdown.cash }}</span></div>
+    <div class="pos-stat"><span class="pos-stat-label">Tarjeta</span><span class="pos-stat-value">${{ summary.payment_breakdown.card }}</span></div>
+    <div class="pos-stat"><span class="pos-stat-label">Transferencia</span><span class="pos-stat-value">${{ summary.payment_breakdown.transfer }}</span></div>
+    <div class="pos-stat"><span class="pos-stat-label">Otro</span><span class="pos-stat-value">${{ summary.payment_breakdown.other }}</span></div>
+  </div>
+
+  <h2>Resumen de ventas (sesión)</h2>
+  <div class="pos-stat-grid">
+    <div class="pos-stat"><span class="pos-stat-label">Ventas</span><span class="pos-stat-value">{{ summary.sales_count }}</span></div>
+    <div class="pos-stat"><span class="pos-stat-label">Canceladas</span><span class="pos-stat-value">{{ summary.cancelled_count }}</span></div>
+    <div class="pos-stat"><span class="pos-stat-label">Descuentos</span><span class="pos-stat-value">${{ summary.discounts }}</span></div>
+    <div class="pos-stat"><span class="pos-stat-label">Total vendido</span><span class="pos-stat-value">${{ summary.total_sold }}</span></div>
+  </div>
+
+  <h2>Cerrar caja</h2>
+  <form method="post" action="{% url 'pos:cash_close' %}" class="pos-form pos-form-inline">
+    {% csrf_token %}
+    <label class="pos-label">Efectivo contado</label>
+    {{ close_form.counted_amount }}
+    <button type="submit" class="pos-btn pos-btn-primary pos-btn-large">Cerrar y guardar corte</button>
+  </form>
+  <p class="pos-hint">Diferencia = contado − esperado (${{ summary.expected_amount }}).</p>
+  {% endif %}
+</section>
+{% endblock %}

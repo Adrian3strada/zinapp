@@ -55,7 +55,7 @@ def order_status_changed(sender, instance, created, **kwargs):
         Coupon.objects.filter(pk=instance.coupon_id, times_used__gt=0).update(
             times_used=F('times_used') - 1,
         )
-    if created:
+    if created and instance.customer_id:
         from restaurants.models import RestaurantFavorite
 
         RestaurantFavorite.objects.get_or_create(

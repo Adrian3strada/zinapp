@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <title>Ticket {{ order.display_ref }}</title>
+  <link rel="stylesheet" href="{% static 'pos/css/pos.css' %}">
+  <style>
+    @page { size: 80mm auto; margin: 4mm; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff !important; color: #000 !important; }
+    }
+    body { background: #fff; }
+    .ticket {
+      width: 72mm;
+      margin: 0 auto;
+      font-family: "Courier New", ui-monospace, Consolas, monospace;
+      font-size: 12px;
+      color: #111;
+      line-height: 1.35;
+    }
+    .ticket h1 { font-size: 16px; text-align: center; margin: 0 0 6px; }
+    .ticket .muted { text-align: center; margin-bottom: 6px; }
+    .ticket table { width: 100%; border-collapse: collapse; }
+    .ticket td { padding: 2px 0; vertical-align: top; }
+    .ticket .right { text-align: right; white-space: nowrap; }
+    .ticket hr { border: none; border-top: 1px dashed #333; margin: 8px 0; }
+    .ticket .total { font-size: 14px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="text-align:center;padding:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+    <button onclick="window.print()" class="pos-btn pos-btn-primary">Imprimir cliente</button>
+    <a href="{% url 'pos:ticket_kitchen' order.id %}?autoprint=1" class="pos-btn">Ticket cocina</a>
+    <a href="{% url 'pos:sale' %}" class="pos-btn">Nueva venta</a>
+    {% if order.source == 'pos' and order.status != 'cancelled' %}
+    <a href="{% url 'pos:sale_cancel' order.id %}" class="pos-btn">Cancelar venta</a>
+    {% endif %}
+    <a href="{% url 'pos:dashboard' %}" class="pos-btn">Dashboard</a>
+  </div>
+  <div class="ticket">
+    <h1>{{ order.restaurant.name }}</h1>
+    <div class="muted">Folio {{ order.display_ref }}{% if pos_sale and pos_sale.local_folio %} · #{{ pos_sale.local_folio }}{% endif %}</div>
+    <div class="muted">{{ order.created_at|date:"d/m/Y H:i" }}</div>
+    <div class="muted">Cajero: {% if order.created_by %}{{ order.created_by.get_full_name|default:order.created_by.username }}{% else %}—{% endif %}</div>
+    <hr>
+    <table>
+      {% for item in order.items.all %}
+      <tr>
+        <td>{{ item.quantity }}x {{ item.product.name }}</td>
+        <td class="right">${{ item.subtotal }}</td>
+      </tr>
+      {% if item.selected_options %}
+      <tr>
+        <td colspan="2" style="padding-left:8px;color:#444;">
+          {% for opt in item.selected_options %}
+            · {{ opt.name }}{% if not forloop.last %}<br>{% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+      {% endif %}
+      {% if item.notes %}
+      <tr><td colspan="2" style="padding-left:8px;">Nota: {{ item.notes }}</td></tr>
+      {% endif %}
+      {% endfor %}
+    </table>
+    <hr>
+    <table>
+      <tr><td>Subtotal</td><td class="right">${{ order.subtotal }}</td></tr>
+      <tr><td>Descuento</td><td class="right">${{ order.discount_amount }}</td></tr>
+      <tr class="total"><td>Total</td><td class="right">${{ order.total }}</td></tr>
+      <tr><td>Pago</td><td class="right">{{ order.get_payment_method_display }}</td></tr>
+      {% if pos_sale and pos_sale.amount_received != None %}
+      <tr><td>Recibido</td><td class="right">${{ pos_sale.amount_received }}</td></tr>
+      <tr><td>Cambio</td><td class="right">${{ pos_sale.change_given }}</td></tr>
+      {% endif %}
+    </table>
+    <hr>
+    <p class="muted">¡Gracias por su compra!</p>
+  </div>
+  {% if autoprint %}
+  <script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 250); });</script>
+  {% endif %}
+</body>
+</html>

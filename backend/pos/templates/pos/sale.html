@@ -1,0 +1,91 @@
+{% extends "pos/base.html" %}
+{% load static %}
+{% block title %}Nueva venta · ZinApp POS{% endblock %}
+{% block body_class %}pos-sale-page{% endblock %}
+{% block content %}
+<section class="pos-sale-layout">
+  <div class="pos-sale-catalog">
+    <div class="pos-sale-toolbar">
+      <form method="get" class="pos-search-form">
+        <input type="search" name="q" value="{{ search }}" class="pos-input" placeholder="Buscar producto…" autocomplete="off">
+        {% if active_category %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
+      </form>
+      <div class="pos-category-row">
+        <a href="{% url 'pos:sale' %}" class="pos-chip {% if not active_category %}is-active{% endif %}">Todos</a>
+        {% for value, label in categories %}
+        <a href="?category={{ value }}{% if search %}&q={{ search|urlencode }}{% endif %}"
+           class="pos-chip {% if active_category == value %}is-active{% endif %}">{{ label }}</a>
+        {% endfor %}
+      </div>
+      {% if not cash_open %}
+      <p class="pos-hint">Caja cerrada: puedes cobrar con tarjeta/transferencia; efectivo requiere caja abierta.</p>
+      {% endif %}
+    </div>
+    <div class="pos-product-grid" id="pos-product-grid">
+      {% for p in products %}
+      <button type="button" class="pos-product-card" data-product-id="{{ p.id }}">
+        <strong>{{ p.name }}</strong>
+        <span>${{ p.price }}{% if p.track_inventory %} · stock {{ p.stock_quantity }}{% endif %}</span>
+      </button>
+      {% empty %}
+      <p>No hay productos disponibles.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <aside class="pos-cart-panel">
+    <h2>Carrito</h2>
+    <div id="pos-cart-lines" class="pos-cart-lines"></div>
+    <div class="pos-cart-totals">
+      <div><span>Subtotal</span><strong id="pos-subtotal">$0.00</strong></div>
+      <div>
+        <label for="pos-discount">Descuento</label>
+        <input type="number" id="pos-discount" class="pos-input pos-input-sm" min="0" step="0.01" value="0">
+      </div>
+      <div class="pos-total-row"><span>Total</span><strong id="pos-total">$0.00</strong></div>
+    </div>
+
+    <form method="post" id="pos-checkout-form" class="pos-checkout-form">
+      {% csrf_token %}
+      <input type="hidden" name="cart_json" id="pos-cart-json" value="[]">
+      <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+      <input type="hidden" name="discount_amount" id="pos-discount-field" value="0">
+      <label class="pos-label">Método de pago</label>
+      <select name="payment_method" id="pos-payment-method" class="pos-input">
+        {% for value, label in payment_methods %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div id="pos-cash-fields" class="pos-cash-fields">
+        <label class="pos-label">Recibido</label>
+        <input type="number" name="amount_received" id="pos-received" class="pos-input" min="0" step="0.01">
+        <div>Cambio: <strong id="pos-change">$0.00</strong></div>
+      </div>
+      <button type="submit" class="pos-btn pos-btn-primary pos-btn-large pos-btn-block" id="pos-charge-btn">
+        COBRAR
+      </button>
+    </form>
+  </aside>
+</section>
+
+<dialog id="pos-options-dialog" class="pos-dialog">
+  <form method="dialog" id="pos-options-form">
+    <h3 id="pos-options-title">Opciones</h3>
+    <div id="pos-options-body"></div>
+    <label class="pos-label">Notas</label>
+    <input type="text" id="pos-item-notes" class="pos-input" maxlength="255">
+    <div class="pos-dialog-actions">
+      <button value="cancel" class="pos-btn">Cancelar</button>
+      <button value="ok" class="pos-btn pos-btn-primary">Agregar</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block extra_js %}
+<script>
+  window.POS_CATALOG = {{ catalog_json|safe }};
+  window.POS_PREVIEW_URL = "{% url 'pos:cart_preview' %}";
+  window.POS_CSRF = "{{ csrf_token }}";
+</script>
+<script src="{% static 'pos/js/sale.js' %}"></script>
+{% endblock %}
