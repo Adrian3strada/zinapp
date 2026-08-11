@@ -31,6 +31,14 @@
               Sin horario
             {% endif %}
           </dd>
+          <dt>ZinApp POS</dt>
+          <dd>
+            {% if restaurant.pos_enabled %}
+              <span class="badge badge-success">Activo</span>
+            {% else %}
+              <span class="badge badge-muted">Inactivo</span>
+            {% endif %}
+          </dd>
         </dl>
         <div class="action-row">
           <form method="post" action="{% url 'dashboard:restaurant-toggle-active' restaurant.pk %}">
@@ -48,6 +56,14 @@
             <button type="submit" class="btn btn-default" {% if not restaurant.is_active %}disabled{% endif %}>
               {% if restaurant.accepting_orders %}Pausar pedidos{% else %}Recibir pedidos{% endif %}
             </button>
+          </form>
+          <form method="post" action="{% url 'dashboard:restaurant-toggle-pos' restaurant.pk %}">
+            {% csrf_token %}
+            {% if restaurant.pos_enabled %}
+              <button type="submit" class="btn btn-outline-secondary">Desactivar POS</button>
+            {% else %}
+              <button type="submit" class="btn btn-outline-primary">Activar POS</button>
+            {% endif %}
           </form>
         </div>
       </div>

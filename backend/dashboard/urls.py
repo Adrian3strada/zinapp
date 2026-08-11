@@ -22,6 +22,11 @@ urlpatterns = [
         views.RestaurantToggleOrdersView.as_view(),
         name='restaurant-toggle-orders',
     ),
+    path(
+        'restaurantes/<int:pk>/toggle-pos/',
+        views.RestaurantTogglePosView.as_view(),
+        name='restaurant-toggle-pos',
+    ),
     path('clientes/', include('dashboard.modules.customers.urls')),
     path('usuarios/', views.UserListView.as_view(), name='users'),
     path('repartidores/', views.DriverListView.as_view(), name='drivers'),

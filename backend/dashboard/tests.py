@@ -739,3 +739,43 @@ class PanelTechnicalConsoleTests(TestCase):
         self.assertIn('servicio', body)
         self.assertIn('promoc', body)
         self.assertIn('auditor', body)
+
+
+class RestaurantPosToggleTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.admin = User.objects.create_user(
+            username='pos_toggle_admin',
+            password='adminpass123',
+            role=UserRole.ADMIN,
+            is_staff=True,
+        )
+        from restaurants.models import Restaurant
+
+        owner = User.objects.create_user(
+            username='pos_toggle_owner',
+            password='pass123',
+            role=UserRole.RESTAURANT,
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=owner,
+            name='Local POS Panel',
+            category='comida',
+            address='Calle 1',
+            phone='123',
+            pos_enabled=False,
+        )
+
+    def test_admin_can_toggle_pos_from_detail(self):
+        self.client.login(username='pos_toggle_admin', password='adminpass123')
+        detail = self.client.get(f'/panel/restaurantes/{self.restaurant.pk}/')
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, 'Activar POS')
+
+        response = self.client.post(f'/panel/restaurantes/{self.restaurant.pk}/toggle-pos/')
+        self.assertEqual(response.status_code, 302)
+        self.restaurant.refresh_from_db()
+        self.assertTrue(self.restaurant.pos_enabled)
+
+        detail = self.client.get(f'/panel/restaurantes/{self.restaurant.pk}/')
+        self.assertContains(detail, 'Desactivar POS')

@@ -27,6 +27,7 @@
           <th>Menú</th>
           <th>Pedidos</th>
           <th>Estado</th>
+          <th>POS</th>
           <th class="text-right">Acciones</th>
         </tr>
       </thead>
@@ -48,6 +49,13 @@
               <span class="badge badge-muted">Pendiente</span>
             {% endif %}
           </td>
+          <td>
+            {% if restaurant.pos_enabled %}
+              <span class="badge badge-info">POS</span>
+            {% else %}
+              <span class="badge badge-muted">—</span>
+            {% endif %}
+          </td>
           <td class="text-right">
             <div class="btn-group btn-group-sm zin-row-actions">
               <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Gestionar" aria-label="Gestionar restaurante">
@@ -63,7 +71,7 @@
           </td>
         </tr>
         {% empty %}
-        {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-utensils" title="No hay restaurantes" message="Los dueños se dan de alta desde la app. Cuando lo hagan, aparecerán aquí para activar." %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-utensils" title="No hay restaurantes" message="Los dueños se dan de alta desde la app. Cuando lo hagan, aparecerán aquí para activar." %}
         {% endfor %}
       </tbody>
     </table>

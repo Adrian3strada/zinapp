@@ -211,6 +211,10 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['owner'].queryset = User.objects.filter(role=UserRole.RESTAURANT).order_by('username')
+        self.fields['pos_enabled'].label = 'ZinApp POS'
+        self.fields['pos_enabled'].help_text = (
+            'Permite al dueño y al personal POS entrar en /pos/login/.'
+        )
 
     def save(self, commit=True):
         instance = super().save(commit=False)

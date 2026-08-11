@@ -258,6 +258,21 @@ class RestaurantToggleOrdersView(PanelAccessMixin, View):
         return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))
 
 
+class RestaurantTogglePosView(PanelAccessMixin, View):
+    def post(self, request, pk):
+        restaurant = get_object_or_404(Restaurant, pk=pk)
+        restaurant.pos_enabled = not restaurant.pos_enabled
+        restaurant.save(update_fields=['pos_enabled', 'updated_at'])
+        if restaurant.pos_enabled:
+            messages.success(
+                request,
+                f'POS activado para «{restaurant.name}». El dueño puede entrar en /pos/login/.',
+            )
+        else:
+            messages.success(request, f'POS desactivado para «{restaurant.name}».')
+        return redirect(reverse('dashboard:restaurant-detail', kwargs={'pk': pk}))
+
+
 class UserListView(PanelAccessMixin, ListView):
     model = User
     template_name = 'dashboard/users/list.html'
