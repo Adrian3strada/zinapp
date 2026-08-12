@@ -100,7 +100,12 @@ class PosOrderActionView(PosAccessMixin, View):
     pos_permission = 'orders'
 
     def post(self, request, order_id):
-        action = (request.POST.get('action') or '').strip()
+        # `pos_action` (no usar name="action": en el DOM pisa form.action).
+        action = (
+            request.POST.get('pos_action')
+            or request.POST.get('action')
+            or ''
+        ).strip()
         next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or ''
         wants_json = (
             request.headers.get('Accept', '').find('application/json') >= 0

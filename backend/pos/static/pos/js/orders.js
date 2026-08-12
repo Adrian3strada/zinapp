@@ -35,14 +35,14 @@
       return (
         '<form method="post" action="' + url + '" class="pos-inline-form js-order-action">' +
         '<input type="hidden" name="csrfmiddlewaretoken" value="' + csrf + '">' +
-        '<input type="hidden" name="action" value="accept">' +
+        '<input type="hidden" name="pos_action" value="accept">' +
         '<select name="prep_minutes" class="pos-input pos-input-sm" style="width:auto;display:inline-block;">' +
         '<option value="10">10m</option><option value="15" selected>15m</option>' +
         '<option value="20">20m</option><option value="30">30m</option><option value="45">45m</option></select>' +
         '<button type="submit" class="pos-btn pos-btn-primary">Aceptar</button></form>' +
         '<form method="post" action="' + url + '" class="pos-inline-form js-order-action" data-confirm="¿Rechazar este pedido?">' +
         '<input type="hidden" name="csrfmiddlewaretoken" value="' + csrf + '">' +
-        '<input type="hidden" name="action" value="reject">' +
+        '<input type="hidden" name="pos_action" value="reject">' +
         '<button type="submit" class="pos-btn">Rechazar</button></form>'
       );
     }
@@ -50,7 +50,7 @@
       return (
         '<form method="post" action="' + url + '" class="pos-inline-form js-order-action">' +
         '<input type="hidden" name="csrfmiddlewaretoken" value="' + csrf + '">' +
-        '<input type="hidden" name="action" value="status">' +
+        '<input type="hidden" name="pos_action" value="status">' +
         '<input type="hidden" name="status" value="ready">' +
         '<button type="submit" class="pos-btn pos-btn-primary">Listo</button></form>'
       );
@@ -59,7 +59,7 @@
       return (
         '<form method="post" action="' + url + '" class="pos-inline-form js-order-action">' +
         '<input type="hidden" name="csrfmiddlewaretoken" value="' + csrf + '">' +
-        '<input type="hidden" name="action" value="status">' +
+        '<input type="hidden" name="pos_action" value="status">' +
         '<input type="hidden" name="status" value="delivered">' +
         '<button type="submit" class="pos-btn pos-btn-primary">Entregar / Completar</button></form>'
       );
@@ -155,10 +155,16 @@
       return;
     }
     // Prefer AJAX to avoid full reload; fallback to normal submit if fails.
+    // Usar getAttribute: un input name="action"/"pos_action" no debe pisar la URL.
     ev.preventDefault();
+    const postUrl = form.getAttribute('action') || form.getAttribute('data-action') || '';
+    if (!postUrl) {
+      alert('No se pudo actualizar el pedido.');
+      return;
+    }
     const body = new FormData(form);
     try {
-      const res = await fetch(form.action + '?format=json', {
+      const res = await fetch(postUrl + (postUrl.indexOf('?') >= 0 ? '&' : '?') + 'format=json', {
         method: 'POST',
         body: body,
         headers: { Accept: 'application/json', 'X-CSRFToken': csrf },

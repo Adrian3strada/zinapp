@@ -34,7 +34,7 @@
     {% if order.status == 'pending' %}
     <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
       {% csrf_token %}
-      <input type="hidden" name="action" value="accept">
+      <input type="hidden" name="pos_action" value="accept">
       <label class="pos-label" style="margin:0;">Prep</label>
       <select name="prep_minutes" class="pos-input pos-input-sm" style="width:auto;display:inline-block;">
         <option value="10">10m</option>
@@ -47,13 +47,13 @@
     </form>
     <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form" onsubmit="return confirm('¿Rechazar este pedido?');">
       {% csrf_token %}
-      <input type="hidden" name="action" value="reject">
+      <input type="hidden" name="pos_action" value="reject">
       <button type="submit" class="pos-btn">Rechazar</button>
     </form>
     {% elif order.status == 'accepted' or order.status == 'preparing' %}
     <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
       {% csrf_token %}
-      <input type="hidden" name="action" value="status">
+      <input type="hidden" name="pos_action" value="status">
       <input type="hidden" name="status" value="ready">
       <button type="submit" class="pos-btn pos-btn-primary">Listo</button>
     </form>
@@ -62,7 +62,7 @@
       {% if order.source != 'zinapp' %}
       <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
         {% csrf_token %}
-        <input type="hidden" name="action" value="status">
+        <input type="hidden" name="pos_action" value="status">
         <input type="hidden" name="status" value="delivered">
         <button type="submit" class="pos-btn pos-btn-primary">Entregar / Completar</button>
       </form>

@@ -446,11 +446,24 @@ class PosOrdersPhase2Tests(TestCase):
         self._login('ord_cashier', self.rest_a)
         response = self.client.post(
             reverse('pos:order_action', kwargs={'order_id': self.order_b.id}),
-            {'action': 'accept', 'prep_minutes': 15},
+            {'pos_action': 'accept', 'prep_minutes': 15},
         )
         self.assertEqual(response.status_code, 302)
         self.order_b.refresh_from_db()
         self.assertEqual(self.order_b.status, OrderStatus.PENDING)
+
+    def test_accept_via_json_post(self):
+        self._login('ord_cashier', self.rest_a)
+        url = reverse('pos:order_action', kwargs={'order_id': self.order_a.id})
+        response = self.client.post(
+            f'{url}?format=json',
+            {'pos_action': 'accept', 'prep_minutes': 15},
+            HTTP_ACCEPT='application/json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json().get('ok'))
+        self.order_a.refresh_from_db()
+        self.assertEqual(self.order_a.status, OrderStatus.PREPARING)
 
     def test_ws_ticket_for_pos_session(self):
         self._login('ord_cashier', self.rest_a)
