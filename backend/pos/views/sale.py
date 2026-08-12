@@ -32,21 +32,24 @@ class PosSaleView(PosAccessMixin, View):
         for p in products:
             groups = []
             for g in p.option_groups.all():
+                options = [
+                    {
+                        'id': o.id,
+                        'name': o.name,
+                        'price_delta': str(o.price_delta),
+                        'is_available': o.is_available,
+                    }
+                    for o in g.options.all()
+                    if o.is_available
+                ]
+                if not options:
+                    continue
                 groups.append({
                     'id': g.id,
                     'name': g.name,
                     'min_select': g.min_select,
                     'max_select': g.max_select,
-                    'options': [
-                        {
-                            'id': o.id,
-                            'name': o.name,
-                            'price_delta': str(o.price_delta),
-                            'is_available': o.is_available,
-                        }
-                        for o in g.options.all()
-                        if o.is_available
-                    ],
+                    'options': options,
                 })
             catalog.append({
                 'id': p.id,

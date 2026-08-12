@@ -15,6 +15,7 @@
   const receivedEl = document.getElementById('pos-received');
   const changeEl = document.getElementById('pos-change');
   const dialog = document.getElementById('pos-options-dialog');
+  const optionsForm = document.getElementById('pos-options-form');
   const optionsBody = document.getElementById('pos-options-body');
   const optionsTitle = document.getElementById('pos-options-title');
   const notesEl = document.getElementById('pos-item-notes');
@@ -25,30 +26,44 @@
     return '$' + Number(n).toFixed(2);
   }
 
+  function asId(value) {
+    return Number(value);
+  }
+
+  function findOption(product, optionId) {
+    const oid = asId(optionId);
+    for (const g of product.groups || []) {
+      for (const o of g.options || []) {
+        if (asId(o.id) === oid) return o;
+      }
+    }
+    return null;
+  }
+
   function cartPayload() {
     return cart.map((line) => ({
       product_id: line.product_id,
       quantity: line.quantity,
-      option_ids: line.option_ids,
+      option_ids: (line.option_ids || []).map(asId),
       notes: line.notes || '',
     }));
   }
 
+  function lineUnitPrice(line) {
+    const p = byId[String(line.product_id)];
+    if (!p) return 0;
+    let unit = Number(p.price) || 0;
+    (line.option_ids || []).forEach((oid) => {
+      const opt = findOption(p, oid);
+      if (opt) unit += Number(opt.price_delta) || 0;
+    });
+    return unit;
+  }
+
   function syncLocalTotals() {
-    // Totales definitivos vienen del backend; esto es UX provisional.
     let subtotal = 0;
     cart.forEach((line) => {
-      const p = byId[String(line.product_id)];
-      if (!p) return;
-      let unit = Number(p.price);
-      (line.option_ids || []).forEach((oid) => {
-        p.groups.forEach((g) => {
-          g.options.forEach((o) => {
-            if (o.id === oid) unit += Number(o.price_delta);
-          });
-        });
-      });
-      subtotal += unit * line.quantity;
+      subtotal += lineUnitPrice(line) * line.quantity;
     });
     const discount = Math.max(0, Number(discountInput.value || 0));
     const total = Math.max(0, subtotal - discount);
@@ -77,7 +92,9 @@
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': window.POS_CSRF,
+          Accept: 'application/json',
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
           items: cartPayload(),
           discount_amount: discountInput.value || '0',
@@ -95,16 +112,17 @@
 
   function renderCart() {
     linesEl.innerHTML = '';
+    if (!cart.length) {
+      linesEl.innerHTML = '<p class="pos-empty" style="padding:1rem;margin:0;">Carrito vacío</p>';
+    }
     cart.forEach((line, idx) => {
       const p = byId[String(line.product_id)];
       const row = document.createElement('div');
       row.className = 'pos-cart-line';
       const opts = (line.option_ids || [])
         .map((oid) => {
-          for (const g of p.groups) {
-            for (const o of g.options) if (o.id === oid) return o.name;
-          }
-          return null;
+          const opt = p ? findOption(p, oid) : null;
+          return opt ? opt.name : null;
         })
         .filter(Boolean)
         .join(', ');
@@ -112,14 +130,15 @@
         '<div><strong>' +
         (p ? p.name : line.product_id) +
         '</strong>' +
-        (opts ? '<div style="color:#9aa8b8;font-size:0.85rem">' + opts + '</div>' : '') +
-        (line.notes ? '<div style="color:#9aa8b8;font-size:0.85rem">' + line.notes + '</div>' : '') +
+        (opts ? '<div class="pos-order-opts">' + opts + '</div>' : '') +
+        (line.notes ? '<div class="pos-order-notes">' + line.notes + '</div>' : '') +
+        '<div class="pos-order-meta">' + money(lineUnitPrice(line) * line.quantity) + '</div>' +
         '</div>';
       const actions = document.createElement('div');
       actions.className = 'pos-cart-line-actions';
       const minus = document.createElement('button');
       minus.type = 'button';
-      minus.className = 'pos-btn';
+      minus.className = 'pos-btn pos-btn-sm';
       minus.textContent = '−';
       minus.onclick = () => {
         line.quantity -= 1;
@@ -130,7 +149,7 @@
       qty.textContent = String(line.quantity);
       const plus = document.createElement('button');
       plus.type = 'button';
-      plus.className = 'pos-btn';
+      plus.className = 'pos-btn pos-btn-sm';
       plus.textContent = '+';
       plus.onclick = () => {
         line.quantity += 1;
@@ -138,7 +157,7 @@
       };
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.className = 'pos-btn';
+      remove.className = 'pos-btn pos-btn-sm';
       remove.textContent = '✕';
       remove.onclick = () => {
         cart.splice(idx, 1);
@@ -151,31 +170,53 @@
     syncLocalTotals();
   }
 
+  function openDialog() {
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
+  function closeDialog(returnValue) {
+    if (typeof dialog.close === 'function') dialog.close(returnValue || '');
+    else {
+      dialog.removeAttribute('open');
+      dialog.returnValue = returnValue || '';
+      dialog.dispatchEvent(new Event('close'));
+    }
+  }
+
   function openOptions(product) {
     pendingProduct = product;
     optionsTitle.textContent = product.name;
     notesEl.value = '';
     optionsBody.innerHTML = '';
-    product.groups.forEach((g) => {
-      const wrap = document.createElement('div');
-      wrap.style.marginBottom = '0.75rem';
-      wrap.innerHTML =
+    (product.groups || []).forEach((g) => {
+      const wrap = document.createElement('fieldset');
+      wrap.className = 'pos-option-group';
+      wrap.dataset.groupId = String(g.id);
+      wrap.dataset.minSelect = String(g.min_select || 0);
+      wrap.dataset.maxSelect = String(g.max_select || 1);
+      const legend = document.createElement('legend');
+      legend.innerHTML =
         '<strong>' +
         g.name +
-        '</strong> <span style="color:#9aa8b8">(min ' +
+        '</strong> <span class="pos-muted-inline">(min ' +
         g.min_select +
         ' / max ' +
         g.max_select +
         ')</span>';
-      g.options.forEach((o) => {
+      wrap.appendChild(legend);
+      (g.options || []).forEach((o, idx) => {
         const label = document.createElement('label');
-        label.style.display = 'block';
-        label.style.marginTop = '0.35rem';
+        label.className = 'pos-option-choice';
         const input = document.createElement('input');
-        input.type = g.max_select > 1 ? 'checkbox' : 'radio';
+        input.type = Number(g.max_select) > 1 ? 'checkbox' : 'radio';
         input.name = 'group_' + g.id;
         input.value = String(o.id);
         input.dataset.groupId = String(g.id);
+        // Preselecciona la primera opción en grupos obligatorios de 1.
+        if (Number(g.min_select) >= 1 && Number(g.max_select) === 1 && idx === 0) {
+          input.checked = true;
+        }
         label.appendChild(input);
         label.appendChild(
           document.createTextNode(
@@ -186,21 +227,47 @@
       });
       optionsBody.appendChild(wrap);
     });
-    if (typeof dialog.showModal === 'function') dialog.showModal();
+    openDialog();
+  }
+
+  function collectSelectedOptionIds() {
+    const selected = [];
+    optionsBody.querySelectorAll('input:checked').forEach((el) => {
+      selected.push(asId(el.value));
+    });
+    return selected;
+  }
+
+  function validateOptions(product) {
+    for (const g of product.groups || []) {
+      const checked = optionsBody.querySelectorAll('input[name="group_' + g.id + '"]:checked');
+      const count = checked.length;
+      const minSel = Number(g.min_select) || 0;
+      const maxSel = Number(g.max_select) || 1;
+      if (count < minSel) {
+        return 'Elige al menos ' + minSel + ' opción(es) en «' + g.name + '».';
+      }
+      if (count > maxSel) {
+        return 'Solo puedes elegir hasta ' + maxSel + ' en «' + g.name + '».';
+      }
+    }
+    return '';
   }
 
   function addProduct(product, optionIds, notes) {
-    const key = product.id + ':' + optionIds.slice().sort().join(',') + ':' + (notes || '');
+    const ids = (optionIds || []).map(asId).sort(function (a, b) { return a - b; });
+    const key = product.id + ':' + ids.join(',') + ':' + (notes || '');
     const existing = cart.find((l) => l._key === key);
     if (existing) existing.quantity += 1;
-    else
+    else {
       cart.push({
         _key: key,
         product_id: product.id,
         quantity: 1,
-        option_ids: optionIds,
+        option_ids: ids,
         notes: notes || '',
       });
+    }
     renderCart();
   }
 
@@ -213,12 +280,30 @@
     });
   });
 
-  document.getElementById('pos-options-form').addEventListener('close', () => {
-    if (dialog.returnValue !== 'ok' || !pendingProduct) return;
-    const selected = [];
-    optionsBody.querySelectorAll('input:checked').forEach((el) => selected.push(Number(el.value)));
-    addProduct(pendingProduct, selected, notesEl.value.trim());
+  // Validar antes de cerrar el dialog (method=dialog).
+  optionsForm.addEventListener('submit', (ev) => {
+    const submitter = ev.submitter;
+    const intent = submitter ? submitter.value : 'ok';
+    if (intent !== 'ok') return;
+    if (!pendingProduct) {
+      ev.preventDefault();
+      return;
+    }
+    const error = validateOptions(pendingProduct);
+    if (error) {
+      ev.preventDefault();
+      alert(error);
+    }
+  });
+
+  // El evento `close` se dispara en <dialog>, no en el form.
+  dialog.addEventListener('close', () => {
+    const product = pendingProduct;
+    const ok = dialog.returnValue === 'ok';
     pendingProduct = null;
+    if (!ok || !product) return;
+    const selected = collectSelectedOptionIds();
+    addProduct(product, selected, (notesEl.value || '').trim());
   });
 
   discountInput.addEventListener('input', syncLocalTotals);
@@ -237,6 +322,15 @@
       ev.preventDefault();
       alert('Agrega productos al carrito.');
       return;
+    }
+    if (paymentEl.value === 'cash') {
+      const total = Number(String(totalEl.textContent).replace('$', '')) || 0;
+      const received = Number(receivedEl.value || 0);
+      if (received < total) {
+        ev.preventDefault();
+        alert('El efectivo recibido es menor al total.');
+        return;
+      }
     }
     if (chargeLocked) {
       ev.preventDefault();

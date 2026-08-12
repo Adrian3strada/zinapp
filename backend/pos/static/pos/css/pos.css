@@ -544,3 +544,35 @@ input:focus {
   text-transform: uppercase;
 }
 .pos-table tr:last-child td { border-bottom: 0; }
+
+.pos-option-group {
+  border: 1px solid var(--pos-line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem 0.85rem;
+  margin: 0 0 0.75rem;
+}
+.pos-option-group legend {
+  padding: 0 0.25rem;
+  color: var(--pos-text);
+}
+.pos-muted-inline { color: var(--pos-muted); font-weight: 600; font-size: 0.85rem; }
+.pos-option-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pos-dialog {
+  border: 1px solid var(--pos-line);
+  border-radius: 16px;
+  padding: 1.1rem 1.15rem;
+  background: #111827;
+  color: var(--pos-text);
+  width: min(440px, 94vw);
+  box-shadow: var(--pos-shadow);
+}
+.pos-dialog::backdrop {
+  background: rgba(2, 8, 23, 0.65);
+}

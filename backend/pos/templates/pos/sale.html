@@ -72,11 +72,11 @@
   <form method="dialog" id="pos-options-form">
     <h3 id="pos-options-title">Opciones</h3>
     <div id="pos-options-body"></div>
-    <label class="pos-label">Notas</label>
+    <label class="pos-label" for="pos-item-notes">Notas</label>
     <input type="text" id="pos-item-notes" class="pos-input" maxlength="255">
     <div class="pos-dialog-actions">
-      <button value="cancel" class="pos-btn">Cancelar</button>
-      <button value="ok" class="pos-btn pos-btn-primary">Agregar</button>
+      <button type="submit" value="cancel" class="pos-btn">Cancelar</button>
+      <button type="submit" value="ok" class="pos-btn pos-btn-primary">Agregar</button>
     </div>
   </form>
 </dialog>
@@ -87,5 +87,5 @@
   window.POS_PREVIEW_URL = "{% url 'pos:cart_preview' %}";
   window.POS_CSRF = "{{ csrf_token }}";
 </script>
-<script src="{% static 'pos/js/sale.js' %}"></script>
+<script src="{% static 'pos/js/sale.js' %}?v=4"></script>
 {% endblock %}
