@@ -12,6 +12,7 @@ from orders.models import (
     Order,
     OrderDispute,
     OrderItem,
+    OrderSource,
     OrderStatus,
     PaymentStatus,
     Shipment,
@@ -27,6 +28,11 @@ ORDER_TIMELINE = [
     OrderStatus.ON_THE_WAY,
     OrderStatus.DELIVERED,
 ]
+
+
+def platform_orders_qs():
+    """Pedidos de la app ZinApp (excluye POS/mostrador y otros orígenes locales)."""
+    return Order.objects.filter(source=OrderSource.ZINAPP)
 
 ORDER_TIMELINE_INDEX = {status: index for index, status in enumerate(ORDER_TIMELINE)}
 ZINAPP_PRODUCT_MARKUP_FACTOR = Decimal('1.10')
@@ -97,7 +103,7 @@ def _apply_delivered_date_range(qs, start_date, end_date):
 def get_financial_report(params=None):
     period, start_date, end_date = _date_range_from_params(params)
     delivered_orders = _apply_delivered_date_range(
-        Order.objects.filter(
+        platform_orders_qs().filter(
             status=OrderStatus.DELIVERED,
             payment_status=PaymentStatus.PAID,
         ).exclude(disputes__status=DisputeStatus.REFUNDED),
@@ -158,7 +164,7 @@ def get_financial_report(params=None):
             'customer_name': (
                 (order.customer.get_full_name() or order.customer.username)
                 if order.customer_id and order.customer
-                else 'POS / Mostrador'
+                else '—'
             ),
             'delivered_at': order.delivered_at,
             'product_sales': order_product_sales,
@@ -255,7 +261,7 @@ def get_financial_report(params=None):
 def get_dashboard_stats(params=None):
     today = timezone.localdate()
 
-    orders_qs = Order.objects.all()
+    orders_qs = platform_orders_qs()
     orders_today = orders_qs.filter(created_at__date=today)
     financial_report = get_financial_report(params)
 

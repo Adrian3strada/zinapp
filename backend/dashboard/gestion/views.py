@@ -1073,7 +1073,8 @@ class OrderEditView(PanelAccessMixin, UpdateView):
     template_name = 'dashboard/gestion/order_form.html'
 
     def get_queryset(self):
-        return Order.objects.select_related('customer', 'restaurant', 'driver')
+        from dashboard.services import platform_orders_qs
+        return platform_orders_qs().select_related('customer', 'restaurant', 'driver')
 
     def get_success_url(self):
         return reverse('dashboard:order-detail', kwargs={'pk': self.object.pk})

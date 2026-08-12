@@ -35,7 +35,7 @@
           <tr>
             <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">#{{ order.id }}</a></td>
             <td>{{ order.restaurant.name }}</td>
-            <td>{{ order.customer.username }}</td>
+            <td>{% if order.customer %}{{ order.customer.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
             <td>{% if order.driver %}{{ order.driver.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
             <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
             <td><span class="text-muted">{{ order.get_payment_method_display }}</span></td>

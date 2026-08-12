@@ -19,7 +19,12 @@ from accounts.setup import driver_setup_status
 from .access import can_access_panel
 from .mixins import PanelAccessMixin
 from .page_context import page_context
-from .services import calculate_restaurant_amount, get_dashboard_stats, get_order_timeline
+from .services import (
+    calculate_restaurant_amount,
+    get_dashboard_stats,
+    get_order_timeline,
+    platform_orders_qs,
+)
 
 
 class PanelLoginView(LoginView):
@@ -88,7 +93,7 @@ class OrderListView(PanelAccessMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = Order.objects.select_related('customer', 'restaurant', 'driver')
+        qs = platform_orders_qs().select_related('customer', 'restaurant', 'driver')
         status = self.request.GET.get('status', '').strip()
         if status and status in OrderStatus.values:
             qs = qs.filter(status=status)
@@ -112,7 +117,7 @@ class OrderListView(PanelAccessMixin, ListView):
         ctx.update(page_context(
             'Pedidos',
             'orders',
-            subtitle='Consulta y da seguimiento a todos los pedidos de la plataforma.',
+            subtitle='Solo pedidos de la app ZinApp. Las ventas POS quedan en el local.',
         ))
         ctx['status_filter'] = self.request.GET.get('status', '')
         ctx['search_query'] = self.request.GET.get('q', '')
@@ -127,7 +132,7 @@ class OrderDetailView(PanelAccessMixin, DetailView):
     context_object_name = 'order'
 
     def get_queryset(self):
-        return Order.objects.select_related(
+        return platform_orders_qs().select_related(
             'customer', 'restaurant', 'restaurant__owner', 'driver', 'coupon',
         ).prefetch_related('items', 'items__product')
 
