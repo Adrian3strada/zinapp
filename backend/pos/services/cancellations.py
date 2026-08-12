@@ -28,7 +28,7 @@ def cancel_pos_sale(
     """
     order = (
         Order.objects.select_for_update()
-        .select_related('pos_sale', 'restaurant')
+        .select_related('restaurant')
         .filter(pk=order_id, restaurant=restaurant)
         .first()
     )

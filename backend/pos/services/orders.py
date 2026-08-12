@@ -22,9 +22,11 @@ ALLOWED_PREP = {10, 15, 20, 25, 30, 40, 45, 60}
 
 
 def _locked_order(*, restaurant, order_id: int) -> Order:
+    # No select_related de FKs nullable (customer): Postgres rechaza
+    # FOR UPDATE sobre el lado nullable de un OUTER JOIN.
     order = (
         Order.objects.select_for_update()
-        .select_related('restaurant', 'customer')
+        .select_related('restaurant')
         .filter(pk=order_id, restaurant=restaurant)
         .first()
     )
