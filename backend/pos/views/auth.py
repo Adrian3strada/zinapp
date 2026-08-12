@@ -2,7 +2,9 @@ from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from ..access import (
     accessible_restaurants_qs,
@@ -13,6 +15,7 @@ from ..access import (
 from ..forms import PosLoginForm
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class PosLoginView(LoginView):
     template_name = 'pos/login.html'
     authentication_form = PosLoginForm
@@ -36,8 +39,11 @@ class PosLoginView(LoginView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and accessible_restaurants_qs(request.user).exists():
             return redirect('pos:post_login')
+        # Si venía logueado (p. ej. panel admin), cierra sesión y recarga el login
+        # en un GET limpio para no reutilizar cookie/token CSRF viejos.
         if request.user.is_authenticated:
             logout(request)
+            return redirect('pos:login')
         return super().dispatch(request, *args, **kwargs)
 
 

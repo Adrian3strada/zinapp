@@ -87,6 +87,30 @@ class PosAccessTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn('/pos/login/', response.url)
 
+    def test_login_clears_non_pos_session_then_allows_owner(self):
+        """Evita 403 CSRF al llegar logueado desde panel sin acceso POS."""
+        admin = User.objects.create_user(
+            username='panel_admin_pos',
+            password='pass12345',
+            role=UserRole.ADMIN,
+            is_staff=True,
+        )
+        self.client.login(username='panel_admin_pos', password='pass12345')
+        first = self.client.get(reverse('pos:login'))
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(first.url, reverse('pos:login'))
+
+        page = self.client.get(reverse('pos:login'))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'csrfmiddlewaretoken')
+
+        response = self.client.post(
+            reverse('pos:login'),
+            {'username': 'owner_a', 'password': 'pass12345'},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/pos/', response.url)
+
     def test_pos_disabled_blocks_owner(self):
         self.rest_a.pos_enabled = False
         self.rest_a.save(update_fields=['pos_enabled'])

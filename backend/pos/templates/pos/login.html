@@ -22,7 +22,7 @@
     </div>
     {% endif %}
 
-    <form method="post" class="pos-form">
+    <form method="post" action="{% url 'pos:login' %}" class="pos-form">
       {% csrf_token %}
       <label class="pos-label">Usuario</label>
       {{ form.username }}

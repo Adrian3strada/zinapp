@@ -1,5 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import dj_database_url
 from decouple import Csv, config
@@ -27,7 +28,30 @@ if DEBUG:
 elif not ALLOWED_HOSTS or ALLOWED_HOSTS == ['localhost', '127.0.0.1']:
     ALLOWED_HOSTS = ['.railway.app', '.onrender.com']
 
-CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip().rstrip('/')
+    for origin in config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
+    if origin and origin.strip().rstrip('/') not in {'', 'https://', 'http://'}
+]
+
+
+def _csrf_origins_for_site(site_url: str) -> list[str]:
+    """Incluye apex y www para el dominio canónico (evita 403 CSRF en login)."""
+    raw = (site_url or '').strip().rstrip('/')
+    if not raw.startswith(('http://', 'https://')):
+        return []
+    parts = urlsplit(raw)
+    host = (parts.hostname or '').lower()
+    if not host:
+        return []
+    scheme = parts.scheme or 'https'
+    origins = [f'{scheme}://{host}']
+    if host.startswith('www.'):
+        origins.append(f'{scheme}://{host[4:]}')
+    else:
+        origins.append(f'{scheme}://www.{host}')
+    return origins
+
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if not DEBUG else None
 
@@ -211,6 +235,10 @@ SOCIAL_FACEBOOK = config('SOCIAL_FACEBOOK', default='').strip()
 TERMS_URL = config('TERMS_URL', default='').strip()
 # URL canónica del sitio público (sin / al final). Usada en SEO: canonical, OG, sitemap, robots.
 SITE_URL = config('SITE_URL', default='https://zinapp.com.mx').strip().rstrip('/')
+# Garantiza apex + www aunque la env CSRF_TRUSTED_ORIGINS venga incompleta.
+for _origin in _csrf_origins_for_site(SITE_URL):
+    if _origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_origin)
 # 301 Railway/Render → SITE_URL solo para landing/SEO (no API/panel/app).
 CANONICAL_HOST_REDIRECT = config('CANONICAL_HOST_REDIRECT', default=True, cast=bool)
 # Lista opcional de hosts a redirigir (vacío = *.railway.app / *.onrender.com).
