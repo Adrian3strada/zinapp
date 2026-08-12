@@ -1,7 +1,7 @@
 <article class="pos-order-card status-{{ order.status }} source-{{ order.source }}" data-order-id="{{ order.id }}">
   <header class="pos-order-card-head">
-    <strong>{{ order.display_ref }}</strong>
-    <span class="pos-pill">{{ order.get_status_display }}</span>
+    <strong class="pos-order-code">{{ order.display_ref }}</strong>
+    <span class="pos-pill pos-pill-status">{{ order.get_status_display }}</span>
     <span class="pos-pill pos-pill-muted">{{ order.get_source_display }}</span>
   </header>
   <div class="pos-order-meta">
@@ -10,13 +10,15 @@
     {% else %}
       Mostrador
     {% endif %}
-    · ${{ order.total }}
-    · {{ order.get_payment_method_display }}
+    <span class="pos-dot" aria-hidden="true">·</span>
+    <span class="pos-money">${{ order.total }}</span>
+    <span class="pos-dot" aria-hidden="true">·</span>
+    {{ order.get_payment_method_display }}
   </div>
   <ul class="pos-order-items">
     {% for item in order.items.all %}
     <li>
-      <strong>{{ item.quantity }}x</strong> {{ item.product.name }}
+      <strong>{{ item.quantity }}×</strong> {{ item.product.name }}
       {% if item.selected_options %}
       <div class="pos-order-opts">
         {% for opt in item.selected_options %}· {{ opt.name }} {% endfor %}
@@ -32,11 +34,14 @@
 
   <div class="pos-order-actions">
     {% if order.status == 'pending' %}
-    <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
+    <form method="post"
+          action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+          data-action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+          class="pos-inline-form js-order-action">
       {% csrf_token %}
       <input type="hidden" name="pos_action" value="accept">
-      <label class="pos-label" style="margin:0;">Prep</label>
-      <select name="prep_minutes" class="pos-input pos-input-sm" style="width:auto;display:inline-block;">
+      <label class="pos-sr-only" for="prep-{{ order.id }}">Prep</label>
+      <select id="prep-{{ order.id }}" name="prep_minutes" class="pos-input pos-input-sm">
         <option value="10">10m</option>
         <option value="15" selected>15m</option>
         <option value="20">20m</option>
@@ -45,34 +50,44 @@
       </select>
       <button type="submit" class="pos-btn pos-btn-primary">Aceptar</button>
     </form>
-    <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form" onsubmit="return confirm('¿Rechazar este pedido?');">
+    <form method="post"
+          action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+          data-action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+          class="pos-inline-form js-order-action"
+          data-confirm="¿Rechazar este pedido?">
       {% csrf_token %}
       <input type="hidden" name="pos_action" value="reject">
-      <button type="submit" class="pos-btn">Rechazar</button>
+      <button type="submit" class="pos-btn pos-btn-danger-ghost">Rechazar</button>
     </form>
     {% elif order.status == 'accepted' or order.status == 'preparing' %}
-    <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
+    <form method="post"
+          action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+          data-action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+          class="pos-inline-form js-order-action">
       {% csrf_token %}
       <input type="hidden" name="pos_action" value="status">
       <input type="hidden" name="status" value="ready">
       <button type="submit" class="pos-btn pos-btn-primary">Listo</button>
     </form>
-    <a class="pos-btn" href="{% url 'pos:ticket_kitchen' order.id %}?autoprint=1">Imprimir</a>
+    <a class="pos-btn pos-btn-ghost" href="{% url 'pos:ticket_kitchen' order.id %}?autoprint=1">Imprimir</a>
     {% elif order.status == 'ready' %}
       {% if order.source != 'zinapp' %}
-      <form method="post" action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}" class="pos-inline-form">
+      <form method="post"
+            action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+            data-action="{% if mode == 'kitchen' %}{% url 'pos:kitchen_action' order.id %}{% else %}{% url 'pos:order_action' order.id %}{% endif %}"
+            class="pos-inline-form js-order-action">
         {% csrf_token %}
         <input type="hidden" name="pos_action" value="status">
         <input type="hidden" name="status" value="delivered">
-        <button type="submit" class="pos-btn pos-btn-primary">Entregar / Completar</button>
+        <button type="submit" class="pos-btn pos-btn-primary">Entregar</button>
       </form>
       {% else %}
       <span class="pos-hint">Esperando repartidor</span>
       {% endif %}
-      <a class="pos-btn" href="{% url 'pos:ticket_kitchen' order.id %}">Ticket cocina</a>
+      <a class="pos-btn pos-btn-ghost" href="{% url 'pos:ticket_kitchen' order.id %}">Ticket cocina</a>
     {% endif %}
     {% if order.source == 'pos' and order.status != 'cancelled' and mode != 'kitchen' %}
-    <a class="pos-btn" href="{% url 'pos:sale_cancel' order.id %}">Cancelar</a>
+    <a class="pos-btn pos-btn-ghost" href="{% url 'pos:sale_cancel' order.id %}">Cancelar</a>
     {% endif %}
   </div>
 </article>

@@ -1,8 +1,14 @@
 {% extends "pos/base.html" %}
 {% block title %}Dashboard · ZinApp POS{% endblock %}
+{% block body_class %}pos-page-dashboard{% endblock %}
 {% block content %}
-<section class="pos-dashboard">
-  <h1>{{ pos_restaurant.name }}</h1>
+<section class="pos-panel pos-dashboard">
+  <div class="pos-section-head">
+    <div>
+      <p class="pos-eyebrow">Resumen del día</p>
+      <h1>{{ pos_restaurant.name }}</h1>
+    </div>
+  </div>
   <div class="pos-stat-grid">
     <div class="pos-stat">
       <span class="pos-stat-label">Caja</span>

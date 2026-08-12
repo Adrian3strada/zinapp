@@ -5,12 +5,15 @@
 {% block content %}
 <section class="pos-panel">
   <div class="pos-section-head">
-    <h1>Cocina</h1>
+    <div>
+      <p class="pos-eyebrow">Producción</p>
+      <h1>Cocina</h1>
+    </div>
     <span class="pos-live-badge" id="pos-live-badge">Conectando…</span>
   </div>
   <div class="pos-order-grid pos-kitchen-grid" id="pos-order-grid"
-       data-feed-url="{% url 'pos:kitchen_feed' %}"
-       data-action-url-template="{% url 'pos:kitchen_action' order_id=0 %}"
+       data-feed-url="{{ orders_feed_url }}"
+       data-action-url-template="{{ action_url_template }}"
        data-mode="kitchen">
     {% for order in orders %}
     {% include "pos/includes/order_card.html" with order=order mode="kitchen" %}
@@ -29,6 +32,6 @@
     pollSeconds: 45,
   };
 </script>
-<script src="{% static 'pos/js/realtime.js' %}"></script>
-<script src="{% static 'pos/js/orders.js' %}"></script>
+<script src="{% static 'pos/js/realtime.js' %}?v=2"></script>
+<script src="{% static 'pos/js/orders.js' %}?v=3"></script>
 {% endblock %}

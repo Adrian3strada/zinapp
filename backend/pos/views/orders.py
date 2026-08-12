@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views import View
 
 from orders.models import OrderSource, OrderStatus
@@ -15,6 +16,7 @@ from ..selectors.orders import (
 )
 from ..services import orders as order_services
 from ..services.cancellations import cancel_pos_sale
+from ..urltools import reverse_id_template
 
 
 STATUS_FILTERS = [
@@ -49,6 +51,8 @@ class PosOrdersView(PosAccessMixin, View):
             'source_filter': source,
             'status_filters': STATUS_FILTERS,
             'realtime_restaurant_id': self.pos_restaurant.id,
+            'orders_feed_url': reverse('pos:orders_feed'),
+            'action_url_template': reverse_id_template('pos:order_action'),
         })
 
 
@@ -81,6 +85,8 @@ class PosKitchenView(PosAccessMixin, View):
             'pos_role': self.pos_access.role,
             'orders': orders,
             'realtime_restaurant_id': self.pos_restaurant.id,
+            'orders_feed_url': reverse('pos:kitchen_feed'),
+            'action_url_template': reverse_id_template('pos:kitchen_action'),
         })
 
 
