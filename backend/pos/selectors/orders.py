@@ -96,6 +96,16 @@ def order_for_restaurant(*, restaurant, order_id: int):
     )
 
 
+def status_display_for_pos(order) -> str:
+    """Etiquetas orientadas a mostrador (sin cambiar el enum global de delivery)."""
+    if order.source != OrderSource.ZINAPP:
+        if order.status == OrderStatus.READY:
+            return 'Listo en mostrador'
+        if order.status == OrderStatus.DELIVERED:
+            return 'Entregado al cliente'
+    return order.get_status_display()
+
+
 def serialize_order_card(order) -> dict:
     items = []
     for item in order.items.all():
@@ -112,7 +122,7 @@ def serialize_order_card(order) -> dict:
         'id': order.id,
         'code': order.display_ref,
         'status': order.status,
-        'status_display': order.get_status_display(),
+        'status_display': status_display_for_pos(order),
         'source': order.source,
         'source_display': order.get_source_display(),
         'payment_method': order.payment_method,

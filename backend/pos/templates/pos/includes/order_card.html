@@ -1,7 +1,15 @@
 <article class="pos-order-card status-{{ order.status }} source-{{ order.source }}" data-order-id="{{ order.id }}">
   <header class="pos-order-card-head">
     <strong class="pos-order-code">{{ order.display_ref }}</strong>
-    <span class="pos-pill pos-pill-status">{{ order.get_status_display }}</span>
+    <span class="pos-pill pos-pill-status">
+      {% if order.source != 'zinapp' and order.status == 'ready' %}
+        Listo en mostrador
+      {% elif order.source != 'zinapp' and order.status == 'delivered' %}
+        Entregado al cliente
+      {% else %}
+        {{ order.get_status_display }}
+      {% endif %}
+    </span>
     <span class="pos-pill pos-pill-muted">{{ order.get_source_display }}</span>
   </header>
   <div class="pos-order-meta">

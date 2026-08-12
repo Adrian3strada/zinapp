@@ -1,19 +1,23 @@
 :root {
-  --pos-bg: #12151a;
-  --pos-bg-elevated: #181c22;
-  --pos-surface: #1e242c;
-  --pos-surface-2: #272e38;
-  --pos-line: #343c48;
-  --pos-text: #f2f4f7;
-  --pos-muted: #9aa3b2;
-  --pos-accent: #3ecf8e;
-  --pos-accent-ink: #062816;
-  --pos-warn: #e8b339;
-  --pos-info: #5b9fff;
-  --pos-danger: #ef6b6b;
+  /* Paleta ZinApp (panel / landing) */
+  --pos-bg: #0b1220;
+  --pos-bg-elevated: #111827;
+  --pos-surface: #1e293b;
+  --pos-surface-2: #273548;
+  --pos-line: #334155;
+  --pos-text: #f8fafc;
+  --pos-muted: #94a3b8;
+  --pos-accent: #1E5DB8;
+  --pos-accent-2: #3b82f6;
+  --pos-accent-ink: #ffffff;
+  --pos-accent-soft: rgba(30, 93, 184, 0.18);
+  --pos-warn: #F97316;
+  --pos-info: #38bdf8;
+  --pos-ok: #059669;
+  --pos-danger: #ef4444;
   --pos-radius: 16px;
   --pos-radius-sm: 10px;
-  --pos-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  --pos-shadow: 0 18px 40px rgba(2, 8, 23, 0.35);
   --pos-font: "Manrope", "Segoe UI", sans-serif;
   --pos-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
 }
@@ -26,9 +30,9 @@ body.pos-body {
   color: var(--pos-text);
   min-height: 100vh;
   background:
-    radial-gradient(900px 420px at 0% -10%, rgba(62, 207, 142, 0.12), transparent 55%),
-    radial-gradient(700px 380px at 100% 0%, rgba(91, 159, 255, 0.08), transparent 50%),
-    linear-gradient(180deg, #151920 0%, var(--pos-bg) 40%, #101318 100%);
+    radial-gradient(900px 420px at 0% -10%, rgba(30, 93, 184, 0.22), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(249, 115, 22, 0.08), transparent 50%),
+    linear-gradient(180deg, #0f172a 0%, var(--pos-bg) 42%, #070b14 100%);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -161,8 +165,8 @@ h1 { font-size: clamp(1.45rem, 2vw, 1.85rem); }
   border: 1px solid var(--pos-line);
   font-weight: 600;
 }
-.pos-flash-error { background: rgba(239, 107, 107, 0.12); border-color: rgba(239, 107, 107, 0.35); color: #ffd0d0; }
-.pos-flash-success { background: rgba(62, 207, 142, 0.12); border-color: rgba(62, 207, 142, 0.35); color: #c9f7df; }
+.pos-flash-error { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); color: #fecaca; }
+.pos-flash-success { background: rgba(5, 150, 105, 0.12); border-color: rgba(5, 150, 105, 0.35); color: #a7f3d0; }
 
 .pos-btn {
   display: inline-flex;
@@ -215,8 +219,8 @@ select {
 .pos-input:focus,
 select:focus,
 input:focus {
-  outline: 2px solid rgba(62, 207, 142, 0.35);
-  border-color: rgba(62, 207, 142, 0.55);
+  outline: 2px solid rgba(30, 93, 184, 0.4);
+  border-color: rgba(30, 93, 184, 0.65);
 }
 .pos-input-sm {
   width: auto;
@@ -281,7 +285,7 @@ input:focus {
 }
 .pos-stat-label { display: block; color: var(--pos-muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .pos-stat-value { display: block; font-size: 1.55rem; font-weight: 800; margin-top: 0.35rem; letter-spacing: -0.03em; }
-.pos-stat-value.is-open { color: var(--pos-accent); }
+.pos-stat-value.is-open { color: var(--pos-ok); }
 .pos-stat-value.is-closed { color: var(--pos-danger); }
 .pos-stat-meta { color: var(--pos-muted); font-size: 0.85rem; margin-top: 0.2rem; display: block; }
 
@@ -332,9 +336,9 @@ input:focus {
 }
 .pos-chip:hover { color: var(--pos-text); border-color: var(--pos-line); }
 .pos-chip.is-active {
-  background: rgba(62, 207, 142, 0.16);
-  color: var(--pos-accent);
-  border-color: rgba(62, 207, 142, 0.35);
+  background: var(--pos-accent-soft);
+  color: #93c5fd;
+  border-color: rgba(30, 93, 184, 0.45);
 }
 
 .pos-product-grid {
@@ -401,14 +405,14 @@ input:focus {
   white-space: nowrap;
 }
 .pos-live-badge.is-live {
-  background: rgba(62, 207, 142, 0.12);
-  border-color: rgba(62, 207, 142, 0.35);
-  color: #b8f0d0;
+  background: rgba(5, 150, 105, 0.14);
+  border-color: rgba(5, 150, 105, 0.4);
+  color: #a7f3d0;
 }
 .pos-live-badge.is-offline {
-  background: rgba(232, 179, 57, 0.12);
-  border-color: rgba(232, 179, 57, 0.35);
-  color: #ffd9a8;
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.4);
+  color: #fed7aa;
 }
 
 .pos-order-grid {
@@ -442,7 +446,7 @@ input:focus {
 .pos-order-card.status-pending::before { background: var(--pos-warn); }
 .pos-order-card.status-preparing::before,
 .pos-order-card.status-accepted::before { background: var(--pos-info); }
-.pos-order-card.status-ready::before { background: var(--pos-accent); }
+.pos-order-card.status-ready::before { background: var(--pos-ok); }
 .pos-order-card.status-cancelled::before { background: var(--pos-danger); }
 
 .pos-order-card-head {
