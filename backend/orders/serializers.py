@@ -640,6 +640,18 @@ def build_mandado_description(items: list) -> str:
     return text[:200]
 
 
+def _mandado_items_for_storage(items: list) -> list:
+    """JSONField no acepta Decimal; normaliza cantidades antes de guardar."""
+    stored = []
+    for raw in items:
+        item = dict(raw)
+        qty = item.get('quantity')
+        if qty is not None:
+            item['quantity'] = float(qty)
+        stored.append(item)
+    return stored
+
+
 class MandadoItemSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=80)
     quantity = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=Decimal('0.01'))
@@ -804,7 +816,7 @@ class ShipmentCreateSerializer(serializers.Serializer):
         mandado_details = {}
         if kind == ShipmentKind.MANDADO:
             mandado_details = {
-                'items': validated_data.get('mandado_items') or [],
+                'items': _mandado_items_for_storage(validated_data.get('mandado_items') or []),
                 'preferred_stores': (validated_data.get('preferred_stores') or '').strip(),
             }
 
@@ -873,6 +885,7 @@ class OrderActiveSerializer(_DriverLocationMixin, serializers.ModelSerializer):
 
 class ShipmentActiveSerializer(_DriverLocationMixin, serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     driver_latitude = serializers.SerializerMethodField()
     driver_longitude = serializers.SerializerMethodField()
     driver_location_updated_at = serializers.SerializerMethodField()
@@ -880,7 +893,7 @@ class ShipmentActiveSerializer(_DriverLocationMixin, serializers.ModelSerializer
     class Meta:
         model = Shipment
         fields = (
-            'id', 'status', 'status_display', 'description',
+            'id', 'status', 'status_display', 'kind', 'kind_display', 'description',
             'delivery_latitude', 'delivery_longitude',
             'driver_latitude', 'driver_longitude', 'driver_location_updated_at',
         )

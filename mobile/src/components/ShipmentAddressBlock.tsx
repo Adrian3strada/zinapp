@@ -112,9 +112,9 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 8 },
   actionBtn: { flex: 1 },
   statusOk: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  statusOkText: { fontSize: 12, color: colors.success, fontWeight: '600' },
+  statusOkText: { flex: 1, minWidth: 0, fontSize: 12, color: colors.success, fontWeight: '600' },
   statusApprox: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  statusApproxText: { fontSize: 12, color: colors.warning, fontWeight: '600' },
+  statusApproxText: { flex: 1, minWidth: 0, fontSize: 12, color: colors.warning, fontWeight: '600' },
   statusWarn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  statusWarnText: { fontSize: 12, color: colors.error, fontWeight: '600' },
+  statusWarnText: { flex: 1, minWidth: 0, fontSize: 12, color: colors.error, fontWeight: '600' },
 });

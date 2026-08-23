@@ -255,6 +255,7 @@ export interface ShipmentActiveSummary {
   id: number;
   status: ShipmentStatus;
   status_display: string;
+  kind?: ShipmentKind;
   description: string;
   delivery_latitude: string | null;
   delivery_longitude: string | null;

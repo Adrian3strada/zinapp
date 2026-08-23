@@ -45,7 +45,9 @@ export default function ActiveDeliveryStrip({ items, onPress }: Props) {
           </View>
           <View style={styles.body}>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>{item.title}</Text>
+              <Text style={styles.title} numberOfLines={1}>
+                {item.title}
+              </Text>
               {item.isLive && <LiveBadge compact />}
             </View>
             <Text style={styles.subtitle} numberOfLines={1}>
@@ -108,9 +110,9 @@ const styles = StyleSheet.create({
   },
   iconWrapLive: { backgroundColor: colors.surface },
   emoji: { fontSize: 24 },
-  body: { flex: 1, gap: 2 },
+  body: { flex: 1, minWidth: 0, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  title: { fontSize: 15, fontWeight: '800', color: colors.text },
+  title: { flexShrink: 1, fontSize: 15, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   status: { fontSize: 12, color: colors.textMuted, fontWeight: '700', marginTop: 2 },
   statusLive: { color: colors.primary },

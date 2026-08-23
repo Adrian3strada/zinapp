@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -11,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
-import FormField from '../../components/FormField';
+import KeyboardForm from '../../components/KeyboardForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import ShipmentAddressBlock from '../../components/ShipmentAddressBlock';
 import { getShipmentFee } from '../../config/delivery';
@@ -20,6 +21,7 @@ import { useLocation } from '../../hooks/useLocation';
 import type { MandadoScreenProps } from '../../navigation/types';
 import { restaurantApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
+import { radii } from '../../theme/radii';
 import { spacing } from '../../theme/spacing';
 import type { MandadoCategory, MandadoItem, MandadoUnit } from '../../utils/mandadoCategories';
 import {
@@ -32,9 +34,9 @@ import { appAlert } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { isInCoverage } from '../../utils/coverage';
+import { formatCurrency } from '../../utils/format';
 import { runWithRetry } from '../../utils/runWithRetry';
-
-const MANDADO_COLOR = '#16A34A';
+import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
 
 export default function MandadoScreen({ navigation }: MandadoScreenProps) {
   const insets = useSafeAreaInsets();
@@ -58,9 +60,10 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
   const idempotencyKey = useRef<string | null>(null);
 
   const deliveryFee = getShipmentFee('medium');
+  const categoryMeta = MANDADO_CATEGORIES.find((c) => c.key === draftCategory);
 
   const addItem = useCallback(() => {
-    const name = draftName.trim();
+    const name = draftName.trim().slice(0, 80);
     if (!name) {
       appAlert('Producto', 'Escribe qué quieres en el mandado.');
       return;
@@ -74,7 +77,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
       ...prev,
       createMandadoItem({
         name,
-        quantity: String(qty),
+        quantity: String(Number(qty.toFixed(2))),
         unit: draftUnit,
         category: draftCategory,
       }),
@@ -85,11 +88,6 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
-  }, []);
-
-  const quickAdd = useCallback((name: string, category: MandadoCategory) => {
-    setDraftName(name);
-    setDraftCategory(category);
   }, []);
 
   const handleAddressChange = useCallback((text: string) => {
@@ -136,11 +134,6 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
     }
   }, [deliveryAddress, getCurrentPosition]);
 
-  const summaryPreview = useMemo(
-    () => items.map((it) => formatMandadoItem(it)).join(' · '),
-    [items],
-  );
-
   const handleSubmit = useCallback(async () => {
     if (!user) {
       appAlert('Inicia sesión', 'Necesitas una cuenta para pedir un mandado.', [
@@ -155,6 +148,10 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
     }
     if (!deliveryAddress.trim()) {
       appAlert('Entrega', 'Indica dónde entregar el mandado.');
+      return;
+    }
+    if (coverageOk === false && deliveryCoords) {
+      appAlert('Cobertura', 'La dirección está fuera de Zinapécuaro.');
       return;
     }
 
@@ -182,8 +179,8 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
         {
           kind: 'mandado',
           mandado_items: items.map((it) => ({
-            name: it.name,
-            quantity: parseFloat(it.quantity),
+            name: it.name.slice(0, 80),
+            quantity: Number(parseFloat(it.quantity).toFixed(2)),
             unit: it.unit,
             category: it.category,
           })),
@@ -219,315 +216,463 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
 
   return (
     <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.hero}>
-          <View style={styles.heroIcon}>
-            <Text style={styles.heroEmoji}>🛒</Text>
+      <KeyboardForm
+        contentContainerStyle={styles.scroll}
+        bottomPadding={spacing.xl}
+        keyboardVerticalOffset={keyboardOffsetWithHeader(insets)}
+        footer={
+          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+            <View style={styles.footerInfo}>
+              <Text style={styles.footerLabel} numberOfLines={1}>
+                Servicio + entrega
+              </Text>
+              <Text style={styles.footerPrice} numberOfLines={1}>
+                {formatCurrency(deliveryFee)}
+              </Text>
+            </View>
+            <Button
+              title={
+                items.length > 0
+                  ? `Confirmar mandado · ${formatCurrency(deliveryFee)}`
+                  : 'Agrega productos'
+              }
+              onPress={handleSubmit}
+              loading={submitting}
+              disabled={items.length === 0}
+              size="lg"
+              style={styles.footerBtn}
+            />
           </View>
-          <View style={styles.heroText}>
-            <Text style={styles.heroTitle}>Mandado</Text>
-            <Text style={styles.heroSub}>
-              Pide verdura, fruta, legumbres y más. Indica kilos o gramos y tus tiendas de preferencia.
+        }
+      >
+        <LinearGradient
+          colors={[colors.gradientStart, colors.gradientMid]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroIcon}>
+            <Ionicons name="basket-outline" size={28} color={colors.primary} />
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroTitle} numberOfLines={1}>
+              Haz tu mandado
+            </Text>
+            <Text style={styles.heroSub} numberOfLines={3}>
+              Arma tu lista y te llevamos lo que necesites de la tienda o mercado.
             </Text>
           </View>
-        </View>
+        </LinearGradient>
 
-        <Text style={styles.sectionTitle}>¿Qué necesitas?</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catRow}>
-          {MANDADO_CATEGORIES.map((cat) => (
-            <Pressable
-              key={cat.key}
-              style={[styles.catChip, draftCategory === cat.key && styles.catChipActive]}
-              onPress={() => setDraftCategory(cat.key)}
-            >
-              <Text style={styles.catEmoji}>{cat.emoji}</Text>
-              <Text style={[styles.catLabel, draftCategory === cat.key && styles.catLabelActive]}>
-                {cat.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
-          {MANDADO_CATEGORIES.find((c) => c.key === draftCategory)?.examples.map((ex) => (
-            <Pressable key={ex} style={styles.quickChip} onPress={() => quickAdd(ex, draftCategory)}>
-              <Text style={styles.quickChipText}>{ex}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <View style={styles.addRow}>
-          <FormField
-            label="Producto"
-            value={draftName}
-            onChangeText={setDraftName}
-            placeholder="Ej. Tomate, plátano, frijol…"
-            embedded
-          />
-          <View style={styles.qtyRow}>
-            <TextInput
-              style={styles.qtyInput}
-              value={draftQty}
-              onChangeText={setDraftQty}
-              keyboardType="decimal-pad"
-              placeholder="1"
-            />
-            <View style={styles.unitToggle}>
-              {(['kg', 'g'] as MandadoUnit[]).map((unit) => (
-                <Pressable
-                  key={unit}
-                  style={[styles.unitBtn, draftUnit === unit && styles.unitBtnActive]}
-                  onPress={() => setDraftUnit(unit)}
+        <SectionCard title="Tu lista" icon="list-outline">
+          {items.length === 0 ? (
+            <Text style={styles.emptyHint}>Aún no hay productos. Agrega el primero abajo.</Text>
+          ) : (
+            <View style={styles.itemsList}>
+              {items.map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[styles.itemRow, index < items.length - 1 && styles.itemRowBorder]}
                 >
-                  <Text style={[styles.unitBtnText, draftUnit === unit && styles.unitBtnTextActive]}>
-                    {unit}
+                  <Text style={styles.itemEmoji}>
+                    {MANDADO_CATEGORIES.find((c) => c.key === item.category)?.emoji ?? '🛒'}
                   </Text>
-                </Pressable>
+                  <Text style={styles.itemText} numberOfLines={2}>
+                    {formatMandadoItem(item)}
+                  </Text>
+                  <Pressable onPress={() => removeItem(item.id)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+                  </Pressable>
+                </View>
               ))}
             </View>
-            <Pressable style={styles.addBtn} onPress={addItem}>
-              <Ionicons name="add" size={22} color="#FFF" />
-            </Pressable>
-          </View>
-        </View>
+          )}
 
-        {items.length > 0 ? (
-          <View style={styles.itemsBox}>
-            {items.map((item) => (
-              <View key={item.id} style={styles.itemRow}>
-                <Text style={styles.itemEmoji}>
-                  {MANDADO_CATEGORIES.find((c) => c.key === item.category)?.emoji ?? '🛒'}
-                </Text>
-                <Text style={styles.itemText}>{formatMandadoItem(item)}</Text>
-                <Pressable onPress={() => removeItem(item.id)} hitSlop={8}>
-                  <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+          <View style={styles.categoryGrid}>
+            {MANDADO_CATEGORIES.map((cat) => {
+              const active = draftCategory === cat.key;
+              return (
+                <Pressable
+                  key={cat.key}
+                  style={[styles.categoryPill, active && styles.categoryPillActive]}
+                  onPress={() => setDraftCategory(cat.key)}
+                >
+                  <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+                  <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
+                    {cat.label}
+                  </Text>
                 </Pressable>
+              );
+            })}
+          </View>
+
+          {categoryMeta?.examples.length ? (
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.examplesRow}
+              keyboardShouldPersistTaps="handled"
+            >
+              {categoryMeta.examples.map((ex) => (
+                <Pressable
+                  key={ex}
+                  style={styles.exampleChip}
+                  onPress={() => {
+                    setDraftName(ex);
+                    setDraftCategory(categoryMeta.key);
+                  }}
+                >
+                  <Text style={styles.exampleChipText}>{ex}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
+
+          <View style={styles.addCard}>
+            <TextInput
+              style={styles.nameInput}
+              value={draftName}
+              onChangeText={setDraftName}
+              placeholder="Ej. Jitomate, plátano, frijol…"
+              placeholderTextColor={colors.textMuted}
+              maxLength={80}
+            />
+            <View style={styles.addControls}>
+              <TextInput
+                style={styles.qtyInput}
+                value={draftQty}
+                onChangeText={setDraftQty}
+                keyboardType="decimal-pad"
+                placeholder="1"
+                placeholderTextColor={colors.textMuted}
+              />
+              <View style={styles.unitRow}>
+                {(['kg', 'g'] as MandadoUnit[]).map((unit) => (
+                  <Pressable
+                    key={unit}
+                    style={[styles.unitBtn, draftUnit === unit && styles.unitBtnActive]}
+                    onPress={() => setDraftUnit(unit)}
+                  >
+                    <Text style={[styles.unitBtnText, draftUnit === unit && styles.unitBtnTextActive]}>
+                      {unit}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
+              <Pressable style={styles.addBtn} onPress={addItem}>
+                <Ionicons name="add" size={22} color="#FFF" />
+              </Pressable>
+            </View>
+          </View>
+        </SectionCard>
+
+        <SectionCard title="Tiendas preferidas" icon="storefront-outline" optional>
+          <TextInput
+            style={styles.textArea}
+            value={preferredStores}
+            onChangeText={setPreferredStores}
+            placeholder="Central de abastos, Soriana, tiendita de la esquina…"
+            placeholderTextColor={colors.textMuted}
+            multiline
+          />
+          <View style={styles.storeRow}>
+            {MANDADO_STORE_SUGGESTIONS.map((store) => (
+              <Pressable
+                key={store}
+                style={styles.storeChip}
+                onPress={() => setPreferredStores((prev) => (prev ? `${prev}, ${store}` : store))}
+              >
+                <Text style={styles.storeChipText}>{store}</Text>
+              </Pressable>
             ))}
           </View>
-        ) : (
-          <Text style={styles.hint}>Agrega productos con cantidad en kg o gramos.</Text>
-        )}
+        </SectionCard>
 
-        <Text style={styles.sectionTitle}>Tiendas de preferencia</Text>
-        <FormField
-          label="¿Dónde prefieres que compren?"
-          value={preferredStores}
-          onChangeText={setPreferredStores}
-          placeholder="Ej. Central de abastos, Soriana, tiendita…"
-          multiline
-          embedded
-        />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
-          {MANDADO_STORE_SUGGESTIONS.map((store) => (
-            <Pressable
-              key={store}
-              style={styles.quickChip}
-              onPress={() => setPreferredStores((prev) => (prev ? `${prev}, ${store}` : store))}
-            >
-              <Text style={styles.quickChipText}>{store}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+        <SectionCard title="Entrega" icon="location-outline">
+          <ShipmentAddressBlock
+            title="Dirección"
+            fieldLabel="¿A dónde lo llevamos?"
+            icon="home-outline"
+            placeholder="Calle, número, colonia…"
+            value={deliveryAddress}
+            onChangeText={handleAddressChange}
+            onGeocode={handleGeocodeAddress}
+            onUseLocation={handleUseMyLocation}
+            geocoding={geocoding}
+            locating={locating}
+            coverageOk={coverageOk}
+            approximate={addressApproximate}
+          />
+          <Text style={styles.notesLabel}>Notas (opcional)</Text>
+          <TextInput
+            style={styles.textArea}
+            value={deliveryNotes}
+            onChangeText={setDeliveryNotes}
+            placeholder="Ej. que estén maduros, timbre rojo…"
+            placeholderTextColor={colors.textMuted}
+            multiline
+          />
+        </SectionCard>
 
-        <Text style={styles.sectionTitle}>Entrega a domicilio</Text>
-        <ShipmentAddressBlock
-          title="Tu dirección"
-          fieldLabel="Dirección de entrega"
-          icon="home-outline"
-          placeholder="Calle, número, colonia…"
-          value={deliveryAddress}
-          onChangeText={handleAddressChange}
-          onGeocode={handleGeocodeAddress}
-          onUseLocation={handleUseMyLocation}
-          geocoding={geocoding}
-          locating={locating}
-          coverageOk={coverageOk}
-          approximate={addressApproximate}
-        />
-
-        <FormField
-          label="Notas (opcional)"
-          value={deliveryNotes}
-          onChangeText={setDeliveryNotes}
-          placeholder="Ej. que estén maduros, sin bolsa, timbre rojo…"
-          multiline
-          embedded
-        />
-
-        <Text style={styles.sectionTitle}>Pago del servicio</Text>
-        <View style={styles.payRow}>
-          {(['cash', 'transfer'] as const).map((method) => (
-            <Pressable
-              key={method}
-              style={[styles.payChip, paymentMethod === method && styles.payChipActive]}
-              onPress={() => setPaymentMethod(method)}
-            >
-              <Ionicons
-                name={method === 'cash' ? 'cash-outline' : 'card-outline'}
-                size={18}
-                color={paymentMethod === method ? colors.primary : colors.textMuted}
-              />
-              <Text style={[styles.payChipText, paymentMethod === method && styles.payChipTextActive]}>
-                {method === 'cash' ? 'Efectivo' : 'Transferencia'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={styles.feeBox}>
-          <Text style={styles.feeLabel}>Costo del mandado (servicio + entrega)</Text>
-          <Text style={styles.feeValue}>${deliveryFee.toFixed(2)}</Text>
-          <Text style={styles.feeNote}>
-            El costo de los productos se paga aparte al repartidor o en la tienda.
+        <SectionCard title="Pago del servicio" icon="wallet-outline">
+          <View style={styles.payRow}>
+            {(['cash', 'transfer'] as const).map((method) => (
+              <Pressable
+                key={method}
+                style={[styles.payOption, paymentMethod === method && styles.payOptionActive]}
+                onPress={() => setPaymentMethod(method)}
+              >
+                <Ionicons
+                  name={method === 'cash' ? 'cash-outline' : 'card-outline'}
+                  size={20}
+                  color={paymentMethod === method ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  style={[styles.payOptionText, paymentMethod === method && styles.payOptionTextActive]}
+                  numberOfLines={1}
+                >
+                  {method === 'cash' ? 'Efectivo' : 'Transferencia'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.payNote}>
+            Los productos se pagan aparte al repartidor o en la tienda.
           </Text>
-        </View>
-
-        {summaryPreview ? (
-          <Text style={styles.preview} numberOfLines={3}>
-            {summaryPreview}
-          </Text>
-        ) : null}
-
-        <Button
-          title={`Pedir mandado · $${deliveryFee.toFixed(2)}`}
-          onPress={handleSubmit}
-          loading={submitting}
-          style={styles.submit}
-        />
-      </ScrollView>
+        </SectionCard>
+      </KeyboardForm>
     </ScreenContainer>
   );
 }
 
+function SectionCard({
+  title,
+  icon,
+  optional,
+  children,
+}: {
+  title: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  optional?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardIcon}>
+          <Ionicons name={icon} size={18} color={colors.primary} />
+        </View>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {optional ? <Text style={styles.optionalTag}>Opcional</Text> : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: spacing.screen, gap: spacing.sm },
+  scroll: {
+    paddingHorizontal: spacing.screen,
+    gap: spacing.md,
+    backgroundColor: colors.background,
+    paddingTop: spacing.sm,
+  },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: '#ECFDF5',
-    borderRadius: 18,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    marginBottom: spacing.sm,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.xs,
   },
   heroIcon: {
     width: 52,
     height: 52,
-    borderRadius: 16,
-    backgroundColor: '#DCFCE7',
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  heroEmoji: { fontSize: 28 },
-  heroText: { flex: 1 },
-  heroTitle: { fontSize: 22, fontWeight: '900', color: MANDADO_COLOR },
-  heroSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 18 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.text,
-    marginTop: spacing.sm,
-    marginBottom: 4,
+  heroCopy: { flex: 1, minWidth: 0 },
+  heroTitle: { fontSize: 22, fontWeight: '900', color: '#FFF' },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.92)', marginTop: 4, lineHeight: 18 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    gap: spacing.sm,
   },
-  catRow: { gap: 8, paddingVertical: 4 },
-  catChip: {
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  cardTitle: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '800', color: colors.text },
+  optionalTag: { fontSize: 11, fontWeight: '700', color: colors.textMuted, flexShrink: 0 },
+  emptyHint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  itemsList: {
+    backgroundColor: colors.background,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  itemRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  itemEmoji: { fontSize: 18, flexShrink: 0 },
+  itemText: { flex: 1, minWidth: 0, fontSize: 15, fontWeight: '600', color: colors.text },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
+    borderRadius: radii.pill,
+    backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  catChipActive: { backgroundColor: '#DCFCE7', borderColor: MANDADO_COLOR },
-  catEmoji: { fontSize: 16 },
-  catLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  catLabelActive: { color: MANDADO_COLOR },
-  quickRow: { gap: 8, paddingVertical: 4, marginBottom: spacing.xs },
-  quickChip: {
+  categoryPillActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+  categoryEmoji: { fontSize: 14 },
+  categoryLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  categoryLabelActive: { color: colors.primary },
+  examplesRow: { gap: 8, paddingVertical: 2 },
+  exampleChip: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
+    paddingVertical: 7,
+    borderRadius: radii.pill,
     backgroundColor: colors.primaryLight,
   },
-  quickChipText: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  addRow: { gap: 8 },
-  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  exampleChipText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  addCard: {
+    backgroundColor: colors.background,
+    borderRadius: radii.lg,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  nameInput: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    paddingVertical: 4,
+  },
+  addControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   qtyInput: {
-    width: 72,
+    width: 64,
+    minWidth: 56,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: radii.md,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     fontSize: 16,
     fontWeight: '700',
     backgroundColor: colors.surface,
     color: colors.text,
+    textAlign: 'center',
   },
-  unitToggle: { flexDirection: 'row', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
-  unitBtn: { paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.surface },
-  unitBtnActive: { backgroundColor: MANDADO_COLOR },
+  unitRow: {
+    flexDirection: 'row',
+    borderRadius: radii.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexShrink: 0,
+  },
+  unitBtn: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.surface },
+  unitBtnActive: { backgroundColor: colors.primary },
   unitBtnText: { fontSize: 13, fontWeight: '800', color: colors.textMuted },
   unitBtnTextActive: { color: '#FFF' },
   addBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: MANDADO_COLOR,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 'auto',
+    flexShrink: 0,
   },
-  itemsBox: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+  textArea: {
+    minHeight: 72,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    padding: spacing.sm,
-    gap: 8,
+    borderRadius: radii.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: colors.background,
+    textAlignVertical: 'top',
   },
-  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  itemEmoji: { fontSize: 18 },
-  itemText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.text },
-  hint: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  storeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  storeChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  storeChipText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  notesLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginTop: 4 },
   payRow: { flexDirection: 'row', gap: 10 },
-  payChip: {
+  payOption: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: radii.lg,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
-  payChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  payChipText: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
-  payChipTextActive: { color: colors.primary },
-  feeBox: {
+  payOptionActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  payOptionText: { fontSize: 14, fontWeight: '700', color: colors.textMuted, flexShrink: 1 },
+  payOptionTextActive: { color: colors.primary },
+  payNote: { fontSize: 12, color: colors.textMuted, lineHeight: 17 },
+  footer: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    paddingHorizontal: spacing.screen,
+    paddingTop: 12,
+    gap: 10,
   },
-  feeLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
-  feeValue: { fontSize: 28, fontWeight: '900', color: colors.text, marginTop: 4 },
-  feeNote: { fontSize: 12, color: colors.textMuted, marginTop: 6, lineHeight: 17 },
-  preview: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-  submit: { marginTop: spacing.md },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  footerLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  footerPrice: { fontSize: 20, fontWeight: '900', color: colors.text, flexShrink: 0 },
+  footerBtn: { width: '100%' },
 });

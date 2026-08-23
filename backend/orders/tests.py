@@ -366,6 +366,30 @@ class OrderApiTests(TestCase):
         self.assertEqual(deliver_resp.status_code, 200)
         self.assertEqual(deliver_resp.data['status'], 'delivered')
 
+    def test_create_mandado_shipment(self):
+        self.client.force_authenticate(self.customer)
+        response = self.client.post('/api/shipments/', {
+            'kind': 'mandado',
+            'mandado_items': [
+                {
+                    'name': 'Jitomate',
+                    'quantity': '1',
+                    'unit': 'kg',
+                    'category': 'verdura',
+                },
+            ],
+            'preferred_stores': 'Central de abastos',
+            'pickup_address': 'Central de abastos',
+            'size': 'medium',
+            'delivery_address': 'Destino, Zinapécuaro',
+            'delivery_latitude': '19.865000',
+            'delivery_longitude': '-100.830000',
+            'payment_method': 'cash',
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['kind'], 'mandado')
+        self.assertEqual(len(response.data['mandado_details']['items']), 1)
+
     def test_restaurant_owner_can_update_own_product(self):
         from restaurants.models import Product
 

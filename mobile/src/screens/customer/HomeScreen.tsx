@@ -37,6 +37,7 @@ import {
 
 const FEATURED_DISHES_COUNT = 8;
 const CATEGORIES = [...RESTAURANT_CATEGORIES];
+const MANDADO_COLOR = '#16A34A';
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
   const { user } = useAuth();
@@ -113,6 +114,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   );
 
   const handleDeliveryPress = (item: ActiveDeliveryItem) => {
+    if (item.kind === 'shipment') {
+      navigation.navigate('ShipmentDetail', { shipmentId: item.id });
+      return;
+    }
     navigation.navigate('OrderDetail', { orderId: item.id });
   };
 
@@ -183,6 +188,24 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               </Pressable>
             </View>
 
+            <Pressable
+              style={styles.mandadoBanner}
+              onPress={() => navigation.navigate('Mandado')}
+            >
+              <View style={styles.mandadoIconWrap}>
+                <Ionicons name="basket-outline" size={26} color={MANDADO_COLOR} />
+              </View>
+              <View style={styles.mandadoCopy}>
+                <Text style={styles.mandadoTitle} numberOfLines={1}>
+                  Haz tu mandado
+                </Text>
+                <Text style={styles.mandadoSub} numberOfLines={2}>
+                  Verdura, fruta, legumbres y más
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={22} color={MANDADO_COLOR} />
+            </Pressable>
+
             {stripItems.length > 0 ? (
               <ActiveDeliveryStrip items={stripItems} onPress={handleDeliveryPress} />
             ) : null}
@@ -201,13 +224,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 label="Ofertas"
                 color={colors.accent}
                 onPress={() => navigation.navigate('Ofertas')}
-              />
-              <SecondaryChip
-                icon="basket-outline"
-                label="Mandado"
-                color="#16A34A"
-                highlight
-                onPress={() => navigation.navigate('Mandado')}
               />
               <SecondaryChip
                 icon="storefront-outline"
@@ -268,24 +284,19 @@ function SecondaryChip({
   icon,
   label,
   color,
-  highlight,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color: string;
-  highlight?: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      style={[styles.secondaryChip, highlight && styles.secondaryChipHighlight]}
-      onPress={onPress}
-    >
+    <Pressable style={styles.secondaryChip} onPress={onPress}>
       <View style={[styles.secondaryIcon, { backgroundColor: color + '22' }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
-      <Text style={[styles.secondaryLabel, highlight && { color }]} numberOfLines={1}>
+      <Text style={styles.secondaryLabel} numberOfLines={1}>
         {label}
       </Text>
       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -336,6 +347,31 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   seeAllText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  mandadoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    marginBottom: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: '#BBF7D0',
+    minHeight: 72,
+  },
+  mandadoIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  mandadoCopy: { flex: 1, minWidth: 0, gap: 2 },
+  mandadoTitle: { fontSize: 17, fontWeight: '900', color: MANDADO_COLOR },
+  mandadoSub: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   skeleton: { flex: 1, paddingHorizontal: spacing.screen },
   refreshError: {
     backgroundColor: colors.primaryLight,
@@ -363,10 +399,6 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderWidth: 1,
     borderColor: colors.borderLight,
-  },
-  secondaryChipHighlight: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
   },
   secondaryIcon: {
     width: 32,
