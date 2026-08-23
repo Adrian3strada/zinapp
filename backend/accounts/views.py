@@ -324,8 +324,28 @@ class PushTokenView(APIView):
     def post(self, request):
         serializer = PushTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        request.user.expo_push_token = serializer.validated_data['expo_push_token']
+        token = serializer.validated_data['expo_push_token']
+        request.user.expo_push_token = token
         request.user.save(update_fields=['expo_push_token'])
+        # Logs temporales de diagnóstico push (sin volcar el token completo).
+        role = getattr(request.user, 'role', '')
+        token_len = len(token or '')
+        if token:
+            prefix = token[:22] if token_len > 22 else token
+            logger.info(
+                '[PUSH] Token saved for %s user ID: %s (role=%s, token=%s… len=%s)',
+                role or 'unknown',
+                request.user.pk,
+                role,
+                prefix,
+                token_len,
+            )
+        else:
+            logger.info(
+                '[PUSH] Token cleared for user ID: %s (role=%s)',
+                request.user.pk,
+                role,
+            )
         return Response({'detail': 'Token registrado.'})
 
 

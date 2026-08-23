@@ -14,7 +14,23 @@ from restaurants.fields import CoordinateField
 from restaurants.geo import is_in_coverage, round_coordinate
 from restaurants.serializers import ProductSerializer, RestaurantPublicSerializer
 
-from .models import Coupon, Order, OrderDispute, OrderItem, OrderMessage, OrderSource, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentSize, ShipmentStatus, get_shipment_fee
+from .models import (
+    Coupon,
+    Order,
+    OrderDispute,
+    OrderItem,
+    OrderMessage,
+    OrderSource,
+    OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
+    Review,
+    Shipment,
+    ShipmentKind,
+    ShipmentSize,
+    ShipmentStatus,
+    get_shipment_fee,
+)
 
 
 class PublicReviewAuthorSerializer(serializers.ModelSerializer):
@@ -603,10 +619,43 @@ def _validate_address_coords(attrs, prefix, errors_field):
     return attrs
 
 
+def _format_mandado_item(item: dict) -> str:
+    qty = item.get('quantity')
+    unit = item.get('unit') or 'kg'
+    name = (item.get('name') or '').strip()
+    if qty is None or not name:
+        return name
+    qty_label = int(qty) if isinstance(qty, (int, float)) and float(qty) == int(qty) else qty
+    return f'{name} {qty_label}{unit}'
+
+
+def build_mandado_description(items: list) -> str:
+    parts = [_format_mandado_item(it) for it in items if (it.get('name') or '').strip()]
+    if not parts:
+        return 'Mandado'
+    summary = ', '.join(parts[:4])
+    if len(parts) > 4:
+        summary += f' +{len(parts) - 4} más'
+    text = f'Mandado: {summary}'
+    return text[:200]
+
+
+class MandadoItemSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=80)
+    quantity = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=Decimal('0.01'))
+    unit = serializers.ChoiceField(choices=['kg', 'g'])
+    category = serializers.ChoiceField(
+        choices=['verdura', 'fruta', 'legumbre', 'otro'],
+        required=False,
+        default='otro',
+    )
+
+
 class ShipmentSerializer(serializers.ModelSerializer):
     customer_detail = OrderParticipantUserSerializer(source='customer', read_only=True)
     driver_detail = OrderParticipantUserSerializer(source='driver', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     size_display = serializers.CharField(source='get_size_display', read_only=True)
     payment_method_display = serializers.CharField(
         source='get_payment_method_display', read_only=True
@@ -622,7 +671,8 @@ class ShipmentSerializer(serializers.ModelSerializer):
         model = Shipment
         fields = (
             'id', 'customer', 'customer_detail', 'driver', 'driver_detail',
-            'status', 'status_display', 'description', 'size', 'size_display',
+            'status', 'status_display', 'kind', 'kind_display', 'mandado_details',
+            'description', 'size', 'size_display',
             'pickup_address', 'pickup_latitude', 'pickup_longitude', 'pickup_notes',
             'delivery_address', 'delivery_latitude', 'delivery_longitude', 'delivery_notes',
             'payment_method', 'payment_method_display', 'payment_status', 'payment_status_display',
@@ -683,8 +733,15 @@ class ShipmentSerializer(serializers.ModelSerializer):
 
 
 class ShipmentCreateSerializer(serializers.Serializer):
-    description = serializers.CharField(max_length=200)
-    size = serializers.ChoiceField(choices=ShipmentSize.choices)
+    kind = serializers.ChoiceField(
+        choices=ShipmentKind.choices,
+        required=False,
+        default=ShipmentKind.COURIER,
+    )
+    description = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    mandado_items = MandadoItemSerializer(many=True, required=False)
+    preferred_stores = serializers.CharField(required=False, allow_blank=True, default='')
+    size = serializers.ChoiceField(choices=ShipmentSize.choices, required=False)
     pickup_address = serializers.CharField()
     pickup_latitude = CoordinateField(
         max_digits=9, decimal_places=6, required=False, allow_null=True
@@ -704,10 +761,28 @@ class ShipmentCreateSerializer(serializers.Serializer):
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices)
 
     def validate(self, attrs):
-        attrs = _validate_address_coords(attrs, 'pickup', 'pickup_address')
+        kind = attrs.get('kind') or ShipmentKind.COURIER
+        attrs['kind'] = kind
+
+        if kind == ShipmentKind.MANDADO:
+            items = attrs.get('mandado_items') or []
+            if not items:
+                raise serializers.ValidationError({
+                    'mandado_items': 'Agrega al menos un producto al mandado.',
+                })
+            attrs['size'] = attrs.get('size') or ShipmentSize.MEDIUM
+            attrs['description'] = build_mandado_description(items)
+            stores = (attrs.get('preferred_stores') or '').strip()
+            attrs['pickup_address'] = stores or 'Tiendas de abarrotes / mercado (a confirmar)'
+        else:
+            if not attrs.get('size'):
+                raise serializers.ValidationError({'size': 'Indica el tamaño del envío.'})
+            if not (attrs.get('description') or '').strip():
+                raise serializers.ValidationError({'description': 'Indica qué vas a enviar.'})
+
         attrs = _validate_address_coords(attrs, 'delivery', 'delivery_address')
-        if not attrs.get('description', '').strip():
-            raise serializers.ValidationError({'description': 'Indica qué vas a enviar.'})
+        if kind != ShipmentKind.MANDADO:
+            attrs = _validate_address_coords(attrs, 'pickup', 'pickup_address')
         if attrs.get('payment_method') == PaymentMethod.ONLINE:
             raise serializers.ValidationError({
                 'payment_method': 'El pago en línea no está disponible para envíos. Usa efectivo o transferencia.',
@@ -722,11 +797,21 @@ class ShipmentCreateSerializer(serializers.Serializer):
             if payment_method == PaymentMethod.ONLINE
             else PaymentStatus.PAID
         )
+        kind = validated_data.get('kind') or ShipmentKind.COURIER
         size = validated_data['size']
         delivery_fee = get_shipment_fee(size)
 
+        mandado_details = {}
+        if kind == ShipmentKind.MANDADO:
+            mandado_details = {
+                'items': validated_data.get('mandado_items') or [],
+                'preferred_stores': (validated_data.get('preferred_stores') or '').strip(),
+            }
+
         return Shipment.objects.create(
             customer=customer,
+            kind=kind,
+            mandado_details=mandado_details,
             description=validated_data['description'].strip(),
             size=size,
             pickup_address=validated_data['pickup_address'],

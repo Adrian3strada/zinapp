@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 
 import { authApi, ensureFreshAccessToken, LoginPayload, RegisterPayload } from '../services/api';
 import { clearPushToken, registerPushNotifications } from '../services/pushRegistration';
@@ -134,6 +134,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(loadingTimeout);
     };
   }, [refreshUser, logout]);
+
+  // Al volver del segundo plano: renovar JWT antes de API/WS (evita logout por token caducado).
+  useEffect(() => {
+    if (!user) return;
+
+    const onAppStateChange = (next: AppStateStatus) => {
+      if (next === 'active') {
+        void ensureFreshAccessToken().then(() => refreshUser());
+      }
+    };
+    const sub = AppState.addEventListener('change', onAppStateChange);
+    return () => sub.remove();
+  }, [user, refreshUser]);
 
   useEffect(() => {
     const offExpired = sessionEvents.onExpired(() => {

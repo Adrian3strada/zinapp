@@ -352,6 +352,13 @@ STRIPE_BACK_URL = config('STRIPE_BACK_URL', default='')
 
 CRON_SECRET = config('CRON_SECRET', default='')
 
+# Expo Push Notifications (Android vía FCM / iOS vía APNs).
+# Access token opcional: https://expo.dev/settings/access-tokens
+EXPO_ACCESS_TOKEN = config('EXPO_ACCESS_TOKEN', default='').strip()
+# Tras ticket ok, consultar receipts (la entrega real). Desactivar en tests unitarios.
+PUSH_ASYNC_RECEIPT_CHECK = config('PUSH_ASYNC_RECEIPT_CHECK', default=True, cast=bool)
+PUSH_RECEIPT_CHECK_DELAY_SEC = config('PUSH_RECEIPT_CHECK_DELAY_SEC', default=20, cast=int)
+
 # Resend: preferir API HTTP (RESEND_API_KEY). SMTP a smtp.resend.com se cuelga en Railway.
 RESEND_API_KEY = config('RESEND_API_KEY', default='').strip()
 EMAIL_HOST = config('EMAIL_HOST', default='').strip()

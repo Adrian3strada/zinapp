@@ -11,6 +11,11 @@ npm-debug.*
 *.key
 *.mobileprovision
 google-play-key.json
+# Clave privada FCM V1 (subir solo a EAS credentials — no commitear).
+fcm-service-account.json
+*-firebase-adminsdk-*.json
 *.orig.*
+# google-services.json SÍ puede versionarse (IDs públicos de Firebase).
+# Si aún no está en el repo, créalo siguiendo mobile/docs/android-push-fcm.md
 web-build/
 dist/

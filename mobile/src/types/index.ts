@@ -307,6 +307,20 @@ export type ShipmentStatus = 'pending' | 'picked_up' | 'on_the_way' | 'delivered
 
 export type ShipmentSize = 'small' | 'medium' | 'large';
 
+export type ShipmentKind = 'courier' | 'mandado';
+
+export interface MandadoItemPayload {
+  name: string;
+  quantity: number;
+  unit: 'kg' | 'g';
+  category?: 'verdura' | 'fruta' | 'legumbre' | 'otro';
+}
+
+export interface MandadoDetails {
+  items: MandadoItemPayload[];
+  preferred_stores?: string;
+}
+
 export interface Shipment {
   id: number;
   customer: number;
@@ -315,6 +329,9 @@ export interface Shipment {
   driver_detail?: User | null;
   status: ShipmentStatus;
   status_display: string;
+  kind?: ShipmentKind;
+  kind_display?: string;
+  mandado_details?: MandadoDetails;
   description: string;
   size: ShipmentSize;
   size_display: string;

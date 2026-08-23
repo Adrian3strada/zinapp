@@ -360,6 +360,11 @@ class ShipmentSize(models.TextChoices):
     LARGE = 'large', 'Grande'
 
 
+class ShipmentKind(models.TextChoices):
+    COURIER = 'courier', 'Envío'
+    MANDADO = 'mandado', 'Mandado'
+
+
 SHIPMENT_SIZE_FEES = {
     ShipmentSize.SMALL: Decimal('25.00'),
     ShipmentSize.MEDIUM: Decimal('45.00'),
@@ -389,6 +394,12 @@ class Shipment(models.Model):
         choices=ShipmentStatus.choices,
         default=ShipmentStatus.PENDING,
     )
+    kind = models.CharField(
+        max_length=20,
+        choices=ShipmentKind.choices,
+        default=ShipmentKind.COURIER,
+    )
+    mandado_details = models.JSONField(default=dict, blank=True)
     description = models.CharField(max_length=200)
     size = models.CharField(
         max_length=10,

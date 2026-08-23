@@ -17,8 +17,10 @@ export function usePushNotifications(enabled: boolean) {
         const { registerPushNotifications } = await import('../services/pushRegistration');
         await configureNotifications();
         await registerPushNotifications();
-      } catch {
+      } catch (error) {
         // Push opcional — no debe tumbar la app
+        const message = error instanceof Error ? error.message : String(error);
+        console.warn(`[PUSH] usePushNotifications setup failed: ${message}`);
       }
     })();
 
@@ -26,8 +28,9 @@ export function usePushNotifications(enabled: boolean) {
       if (next === 'active' && mounted) {
         void import('../services/pushRegistration')
           .then(({ registerPushNotifications }) => registerPushNotifications())
-          .catch(() => {
-            // Push opcional — no tumbar la app
+          .catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`[PUSH] Re-register on resume failed: ${message}`);
           });
       }
     };

@@ -5,9 +5,27 @@ from django.utils import timezone
 
 class RestaurantCategory(models.TextChoices):
     GENERAL = 'general', 'General'
-    PIZZAS = 'pizzas', 'Pizzas'
-    MAKIS = 'makis', 'Makis'
     MEXICANA = 'mexicana', 'Mexicana'
+    TACOS = 'tacos', 'Tacos'
+    ANTOJITOS = 'antojitos', 'Antojitos'
+    PIZZAS = 'pizzas', 'Pizzas'
+    HAMBURGUESAS = 'hamburguesas', 'Hamburguesas'
+    POLLOS = 'pollos', 'Pollos'
+    MARISCOS = 'mariscos', 'Mariscos'
+    CARNES = 'carnes', 'Carnes y parrilla'
+    MAKIS = 'makis', 'Makis y sushi'
+    ASIATICA = 'asiatica', 'Asiática'
+    ITALIANA = 'italiana', 'Italiana'
+    TORTAS = 'tortas', 'Tortas'
+    DESAYUNOS = 'desayunos', 'Desayunos'
+    FONDAS = 'fondas', 'Fondas'
+    POSTRES = 'postres', 'Postres'
+    CAFE = 'cafe', 'Café'
+    BEBIDAS = 'bebidas', 'Bebidas y jugos'
+    VINATERIA = 'vinateria', 'Vinatería'
+    SALUDABLE = 'saludable', 'Saludable'
+    ALITAS = 'alitas', 'Alitas'
+    COMIDA_RAPIDA = 'comida_rapida', 'Comida rápida'
 
 
 class Weekday(models.IntegerChoices):

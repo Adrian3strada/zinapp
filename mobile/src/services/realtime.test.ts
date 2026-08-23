@@ -4,6 +4,7 @@ const ensureFreshAccessToken = vi.fn();
 const renewAccessTokenForSession = vi.fn();
 const createWsTicket = vi.fn();
 const getAccessToken = vi.fn();
+const getRefreshToken = vi.fn();
 const emitExpired = vi.fn();
 const emitAccountInactive = vi.fn();
 
@@ -22,6 +23,7 @@ vi.mock('./api', () => ({
 vi.mock('./tokenStorage', () => ({
   tokenStorage: {
     getAccessToken: (...args: unknown[]) => getAccessToken(...args),
+    getRefreshToken: (...args: unknown[]) => getRefreshToken(...args),
   },
 }));
 
@@ -97,6 +99,7 @@ describe('RealtimeClient Phase 1', () => {
     ensureFreshAccessToken.mockResolvedValue('access-redacted');
     renewAccessTokenForSession.mockResolvedValue('access-redacted');
     getAccessToken.mockResolvedValue('access-redacted');
+    getRefreshToken.mockResolvedValue('refresh-redacted');
     createWsTicket.mockImplementation(async (signal?: AbortSignal) => {
       if (signal?.aborted) {
         const err = new Error('aborted');
@@ -161,11 +164,12 @@ describe('RealtimeClient Phase 1', () => {
     expect(firstUrl).not.toBe(secondUrl);
   });
 
-  it('fallo al renovar credenciales detiene la conexión', async () => {
+  it('fallo al renovar credenciales detiene la conexión si no hay refresh', async () => {
     await client.start();
     await flush();
 
     renewAccessTokenForSession.mockResolvedValueOnce(null);
+    getRefreshToken.mockResolvedValueOnce(null);
     sockets[0].onclose?.({ code: 4001 });
     await flush();
     await vi.advanceTimersByTimeAsync(30_000);
@@ -174,6 +178,35 @@ describe('RealtimeClient Phase 1', () => {
     expect(client.getDebugState().enabled).toBe(false);
     expect(client.getDebugState().hasReconnectTimer).toBe(false);
     expect(createWsTicket).toHaveBeenCalledTimes(1);
+  });
+
+  it('fallo transitorio al renovar reintenta sin cerrar sesión', async () => {
+    await client.start();
+    await flush();
+
+    renewAccessTokenForSession.mockResolvedValueOnce(null);
+    getRefreshToken.mockResolvedValue('refresh-redacted');
+    sockets[0].onclose?.({ code: 4001 });
+    await flush();
+    await vi.advanceTimersByTimeAsync(1000);
+    await flush();
+
+    expect(emitExpired).not.toHaveBeenCalled();
+    expect(createWsTicket).toHaveBeenCalledTimes(2);
+  });
+
+  it('resume() reconecta preservando suscripciones', async () => {
+    await client.start();
+    await flush();
+    client.subscribe({ restaurantId: 5 });
+    expect(client.getDebugState().subscriptionCount).toBe(1);
+
+    await client.resume();
+    await flush();
+
+    expect(createWsTicket).toHaveBeenCalledTimes(2);
+    expect(client.getDebugState().subscriptionCount).toBe(1);
+    expect(sockets).toHaveLength(2);
   });
 
   it('dos connect simultáneos producen una sola petición de ticket y un socket', async () => {

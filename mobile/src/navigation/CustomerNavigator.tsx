@@ -19,6 +19,7 @@ import MyOrdersScreenEager from '../screens/customer/MyOrdersScreen';
 import RestaurantsScreenEager from '../screens/customer/RestaurantsScreen';
 import ServicesScreenEager from '../screens/customer/ServicesScreen';
 import OffersScreenEager from '../screens/customer/OffersScreen';
+import MandadoScreenEager from '../screens/customer/MandadoScreen';
 import ProductDetailScreenEager from '../screens/customer/ProductDetailScreen';
 import RestaurantReviewsScreenEager from '../screens/customer/RestaurantReviewsScreen';
 import OrderDetailScreen from '../screens/shared/OrderDetailScreen';
@@ -62,6 +63,10 @@ const OffersScreen =
   Platform.OS === 'web'
     ? OffersScreenEager
     : React.lazy(() => import('../screens/customer/OffersScreen'));
+const MandadoScreen =
+  Platform.OS === 'web'
+    ? MandadoScreenEager
+    : React.lazy(() => import('../screens/customer/MandadoScreen'));
 const ProductDetailScreen =
   Platform.OS === 'web'
     ? ProductDetailScreenEager
@@ -256,6 +261,17 @@ function LazyOffersScreen(props: import('./types').OffersScreenProps) {
   );
 }
 
+function LazyMandadoScreen(props: import('./types').MandadoScreenProps) {
+  if (Platform.OS === 'web') {
+    return <MandadoScreen {...props} />;
+  }
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <MandadoScreen {...props} />
+    </Suspense>
+  );
+}
+
 function LazyRestaurantReviewsScreen(props: import('./types').RestaurantReviewsScreenProps) {
   if (Platform.OS === 'web') {
     return <RestaurantReviewsScreen {...props} />;
@@ -321,6 +337,11 @@ export default function CustomerNavigator({
           name="Ofertas"
           component={LazyOffersScreen}
           options={{ ...modalPresentationOptions, title: 'Ofertas y cupones' }}
+        />
+        <Stack.Screen
+          name="Mandado"
+          component={LazyMandadoScreen}
+          options={{ ...modalPresentationOptions, title: 'Mandado' }}
         />
         <Stack.Screen
           name="RestaurantReviews"

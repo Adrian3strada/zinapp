@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { useAuth } from './AuthContext';
 import { realtimeClient, type RealtimeEventType, type RealtimeHandler } from '../services/realtime';
@@ -46,6 +47,19 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         activeUserIdRef.current = null;
       }
     };
+  }, [user?.id, isGuest]);
+
+  // Al volver del segundo plano: reconectar WS (sockets zombie no reciben eventos).
+  useEffect(() => {
+    if (!user || isGuest) return;
+
+    const onAppStateChange = (next: AppStateStatus) => {
+      if (next === 'active') {
+        void realtimeClient.resume();
+      }
+    };
+    const sub = AppState.addEventListener('change', onAppStateChange);
+    return () => sub.remove();
   }, [user?.id, isGuest]);
 
   const value = useMemo<RealtimeContextValue>(

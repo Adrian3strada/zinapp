@@ -118,13 +118,8 @@ export async function renewAccessTokenForSession(): Promise<string | null> {
   }
   const fresh = await refreshAccessToken();
   if (fresh) return fresh;
-  // refreshAccessToken ya emite expired en 401/403; en otros fallos también cerramos.
-  const stillHasRefresh = await tokenStorage.getRefreshToken();
-  if (stillHasRefresh) {
-    await tokenStorage.clear();
-    sessionEvents.emitExpired();
-  }
-  return null;
+  // refreshAccessToken ya emite expired en 401/403; fallos de red mantienen sesión.
+  return tokenStorage.getAccessToken();
 }
 
 function requestHadAuthHeader(headers?: Record<string, string> | unknown): boolean {
@@ -248,6 +243,23 @@ export interface CreateShipmentPayload {
   delivery_longitude?: number;
   delivery_notes?: string;
   payment_method: 'cash' | 'transfer' | 'online';
+}
+
+export interface CreateMandadoPayload {
+  kind: 'mandado';
+  mandado_items: {
+    name: string;
+    quantity: number;
+    unit: 'kg' | 'g';
+    category?: 'verdura' | 'fruta' | 'legumbre' | 'otro';
+  }[];
+  preferred_stores?: string;
+  size?: 'small' | 'medium' | 'large';
+  delivery_address: string;
+  delivery_latitude?: number;
+  delivery_longitude?: number;
+  delivery_notes?: string;
+  payment_method: 'cash' | 'transfer';
 }
 
 export const authApi = {
@@ -469,6 +481,21 @@ export const shipmentApi = {
           data.pickup_latitude != null ? roundCoordinate(data.pickup_latitude) : undefined,
         pickup_longitude:
           data.pickup_longitude != null ? roundCoordinate(data.pickup_longitude) : undefined,
+        delivery_latitude:
+          data.delivery_latitude != null ? roundCoordinate(data.delivery_latitude) : undefined,
+        delivery_longitude:
+          data.delivery_longitude != null ? roundCoordinate(data.delivery_longitude) : undefined,
+      },
+      options?.idempotencyKey
+        ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+        : undefined,
+    ),
+  createMandado: (data: CreateMandadoPayload, options?: { idempotencyKey?: string }) =>
+    api.post<Shipment>(
+      '/shipments/',
+      {
+        ...data,
+        pickup_address: data.preferred_stores?.trim() || 'Tiendas de abarrotes / mercado',
         delivery_latitude:
           data.delivery_latitude != null ? roundCoordinate(data.delivery_latitude) : undefined,
         delivery_longitude:

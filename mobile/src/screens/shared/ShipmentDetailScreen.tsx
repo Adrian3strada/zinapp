@@ -188,9 +188,16 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
           contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          <LinearGradient colors={['#2A9D8F', '#264653']} style={styles.hero}>
-            <Text style={styles.heroSize}>{shipment.size_display}</Text>
-            <Text style={styles.heroTitle}>Envío #{shipment.id}</Text>
+          <LinearGradient
+            colors={shipment.kind === 'mandado' ? ['#16A34A', '#15803D'] : ['#2A9D8F', '#264653']}
+            style={styles.hero}
+          >
+            <Text style={styles.heroSize}>
+              {shipment.kind === 'mandado' ? 'Mandado' : shipment.size_display}
+            </Text>
+            <Text style={styles.heroTitle}>
+              {shipment.kind === 'mandado' ? `Mandado #${shipment.id}` : `Envío #${shipment.id}`}
+            </Text>
             <Text style={styles.heroDesc}>{shipment.description}</Text>
             <View style={styles.heroBadges}>
               <OrderStatusBadge status={shipment.status} label={shipment.status_display} large />
@@ -251,7 +258,9 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
                   <Ionicons name="cube" size={16} color="#FFF" />
                 </View>
                 <View style={styles.routeText}>
-                  <Text style={styles.label}>Recoger en</Text>
+                  <Text style={styles.label}>
+                    {shipment.kind === 'mandado' ? 'Comprar en' : 'Recoger en'}
+                  </Text>
                   <Text style={styles.value}>{shipment.pickup_address}</Text>
                   {!!shipment.pickup_notes && (
                     <Text style={styles.subValue}>{shipment.pickup_notes}</Text>
@@ -277,12 +286,27 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             )}
           </View>
 
+          {shipment.kind === 'mandado' && shipment.mandado_details?.items?.length ? (
+            <View style={styles.card}>
+              <Text style={styles.section}>Lista del mandado</Text>
+              {shipment.mandado_details.items.map((item, index) => (
+                <View key={`${item.name}-${index}`} style={styles.mandadoRow}>
+                  <Text style={styles.mandadoItem}>
+                    {item.name} — {item.quantity}{item.unit}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           <View style={styles.card}>
             <Text style={styles.section}>Resumen</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tamaño</Text>
-              <Text style={styles.summaryValue}>{shipment.size_display}</Text>
-            </View>
+            {shipment.kind !== 'mandado' ? (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Tamaño</Text>
+                <Text style={styles.summaryValue}>{shipment.size_display}</Text>
+              </View>
+            ) : null}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Contenido</Text>
               <Text style={styles.summaryValue}>{shipment.description}</Text>
@@ -406,6 +430,8 @@ const styles = StyleSheet.create({
   },
   notesText: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 12 },
+  mandadoRow: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  mandadoItem: { fontSize: 15, fontWeight: '600', color: colors.text },
   summaryLabel: { color: colors.textSecondary, flex: 1 },
   summaryValue: { fontWeight: '600', color: colors.text, flex: 1, textAlign: 'right' },
   totalRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },

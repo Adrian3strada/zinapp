@@ -1,6 +1,8 @@
 import json
 import logging
 import re
+import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -9,10 +11,14 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
+EXPO_RECEIPTS_URL = 'https://exp.host/--/api/v2/push/getReceipts'
 
-# Errores de ticket Expo que indican token inválido / dispositivo dado de baja.
+# Errores de ticket/receipt Expo que indican token inválido / dispositivo dado de baja.
 _INVALID_TOKEN_ERRORS = frozenset({'DeviceNotRegistered'})
 _TOKEN_IN_MESSAGE_RE = re.compile(r'ExponentPushToken\[[^\]]*\]')
+
+# Delay antes de consultar receipts (Expo puede tardar unos segundos en materializarlos).
+_RECEIPT_CHECK_DELAY_SEC = 20
 
 
 def _sanitize_provider_message(message) -> str:
@@ -105,6 +111,128 @@ def _clear_user_push_token(user) -> None:
     user.expo_push_token = ''
     user.save(update_fields=['expo_push_token'])
 
+
+def _expo_request_headers() -> dict:
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    access_token = getattr(settings, 'EXPO_ACCESS_TOKEN', '') or ''
+    if access_token:
+        headers['Authorization'] = f'Bearer {access_token}'
+    return headers
+
+
+def fetch_push_receipts(ticket_ids: list[str]) -> dict:
+    """
+    Consulta receipts de Expo para ticket IDs.
+    Ticket ok ≠ entrega real; el receipt confirma FCM/APNs.
+    """
+    ids = [tid for tid in ticket_ids if tid]
+    if not ids:
+        return {}
+
+    req = urllib.request.Request(
+        EXPO_RECEIPTS_URL,
+        data=json.dumps({'ids': ids}).encode(),
+        headers=_expo_request_headers(),
+        method='POST',
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        raw = resp.read().decode()
+        if resp.status != 200:
+            raise RuntimeError(f'Expo receipts HTTP {resp.status}: {_sanitize_provider_message(raw)}')
+        result = json.loads(raw) if raw else {}
+    data = result.get('data') if isinstance(result, dict) else None
+    return data if isinstance(data, dict) else {}
+
+
+def process_push_receipts(ticket_ids: list[str], *, user_id: int | None = None) -> dict:
+    """
+    Obtiene receipts y limpia token si DeviceNotRegistered.
+    Retorna el mapa ticket_id -> receipt (o resumen de error).
+    """
+    try:
+        receipts = fetch_push_receipts(ticket_ids)
+    except Exception:
+        logger.exception(
+            '[PUSH] Error: no se pudieron obtener receipts ticket_ids=%s user_id=%s',
+            ticket_ids,
+            user_id,
+        )
+        return {}
+
+    for ticket_id, receipt in receipts.items():
+        if not isinstance(receipt, dict):
+            logger.warning(
+                '[PUSH] Receipt malformado ticket_id=%s user_id=%s type=%s',
+                ticket_id,
+                user_id,
+                type(receipt).__name__,
+            )
+            continue
+
+        status = receipt.get('status')
+        message = _sanitize_provider_message(receipt.get('message'))
+        details = receipt.get('details') if isinstance(receipt.get('details'), dict) else {}
+        err_code = details.get('error') if isinstance(details.get('error'), str) else None
+
+        logger.info(
+            '[PUSH] Receipt ticket_id=%s status=%s error=%s user_id=%s message=%s',
+            ticket_id,
+            status,
+            err_code or '(none)',
+            user_id,
+            message or '(none)',
+        )
+
+        if status == 'error' and err_code in _INVALID_TOKEN_ERRORS and user_id:
+            from accounts.models import User
+
+            user = User.objects.filter(pk=user_id).first()
+            if user and user.expo_push_token:
+                _clear_user_push_token(user)
+                logger.warning(
+                    '[PUSH] Token cleared via receipt DeviceNotRegistered user_id=%s',
+                    user_id,
+                )
+
+    return receipts
+
+
+def _schedule_receipt_check(user_id: int | None, ticket_id: str | None) -> None:
+    """Consulta receipt en background; un ticket ok no garantiza entrega en Android."""
+    if not ticket_id or not user_id:
+        return
+    if not getattr(settings, 'PUSH_ASYNC_RECEIPT_CHECK', True):
+        return
+
+    delay = int(getattr(settings, 'PUSH_RECEIPT_CHECK_DELAY_SEC', _RECEIPT_CHECK_DELAY_SEC))
+
+    def _run():
+        try:
+            time.sleep(max(0, delay))
+            process_push_receipts([ticket_id], user_id=user_id)
+        except Exception:
+            logger.exception(
+                '[PUSH] Error: receipt check falló ticket_id=%s user_id=%s',
+                ticket_id,
+                user_id,
+            )
+
+    threading.Thread(
+        target=_run,
+        name=f'push-receipt-{ticket_id[:12]}',
+        daemon=True,
+    ).start()
+    logger.info(
+        '[PUSH] Receipt check scheduled in %ss ticket_id=%s user_id=%s',
+        delay,
+        ticket_id,
+        user_id,
+    )
+
+
 # Solo hitos útiles: evita cascada accepted→preparing→ready→en camino→entregado.
 ORDER_CUSTOMER_MESSAGES = {
     'pending': 'Recibimos tu pedido. El restaurante lo confirmará pronto.',
@@ -135,6 +263,14 @@ def _driver_name(user) -> str:
     return name or 'Tu repartidor'
 
 
+def _mask_expo_token(token: str) -> str:
+    if not token:
+        return '(empty)'
+    if len(token) <= 28:
+        return f'{token[:18]}…'
+    return f'{token[:22]}…{token[-6:]}'
+
+
 def send_push_to_user(
     user,
     title: str,
@@ -147,11 +283,31 @@ def send_push_to_user(
     True = entregado o omitido de forma permanente (sin token / dispositivo baja).
     False = fallo transitorio; el caller puede reintentar.
     """
+    user_id = getattr(user, 'pk', None)
+    username = getattr(user, 'username', user)
+    role = getattr(user, 'role', '')
     token = getattr(user, 'expo_push_token', '') or ''
-    if not token or not token.startswith('ExponentPushToken'):
+    has_token = bool(token and token.startswith('ExponentPushToken'))
+
+    logger.info(
+        '[PUSH] Sending notification user_id=%s role=%s title=%r channel=%s',
+        user_id,
+        role,
+        title,
+        channel_id,
+    )
+    logger.info(
+        '[PUSH] Token found: %s user_id=%s token=%s',
+        'YES' if has_token else 'NO',
+        user_id,
+        _mask_expo_token(token) if has_token else '(none)',
+    )
+
+    if not has_token:
         logger.info(
-            'Push omitido para %s: sin token Expo válido',
-            getattr(user, 'username', user),
+            '[PUSH] Skip — sin token Expo válido para user_id=%s (%s)',
+            user_id,
+            username,
         )
         return True
 
@@ -177,16 +333,16 @@ def send_push_to_user(
         req = urllib.request.Request(
             EXPO_PUSH_URL,
             data=json.dumps(payload).encode(),
-            headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+            headers=_expo_request_headers(),
             method='POST',
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw = resp.read().decode()
             if resp.status != 200:
                 logger.error(
-                    'Push HTTP %s para %s: %s',
+                    '[PUSH] Error: HTTP %s para user_id=%s preview=%s',
                     resp.status,
-                    user.username,
+                    user_id,
                     _sanitize_provider_message(raw),
                 )
                 return False
@@ -194,24 +350,23 @@ def send_push_to_user(
                 result = json.loads(raw) if raw else {}
             except json.JSONDecodeError:
                 logger.error(
-                    'Push JSON inválido para %s: data_type=raw preview=%s',
-                    user.username,
+                    '[PUSH] Error: JSON inválido user_id=%s preview=%s',
+                    user_id,
                     _sanitize_provider_message(raw),
                 )
                 return False
 
             summary = _summarize_expo_response(result)
-            logger.debug(
-                'Push respuesta Expo para %s: %s',
-                user.username,
+            logger.info(
+                '[PUSH] Expo/FCM response: user_id=%s summary=%s',
+                user_id,
                 summary,
             )
 
             if isinstance(result, dict) and result.get('errors'):
                 logger.error(
-                    'Push error de solicitud Expo para %s: data_type=%s errors=%s',
-                    user.username,
-                    summary.get('data_type'),
+                    '[PUSH] Error: solicitud Expo user_id=%s errors=%s',
+                    user_id,
                     summary.get('errors'),
                 )
                 return False
@@ -219,36 +374,41 @@ def send_push_to_user(
             ticket = _extract_push_ticket(result)
             if ticket is None:
                 logger.error(
-                    'Push respuesta malformada para %s: data_type=%s summary=%s',
-                    user.username,
-                    summary.get('data_type'),
+                    '[PUSH] Error: respuesta malformada user_id=%s summary=%s',
+                    user_id,
                     summary,
                 )
                 return False
 
             status = ticket.get('status')
+            ticket_id = ticket.get('id')
             message = _sanitize_provider_message(ticket.get('message'))
             details = ticket.get('details') if isinstance(ticket.get('details'), dict) else {}
             err_code = _ticket_error_code(ticket)
+
+            logger.info(
+                '[PUSH] Ticket ID: %s status=%s user_id=%s',
+                ticket_id or '(none)',
+                status,
+                user_id,
+            )
 
             if status == 'error':
                 if err_code in _INVALID_TOKEN_ERRORS:
                     _clear_user_push_token(user)
                     logger.warning(
-                        'Push token inválido para %s — marcado inactivo '
-                        '(status=%s error=%s message=%s details=%s)',
-                        user.username,
-                        status,
+                        '[PUSH] Error: token inválido user_id=%s — cleared '
+                        '(error=%s message=%s details=%s)',
+                        user_id,
                         err_code,
                         message,
                         details,
                     )
                     return True
                 logger.error(
-                    'Push rechazado para %s: data_type=%s status=%s error=%s '
+                    '[PUSH] Error: rechazado user_id=%s status=%s error=%s '
                     'message=%s details=%s',
-                    user.username,
-                    summary.get('data_type'),
+                    user_id,
                     status,
                     err_code,
                     message,
@@ -258,18 +418,25 @@ def send_push_to_user(
 
             if status != 'ok':
                 logger.error(
-                    'Push status inesperado para %s: data_type=%s status=%s '
+                    '[PUSH] Error: status inesperado user_id=%s status=%s '
                     'message=%s details=%s',
-                    user.username,
-                    summary.get('data_type'),
+                    user_id,
                     status,
                     message,
                     details,
                 )
                 return False
 
+            logger.info(
+                '[PUSH] Accepted by Expo user_id=%s ticket_id=%s title=%r',
+                user_id,
+                ticket_id or '(none)',
+                title,
+            )
             if getattr(settings, 'DEBUG', False):
-                logger.info('Push [%s]: %s — %s', user.username, title, body)
+                logger.info('Push [%s]: %s — %s', username, title, body)
+            # Ticket ok ≠ llegada al dispositivo; verificar receipt (FCM/APNs).
+            _schedule_receipt_check(user_id, ticket_id if isinstance(ticket_id, str) else None)
             return True
     except urllib.error.HTTPError as exc:
         body_preview = ''
@@ -278,15 +445,15 @@ def send_push_to_user(
         except Exception:
             pass
         logger.error(
-            'Push HTTPError para %s: %s %s',
-            user.username,
+            '[PUSH] Error: HTTPError user_id=%s code=%s body=%s',
+            user_id,
             exc.code,
             body_preview,
             exc_info=True,
         )
         return False
     except Exception:
-        logger.exception('Push falló para %s', user.username)
+        logger.exception('[PUSH] Error: excepción user_id=%s', user_id)
         return False
 
 
@@ -371,6 +538,7 @@ def notify_order_status(order, previous_status=None):
         send_push_to_user(order.customer, title, customer_msg, data, channel_id='orders_v3')
 
     if order.restaurant and order.restaurant.owner:
+        owner = order.restaurant.owner
         owner_msg = ORDER_OWNER_MESSAGES.get(status)
         if status == 'pending':
             owner_msg = (
@@ -378,8 +546,24 @@ def notify_order_status(order, previous_status=None):
                 f'Confírmalo en la app.'
             )
         if owner_msg:
+            logger.info(
+                '[PUSH] Preparing notification for restaurant %s '
+                '(owner_id=%s order_id=%s status=%s)',
+                getattr(order.restaurant, 'id', None),
+                getattr(owner, 'pk', None),
+                getattr(order, 'id', None),
+                status,
+            )
             owner_title = f'Pedido {ref}'
-            send_push_to_user(order.restaurant.owner, owner_title, owner_msg, data)
+            send_push_to_user(owner, owner_title, owner_msg, data)
+    elif order.restaurant_id:
+        logger.warning(
+            '[PUSH] Preparing notification for restaurant %s — NO owner linked '
+            '(order_id=%s status=%s)',
+            order.restaurant_id,
+            getattr(order, 'id', None),
+            status,
+        )
 
     # Broadcast a repartidores solo al pasar a ready (una vez por transición).
     # Pedidos POS / mostrador no deben entrar al pool de delivery.
@@ -516,6 +700,12 @@ def notify_awaiting_online_payment(order) -> None:
     Tampoco push inmediato al cliente: ya está en el flujo de pago y un
     aviso concurrente al abrir Stripe ha causado cierres en iOS.
     """
+    logger.info(
+        '[PUSH] Skip restaurant notify — awaits_online_payment '
+        'order_id=%s restaurant_id=%s',
+        getattr(order, 'id', None),
+        getattr(order, 'restaurant_id', None),
+    )
     return
 
 
@@ -544,21 +734,49 @@ def notify_payment_confirmed(order) -> None:
         )
 
     if order.restaurant and order.restaurant.owner:
+        owner = order.restaurant.owner
+        logger.info(
+            '[PUSH] Preparing notification for restaurant %s '
+            '(owner_id=%s order_id=%s type=payment_confirmed)',
+            getattr(order.restaurant, 'id', None),
+            getattr(owner, 'pk', None),
+            getattr(order, 'id', None),
+        )
         send_push_to_user(
-            order.restaurant.owner,
+            owner,
             title,
             f'¡Nuevo pedido! {ref} por {total_label}. Confírmalo en la app.',
             data,
+        )
+    elif order.restaurant_id:
+        logger.warning(
+            '[PUSH] Preparing notification for restaurant %s — NO owner '
+            '(order_id=%s type=payment_confirmed)',
+            order.restaurant_id,
+            getattr(order, 'id', None),
         )
 
 
 def notify_pending_order_reminder(order) -> bool:
     if not order.restaurant or not order.restaurant.owner:
+        logger.warning(
+            '[PUSH] Preparing reminder for restaurant %s — NO owner (order_id=%s)',
+            getattr(order, 'restaurant_id', None),
+            getattr(order, 'id', None),
+        )
         return True
+    owner = order.restaurant.owner
     ref = _order_ref(order)
     data = {'orderId': order.id, 'status': order.status, 'type': 'pending_reminder'}
+    logger.info(
+        '[PUSH] Preparing notification for restaurant %s '
+        '(owner_id=%s order_id=%s type=pending_reminder)',
+        getattr(order.restaurant, 'id', None),
+        getattr(owner, 'pk', None),
+        getattr(order, 'id', None),
+    )
     return send_push_to_user(
-        order.restaurant.owner,
+        owner,
         f'Pedido {ref}',
         f'El pedido {ref} sigue esperando confirmación. Respóndele al cliente.',
         data,
@@ -574,8 +792,16 @@ def notify_ready_no_driver(order) -> bool:
 
     ok_owner = True
     if order.restaurant and order.restaurant.owner:
+        owner = order.restaurant.owner
+        logger.info(
+            '[PUSH] Preparing notification for restaurant %s '
+            '(owner_id=%s order_id=%s type=ready_no_driver)',
+            getattr(order.restaurant, 'id', None),
+            getattr(owner, 'pk', None),
+            getattr(order, 'id', None),
+        )
         ok_owner = send_push_to_user(
-            order.restaurant.owner,
+            owner,
             f'Pedido {ref}',
             f'Pedido {ref} listo — aún sin repartidor.',
             data,

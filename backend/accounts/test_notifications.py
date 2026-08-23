@@ -2,12 +2,13 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from accounts.models import UserRole
 from accounts.notifications import (
     _extract_push_ticket,
     _sanitize_provider_message,
+    process_push_receipts,
     send_push_to_user,
 )
 
@@ -64,6 +65,7 @@ class SanitizeProviderMessageTests(TestCase):
         self.assertIn('ExponentPushToken[REDACTED]', sanitized)
 
 
+@override_settings(PUSH_ASYNC_RECEIPT_CHECK=False)
 class SendPushToUserTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
@@ -169,6 +171,42 @@ class SendPushToUserTests(TestCase):
     def test_invalid_json_does_not_raise(self, mock_urlopen):
         ok = self._send(mock_urlopen, b'{not-json')
         self.assertFalse(ok)
+
+
+@override_settings(PUSH_ASYNC_RECEIPT_CHECK=False)
+class ProcessPushReceiptsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='receipt_user',
+            password='test1234',
+            role=UserRole.RESTAURANT,
+            expo_push_token=VALID_TOKEN,
+        )
+
+    @patch('accounts.notifications.urllib.request.urlopen')
+    def test_ok_receipt_keeps_token(self, mock_urlopen):
+        mock_urlopen.return_value = _FakeExpoResponse({
+            'data': {'ticket-1': {'status': 'ok'}},
+        })
+        receipts = process_push_receipts(['ticket-1'], user_id=self.user.pk)
+        self.assertEqual(receipts['ticket-1']['status'], 'ok')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.expo_push_token, VALID_TOKEN)
+
+    @patch('accounts.notifications.urllib.request.urlopen')
+    def test_device_not_registered_receipt_clears_token(self, mock_urlopen):
+        mock_urlopen.return_value = _FakeExpoResponse({
+            'data': {
+                'ticket-1': {
+                    'status': 'error',
+                    'message': 'Not registered',
+                    'details': {'error': 'DeviceNotRegistered'},
+                },
+            },
+        })
+        process_push_receipts(['ticket-1'], user_id=self.user.pk)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.expo_push_token, '')
 
 
 class NotifyOrderStatusNoiseTests(TestCase):

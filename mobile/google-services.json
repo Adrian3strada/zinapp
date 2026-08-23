@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "847180894882",
+    "project_id": "zinapp-cdf85",
+    "storage_bucket": "zinapp-cdf85.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:847180894882:android:dbffe7028111dfbcc07dfb",
+        "android_client_info": {
+          "package_name": "com.zinapp.delivery"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgRu3Tv8prNrGnKiMgypAvja0ryKi-myU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

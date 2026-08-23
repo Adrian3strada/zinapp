@@ -91,6 +91,22 @@ export class RealtimeClient {
     await this.connect();
   }
 
+  /**
+   * Al volver del segundo plano: el socket puede quedar OPEN pero muerto.
+   * Forzar reconexión sin perder suscripciones ni cerrar sesión.
+   */
+  async resume(): Promise<void> {
+    if (!this.enabled || this.disabledForSession) return;
+    this.intentionalClose = false;
+    this.connectGeneration += 1;
+    this.abortTicketRequest();
+    this.clearTimers();
+    this.teardownSocket();
+    this.connectPromise = null;
+    this.reconnectAttempt = 0;
+    await this.connect();
+  }
+
   stop(): void {
     this.enabled = false;
     this.intentionalClose = true;
@@ -258,7 +274,17 @@ export class RealtimeClient {
         if (abort.signal.aborted || !this.isGenerationActive(generation)) return;
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 401 || status === 403) {
-          this.stopAfterAuthFailure();
+          const access = await renewAccessTokenForSession();
+          if (access && this.isGenerationActive(generation)) {
+            this.scheduleReconnect();
+            return;
+          }
+          const stillHasRefresh = await tokenStorage.getRefreshToken();
+          if (!stillHasRefresh) {
+            this.stopAfterAuthFailure();
+          } else {
+            this.scheduleReconnect();
+          }
           return;
         }
         this.scheduleReconnect();
@@ -358,7 +384,12 @@ export class RealtimeClient {
     if (!this.isGenerationActive(generation) || this.disabledForSession) return;
     const access = await renewAccessTokenForSession();
     if (!access) {
-      this.stopAfterAuthFailure();
+      const stillHasRefresh = await tokenStorage.getRefreshToken();
+      if (!stillHasRefresh) {
+        this.stopAfterAuthFailure();
+      } else {
+        this.scheduleReconnect();
+      }
       return;
     }
     if (!this.isGenerationActive(generation)) return;

@@ -203,6 +203,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 onPress={() => navigation.navigate('Ofertas')}
               />
               <SecondaryChip
+                icon="basket-outline"
+                label="Mandado"
+                color="#16A34A"
+                highlight
+                onPress={() => navigation.navigate('Mandado')}
+              />
+              <SecondaryChip
                 icon="storefront-outline"
                 label="Servicios"
                 color={colors.serviceStart}
@@ -261,19 +268,26 @@ function SecondaryChip({
   icon,
   label,
   color,
+  highlight,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   color: string;
+  highlight?: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.secondaryChip} onPress={onPress}>
+    <Pressable
+      style={[styles.secondaryChip, highlight && styles.secondaryChipHighlight]}
+      onPress={onPress}
+    >
       <View style={[styles.secondaryIcon, { backgroundColor: color + '22' }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
-      <Text style={styles.secondaryLabel}>{label}</Text>
+      <Text style={[styles.secondaryLabel, highlight && { color }]} numberOfLines={1}>
+        {label}
+      </Text>
       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
     </Pressable>
   );
@@ -335,20 +349,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  secondaryRow: { flexDirection: 'row', gap: 10, marginBottom: spacing.sm },
+  secondaryRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.sm },
   secondaryChip: {
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     backgroundColor: colors.surface,
     borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
     minHeight: 48,
     borderWidth: 1,
     borderColor: colors.borderLight,
+  },
+  secondaryChipHighlight: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
   },
   secondaryIcon: {
     width: 32,
@@ -357,7 +375,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  secondaryLabel: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '800', color: colors.text },
+  secondaryLabel: { flex: 1, minWidth: 0, fontSize: 12, fontWeight: '800', color: colors.text },
   catWrap: { marginBottom: spacing.sm, flexGrow: 0 },
   catRow: { gap: 8, paddingVertical: 4 },
   catChip: {
