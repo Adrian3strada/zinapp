@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 from django.views.generic import TemplateView
 
-from .seo import get_site_url
+from .seo import get_privacy_email, get_site_url
 
 
 class PrivacyPolicyView(TemplateView):
@@ -49,7 +49,8 @@ class PrivacyPolicyView(TemplateView):
         ctx.update(
             {
                 'site_url': site_url,
-                'support_email': settings.SUPPORT_EMAIL or 'soporte@zinapp.com.mx',
+                'support_email': get_privacy_email(),
+                'privacy_email': get_privacy_email(),
                 'seo_logo_url': logo_url,
                 'seo_json_ld': json.dumps(
                     {'@context': 'https://schema.org', '@graph': seo_graph},

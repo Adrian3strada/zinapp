@@ -1,18 +1,16 @@
-<section class="section" id="destacados" aria-labelledby="feat-title">
+{% if newest_businesses %}
+<section class="section" id="nuevos" aria-labelledby="new-title">
   <div class="wrap">
     <div class="section-head">
-      <p class="section-kicker">Cerca de ti</p>
-      <h2 class="section-title" id="feat-title">Negocios destacados en Zinapécuaro</h2>
-      <p class="section-lead">Locales reales disponibles en ZinApp para pedir o contactar.</p>
+      <p class="section-kicker">Se están sumando</p>
+      <h2 class="section-title" id="new-title">Nuevos en ZinApp</h2>
+      <p class="section-lead">Negocios de Zinapécuaro que se acaban de publicar.</p>
     </div>
 
-    <div class="biz-grid">
-      {% for biz in featured_businesses %}
+    <div class="biz-grid biz-grid-compact">
+      {% for biz in newest_businesses %}
         <article class="biz-card">
           <div class="biz-media{% if biz.image_fit == 'cover' %} biz-media-cover{% elif biz.image_fit == 'contain' %} biz-media-contain{% endif %}">
-            {% if biz.is_demo %}
-              <span class="biz-demo">Ejemplo</span>
-            {% endif %}
             {% if biz.image_url %}
               <img src="{{ biz.image_url }}" alt="{{ biz.image_alt|default:biz.name }}" loading="lazy" decoding="async" width="640" height="400">
             {% else %}
@@ -25,20 +23,11 @@
             {% if biz.description %}
               <p class="biz-desc">{{ biz.description }}</p>
             {% endif %}
-            <div class="biz-meta">
-              {% if biz.schedule %}<span title="{{ biz.schedule }}">Horario: {{ biz.schedule }}</span>{% endif %}
-              {% if biz.location %}<span title="{{ biz.location }}">Ubicación: {{ biz.location }}</span>{% endif %}
-            </div>
             <a class="btn btn-primary btn-sm" href="{{ biz.cta_url }}">{{ biz.cta_label }}</a>
           </div>
         </article>
       {% endfor %}
     </div>
-
-    {% if featured_is_demo %}
-      <p class="demo-note">
-        Estos son ejemplos. Cuando haya restaurantes o servicios activos, se mostrarán aquí.
-      </p>
-    {% endif %}
   </div>
 </section>
+{% endif %}

@@ -228,7 +228,13 @@ PLAY_STORE_URL = config('PLAY_STORE_URL', default='').strip()
 GOOGLE_PLAY_ENABLED = config('GOOGLE_PLAY_ENABLED', default=False, cast=bool)
 # Landing: URL pública de la app web y contacto opcional (vacío = no mostrar)
 LANDING_APP_URL = config('LANDING_APP_URL', default='https://zinapp.com.mx/app/').strip()
+# soporte@zinapp.com.mx cuando el buzón corporativo esté activo.
 SUPPORT_EMAIL = config('SUPPORT_EMAIL', default='').strip()
+# hola@zinapp.com.mx — si vacío, la landing usa SUPPORT_EMAIL.
+CONTACT_EMAIL = config('CONTACT_EMAIL', default='').strip()
+# privacidad@zinapp.com.mx — si vacío, aviso de privacidad usa SUPPORT_EMAIL
+# y, si también está vacío, el correo ARCO actual para no romper solicitudes.
+PRIVACY_EMAIL = config('PRIVACY_EMAIL', default='').strip()
 SUPPORT_PHONE = config('SUPPORT_PHONE', default='').strip()
 SOCIAL_INSTAGRAM = config('SOCIAL_INSTAGRAM', default='').strip()
 SOCIAL_FACEBOOK = config('SOCIAL_FACEBOOK', default='').strip()

@@ -1,0 +1,29 @@
+{% if landing_promos %}
+<section class="section" id="ofertas" aria-labelledby="promo-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="section-kicker">Ofertas</p>
+      <h2 class="section-title" id="promo-title">Promociones en Zinapécuaro</h2>
+      <p class="section-lead">Promos vigentes publicadas por restaurantes en ZinApp.</p>
+    </div>
+
+    <div class="promo-grid">
+      {% for promo in landing_promos %}
+        <article class="promo-card">
+          <div class="promo-media">
+            {% if promo.image_url %}
+              <img src="{{ promo.image_url }}" alt="{{ promo.image_alt }}" loading="lazy" decoding="async" width="480" height="320">
+            {% endif %}
+            <span class="promo-badge">{{ promo.title }}</span>
+          </div>
+          <div class="promo-body">
+            <h3>{{ promo.product }}</h3>
+            <p>{{ promo.restaurant }}</p>
+            <a class="btn btn-primary btn-sm" href="{{ promo.cta_url }}">Ver promoción</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}

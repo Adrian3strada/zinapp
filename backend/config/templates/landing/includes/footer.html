@@ -3,10 +3,10 @@
   <div class="wrap footer-main">
     <div class="footer-brand">
       <a href="/">
-        <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="40" height="40" alt="ZinApp">
+        <img src="{% static 'dashboard/img/logo-on-blue.png' %}" width="40" height="40" alt="Logo de ZinApp">
         ZinApp
       </a>
-      <p>Todo Zinapécuaro en una sola app. Comida, servicios y negocios locales.</p>
+      <p>Todo Zinapécuaro en una sola app. Comida a domicilio, restaurantes, servicios y negocios locales.</p>
     </div>
 
     <div class="footer-grid">
@@ -14,10 +14,10 @@
         <h3>Explorar</h3>
         <nav aria-label="Explorar">
           <a href="/">Inicio</a>
-          <a href="#comida">Comida</a>
+          <a href="#comida">Comida a domicilio</a>
           <a href="#servicios">Servicios</a>
           <a href="#promociones">Promociones</a>
-          <a href="{{ app_url }}">Abrir ZinApp</a>
+          <a href="{{ app_url }}">Ver restaurantes</a>
         </nav>
       </div>
 
@@ -26,7 +26,7 @@
         <nav aria-label="Negocios">
           <a href="#negocios">Registrar negocio</a>
           <a href="#como">Cómo funciona</a>
-          <a href="#instalar">Instalar ZinApp</a>
+          <a href="#instalar">Descargar ZinApp</a>
           <a href="#faq">Preguntas frecuentes</a>
         </nav>
       </div>
@@ -51,14 +51,6 @@
 </footer>
 
 <div class="mobile-bar" role="navigation" aria-label="Acciones rápidas">
-  <a class="btn btn-primary" href="{{ app_url }}">Abrir ZinApp</a>
-  {% if whatsapp_url %}
-    <a
-      class="btn btn-secondary"
-      href="{{ whatsapp_url }}?text={{ register_whatsapp_text|urlencode }}"
-      rel="noopener noreferrer"
-    >Registrar</a>
-  {% else %}
-    <a class="btn btn-secondary" href="#negocios">Registrar</a>
-  {% endif %}
+  <a class="btn btn-primary" href="{{ app_url }}">Ver comida</a>
+  <a class="btn btn-secondary" href="#instalar">Descargar</a>
 </div>

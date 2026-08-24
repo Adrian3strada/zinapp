@@ -3,59 +3,16 @@
     <div class="section-head">
       <p class="section-kicker">Ayuda</p>
       <h2 class="section-title" id="faq-title">Preguntas frecuentes</h2>
-      <p class="section-lead">Respuestas rápidas sobre cómo usar y registrar un negocio en ZinApp.</p>
+      <p class="section-lead">Respuestas cortas para pedir comida o registrar tu negocio.</p>
     </div>
 
     <div class="faq-list">
-      <details>
-        <summary>¿Necesito descargar ZinApp?</summary>
-        <p class="faq-a">
-          Puedes usarla desde el navegador en
-          <a href="{{ app_url }}">zinapp.com.mx/app</a>.
-          En iPhone también puedes instalarla desde App Store.
-          En Android, mientras la ficha de Google Play no esté pública, usa ZinApp en el navegador.
-        </p>
-      </details>
-
-      <details>
-        <summary>¿Cómo registro mi negocio?</summary>
-        <p class="faq-a">
-          Usa el botón <a href="#negocios">Registrar mi negocio</a>. Te guiaremos por WhatsApp según
-          la modalidad (Servicios o Restaurantes y pedidos).
-        </p>
-      </details>
-
-      <details>
-        <summary>¿Qué incluye la modalidad Servicios?</summary>
-        <p class="faq-a">
-          Publicación del negocio, contacto, horario, dirección y ubicación en Google Maps.
-          Para registrarte o conocer las condiciones actuales, contáctanos por WhatsApp.
-        </p>
-      </details>
-
-      <details>
-        <summary>¿Cómo funciona la comisión para restaurantes?</summary>
-        <p class="faq-a">
-          No hay mensualidad. Los precios publicados en ZinApp incluyen un 10% adicional.
-          El restaurante recibe el precio original de sus productos y ZinApp conserva el 10% como comisión.
-        </p>
-      </details>
-
-      <details>
-        <summary>¿Cómo hago un pedido?</summary>
-        <p class="faq-a">
-          Abre ZinApp, elige un restaurante, arma tu pedido y confirma.
-          Puedes recibir a domicilio (con repartidor) o seguir las indicaciones del local.
-        </p>
-      </details>
-
-      <details>
-        <summary>¿Cómo contacto a ZinApp?</summary>
-        <p class="faq-a">
-          Escríbenos por WhatsApp desde la sección
-          <a href="#contacto">Contacto</a>. Ahí también verás correo, teléfono o redes si están configurados.
-        </p>
-      </details>
+      {% for item in landing_faqs %}
+        <details>
+          <summary>{{ item.question }}</summary>
+          <p class="faq-a">{{ item.answer }}</p>
+        </details>
+      {% endfor %}
     </div>
   </div>
 </section>

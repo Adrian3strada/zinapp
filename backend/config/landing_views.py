@@ -7,56 +7,72 @@ from django.db import OperationalError
 from django.http import HttpResponse
 from django.views.generic import TemplateView
 
-from .seo import get_site_url
+from .seo import get_contact_email, get_site_url
+
+SEO_TITLE = 'Comida a domicilio en Zinapécuaro | ZinApp'
+SEO_DESCRIPTION = (
+    'Pide comida a domicilio en Zinapécuaro. Restaurantes, negocios locales, '
+    'servicios y promociones en una sola app hecha para el pueblo.'
+)
 
 
-# Preguntas visibles en landing/includes/faq.html — misma fuente para Schema FAQPage.
-LANDING_FAQS = [
-    {
-        'question': '¿Necesito descargar ZinApp?',
-        'answer': (
-            'Puedes usarla desde el navegador en zinapp.com.mx/app. '
-            'En iPhone también puedes instalarla desde App Store. '
-            'En Android, mientras la ficha de Google Play no esté pública, '
-            'usa ZinApp en el navegador.'
-        ),
-    },
-    {
-        'question': '¿Cómo registro mi negocio?',
-        'answer': (
-            'Usa el botón Registrar mi negocio. Te guiaremos por WhatsApp según '
-            'la modalidad (Servicios o Restaurantes y pedidos).'
-        ),
-    },
-    {
-        'question': '¿Qué incluye la modalidad Servicios?',
-        'answer': (
-            'Publicación del negocio, contacto, horario, dirección y ubicación en Google Maps. '
-            'Para registrarte o conocer las condiciones actuales, contáctanos por WhatsApp.'
-        ),
-    },
-    {
-        'question': '¿Cómo funciona la comisión para restaurantes?',
-        'answer': (
-            'No hay mensualidad. Los precios publicados en ZinApp incluyen un 10% adicional. '
-            'El restaurante recibe el precio original de sus productos y ZinApp conserva el 10% como comisión.'
-        ),
-    },
-    {
-        'question': '¿Cómo hago un pedido?',
-        'answer': (
-            'Abre ZinApp, elige un restaurante, arma tu pedido y confirma. '
-            'Puedes recibir a domicilio (con repartidor) o seguir las indicaciones del local.'
-        ),
-    },
-    {
-        'question': '¿Cómo contacto a ZinApp?',
-        'answer': (
-            'Escríbenos por WhatsApp desde la sección Contacto. '
-            'Ahí también verás correo, teléfono o redes si están configurados.'
-        ),
-    },
-]
+def get_landing_faqs(*, google_play_enabled: bool) -> list[dict]:
+    """Preguntas visibles en faq.html — misma fuente para Schema FAQPage."""
+    if google_play_enabled:
+        download_answer = (
+            'Puedes usarla en el navegador o instalarla desde App Store y Google Play.'
+        )
+    else:
+        download_answer = (
+            'Puedes usarla en el navegador en zinapp.com.mx/app. '
+            'En iPhone también está en App Store. '
+            'En Android úsala desde el navegador hasta que esté en Google Play.'
+        )
+    return [
+        {
+            'question': '¿Necesito descargar ZinApp?',
+            'answer': download_answer,
+        },
+        {
+            'question': '¿Cómo hago un pedido?',
+            'answer': (
+                'Abre ZinApp, elige un restaurante, arma tu pedido y confirma. '
+                'Puedes recibirlo a domicilio o recogerlo en el local.'
+            ),
+        },
+        {
+            'question': '¿Cómo registro mi negocio?',
+            'answer': (
+                'Toca Registrar mi negocio y te guiamos por WhatsApp. '
+                'Hay modalidad Servicios y modalidad Restaurantes y pedidos.'
+            ),
+        },
+        {
+            'question': '¿Qué incluye la modalidad Servicios?',
+            'answer': (
+                'Publicamos tu negocio con contacto, horario, dirección '
+                'y ubicación en Google Maps.'
+            ),
+        },
+        {
+            'question': '¿Cómo funciona la comisión para restaurantes?',
+            'answer': (
+                'No hay mensualidad. El precio en ZinApp incluye un 10% adicional. '
+                'El restaurante recibe su precio original; ZinApp conserva ese 10%.'
+            ),
+        },
+        {
+            'question': '¿Cómo contacto a ZinApp?',
+            'answer': (
+                'Escríbenos por WhatsApp desde Contacto. '
+                'Ahí también verás correo o teléfono si están disponibles.'
+            ),
+        },
+    ]
+
+
+# Compatibilidad con imports/tests que esperan el nombre anterior.
+LANDING_FAQS = get_landing_faqs(google_play_enabled=False)
 
 
 def _whatsapp_link(raw: str) -> str:
@@ -136,6 +152,28 @@ def _shorten_schedule_text(raw: str) -> str:
     return text
 
 
+def _shorten_text(raw: str, limit: int = 110) -> str:
+    text = re.sub(r'\s+', ' ', (raw or '').strip())
+    if not text:
+        return ''
+    if len(text) > limit:
+        return text[: limit - 1].rstrip(' ,;.') + '…'
+    return text
+
+
+def _media_url(field) -> str:
+    if not field:
+        return ''
+    try:
+        return field.url
+    except ValueError:
+        return ''
+
+
+def _sort_images_first(cards: list[dict]) -> list[dict]:
+    return sorted(cards, key=lambda c: (0 if c.get('image_url') else 1, (c.get('name') or '').lower()))
+
+
 def _category_label(choices, value: str, *, fallback: str = 'Local') -> str:
     label = dict(choices).get(value, value or fallback)
     if (label or '').strip().lower() == 'general':
@@ -143,7 +181,7 @@ def _category_label(choices, value: str, *, fallback: str = 'Local') -> str:
     return label or fallback
 
 
-def _restaurant_cards(limit: int = 6) -> list[dict]:
+def _restaurant_cards(limit: int = 6, *, order_by: str = 'name') -> list[dict]:
     """Negocios reales desde restaurantes activos."""
     try:
         from restaurants.models import Restaurant, RestaurantCategory
@@ -154,7 +192,7 @@ def _restaurant_cards(limit: int = 6) -> list[dict]:
         restaurants = list(
             Restaurant.objects.filter(is_active=True)
             .prefetch_related('business_hours')
-            .order_by('name')[:limit]
+            .order_by(order_by)[:limit]
         )
     except (OperationalError, Exception):
         # Landing no debe fallar si la BD no responde.
@@ -162,12 +200,7 @@ def _restaurant_cards(limit: int = 6) -> list[dict]:
 
     cards = []
     for r in restaurants:
-        image_url = ''
-        if r.image:
-            try:
-                image_url = r.image.url
-            except ValueError:
-                image_url = ''
+        image_url = _media_url(r.image)
         hours = list(r.business_hours.all())
         if hours:
             schedule = _format_business_hours(hours)
@@ -182,19 +215,23 @@ def _restaurant_cards(limit: int = 6) -> list[dict]:
                     r.category,
                     fallback='Restaurante',
                 ),
+                'description': _shorten_text(r.description),
                 'schedule': schedule,
                 'location': (r.address or 'Zinapécuaro').strip(),
                 'image_url': image_url,
+                'image_fit': 'cover' if image_url else '',
+                'image_alt': f'{r.name}, restaurante en Zinapécuaro',
                 'cta_label': 'Pedir ahora',
                 'cta_url': settings.LANDING_APP_URL,
                 'source': 'restaurant',
                 'is_demo': False,
+                'created_at': r.created_at.isoformat() if r.created_at else '',
             }
         )
     return cards
 
 
-def _service_cards(limit: int = 6) -> list[dict]:
+def _service_cards(limit: int = 6, *, order_by: str | None = None) -> list[dict]:
     """Negocios reales desde servicios locales activos."""
     try:
         from local_services.models import LocalService, LocalServiceCategory
@@ -202,21 +239,18 @@ def _service_cards(limit: int = 6) -> list[dict]:
         return []
 
     try:
-        services = list(
-            LocalService.objects.filter(is_active=True)
-            .order_by('sort_order', 'name')[:limit]
-        )
+        qs = LocalService.objects.filter(is_active=True)
+        if order_by:
+            qs = qs.order_by(order_by)
+        else:
+            qs = qs.order_by('sort_order', 'name')
+        services = list(qs[:limit])
     except (OperationalError, Exception):
         return []
 
     cards = []
     for s in services:
-        image_url = ''
-        if s.logo:
-            try:
-                image_url = s.logo.url
-            except ValueError:
-                image_url = ''
+        image_url = _media_url(s.logo)
         cards.append(
             {
                 'id': f'service-{s.pk}',
@@ -226,13 +260,17 @@ def _service_cards(limit: int = 6) -> list[dict]:
                     s.category,
                     fallback='Servicio',
                 ),
+                'description': _shorten_text(s.description),
                 'schedule': _shorten_schedule_text(s.schedule),
                 'location': (s.address or 'Zinapécuaro').strip(),
                 'image_url': image_url,
+                'image_fit': 'contain' if image_url else '',
+                'image_alt': f'{s.name}, negocio local en Zinapécuaro',
                 'cta_label': 'Ver negocio',
                 'cta_url': settings.LANDING_APP_URL,
                 'source': 'service',
                 'is_demo': False,
+                'created_at': s.created_at.isoformat() if s.created_at else '',
             }
         )
     return cards
@@ -248,10 +286,14 @@ def _demo_featured_businesses() -> list[dict]:
             'schedule': 'Lun–Dom · 11:00 a. m.–10:00 p. m.',
             'location': 'Centro, Zinapécuaro',
             'image_url': '',
+            'description': '',
+            'image_fit': '',
+            'image_alt': 'Ejemplo de restaurante en ZinApp',
             'cta_label': 'Pedir ahora',
             'cta_url': settings.LANDING_APP_URL,
             'source': 'demo',
             'is_demo': True,
+            'created_at': '',
         },
         {
             'id': 'demo-2',
@@ -260,10 +302,14 @@ def _demo_featured_businesses() -> list[dict]:
             'schedule': 'Lun–Sáb · 10:00 a. m.–7:00 p. m.',
             'location': 'Col. Independencia',
             'image_url': '',
+            'description': '',
+            'image_fit': '',
+            'image_alt': 'Ejemplo de servicio en ZinApp',
             'cta_label': 'Ver negocio',
             'cta_url': settings.LANDING_APP_URL,
             'source': 'demo',
             'is_demo': True,
+            'created_at': '',
         },
         {
             'id': 'demo-3',
@@ -272,10 +318,14 @@ def _demo_featured_businesses() -> list[dict]:
             'schedule': 'Lun–Dom · 8:00 a. m.–9:00 p. m.',
             'location': 'Av. Principal',
             'image_url': '',
+            'description': '',
+            'image_fit': '',
+            'image_alt': 'Ejemplo de comercio en ZinApp',
             'cta_label': 'Ver negocio',
             'cta_url': settings.LANDING_APP_URL,
             'source': 'demo',
             'is_demo': True,
+            'created_at': '',
         },
     ]
 
@@ -328,8 +378,8 @@ def _play_store_context() -> dict:
 
 def _featured_businesses(limit: int = 6) -> tuple[list[dict], bool]:
     """Combina restaurantes y servicios; si no hay, usa demos."""
-    restaurants = _restaurant_cards(limit=limit)
-    services = _service_cards(limit=limit)
+    restaurants = _sort_images_first(_restaurant_cards(limit=max(limit, 12)))
+    services = _sort_images_first(_service_cards(limit=max(limit, 12)))
     combined = []
     r_i = s_i = 0
     while len(combined) < limit and (r_i < len(restaurants) or s_i < len(services)):
@@ -344,6 +394,100 @@ def _featured_businesses(limit: int = 6) -> tuple[list[dict], bool]:
     if combined:
         return combined, False
     return _demo_featured_businesses()[:limit], True
+
+
+def _newest_businesses(featured_ids: set[str], limit: int = 3) -> list[dict]:
+    """Negocios reales recientes que no están ya en destacados."""
+    pool = (
+        _restaurant_cards(limit=12, order_by='-created_at')
+        + _service_cards(limit=12, order_by='-created_at')
+    )
+    pool.sort(key=lambda c: c.get('created_at') or '', reverse=True)
+    newest = [c for c in pool if c.get('id') not in featured_ids]
+    return newest[:limit]
+
+
+def _discover_dishes(limit: int = 8) -> list[dict]:
+    """Platillos reales con foto de restaurantes activos."""
+    try:
+        from django.db.models import Q
+
+        from restaurants.models import Product
+    except Exception:
+        return []
+
+    try:
+        products = list(
+            Product.objects.filter(
+                is_available=True,
+                restaurant__is_active=True,
+            )
+            .exclude(Q(image='') | Q(image__isnull=True))
+            .select_related('restaurant')
+            .order_by('-updated_at')[:limit]
+        )
+    except (OperationalError, Exception):
+        return []
+
+    dishes = []
+    for product in products:
+        image_url = _media_url(product.image)
+        if not image_url:
+            continue
+        dishes.append(
+            {
+                'id': f'dish-{product.pk}',
+                'name': product.name,
+                'restaurant': product.restaurant.name,
+                'description': _shorten_text(product.description, limit=90),
+                'image_url': image_url,
+                'image_alt': f'{product.name} de {product.restaurant.name} en Zinapécuaro',
+                'cta_url': settings.LANDING_APP_URL,
+            }
+        )
+    return dishes
+
+
+def _active_promotions(limit: int = 6) -> list[dict]:
+    """Promociones vigentes; la sección se oculta si no hay ninguna."""
+    try:
+        from django.utils import timezone
+
+        from restaurants.models import ProductPromotion
+        from restaurants.promotions import promo_label
+    except Exception:
+        return []
+
+    try:
+        now = timezone.now()
+        promos = list(
+            ProductPromotion.objects.filter(
+                is_active=True,
+                valid_until__gte=now,
+                product__is_available=True,
+                restaurant__is_active=True,
+            )
+            .select_related('product', 'restaurant')
+            .order_by('-valid_until', '-id')[:limit]
+        )
+    except (OperationalError, Exception):
+        return []
+
+    cards = []
+    for promo in promos:
+        image_url = _media_url(promo.product.image) or _media_url(promo.restaurant.image)
+        cards.append(
+            {
+                'id': f'promo-{promo.pk}',
+                'title': promo_label(promo),
+                'product': promo.product.name,
+                'restaurant': promo.restaurant.name,
+                'image_url': image_url,
+                'image_alt': f'Promoción {promo.product.name} en {promo.restaurant.name}, Zinapécuaro',
+                'cta_url': settings.LANDING_APP_URL,
+            }
+        )
+    return cards
 
 
 def _social_url(platform: str, raw: str) -> str:
@@ -366,7 +510,16 @@ class LandingView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         whatsapp = (settings.SUPPORT_WHATSAPP or '').strip()
+        play = _play_store_context()
+        landing_faqs = get_landing_faqs(google_play_enabled=play['google_play_enabled'])
         featured, using_demo = _featured_businesses(limit=6)
+        newest = [] if using_demo else _newest_businesses(
+            {biz['id'] for biz in featured},
+            limit=3,
+        )
+        discover_dishes = [] if using_demo else _discover_dishes(limit=8)
+        landing_promos = [] if using_demo else _active_promotions(limit=6)
+        contact_email = get_contact_email()
         register_msg = (
             'Hola, quiero registrar mi negocio en ZinApp Zinapécuaro.\n\n'
             'Nombre del negocio:\n'
@@ -391,8 +544,8 @@ class LandingView(TemplateView):
             'url': f'{site_url}/',
             'logo': logo_url,
             'description': (
-                'ZinApp es una app local de pedidos, entregas, restaurantes, '
-                'comercios y servicios locales en Zinapécuaro, Michoacán.'
+                'ZinApp es la app local para pedir comida a domicilio, descubrir '
+                'restaurantes, negocios y servicios en Zinapécuaro, Michoacán.'
             ),
             'areaServed': {
                 '@type': 'City',
@@ -415,8 +568,8 @@ class LandingView(TemplateView):
                     else {}
                 ),
                 **(
-                    {'email': settings.SUPPORT_EMAIL}
-                    if settings.SUPPORT_EMAIL
+                    {'email': contact_email}
+                    if contact_email
                     else {}
                 ),
             },
@@ -433,6 +586,7 @@ class LandingView(TemplateView):
                 'name': 'ZinApp',
                 'publisher': {'@id': f'{site_url}/#organization'},
                 'inLanguage': 'es-MX',
+                'description': SEO_DESCRIPTION,
             },
             {
                 '@type': 'SoftwareApplication',
@@ -442,8 +596,8 @@ class LandingView(TemplateView):
                 'operatingSystem': 'Android, iOS, Web',
                 'url': f'{site_url}/app/',
                 'description': (
-                    'Aplicación local para pedir comida, encontrar servicios, descubrir negocios '
-                    'locales y coordinar entregas en Zinapécuaro, Michoacán.'
+                    'Pide comida a domicilio en Zinapécuaro, encuentra restaurantes, '
+                    'negocios locales, servicios y promociones.'
                 ),
                 'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'MXN'},
                 'publisher': {'@id': f'{site_url}/#organization'},
@@ -454,7 +608,10 @@ class LandingView(TemplateView):
                 'name': 'ZinApp',
                 'url': f'{site_url}/',
                 'image': logo_url,
-                'description': 'Plataforma local de pedidos, entregas y servicios para Zinapécuaro, Michoacán.',
+                'description': (
+                    'Plataforma local de comida a domicilio, restaurantes, negocios '
+                    'y servicios en Zinapécuaro, Michoacán.'
+                ),
                 'address': {
                     '@type': 'PostalAddress',
                     'addressLocality': 'Zinapécuaro',
@@ -476,16 +633,34 @@ class LandingView(TemplateView):
                             'text': item['answer'],
                         },
                     }
-                    for item in LANDING_FAQS
+                    for item in landing_faqs
                 ],
             },
         ]
-        play = _play_store_context()
+        if not using_demo and featured:
+            seo_graph.append(
+                {
+                    '@type': 'ItemList',
+                    '@id': f'{site_url}/#negocios-destacados',
+                    'name': 'Negocios destacados en ZinApp Zinapécuaro',
+                    'itemListElement': [
+                        {
+                            '@type': 'ListItem',
+                            'position': index,
+                            'name': biz['name'],
+                            'url': f'{site_url}/app/',
+                        }
+                        for index, biz in enumerate(featured, start=1)
+                    ],
+                }
+            )
         ctx.update(
             {
                 'site_url': site_url,
+                'seo_title': SEO_TITLE,
+                'seo_description': SEO_DESCRIPTION,
                 'seo_logo_url': logo_url,
-                'landing_faqs': LANDING_FAQS,
+                'landing_faqs': landing_faqs,
                 'seo_json_ld': json.dumps(
                     {'@context': 'https://schema.org', '@graph': seo_graph},
                     ensure_ascii=False,
@@ -497,6 +672,7 @@ class LandingView(TemplateView):
                 'play_store_url': play['play_store_url'],
                 'whatsapp_url': _whatsapp_link(whatsapp),
                 'support_email': settings.SUPPORT_EMAIL,
+                'contact_email': contact_email,
                 'support_phone': settings.SUPPORT_PHONE,
                 'social_instagram_url': _social_url('instagram', settings.SOCIAL_INSTAGRAM),
                 'social_facebook_url': _social_url('facebook', settings.SOCIAL_FACEBOOK),
@@ -504,6 +680,9 @@ class LandingView(TemplateView):
                 'register_whatsapp_text': register_msg,
                 'featured_businesses': featured,
                 'featured_is_demo': using_demo,
+                'newest_businesses': newest,
+                'discover_dishes': discover_dishes,
+                'landing_promos': landing_promos,
                 'trust_metrics': _live_trust_metrics(),
             }
         )

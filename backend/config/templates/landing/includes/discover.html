@@ -1,0 +1,29 @@
+{% if discover_dishes %}
+<section class="section section-alt" id="comer-hoy" aria-labelledby="dish-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="section-kicker">Menú local</p>
+      <h2 class="section-title" id="dish-title">Descubre qué comer hoy en Zinapécuaro</h2>
+      <p class="section-lead">Platillos reales de restaurantes que ya están en ZinApp.</p>
+    </div>
+
+    <div class="dish-grid">
+      {% for dish in discover_dishes %}
+        <article class="dish-card">
+          <div class="dish-media">
+            <img src="{{ dish.image_url }}" alt="{{ dish.image_alt }}" loading="lazy" decoding="async" width="480" height="360">
+          </div>
+          <div class="dish-body">
+            <h3>{{ dish.name }}</h3>
+            <p class="dish-place">{{ dish.restaurant }}</p>
+            {% if dish.description %}
+              <p class="dish-desc">{{ dish.description }}</p>
+            {% endif %}
+            <a class="btn btn-primary btn-sm" href="{{ dish.cta_url }}">Pedir ahora</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
