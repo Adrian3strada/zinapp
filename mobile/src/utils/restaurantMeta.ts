@@ -40,7 +40,10 @@ export function formatRestaurantSchedule(restaurant: Restaurant): string | null 
     .join(' · ');
 }
 
-export function formatRatingLabel(restaurant: Restaurant): string | null {
+export function formatRatingLabel(restaurant: {
+  rating_average?: number | null;
+  reviews_count?: number;
+}): string | null {
   if (restaurant.rating_average == null) return null;
   const count = restaurant.reviews_count ?? 0;
   return count > 0

@@ -32,8 +32,8 @@ export type CustomerTabParamList = {
 
 export type CustomerStackParamList = {
   Main: NavigatorScreenParams<CustomerTabParamList> | undefined;
-  Comida: undefined;
-  Servicios: undefined;
+  Comida: { category?: string; q?: string } | undefined;
+  Servicios: { q?: string } | undefined;
   Menu: { restaurantId: number; restaurantName: string };
   ProductDetail: { product: Product; restaurantName?: string };
   OrderDetail: { orderId: number; promptReview?: boolean; autoPay?: boolean };

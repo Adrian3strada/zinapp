@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .home import CustomerHomeView
 from .views import (
     CoverageBoundsView,
     CoverageCheckView,
@@ -17,6 +18,7 @@ router.register('products', ProductViewSet, basename='product')
 router.register('promotions', ProductPromotionViewSet, basename='promotion')
 
 urlpatterns = [
+    path('home/', CustomerHomeView.as_view(), name='customer-home'),
     path('geocode/', GeocodeView.as_view(), name='geocode'),
     path('route/', RouteView.as_view(), name='route'),
     path('coverage/check/', CoverageCheckView.as_view(), name='coverage-check'),

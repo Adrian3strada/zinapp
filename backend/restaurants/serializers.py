@@ -139,17 +139,18 @@ class ProductSerializer(serializers.ModelSerializer):
     restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
     option_groups = ProductOptionGroupSerializer(many=True, read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = (
             'id', 'restaurant', 'restaurant_name', 'name', 'description', 'category',
             'category_display', 'price',
-            'image', 'image_url', 'is_available', 'active_promotion', 'option_groups',
-            'created_at', 'updated_at',
+            'image', 'image_url', 'is_available', 'is_favorited', 'active_promotion',
+            'option_groups', 'created_at', 'updated_at',
         )
         read_only_fields = (
-            'id', 'created_at', 'updated_at', 'active_promotion',
+            'id', 'created_at', 'updated_at', 'active_promotion', 'is_favorited',
             'restaurant_name', 'option_groups', 'category_display',
         )
 
@@ -177,6 +178,14 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return build_image_url(obj, self.context.get('request'))
+
+    def get_is_favorited(self, obj):
+        if hasattr(obj, 'is_favorited_flag'):
+            return bool(obj.is_favorited_flag)
+        ids = self.context.get('product_favorite_ids')
+        if ids is not None:
+            return obj.pk in ids
+        return False
 
     def get_active_promotion(self, obj):
         promo = get_active_promotion(obj)
@@ -270,12 +279,17 @@ class RestaurantSerializer(serializers.ModelSerializer):
         return obj.is_open_now()
 
     def get_is_favorited(self, obj):
+        if hasattr(obj, 'is_favorited_flag'):
+            return bool(obj.is_favorited_flag)
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             return False
         if not getattr(user, 'is_customer', False):
             return False
+        ids = self.context.get('restaurant_favorite_ids')
+        if ids is not None:
+            return obj.pk in ids
         return obj.favorites.filter(user=user).exists()
 
     def get_rating_average(self, obj):
@@ -410,6 +424,7 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
             'image', 'image_url', 'latitude', 'longitude', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'business_hours', 'is_open',
             'is_favorited', 'rating_average', 'reviews_count', 'products_count',
+            'created_at',
         )
 
     def get_products_count(self, obj):
@@ -422,14 +437,20 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
         return obj.is_open_now()
 
     def get_is_favorited(self, obj):
+        if hasattr(obj, 'is_favorited_flag'):
+            return bool(obj.is_favorited_flag)
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        return bool(
+        if not (
             user
             and getattr(user, 'is_authenticated', False)
             and getattr(user, 'is_customer', False)
-            and obj.favorites.filter(user=user).exists()
-        )
+        ):
+            return False
+        ids = self.context.get('restaurant_favorite_ids')
+        if ids is not None:
+            return obj.pk in ids
+        return obj.favorites.filter(user=user).exists()
 
     def get_rating_average(self, obj):
         avg = obj.reviews.aggregate(avg=Avg('restaurant_rating'))['avg']
@@ -448,3 +469,85 @@ class RestaurantPublicDetailSerializer(RestaurantPublicSerializer):
 
     class Meta(RestaurantPublicSerializer.Meta):
         fields = RestaurantPublicSerializer.Meta.fields
+
+
+class HomeRestaurantSerializer(serializers.ModelSerializer):
+    """Tarjeta compacta para el inicio: sin horarios ni N+1 de reviews."""
+
+    image_url = serializers.SerializerMethodField()
+    is_open = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    rating_average = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+    products_count = serializers.SerializerMethodField()
+    has_active_promo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = (
+            'id', 'name', 'category', 'category_display', 'description',
+            'image_url', 'is_open', 'is_favorited', 'rating_average',
+            'reviews_count', 'products_count', 'has_active_promo', 'created_at',
+        )
+
+    def get_image_url(self, obj):
+        return build_image_url(obj, self.context.get('request'))
+
+    def get_is_open(self, obj):
+        flag = getattr(obj, 'is_open_now_sort', None)
+        if flag is not None:
+            return bool(flag)
+        return obj.is_open_now()
+
+    def get_is_favorited(self, obj):
+        if hasattr(obj, 'is_favorited_flag'):
+            return bool(obj.is_favorited_flag)
+        ids = self.context.get('restaurant_favorite_ids')
+        if ids is not None:
+            return obj.pk in ids
+        return False
+
+    def get_rating_average(self, obj):
+        avg = getattr(obj, 'rating_average_value', None)
+        return round(float(avg), 1) if avg else None
+
+    def get_reviews_count(self, obj):
+        return int(getattr(obj, 'reviews_count_value', 0) or 0)
+
+    def get_products_count(self, obj):
+        count = getattr(obj, 'available_products', None)
+        if count is not None:
+            return int(count)
+        return obj.products.filter(is_available=True).count()
+
+    def get_has_active_promo(self, obj):
+        return bool(getattr(obj, 'has_active_promo', False))
+
+
+class HomePromotionSerializer(serializers.ModelSerializer):
+    display_label = serializers.SerializerMethodField()
+    promo_type_display = serializers.CharField(source='get_promo_type_display', read_only=True)
+    restaurant_id = serializers.IntegerField(read_only=True)
+    restaurant_name = serializers.CharField(source='restaurant.name', read_only=True)
+    product_id = serializers.IntegerField(read_only=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_price = serializers.DecimalField(
+        source='product.price', max_digits=10, decimal_places=2, read_only=True,
+    )
+    product_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductPromotion
+        fields = (
+            'id', 'promo_type', 'promo_type_display', 'percent_off', 'special_price',
+            'label', 'display_label', 'valid_until',
+            'restaurant_id', 'restaurant_name',
+            'product_id', 'product_name', 'product_price', 'product_image_url',
+        )
+
+    def get_display_label(self, obj):
+        return promo_label(obj)
+
+    def get_product_image_url(self, obj):
+        return build_image_url(obj.product, self.context.get('request'))

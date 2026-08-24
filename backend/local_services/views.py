@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 
@@ -17,4 +18,11 @@ class LocalServiceViewSet(viewsets.ReadOnlyModelViewSet):
         category = (self.request.query_params.get('category') or '').strip()
         if category and category in LocalServiceCategory.values:
             qs = qs.filter(category=category)
+        q = (self.request.query_params.get('q') or '').strip()
+        if q:
+            qs = qs.filter(
+                Q(name__icontains=q)
+                | Q(description__icontains=q)
+                | Q(address__icontains=q)
+            )
         return qs

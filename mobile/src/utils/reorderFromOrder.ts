@@ -1,4 +1,4 @@
-import type { CartItem, Order, Product } from '../types';
+import type { CartItem, Order, Product, ReorderPreview } from '../types';
 import { normalizeCartNotes } from '../context/CartContext';
 
 export type ReorderResult = {
@@ -15,6 +15,21 @@ function resolveProductRestaurant(product: Product, fallbackRestaurantId: number
     return product;
   }
   return { ...product, restaurant: fallbackRestaurantId };
+}
+
+export function previewToCartItems(preview: ReorderPreview): CartItem[] {
+  const restaurantId = preview.restaurant_id ?? 0;
+  return preview.items.map((line) => ({
+    product: resolveProductRestaurant(line.product, restaurantId),
+    quantity: Math.max(1, line.quantity || 1),
+    notes: normalizeCartNotes(line.notes) || undefined,
+    selectedOptions: line.selected_options?.length ? line.selected_options : undefined,
+  }));
+}
+
+export function reorderUnavailableMessage(preview: ReorderPreview): string {
+  if (!preview.unavailable.length) return '';
+  return preview.unavailable.map((row) => `• ${row.reason}`).join('\n');
 }
 
 /** Arma líneas de carrito a partir de un pedido (omite no disponibles). */

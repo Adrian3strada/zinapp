@@ -125,6 +125,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return [IsCustomer()]
+        if self.action == 'reorder_preview':
+            return [IsCustomer()]
         if self.action in ('accept', 'reject', 'update_status'):
             return [IsRestaurantOwnerOrAdmin()]
         if self.action in ('restaurant_pending', 'restaurant_today'):
@@ -155,6 +157,18 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response(output.data, status=status.HTTP_201_CREATED)
 
         return idempotent_create(request, 'order_create', do_create)
+
+    @action(detail=True, methods=['post'], url_path='reorder-preview')
+    def reorder_preview(self, request, pk=None):
+        """Arma el carrito con precios y opciones actuales. No crea un pedido."""
+        order = self.get_object()
+        if order.source != OrderSource.ZINAPP:
+            return Response(
+                {'detail': 'Solo se pueden repetir pedidos de ZinApp.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from .reorder import build_reorder_preview
+        return Response(build_reorder_preview(order, request))
 
     @action(detail=True, methods=['post'], url_path='update-status')
     def update_status(self, request, pk=None):

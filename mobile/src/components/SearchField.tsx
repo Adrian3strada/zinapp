@@ -15,6 +15,7 @@ interface Props {
   /** Estilo flotante sobre hero (fondo blanco, sombra). */
   elevated?: boolean;
   accessibilityLabel?: string;
+  onSubmitEditing?: () => void;
 }
 
 export default function SearchField({
@@ -24,6 +25,7 @@ export default function SearchField({
   onClear,
   elevated = false,
   accessibilityLabel,
+  onSubmitEditing,
 }: Props) {
   return (
     <View style={[styles.wrap, elevated && styles.wrapElevated]}>
@@ -42,6 +44,7 @@ export default function SearchField({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
+        onSubmitEditing={onSubmitEditing}
         accessibilityLabel={accessibilityLabel || placeholder}
         accessibilityRole="search"
       />

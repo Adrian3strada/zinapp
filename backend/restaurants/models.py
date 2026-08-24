@@ -187,6 +187,33 @@ class RestaurantFavorite(models.Model):
         return f'{self.user.username} → {self.restaurant.name}'
 
 
+class ProductFavorite(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='product_favorites',
+    )
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='favorites',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Producto favorito'
+        verbose_name_plural = 'Productos favoritos'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'product'],
+                name='unique_product_favorite',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username} → {self.product.name}'
+
+
 class Product(models.Model):
     restaurant = models.ForeignKey(
         Restaurant,

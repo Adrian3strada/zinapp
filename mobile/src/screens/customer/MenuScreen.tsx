@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ListSkeleton from '../../components/ListSkeleton';
 import EmptyState from '../../components/EmptyState';
+import FavoriteHeart from '../../components/FavoriteHeart';
 import FloatingCartBar from '../../components/FloatingCartBar';
 import ListFooter from '../../components/ListFooter';
 import ProductCard from '../../components/ProductCard';
@@ -59,7 +60,7 @@ const MenuProductRow = React.memo(function MenuProductRow({
 
 export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   const { restaurantId, restaurantName } = route.params;
-  const { user } = useAuth();
+  const { user, requestLogin } = useAuth();
   const { addItem, updateQuantity, items, itemCount, total } = useCart();
   const insets = useSafeAreaInsets();
   const isCustomer = user?.role === 'customer';
@@ -85,18 +86,22 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   }, [restaurantId]);
 
   const handleToggleFavorite = useCallback(async () => {
-    if (!isCustomer || togglingFavorite) return;
+    if (!isCustomer) {
+      requestLogin();
+      return;
+    }
+    if (togglingFavorite) return;
     setTogglingFavorite(true);
     try {
       const { data } = await restaurantApi.toggleFavorite(restaurantId);
       setFavorited(data.is_favorited);
       setRestaurant((current) => (current ? { ...current, is_favorited: data.is_favorited } : current));
     } catch {
-      appAlert('Error', 'No se pudo guardar la preferencia de avisos.');
+      appAlert('Error', 'No se pudo actualizar el favorito.');
     } finally {
       setTogglingFavorite(false);
     }
-  }, [isCustomer, restaurantId, togglingFavorite]);
+  }, [isCustomer, requestLogin, restaurantId, togglingFavorite]);
 
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await productApi.listByRestaurant(restaurantId, page);
@@ -264,7 +269,14 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
             ) : null}
           </View>
           <View style={styles.bannerBody}>
-            <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
+            <View style={styles.bannerNameRow}>
+              <Text style={styles.bannerName}>{restaurant?.name ?? restaurantName}</Text>
+              <FavoriteHeart
+                favorited={favorited}
+                onPress={() => { void handleToggleFavorite(); }}
+                disabled={togglingFavorite}
+              />
+            </View>
             {restaurant?.rating_average != null ? (
               <Pressable
                 style={styles.reviewsRow}
@@ -458,7 +470,13 @@ const styles = StyleSheet.create({
   },
   bannerEmoji: { fontSize: 24 },
   bannerBody: { padding: spacing.lg, paddingTop: spacing.md },
-  bannerName: { fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
+  bannerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  bannerName: { flex: 1, fontSize: 22, fontWeight: '800', color: colors.text, letterSpacing: -0.3 },
   reviewsRow: {
     flexDirection: 'row',
     alignItems: 'center',

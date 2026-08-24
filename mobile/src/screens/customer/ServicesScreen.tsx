@@ -38,7 +38,7 @@ import { openWhatsApp } from '../../utils/whatsapp';
 
 const CATEGORIES = [...SERVICE_CATEGORIES];
 
-export default function ServicesScreen(_props: ServicesScreenProps) {
+export default function ServicesScreen({ route }: ServicesScreenProps) {
   const { config } = useAppConfig();
   const { isDesktopWeb, contentMaxWidth } = useResponsiveLayout();
   const { insets, scrollPaddingBottom, pagePadding } = useTabScreenInsets();
@@ -46,7 +46,7 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(route.params?.q ?? '');
   const [category, setCategory] = useState<ServiceCategoryKey>(null);
   const listOpacity = useRef(new Animated.Value(1)).current;
   const filterKeyRef = useRef(`${category ?? 'all'}|`);
@@ -56,7 +56,7 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
     else setRefreshing(true);
     setError(null);
     try {
-      const { data } = await localServiceApi.list();
+      const { data } = await localServiceApi.list(undefined, route.params?.q?.trim() || undefined);
       setServices(data);
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudieron cargar los servicios'));
@@ -64,7 +64,7 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [route.params?.q]);
 
   useEffect(() => {
     void load();

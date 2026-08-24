@@ -7,6 +7,7 @@ import type {
   CouponValidation,
   DeliveryProfile,
   GeocodeResult,
+  HomePayload,
   LocalService,
   MandadoCategory,
   Order,
@@ -16,6 +17,7 @@ import type {
   Product,
   ProductPromotion,
   PublicCoupon,
+  ReorderPreview,
   Restaurant,
   Review,
   Shipment,
@@ -339,9 +341,13 @@ export const authApi = {
 };
 
 export const restaurantApi = {
-  list: (page = 1, category?: string) =>
+  list: (page = 1, category?: string, q?: string) =>
     api.get<PaginatedResponse<Restaurant>>('/restaurants/', {
-      params: { page, ...(category ? { category } : {}) },
+      params: {
+        page,
+        ...(category ? { category } : {}),
+        ...(q ? { q } : {}),
+      },
     }),
   get: (id: number) => api.get<Restaurant & { products: Product[] }>(`/restaurants/${id}/`),
   toggleFavorite: (id: number) =>
@@ -379,6 +385,8 @@ export const restaurantApi = {
 export const productApi = {
   featured: (limit = 8) =>
     api.get<Product[]>('/products/featured/', { params: { limit } }),
+  toggleFavorite: (id: number) =>
+    api.post<{ is_favorited: boolean }>(`/products/${id}/toggle-favorite/`),
   listByRestaurant: (restaurantId: number, page = 1) =>
     api.get<PaginatedResponse<Product>>('/products/', {
       params: { restaurant: restaurantId, page },
@@ -433,6 +441,7 @@ export const orderApi = {
   list: (page = 1) =>
     api.get<PaginatedResponse<Order>>('/orders/', { params: { page } }),
   get: (id: number) => api.get<Order>(`/orders/${id}/`),
+  reorderPreview: (id: number) => api.post<ReorderPreview>(`/orders/${id}/reorder-preview/`),
   create: (data: CreateOrderPayload, options?: { idempotencyKey?: string }) =>
     api.post<Order>(
       '/orders/',
@@ -578,6 +587,10 @@ export const settlementApi = {
   restaurant: () => api.get<SettlementSummary>('/orders/settlements/restaurant/'),
 };
 
+export const homeApi = {
+  get: () => api.get<HomePayload>('/home/'),
+};
+
 export const couponApi = {
   listActive: () => api.get<PublicCoupon[]>('/coupons/active/'),
   validate: (code: string, subtotal: number) =>
@@ -585,9 +598,12 @@ export const couponApi = {
 };
 
 export const localServiceApi = {
-  list: (category?: string) =>
+  list: (category?: string, q?: string) =>
     api.get<LocalService[]>('/local-services/', {
-      params: category ? { category } : undefined,
+      params: {
+        ...(category ? { category } : {}),
+        ...(q ? { q } : {}),
+      },
     }),
 };
 

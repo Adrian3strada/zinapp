@@ -12,7 +12,7 @@ from drf_spectacular.utils import extend_schema
 from accounts.permissions import IsAdmin, IsRestaurantOwner
 
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
-from .models import Product, ProductOption, ProductOptionGroup, ProductPromotion, Restaurant, RestaurantBusinessHour
+from .models import Product, ProductFavorite, ProductOption, ProductOptionGroup, ProductPromotion, Restaurant, RestaurantBusinessHour, RestaurantFavorite
 from .options import replace_product_option_groups
 from .serializers import (
     ProductOptionGroupsReplaceSerializer,
@@ -208,8 +208,24 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         category = request.query_params.get('category')
         if category and category != 'all':
             queryset = queryset.filter(category=category)
+        q = (request.query_params.get('q') or '').strip()
+        if q:
+            queryset = queryset.filter(
+                Q(name__icontains=q)
+                | Q(description__icontains=q)
+                | Q(products__name__icontains=q)
+                | Q(products__description__icontains=q)
+            ).distinct()
         # Catálogo cliente: abiertos primero, luego por nombre.
-        queryset = annotate_is_open_now(queryset).order_by('-is_open_now_sort', 'name')
+        queryset = annotate_is_open_now(queryset)
+        user = request.user
+        if user and getattr(user, 'is_authenticated', False) and getattr(user, 'is_customer', False):
+            queryset = queryset.annotate(
+                is_favorited_flag=Exists(
+                    RestaurantFavorite.objects.filter(user=user, restaurant_id=OuterRef('pk'))
+                ),
+            )
+        queryset = queryset.order_by('-is_open_now_sort', 'name')
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -282,8 +298,6 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                 {'detail': 'Solo los clientes pueden guardar favoritos.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        from .models import RestaurantFavorite
-
         restaurant = self.get_object()
         favorite = RestaurantFavorite.objects.filter(
             user=request.user,
@@ -317,6 +331,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         # lo ignora: hay que listarlo aquí o el inicio no carga platillos.
         if self.action in ('list', 'retrieve', 'featured'):
             return [AllowAny()]
+        if self.action == 'toggle_favorite':
+            return [IsAuthenticated()]
         if getattr(self.request.user, 'is_admin_user', False):
             return [IsAdmin()]
         return [IsRestaurantOwner()]
@@ -328,6 +344,13 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         if restaurant_id:
             queryset = queryset.filter(restaurant_id=restaurant_id)
+
+        if user.is_authenticated and getattr(user, 'is_customer', False):
+            queryset = queryset.annotate(
+                is_favorited_flag=Exists(
+                    ProductFavorite.objects.filter(user=user, product_id=OuterRef('pk'))
+                ),
+            )
 
         if not user.is_authenticated:
             return queryset.filter(is_available=True, restaurant__is_active=True)
@@ -401,6 +424,24 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(picked, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'], url_path='toggle-favorite')
+    def toggle_favorite(self, request, pk=None):
+        if not request.user.is_customer:
+            return Response(
+                {'detail': 'Solo los clientes pueden guardar favoritos.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        product = self.get_object()
+        favorite = ProductFavorite.objects.filter(
+            user=request.user,
+            product=product,
+        ).first()
+        if favorite:
+            favorite.delete()
+            return Response({'is_favorited': False})
+        ProductFavorite.objects.create(user=request.user, product=product)
+        return Response({'is_favorited': True})
 
 
 class ProductPromotionViewSet(viewsets.ModelViewSet):

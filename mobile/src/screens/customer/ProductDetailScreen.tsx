@@ -12,11 +12,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
+import FavoriteHeart from '../../components/FavoriteHeart';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
 import KeyboardForm from '../../components/KeyboardForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import { normalizeCartNotes, optionsKey, useCart } from '../../context/CartContext';
+import { useFavoriteToggle } from '../../hooks/useFavoriteToggle';
 import type { ProductDetailScreenProps } from '../../navigation/types';
 import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
 import { colors } from '../../theme/colors';
@@ -67,6 +69,11 @@ function validateSelection(groups: ProductOptionGroup[], selectedIds: Set<number
 export default function ProductDetailScreen({ route, navigation }: ProductDetailScreenProps) {
   const { product, restaurantName } = route.params;
   const { addItem, updateQuantity, items } = useCart();
+  const { favorited, busy: favoriteBusy, toggle: toggleFavorite } = useFavoriteToggle(
+    'product',
+    product.id,
+    product.is_favorited === true,
+  );
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [notes, setNotes] = useState('');
@@ -238,6 +245,11 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
                 <Text style={styles.promoBadgeText}>{promoLabel}</Text>
               </View>
             ) : null}
+            <FavoriteHeart
+              favorited={favorited}
+              onPress={() => { void toggleFavorite(); }}
+              disabled={favoriteBusy}
+            />
           </View>
 
           <Text style={styles.price}>

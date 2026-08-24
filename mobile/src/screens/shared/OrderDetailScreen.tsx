@@ -38,7 +38,8 @@ import { cardShadow } from '../../theme/shadows';
 import type { Order, OrderStatus } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
-import { buildReorderCartItems } from '../../utils/reorderFromOrder';
+import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { trackEvent } from '../../utils/analytics';
 import {
   customerContactMessage,
   driverContactMessage,
@@ -205,50 +206,55 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     );
   }, [order, actionBusy, activeDeliveries]);
 
-  const handleReorder = useCallback(() => {
+  const handleReorder = useCallback(async () => {
     if (!order || reordering || user?.role !== 'customer') return;
-    const result = buildReorderCartItems(order);
-    if (result.added === 0) {
+    setReordering(true);
+    trackEvent('reorder_clicked', { order_id: order.id, source: 'order_detail' });
+    try {
+      const { data } = await orderApi.reorderPreview(order.id);
+      const customerNav = navigation as NativeStackNavigationProp<CustomerStackParamList>;
+      if (!data.ok || data.items.length === 0) {
+        appAlert(
+          'Pedir de nuevo',
+          [data.detail || 'Ningún platillo de este pedido está disponible ahora.', reorderUnavailableMessage(data)]
+            .filter(Boolean)
+            .join('\n\n'),
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Ver menú',
+              onPress: () => {
+                customerNav.navigate('Menu', {
+                  restaurantId: data.restaurant_id ?? order.restaurant,
+                  restaurantName: data.restaurant_name,
+                });
+              },
+            },
+          ],
+        );
+        return;
+      }
+      replaceCart(previewToCartItems(data));
+      const skipped = reorderUnavailableMessage(data);
       appAlert(
-        'Pedir de nuevo',
-        'Ningún platillo de este pedido está disponible ahora. Abre el menú del restaurante.',
+        'Revisa tu carrito',
+        skipped
+          ? `Usamos los precios actuales.\n\n${skipped}`
+          : `Armamos tu carrito de ${data.restaurant_name} con los precios actuales.`,
         [
-          { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Ver menú',
+            text: 'Ir al carrito',
             onPress: () => {
-              const customerNav = navigation as NativeStackNavigationProp<CustomerStackParamList>;
-              customerNav.navigate('Menu', {
-                restaurantId: result.restaurantId ?? order.restaurant,
-                restaurantName: result.restaurantName,
-              });
+              customerNav.navigate('Main', { screen: 'Carrito' });
             },
           },
         ],
       );
-      return;
+    } catch (err) {
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo reconstruir el carrito.'));
+    } finally {
+      setReordering(false);
     }
-
-    setReordering(true);
-    replaceCart(result.items);
-    const skipNote =
-      result.skipped > 0
-        ? ` (${result.skipped} ya no disponible${result.skipped > 1 ? 's' : ''})`
-        : '';
-    appAlert(
-      'Listo',
-      `Agregamos ${result.added} artículo${result.added > 1 ? 's' : ''} de ${result.restaurantName}${skipNote}.`,
-      [
-        {
-          text: 'Ir al carrito',
-          onPress: () => {
-            const customerNav = navigation as NativeStackNavigationProp<CustomerStackParamList>;
-            customerNav.navigate('Main', { screen: 'Carrito' });
-          },
-        },
-      ],
-    );
-    setReordering(false);
   }, [order, reordering, user?.role, replaceCart, navigation]);
 
   const reloadOrder = useCallback(() => {

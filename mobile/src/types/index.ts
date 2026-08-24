@@ -110,6 +110,8 @@ export interface Restaurant {
   business_hours?: RestaurantBusinessHour[];
   products_count: number;
   setup_status?: RestaurantSetupStatus;
+  created_at?: string;
+  has_active_promo?: boolean;
 }
 
 export interface ProductOption {
@@ -150,6 +152,7 @@ export interface Product {
   image: string | null;
   image_url?: string | null;
   is_available: boolean;
+  is_favorited?: boolean;
   active_promotion?: ProductPromotion | null;
   option_groups?: ProductOptionGroup[];
 }
@@ -437,6 +440,94 @@ export interface LocalService {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface HomeCategory {
+  key: string;
+  label: string;
+  restaurant_count: number;
+}
+
+export interface HomeRestaurant {
+  id: number;
+  name: string;
+  category?: string;
+  category_display?: string;
+  description: string;
+  image_url?: string | null;
+  is_open?: boolean;
+  is_favorited?: boolean;
+  rating_average?: number | null;
+  reviews_count?: number;
+  products_count?: number;
+  has_active_promo?: boolean;
+  created_at?: string;
+}
+
+export interface HomePromotion {
+  id: number;
+  promo_type: PromoType;
+  promo_type_display?: string;
+  percent_off?: number | null;
+  special_price?: string | null;
+  label?: string;
+  display_label?: string;
+  valid_until: string;
+  restaurant_id: number;
+  restaurant_name: string;
+  product_id: number;
+  product_name: string;
+  product_price: string;
+  product_image_url?: string | null;
+}
+
+export interface HomeRecentOrder {
+  id: number;
+  created_at: string;
+  restaurant_id: number;
+  restaurant_name: string;
+  restaurant_image_url?: string | null;
+  summary: string;
+  item_count: number;
+}
+
+export interface HomePayload {
+  categories: HomeCategory[];
+  open_restaurants: HomeRestaurant[];
+  new_restaurants: HomeRestaurant[];
+  promotions: HomePromotion[];
+  coupons: PublicCoupon[];
+  favorites: {
+    restaurants: HomeRestaurant[];
+    products: Product[];
+  };
+  recent_orders: HomeRecentOrder[];
+}
+
+export interface ReorderUnavailable {
+  name: string;
+  reason: string;
+}
+
+export interface ReorderPreviewItem {
+  product: Product;
+  quantity: number;
+  notes: string;
+  selected_options: SelectedProductOption[];
+  current_unit_price: string;
+  warnings: string[];
+}
+
+export interface ReorderPreview {
+  ok: boolean;
+  reason?: string | null;
+  detail?: string | null;
+  restaurant_id: number | null;
+  restaurant_name: string;
+  restaurant_is_open: boolean;
+  items: ReorderPreviewItem[];
+  unavailable: ReorderUnavailable[];
+  current_subtotal: string;
 }
 
 export interface PaginatedResponse<T> {

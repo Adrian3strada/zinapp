@@ -36,18 +36,26 @@ const CATEGORIES = [...RESTAURANT_CATEGORIES];
 
 const AppMap = React.lazy(() => import('../../components/AppMap'));
 
-export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps) {
+export default function RestaurantsScreen({ navigation, route }: RestaurantsScreenProps) {
   const { user } = useAuth();
   const { insets, listPaddingBottom, pagePadding } = useTabScreenInsets();
   const { gridColumns } = useResponsiveLayout();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<RestaurantCategoryKey>(null);
+  const [search, setSearch] = useState(route.params?.q ?? '');
+  const [debouncedQ, setDebouncedQ] = useState((route.params?.q ?? '').trim());
+  const [category, setCategory] = useState<RestaurantCategoryKey>(
+    (route.params?.category as RestaurantCategoryKey | undefined) ?? null,
+  );
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchPage = useCallback(async (page: number) => {
-    const { data } = await restaurantApi.list(page, category ?? undefined);
+    const { data } = await restaurantApi.list(page, category ?? undefined, debouncedQ || undefined);
     return data;
-  }, [category]);
+  }, [category, debouncedQ]);
 
   const {
     items: restaurants,
@@ -62,6 +70,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
 
   const filtered = useMemo(() => {
     const list = restaurants.filter((r) => {
+      if (debouncedQ) return category ? restaurantMatchesCategory(r, category) : true;
       const matchSearch =
         !search ||
         r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -76,7 +85,7 @@ export default function RestaurantsScreen({ navigation }: RestaurantsScreenProps
       if (aOpen !== bOpen) return bOpen - aOpen;
       return a.name.localeCompare(b.name, 'es');
     });
-  }, [restaurants, search, category]);
+  }, [restaurants, search, category, debouncedQ]);
 
   const mapMarkers: MapMarker[] = useMemo(() => {
     return filtered

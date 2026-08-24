@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,106 +11,272 @@ import {
 
 import ActiveDeliveryStrip from '../../components/ActiveDeliveryStrip';
 import CustomerHomeHeader from '../../components/CustomerHomeHeader';
-import EmptyState from '../../components/EmptyState';
-import FeaturedDishesStrip from '../../components/FeaturedDishesStrip';
-import ListFooter from '../../components/ListFooter';
+import FavoriteHeart from '../../components/FavoriteHeart';
+import FoodImage from '../../components/FoodImage';
+import HomeRestaurantCard from '../../components/HomeRestaurantCard';
 import ListSkeleton from '../../components/ListSkeleton';
-import RestaurantCard from '../../components/RestaurantCard';
 import ScreenContainer from '../../components/ScreenContainer';
 import SearchField from '../../components/SearchField';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesContext';
 import { useCustomerActiveDeliveries } from '../../context/CustomerActiveDeliveriesContext';
-import { usePaginatedList } from '../../hooks/usePaginatedList';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { HomeScreenProps } from '../../navigation/types';
-import { productApi, restaurantApi } from '../../services/api';
+import { homeApi, orderApi, productApi, restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
+import { radii } from '../../theme/radii';
+import { cardShadow } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
-import type { Product, Restaurant } from '../../types';
+import type {
+  HomePayload,
+  HomePromotion,
+  HomeRecentOrder,
+  HomeRestaurant,
+  Product,
+  PublicCoupon,
+} from '../../types';
+import { trackEvent } from '../../utils/analytics';
+import { getApiErrorMessage } from '../../utils/apiErrors';
+import { appAlert } from '../../utils/appAlert';
+import { formatCurrency, formatTimeAgo } from '../../utils/format';
+import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
-import {
-  RESTAURANT_CATEGORIES,
-  restaurantMatchesCategory,
-  type RestaurantCategoryKey,
-} from '../../utils/restaurantCategories';
+import { categoryEmoji } from '../../utils/restaurantCategories';
+import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
 
-const FEATURED_DISHES_COUNT = 8;
-const CATEGORIES = [...RESTAURANT_CATEGORIES];
+const EMPTY_HOME: HomePayload = {
+  categories: [],
+  open_restaurants: [],
+  new_restaurants: [],
+  promotions: [],
+  coupons: [],
+  favorites: { restaurants: [], products: [] },
+  recent_orders: [],
+};
+
+const FOOD_COLOR = colors.accent;
 const MANDADO_COLOR = '#16A34A';
+const SERVICE_COLOR = colors.serviceStart;
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { user } = useAuth();
+  const { user, isGuest, requestLogin } = useAuth();
+  const { replaceCart } = useCart();
   const { insets, listPaddingBottom, pagePadding } = useTabScreenInsets();
   const {
     liveItems,
     trackingItems,
     refreshError,
-    refresh,
+    refresh: refreshDeliveries,
   } = useCustomerActiveDeliveries();
 
+  const [home, setHome] = useState<HomePayload>(EMPTY_HOME);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<RestaurantCategoryKey>(null);
-  const [featuredDishes, setFeaturedDishes] = useState<Product[]>([]);
+  const [reorderingId, setReorderingId] = useState<number | null>(null);
 
-  const fetchPage = useCallback(async (page: number) => {
-    const { data } = await restaurantApi.list(page, category ?? undefined);
-    return data;
-  }, [category]);
+  const canFavorite = !!user && !isGuest && user.role === 'customer';
 
-  const {
-    items: restaurants,
-    loading,
-    refreshing,
-    loadingMore,
-    error,
-    hasMore,
-    refresh: refreshRestaurants,
-    loadMore,
-  } = usePaginatedList(fetchPage, [fetchPage], 'No se pudieron cargar los restaurantes');
-
-  const loadFeatured = useCallback(async () => {
-    try {
-      const { data } = await productApi.featured(FEATURED_DISHES_COUNT);
-      setFeaturedDishes(data);
-    } catch {
-      setFeaturedDishes([]);
-    }
+  const loadHome = useCallback(async () => {
+    const { data } = await homeApi.get();
+    setHome(data);
+    setError(null);
   }, []);
 
   React.useEffect(() => {
-    void loadFeatured();
-  }, [loadFeatured]);
-
-  const filtered = useMemo(() => {
-    const list = restaurants.filter((r) => {
-      const matchSearch =
-        !search
-        || r.name.toLowerCase().includes(search.toLowerCase())
-        || (r.description ?? '').toLowerCase().includes(search.toLowerCase());
-      const matchCat = category ? restaurantMatchesCategory(r, category) : true;
-      return matchSearch && matchCat;
-    });
-    return [...list].sort((a, b) => {
-      const aOpen = a.is_open === false ? 0 : 1;
-      const bOpen = b.is_open === false ? 0 : 1;
-      if (aOpen !== bOpen) return bOpen - aOpen;
-      return a.name.localeCompare(b.name, 'es');
-    });
-  }, [restaurants, search, category]);
+    let cancelled = false;
+    if (!user || isGuest) {
+      setHome((current) => ({
+        ...current,
+        favorites: { restaurants: [], products: [] },
+        recent_orders: [],
+        coupons: [],
+      }));
+    }
+    setLoading(true);
+    loadHome()
+      .catch((err) => {
+        if (!cancelled) setError(getApiErrorMessage(err, 'No se pudo cargar el inicio.'));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadHome, user?.id, isGuest]);
 
   const onRefresh = useCallback(async () => {
-    await Promise.all([refresh(), refreshRestaurants(), loadFeatured()]);
-  }, [refresh, refreshRestaurants, loadFeatured]);
+    setRefreshing(true);
+    try {
+      await Promise.all([refreshDeliveries(), loadHome()]);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'No se pudo actualizar el inicio.'));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadHome, refreshDeliveries]);
 
   const openRestaurant = useCallback(
-    (restaurant: Restaurant) => {
+    (restaurant: { id: number; name: string }, source: string) => {
+      trackEvent('home_restaurant_clicked', { restaurant_id: restaurant.id, source });
       navigation.navigate('Menu', {
         restaurantId: restaurant.id,
         restaurantName: restaurant.name,
       });
     },
     [navigation],
+  );
+
+  const patchRestaurantFavorite = useCallback((id: number, value: boolean) => {
+    setHome((current) => {
+      const map = (rows: HomeRestaurant[]) =>
+        rows.map((row) => (row.id === id ? { ...row, is_favorited: value } : row));
+      const fromRails = [...current.open_restaurants, ...current.new_restaurants, ...current.favorites.restaurants];
+      const found = fromRails.find((row) => row.id === id);
+      let favRestaurants = map(current.favorites.restaurants);
+      if (value && found && !favRestaurants.some((row) => row.id === id)) {
+        favRestaurants = [{ ...found, is_favorited: true }, ...favRestaurants];
+      }
+      if (!value) {
+        favRestaurants = favRestaurants.filter((row) => row.id !== id);
+      }
+      return {
+        ...current,
+        open_restaurants: map(current.open_restaurants),
+        new_restaurants: map(current.new_restaurants),
+        favorites: { ...current.favorites, restaurants: favRestaurants },
+      };
+    });
+  }, []);
+
+  const toggleRestaurantFavorite = useCallback(
+    async (restaurant: HomeRestaurant) => {
+      if (!canFavorite) {
+        requestLogin();
+        return;
+      }
+      const next = restaurant.is_favorited !== true;
+      patchRestaurantFavorite(restaurant.id, next);
+      try {
+        const { data } = await restaurantApi.toggleFavorite(restaurant.id);
+        patchRestaurantFavorite(restaurant.id, data.is_favorited);
+        trackEvent(data.is_favorited ? 'favorite_added' : 'favorite_removed', {
+          kind: 'restaurant',
+          id: restaurant.id,
+        });
+      } catch (err) {
+        patchRestaurantFavorite(restaurant.id, !next);
+        appAlert('Favoritos', getApiErrorMessage(err, 'No se pudo actualizar el favorito.'));
+      }
+    },
+    [canFavorite, patchRestaurantFavorite, requestLogin],
+  );
+
+  const toggleProductFavorite = useCallback(
+    async (product: Product) => {
+      if (!canFavorite) {
+        requestLogin();
+        return;
+      }
+      const next = product.is_favorited !== true;
+      setHome((current) => ({
+        ...current,
+        favorites: {
+          ...current.favorites,
+          products: next
+            ? current.favorites.products.map((row) =>
+                row.id === product.id ? { ...row, is_favorited: true } : row,
+              )
+            : current.favorites.products.filter((row) => row.id !== product.id),
+        },
+      }));
+      try {
+        const { data } = await productApi.toggleFavorite(product.id);
+        trackEvent(data.is_favorited ? 'favorite_added' : 'favorite_removed', {
+          kind: 'product',
+          id: product.id,
+        });
+        if (!data.is_favorited) {
+          setHome((current) => ({
+            ...current,
+            favorites: {
+              ...current.favorites,
+              products: current.favorites.products.filter((row) => row.id !== product.id),
+            },
+          }));
+        }
+      } catch (err) {
+        setHome((current) => ({
+          ...current,
+          favorites: {
+            ...current.favorites,
+            products: next
+              ? current.favorites.products
+              : [{ ...product, is_favorited: true }, ...current.favorites.products],
+          },
+        }));
+        appAlert('Favoritos', getApiErrorMessage(err, 'No se pudo actualizar el favorito.'));
+      }
+    },
+    [canFavorite, requestLogin],
+  );
+
+  const handleReorder = useCallback(
+    async (orderId: number) => {
+      if (reorderingId) return;
+      if (!canFavorite) {
+        requestLogin();
+        return;
+      }
+      setReorderingId(orderId);
+      trackEvent('reorder_clicked', { order_id: orderId });
+      try {
+        const { data } = await orderApi.reorderPreview(orderId);
+        if (!data.ok || data.items.length === 0) {
+          const extra = reorderUnavailableMessage(data);
+          appAlert(
+            'Pedir otra vez',
+            [data.detail || 'Este pedido ya no se puede repetir.', extra].filter(Boolean).join('\n\n'),
+            data.restaurant_id
+              ? [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Ver menú',
+                    onPress: () =>
+                      navigation.navigate('Menu', {
+                        restaurantId: data.restaurant_id!,
+                        restaurantName: data.restaurant_name,
+                      }),
+                  },
+                ]
+              : undefined,
+          );
+          return;
+        }
+        replaceCart(previewToCartItems(data));
+        const skipped = reorderUnavailableMessage(data);
+        appAlert(
+          'Revisa tu carrito',
+          skipped
+            ? `Usamos los precios actuales.\n\n${skipped}`
+            : 'Armamos tu carrito con los precios actuales. Confirma antes de pagar.',
+          [
+            {
+              text: 'Ir al carrito',
+              onPress: () => navigation.navigate('Main', { screen: 'Carrito' }),
+            },
+          ],
+        );
+      } catch (err) {
+        appAlert('Pedir otra vez', getApiErrorMessage(err, 'No se pudo reconstruir el carrito.'));
+      } finally {
+        setReorderingId(null);
+      }
+    },
+    [canFavorite, navigation, replaceCart, reorderingId, requestLogin],
   );
 
   const handleDeliveryPress = (item: ActiveDeliveryItem) => {
@@ -131,20 +297,47 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     [navigation],
   );
 
+  const goSearch = useCallback(
+    (target: 'comida' | 'servicios') => {
+      const q = search.trim();
+      if (target === 'servicios') {
+        trackEvent('home_service_clicked', { source: 'search', q });
+        navigation.navigate('Servicios', q ? { q } : undefined);
+        return;
+      }
+      navigation.navigate('Comida', q ? { q } : undefined);
+    },
+    [navigation, search],
+  );
+
+  const q = search.trim().toLowerCase();
+  const openRestaurants = useMemo(() => {
+    if (!q) return home.open_restaurants;
+    return home.open_restaurants.filter((row) =>
+      `${row.name} ${row.description} ${row.category_display ?? ''}`.toLowerCase().includes(q),
+    );
+  }, [home.open_restaurants, q]);
+
   const stripItems = liveItems.length > 0 ? liveItems : trackingItems.slice(0, 3);
-  const initialLoading = loading && restaurants.length === 0;
+  const hasFavorites =
+    canFavorite && (home.favorites.restaurants.length > 0 || home.favorites.products.length > 0);
+  const showReorder = canFavorite && home.recent_orders.length > 0;
+  const showPromos = home.promotions.length > 0 || (canFavorite && home.coupons.length > 0);
+  const showNew = home.new_restaurants.length > 0;
 
   return (
     <ScreenContainer
-      loading={initialLoading}
+      loading={loading && home.open_restaurants.length === 0 && !error}
       loadingSkeleton={
         <View style={[styles.skeleton, { paddingTop: insets.top + 12 }, listPaddingBottom()]}>
-          <ListSkeleton count={4} variant="restaurant" />
+          <ListSkeleton count={5} variant="restaurant" />
         </View>
       }
-      error={error && restaurants.length === 0 ? error : null}
+      error={error && home.open_restaurants.length === 0 ? error : null}
       onRetry={() => {
-        void refreshRestaurants();
+        void loadHome().catch((err) => {
+          setError(getApiErrorMessage(err, 'No se pudo cargar el inicio.'));
+        });
       }}
     >
       <CustomerHomeHeader
@@ -154,230 +347,478 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onProfilePress={() => navigation.navigate('Perfil')}
       />
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => String(item.id)}
+      <ScrollView
         contentContainerStyle={[
           styles.list,
           { paddingHorizontal: pagePadding },
           listPaddingBottom(),
         ]}
-        refreshing={refreshing}
-        onRefresh={() => {
-          void onRefresh();
-        }}
-        onEndReached={() => {
-          if (hasMore && !loadingMore) loadMore();
-        }}
-        onEndReachedThreshold={0.4}
-        ListHeaderComponent={
-          <>
-            <View style={styles.searchBlock}>
-              <SearchField
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Buscar restaurantes o comida…"
-              />
-              <Pressable
-                style={styles.seeAll}
-                onPress={() => navigation.navigate('Comida')}
-                hitSlop={8}
-              >
-                <Text style={styles.seeAllText}>Ver mapa y filtros</Text>
-                <Ionicons name="map-outline" size={16} color={colors.primary} />
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { void onRefresh(); }} />
+        }
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.searchBlock}>
+          <SearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buscar restaurantes o comida…"
+            onSubmitEditing={() => goSearch('comida')}
+          />
+          {search.trim().length >= 2 ? (
+            <View style={styles.searchHints}>
+              <Pressable style={styles.searchHint} onPress={() => goSearch('comida')}>
+                <Text style={styles.searchHintText}>Buscar «{search.trim()}» en comida</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+              </Pressable>
+              <Pressable style={styles.searchHint} onPress={() => goSearch('servicios')}>
+                <Text style={styles.searchHintText}>Buscar en servicios</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </Pressable>
             </View>
+          ) : null}
+        </View>
 
-            <Pressable
-              style={styles.mandadoBanner}
-              onPress={() => navigation.navigate('Mandado')}
+        <View style={styles.quickRow}>
+          <QuickAction
+            emoji="🍔"
+            label="Pedir comida"
+            color={FOOD_COLOR}
+            onPress={() => navigation.navigate('Comida')}
+          />
+          <QuickAction
+            emoji="🛵"
+            label="Mandado o envío"
+            color={MANDADO_COLOR}
+            onPress={() => {
+              trackEvent('home_service_clicked', { source: 'mandado' });
+              navigation.navigate('Mandado');
+            }}
+          />
+          <QuickAction
+            emoji="🧰"
+            label="Necesito un servicio"
+            color={SERVICE_COLOR}
+            onPress={() => {
+              trackEvent('home_service_clicked', { source: 'servicios' });
+              navigation.navigate('Servicios');
+            }}
+          />
+        </View>
+
+        {(!user || isGuest) ? (
+          <Pressable style={styles.loginHint} onPress={requestLogin}>
+            <Ionicons name="heart-outline" size={16} color={colors.primary} />
+            <Text style={styles.loginHintText}>
+              Inicia sesión para guardar favoritos y repetir pedidos
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {stripItems.length > 0 ? (
+          <ActiveDeliveryStrip items={stripItems} onPress={handleDeliveryPress} />
+        ) : null}
+
+        {refreshError ? (
+          <Pressable style={styles.refreshError} onPress={() => { void onRefresh(); }}>
+            <Text style={styles.refreshErrorText}>
+              {refreshError} · Toca para reintentar
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {home.categories.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.heroTitle}>¿Qué quieres comer hoy?</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hScroll}
+              decelerationRate="fast"
             >
-              <View style={styles.mandadoIconWrap}>
-                <Ionicons name="basket-outline" size={26} color={MANDADO_COLOR} />
-              </View>
-              <View style={styles.mandadoCopy}>
-                <Text style={styles.mandadoTitle} numberOfLines={1}>
-                  Haz tu mandado
-                </Text>
-                <Text style={styles.mandadoSub} numberOfLines={2}>
-                  Verdura, fruta, legumbres y más
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color={MANDADO_COLOR} />
-            </Pressable>
+              {home.categories.map((cat) => (
+                <Pressable
+                  key={cat.key}
+                  style={styles.catChip}
+                  onPress={() => {
+                    trackEvent('home_category_clicked', { category: cat.key });
+                    navigation.navigate('Comida', { category: cat.key });
+                  }}
+                >
+                  <Text style={styles.catEmoji}>{categoryEmoji(cat.key)}</Text>
+                  <Text style={styles.catText}>{cat.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
-            {stripItems.length > 0 ? (
-              <ActiveDeliveryStrip items={stripItems} onPress={handleDeliveryPress} />
+        {openRestaurants.length > 0 ? (
+          <RestaurantRail
+            title="Abiertos ahora"
+            restaurants={openRestaurants}
+            showFavorite={canFavorite}
+            onPress={(item) => openRestaurant(item, 'open')}
+            onToggleFavorite={toggleRestaurantFavorite}
+            onSeeAll={() => navigation.navigate('Comida')}
+          />
+        ) : null}
+
+        {hasFavorites ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Tus favoritos ❤️</Text>
+            {home.favorites.restaurants.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hScroll}
+                decelerationRate="fast"
+              >
+                {home.favorites.restaurants.map((item) => (
+                  <HomeRestaurantCard
+                    key={`fav-r-${item.id}`}
+                    restaurant={item}
+                    showFavorite={canFavorite}
+                    onPress={() => openRestaurant(item, 'favorite')}
+                    onToggleFavorite={() => { void toggleRestaurantFavorite(item); }}
+                  />
+                ))}
+              </ScrollView>
             ) : null}
-
-            {refreshError ? (
-              <Pressable style={styles.refreshError} onPress={() => { void onRefresh(); }}>
-                <Text style={styles.refreshErrorText}>
-                  {refreshError} · Toca para reintentar
-                </Text>
-              </Pressable>
+            {home.favorites.products.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hScroll}
+                decelerationRate="fast"
+              >
+                {home.favorites.products.map((product) => (
+                  <FavoriteProductCard
+                    key={`fav-p-${product.id}`}
+                    product={product}
+                    onPress={() => handleDishPress(product)}
+                    onToggleFavorite={() => { void toggleProductFavorite(product); }}
+                  />
+                ))}
+              </ScrollView>
             ) : null}
+          </View>
+        ) : null}
 
-            <View style={styles.secondaryRow}>
-              <SecondaryChip
-                icon="pricetag-outline"
-                label="Ofertas"
-                color={colors.accent}
-                onPress={() => navigation.navigate('Ofertas')}
-              />
-              <SecondaryChip
-                icon="storefront-outline"
-                label="Servicios"
-                color={colors.serviceStart}
-                onPress={() => navigation.navigate('Servicios')}
-              />
-            </View>
+        {showReorder ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Vuelve a pedir</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hScroll}
+              decelerationRate="fast"
+            >
+              {home.recent_orders.map((order) => (
+                <ReorderCard
+                  key={order.id}
+                  order={order}
+                  busy={reorderingId === order.id}
+                  onReorder={() => { void handleReorder(order.id); }}
+                  onPressRestaurant={() =>
+                    openRestaurant(
+                      { id: order.restaurant_id, name: order.restaurant_name },
+                      'reorder',
+                    )
+                  }
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
-            {featuredDishes.length > 0 && !search ? (
-              <FeaturedDishesStrip
-                products={featuredDishes}
-                onPressProduct={handleDishPress}
-                onPressSeeAll={() => navigation.navigate('Comida')}
-              />
-            ) : null}
-
-            <ScrollCategories category={category} onChange={setCategory} />
-
+        {showPromos ? (
+          <View style={styles.section}>
             <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>Restaurantes</Text>
-              <Text style={styles.sectionSub}>
-                {filtered.length} cerca de ti
-              </Text>
+              <Text style={styles.sectionTitle}>Promociones para ti 🏷️</Text>
+              {canFavorite ? (
+                <Pressable onPress={() => navigation.navigate('Ofertas')} hitSlop={8}>
+                  <Text style={styles.seeAll}>Ver cupones</Text>
+                </Pressable>
+              ) : null}
             </View>
-          </>
-        }
-        renderItem={({ item }) => (
-          <RestaurantCard restaurant={item} onPress={() => openRestaurant(item)} />
-        )}
-        ListFooterComponent={
-          <ListFooter loadingMore={loadingMore} hasMore={hasMore} itemCount={filtered.length} />
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <EmptyState
-              emoji="🍽️"
-              title="Sin restaurantes"
-              subtitle={
-                search
-                  ? 'Prueba otra búsqueda o quita los filtros.'
-                  : 'Aún no hay locales disponibles en esta categoría.'
-              }
-              actionLabel="Ver todos"
-              onAction={() => {
-                setSearch('');
-                setCategory(null);
-              }}
-            />
-          ) : null
-        }
-      />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hScroll}
+              decelerationRate="fast"
+            >
+              {home.promotions.map((promo) => (
+                <PromoCard
+                  key={`promo-${promo.id}`}
+                  promo={promo}
+                  onPress={() => {
+                    trackEvent('promotion_clicked', { promotion_id: promo.id, restaurant_id: promo.restaurant_id });
+                    openRestaurant(
+                      { id: promo.restaurant_id, name: promo.restaurant_name },
+                      'promo',
+                    );
+                  }}
+                />
+              ))}
+              {home.coupons.map((coupon) => (
+                <CouponCard
+                  key={`coupon-${coupon.id}`}
+                  coupon={coupon}
+                  onPress={() => {
+                    trackEvent('promotion_clicked', { coupon: coupon.code });
+                    navigation.navigate('Ofertas');
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {showNew ? (
+          <RestaurantRail
+            title="Nuevos en ZinApp ✨"
+            restaurants={home.new_restaurants}
+            showFavorite={canFavorite}
+            onPress={(item) => openRestaurant(item, 'new')}
+            onToggleFavorite={toggleRestaurantFavorite}
+          />
+        ) : null}
+      </ScrollView>
     </ScreenContainer>
   );
 }
 
-function SecondaryChip({
-  icon,
+function QuickAction({
+  emoji,
   label,
   color,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  emoji: string;
   label: string;
   color: string;
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.secondaryChip} onPress={onPress}>
-      <View style={[styles.secondaryIcon, { backgroundColor: color + '22' }]}>
-        <Ionicons name={icon} size={18} color={color} />
+    <Pressable style={styles.quick} onPress={onPress}>
+      <View style={[styles.quickIcon, { backgroundColor: `${color}22` }]}>
+        <Text style={styles.quickEmoji}>{emoji}</Text>
       </View>
-      <Text style={styles.secondaryLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      <Text style={styles.quickLabel} numberOfLines={2}>{label}</Text>
     </Pressable>
   );
 }
 
-function ScrollCategories({
-  category,
-  onChange,
+function RestaurantRail({
+  title,
+  restaurants,
+  showFavorite,
+  onPress,
+  onToggleFavorite,
+  onSeeAll,
 }: {
-  category: RestaurantCategoryKey;
-  onChange: (key: RestaurantCategoryKey) => void;
+  title: string;
+  restaurants: HomeRestaurant[];
+  showFavorite: boolean;
+  onPress: (item: HomeRestaurant) => void;
+  onToggleFavorite: (item: HomeRestaurant) => void;
+  onSeeAll?: () => void;
 }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.catRow}
-      style={styles.catWrap}
-    >
-      {CATEGORIES.map((cat) => {
-        const active = category === cat.key;
-        return (
-          <Pressable
-            key={cat.label}
-            style={[styles.catChip, active && styles.catChipActive]}
-            onPress={() => onChange(cat.key)}
-          >
-            <Text style={styles.catEmoji}>{cat.emoji}</Text>
-            <Text style={[styles.catText, active && styles.catTextActive]}>
-              {cat.label}
-            </Text>
+    <View style={styles.section}>
+      <View style={styles.sectionHead}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {onSeeAll ? (
+          <Pressable onPress={onSeeAll} hitSlop={8}>
+            <Text style={styles.seeAll}>Ver todos</Text>
           </Pressable>
-        );
-      })}
-    </ScrollView>
+        ) : null}
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.hScroll}
+        decelerationRate="fast"
+      >
+        {restaurants.map((item) => (
+          <HomeRestaurantCard
+            key={`${title}-${item.id}`}
+            restaurant={item}
+            showFavorite={showFavorite}
+            onPress={() => onPress(item)}
+            onToggleFavorite={() => onToggleFavorite(item)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+function FavoriteProductCard({
+  product,
+  onPress,
+  onToggleFavorite,
+}: {
+  product: Product;
+  onPress: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <Pressable style={styles.productCard} onPress={onPress}>
+      <View>
+        <FoodImage
+          emoji={getProductEmoji(product.name)}
+          color={colors.primary}
+          size="md"
+          imageUri={resolveMediaUrl(product.image_url ?? product.image)}
+          style={styles.productImage}
+        />
+        <View style={styles.productHeart}>
+          <FavoriteHeart favorited={product.is_favorited !== false} onPress={onToggleFavorite} />
+        </View>
+      </View>
+      <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+      <Text style={styles.productMeta} numberOfLines={1}>{product.restaurant_name}</Text>
+      <Text style={styles.productPrice}>{formatCurrency(product.price)}</Text>
+    </Pressable>
+  );
+}
+
+function ReorderCard({
+  order,
+  busy,
+  onReorder,
+  onPressRestaurant,
+}: {
+  order: HomeRecentOrder;
+  busy: boolean;
+  onReorder: () => void;
+  onPressRestaurant: () => void;
+}) {
+  const ago = formatTimeAgo(order.created_at);
+  return (
+    <View style={styles.reorderCard}>
+      <Pressable onPress={onPressRestaurant} style={styles.reorderTop}>
+        <FoodImage
+          emoji="🍔"
+          color={colors.primary}
+          size="sm"
+          imageUri={resolveMediaUrl(order.restaurant_image_url)}
+          style={styles.reorderImage}
+        />
+        <View style={styles.reorderCopy}>
+          <Text style={styles.reorderName} numberOfLines={1}>{order.restaurant_name}</Text>
+          <Text style={styles.reorderSummary} numberOfLines={2}>{order.summary}</Text>
+          {ago ? <Text style={styles.reorderAgo}>Pedido {ago}</Text> : null}
+        </View>
+      </Pressable>
+      <Pressable
+        style={[styles.reorderBtn, busy && styles.reorderBtnBusy]}
+        onPress={onReorder}
+        disabled={busy}
+      >
+        <Text style={styles.reorderBtnText}>{busy ? 'Preparando…' : 'Pedir otra vez'}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function PromoCard({ promo, onPress }: { promo: HomePromotion; onPress: () => void }) {
+  const label = promo.display_label || promo.label || promo.promo_type_display || 'Promo';
+  return (
+    <Pressable style={styles.promoCard} onPress={onPress}>
+      <FoodImage
+        emoji={getProductEmoji(promo.product_name)}
+        color={colors.accent}
+        size="md"
+        imageUri={resolveMediaUrl(promo.product_image_url)}
+        style={styles.promoImage}
+      />
+      <View style={styles.promoBadge}>
+        <Text style={styles.promoBadgeText}>{label}</Text>
+      </View>
+      <Text style={styles.promoName} numberOfLines={2}>{promo.product_name}</Text>
+      <Text style={styles.promoMeta} numberOfLines={1}>{promo.restaurant_name}</Text>
+      <Text style={styles.promoPrice}>{formatCurrency(promo.product_price)}</Text>
+    </Pressable>
+  );
+}
+
+function CouponCard({ coupon, onPress }: { coupon: PublicCoupon; onPress: () => void }) {
+  const label = coupon.discount_percent > 0
+    ? `${coupon.discount_percent}%`
+    : formatCurrency(coupon.discount_fixed);
+  return (
+    <Pressable style={styles.couponCard} onPress={onPress}>
+      <Text style={styles.couponCode}>{coupon.code}</Text>
+      <Text style={styles.couponLabel}>{label} de descuento</Text>
+      {coupon.description ? (
+        <Text style={styles.couponDesc} numberOfLines={2}>{coupon.description}</Text>
+      ) : null}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { flexGrow: 1, backgroundColor: colors.background, paddingTop: spacing.md },
-  searchBlock: { gap: 10, marginBottom: spacing.sm },
-  seeAll: {
+  list: { flexGrow: 1, backgroundColor: colors.background, paddingTop: spacing.md, gap: spacing.md },
+  skeleton: { flex: 1, paddingHorizontal: spacing.screen },
+  searchBlock: { gap: 8 },
+  searchHints: { gap: 6 },
+  searchHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 6,
+    justifyContent: 'space-between',
+    backgroundColor: colors.primaryLight,
+    borderRadius: radii.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 44,
   },
-  seeAllText: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  mandadoBanner: {
-    flexDirection: 'row',
+  searchHintText: { fontSize: 13, fontWeight: '700', color: colors.primary, flex: 1 },
+  quickRow: { flexDirection: 'row', gap: 8 },
+  quick: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 18,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    marginBottom: spacing.sm,
-    borderWidth: 1.5,
-    borderColor: '#BBF7D0',
-    minHeight: 72,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...cardShadow,
   },
-  mandadoIconWrap: {
-    width: 48,
-    height: 48,
+  quickIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
-    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
-  mandadoCopy: { flex: 1, minWidth: 0, gap: 2 },
-  mandadoTitle: { fontSize: 17, fontWeight: '900', color: MANDADO_COLOR },
-  mandadoSub: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  skeleton: { flex: 1, paddingHorizontal: spacing.screen },
+  quickEmoji: { fontSize: 22 },
+  quickLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  loginHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radii.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  loginHintText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.primary },
   refreshError: {
     backgroundColor: colors.primaryLight,
     borderRadius: 14,
     padding: 12,
-    marginBottom: spacing.sm,
   },
   refreshErrorText: {
     fontSize: 12,
@@ -385,55 +826,106 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  secondaryRow: { flexDirection: 'row', gap: 8, marginBottom: spacing.sm },
-  secondaryChip: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingVertical: 11,
-    paddingHorizontal: 10,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+  section: { gap: spacing.sm },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: colors.text,
+    letterSpacing: -0.4,
   },
-  secondaryIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryLabel: { flex: 1, minWidth: 0, fontSize: 12, fontWeight: '800', color: colors.text },
-  catWrap: { marginBottom: spacing.sm, flexGrow: 0 },
-  catRow: { gap: 8, paddingVertical: 4 },
-  catChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    minHeight: 44,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  catChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  catEmoji: { fontSize: 14 },
-  catText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  catTextActive: { color: '#FFF' },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-    marginTop: spacing.xs,
   },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  sectionSub: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  seeAll: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  hScroll: { gap: spacing.sm, paddingVertical: 2, paddingRight: 4 },
+  catChip: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    width: 86,
+    paddingVertical: 12,
+    borderRadius: radii.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  catEmoji: { fontSize: 26 },
+  catText: { fontSize: 12, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  productCard: {
+    width: 148,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: spacing.sm,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...cardShadow,
+  },
+  productImage: { width: '100%', height: 96, borderRadius: radii.lg },
+  productHeart: { position: 'absolute', right: 0, top: 0 },
+  productName: { fontSize: 14, fontWeight: '800', color: colors.text, minHeight: 36 },
+  productMeta: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  productPrice: { fontSize: 14, fontWeight: '800', color: colors.primary },
+  reorderCard: {
+    width: 260,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: spacing.md,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...cardShadow,
+  },
+  reorderTop: { flexDirection: 'row', gap: 10 },
+  reorderImage: { width: 56, height: 56, borderRadius: radii.md },
+  reorderCopy: { flex: 1, minWidth: 0, gap: 2 },
+  reorderName: { fontSize: 15, fontWeight: '800', color: colors.text },
+  reorderSummary: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  reorderAgo: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  reorderBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reorderBtnBusy: { opacity: 0.7 },
+  reorderBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+  promoCard: {
+    width: 156,
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: spacing.sm,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...cardShadow,
+  },
+  promoImage: { width: '100%', height: 96, borderRadius: radii.lg },
+  promoBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  promoBadgeText: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+  promoName: { fontSize: 14, fontWeight: '800', color: colors.text, minHeight: 36 },
+  promoMeta: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  promoPrice: { fontSize: 14, fontWeight: '800', color: colors.primary },
+  couponCard: {
+    width: 168,
+    backgroundColor: colors.accentLight,
+    borderRadius: radii.card,
+    padding: spacing.md,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.accent + '55',
+  },
+  couponCode: { fontSize: 16, fontWeight: '900', color: colors.accentDark },
+  couponLabel: { fontSize: 13, fontWeight: '800', color: colors.text },
+  couponDesc: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
 });

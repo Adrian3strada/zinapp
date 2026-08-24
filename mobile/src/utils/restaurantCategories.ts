@@ -125,6 +125,11 @@ export function restaurantMatchesCategory(
   return false;
 }
 
+export function categoryEmoji(key: string | null | undefined): string {
+  const found = RESTAURANT_CATEGORIES.find((item) => item.key === key);
+  return found?.emoji ?? '🍽️';
+}
+
 export const RESTAURANT_CATEGORY_LABELS: Record<string, string> = {
   general: 'General',
   mexicana: 'Mexicana',

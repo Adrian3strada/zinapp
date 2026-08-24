@@ -22,7 +22,8 @@ import type { Order, Shipment } from '../../types';
 import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { buildReorderCartItems } from '../../utils/reorderFromOrder';
+import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { trackEvent } from '../../utils/analytics';
 import { FLATLIST_TUNING } from '../../utils/responsive';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
 import FoodImage from '../../components/FoodImage';
@@ -255,32 +256,34 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
     async (order: Order) => {
       if (reorderingId) return;
       setReorderingId(order.id);
+      trackEvent('reorder_clicked', { order_id: order.id, source: 'orders' });
       try {
-        let full = order;
-        if (!order.items?.length) {
-          const { data } = await orderApi.get(order.id);
-          full = data;
-        }
-        const result = buildReorderCartItems(full);
-        if (result.added === 0) {
+        const { data } = await orderApi.reorderPreview(order.id);
+        if (!data.ok || data.items.length === 0) {
           appAlert(
             'Pedir de nuevo',
-            'Ningún platillo está disponible. Abre el menú del restaurante.',
+            [data.detail || 'Ningún platillo está disponible. Abre el menú del restaurante.', reorderUnavailableMessage(data)]
+              .filter(Boolean)
+              .join('\n\n'),
             [
               { text: 'Cancelar', style: 'cancel' },
               {
                 text: 'Ver menú',
                 onPress: () =>
                   navigation.navigate('Menu', {
-                    restaurantId: result.restaurantId ?? order.restaurant,
-                    restaurantName: result.restaurantName,
+                    restaurantId: data.restaurant_id ?? order.restaurant,
+                    restaurantName: data.restaurant_name,
                   }),
               },
             ],
           );
           return;
         }
-        replaceCart(result.items);
+        replaceCart(previewToCartItems(data));
+        const skipped = reorderUnavailableMessage(data);
+        if (skipped) {
+          appAlert('Revisa tu carrito', `Usamos los precios actuales.\n\n${skipped}`);
+        }
         navigation.navigate('Carrito');
       } catch (err) {
         appAlert('Error', getApiErrorMessage(err, 'No se pudo reordenar.'));
