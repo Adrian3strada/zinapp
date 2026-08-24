@@ -40,6 +40,8 @@ export type CustomerStackParamList = {
   ShipmentDetail: { shipmentId: number };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
   Ofertas: undefined;
+  Favoritos: undefined;
+  Buscar: { q?: string } | undefined;
   Mandado: undefined;
   RestaurantReviews: { restaurantId: number; restaurantName: string };
 };
@@ -96,6 +98,8 @@ export type HomeScreenProps = CompositeScreenProps<
 
 export type ServicesScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Servicios'>;
 export type OffersScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Ofertas'>;
+export type FavoritesScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Favoritos'>;
+export type SearchScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Buscar'>;
 export type MandadoScreenProps = NativeStackScreenProps<CustomerStackParamList, 'Mandado'>;
 export type RestaurantReviewsScreenProps = NativeStackScreenProps<
   CustomerStackParamList,

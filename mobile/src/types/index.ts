@@ -530,6 +530,19 @@ export interface ReorderPreview {
   current_subtotal: string;
 }
 
+export interface SearchPayload {
+  q: string;
+  categories: HomeCategory[];
+  restaurants: HomeRestaurant[];
+  products: Product[];
+  services: LocalService[];
+}
+
+export interface FavoritesPayload {
+  restaurants: HomeRestaurant[];
+  products: Product[];
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;

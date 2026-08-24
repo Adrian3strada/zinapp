@@ -298,14 +298,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   );
 
   const goSearch = useCallback(
-    (target: 'comida' | 'servicios') => {
+    (target: 'all' | 'servicios' = 'all') => {
       const q = search.trim();
       if (target === 'servicios') {
         trackEvent('home_service_clicked', { source: 'search', q });
         navigation.navigate('Servicios', q ? { q } : undefined);
         return;
       }
-      navigation.navigate('Comida', q ? { q } : undefined);
+      navigation.navigate('Buscar', q ? { q } : undefined);
     },
     [navigation, search],
   );
@@ -362,13 +362,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <SearchField
             value={search}
             onChangeText={setSearch}
-            placeholder="Buscar restaurantes o comida…"
-            onSubmitEditing={() => goSearch('comida')}
+            placeholder="Tacos, pizza, veterinario…"
+            onSubmitEditing={() => goSearch()}
           />
           {search.trim().length >= 2 ? (
             <View style={styles.searchHints}>
-              <Pressable style={styles.searchHint} onPress={() => goSearch('comida')}>
-                <Text style={styles.searchHintText}>Buscar «{search.trim()}» en comida</Text>
+              <Pressable style={styles.searchHint} onPress={() => goSearch()}>
+                <Text style={styles.searchHintText}>Buscar «{search.trim()}» en ZinApp</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </Pressable>
               <Pressable style={styles.searchHint} onPress={() => goSearch('servicios')}>
@@ -466,7 +466,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
         {hasFavorites ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tus favoritos ❤️</Text>
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Tus favoritos ❤️</Text>
+              <Pressable onPress={() => navigation.navigate('Favoritos')} hitSlop={8}>
+                <Text style={styles.seeAll}>Ver todos</Text>
+              </Pressable>
+            </View>
             {home.favorites.restaurants.length > 0 ? (
               <ScrollView
                 horizontal

@@ -9,7 +9,8 @@ export type AnalyticsEvent =
   | 'favorite_removed'
   | 'reorder_clicked'
   | 'promotion_clicked'
-  | 'home_service_clicked';
+  | 'home_service_clicked'
+  | 'search_submitted';
 
 export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
 

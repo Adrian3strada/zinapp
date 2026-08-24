@@ -37,6 +37,8 @@ NEW_LIMIT = 8
 PROMO_LIMIT = 8
 FAVORITE_RESTAURANTS = 8
 FAVORITE_PRODUCTS = 8
+FAVORITE_LIST_RESTAURANTS = 40
+FAVORITE_LIST_PRODUCTS = 40
 RECENT_ORDERS = 5
 NEW_RESTAURANT_DAYS = 21
 
@@ -175,6 +177,26 @@ def _favorite_products_qs(user):
     )
 
 
+def customer_favorites_payload(request, user, restaurant_limit, product_limit):
+    now = timezone.now()
+    fav_rest_qs = annotate_is_open_now(
+        catalog_restaurants().filter(favorites__user=user)
+    )
+    fav_rest_qs = annotate_home_stats(fav_rest_qs, now)
+    fav_rest_qs = annotate_restaurant_favorites(fav_rest_qs, user)
+    restaurants = HomeRestaurantSerializer(
+        fav_rest_qs.order_by('-favorites__created_at')[:restaurant_limit],
+        many=True,
+        context={'request': request},
+    ).data
+    products = ProductSerializer(
+        _favorite_products_qs(user)[:product_limit],
+        many=True,
+        context={'request': request},
+    ).data
+    return {'restaurants': restaurants, 'products': products}
+
+
 def _recent_orders_payload(user, request):
     from orders.models import Order, OrderSource, OrderStatus
 
@@ -256,23 +278,11 @@ class CustomerHomeView(APIView):
         new_restaurants = [dict(row) for row in public['new_restaurants']]
 
         if is_customer:
-            fav_rest_qs = annotate_is_open_now(
-                catalog_restaurants().filter(favorites__user=user).order_by(
-                    '-favorites__created_at',
-                )
+            favorites = customer_favorites_payload(
+                request, user, FAVORITE_RESTAURANTS, FAVORITE_PRODUCTS,
             )
-            favorite_restaurants = _serialize_restaurants(
-                fav_rest_qs[:FAVORITE_RESTAURANTS],
-                request,
-                user,
-                now,
-            )
-            fav_products = _favorite_products_qs(user)[:FAVORITE_PRODUCTS]
-            favorite_products = ProductSerializer(
-                fav_products,
-                many=True,
-                context={'request': request},
-            ).data
+            favorite_restaurants = favorites['restaurants']
+            favorite_products = favorites['products']
             recent_orders = _recent_orders_payload(user, request)
             coupons = _active_coupons(user)
 
@@ -297,3 +307,26 @@ class CustomerHomeView(APIView):
             },
             'recent_orders': recent_orders,
         })
+
+
+class CustomerFavoritesView(APIView):
+    """GET /api/favorites/ — restaurantes y platillos favoritos del cliente."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        user = request.user
+        if not (
+            user
+            and getattr(user, 'is_authenticated', False)
+            and getattr(user, 'is_customer', False)
+        ):
+            return Response({'restaurants': [], 'products': []})
+        return Response(
+            customer_favorites_payload(
+                request,
+                user,
+                FAVORITE_LIST_RESTAURANTS,
+                FAVORITE_LIST_PRODUCTS,
+            )
+        )

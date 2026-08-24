@@ -1,10 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-MX">
   <head>
-    <meta charset="utf-8" />
-    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>ZinApp</title>
+    <meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <title>ZinApp â€” App ZinapÃ©cuaro</title>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -24,16 +22,75 @@
       }
     </style>
   <meta name="theme-color" content="#1E5DB8">
-<meta name="description" content="Comida a domicilio y servicios locales en Zinapécuaro, Michoacán.">
-<link rel="icon" href="/favicon.ico" /></head>
+<link rel="icon" href="/app/favicon.ico" /><meta name="description" content="App ZinApp para pedir comida y contactar servicios locales en ZinapÃ©cuaro. Usa la web app o instala desde las tiendas." />
+<meta name="robots" content="noindex,follow" />
+<link rel="canonical" href="https://zinapp.com.mx/app/" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="ZinApp" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="/app/manifest.webmanifest" />
+<link rel="preload" href="/app/fonts/ionicons.ttf" as="font" type="font/ttf" crossorigin="anonymous" />
+<style id="zinapp-web-fonts">
+  @font-face {
+    font-family: ionicons;
+    src: url('/app/fonts/ionicons.ttf') format('truetype');
+    font-display: block;
+  }
+</style>
+<style id="zinapp-web-polish">
+  html, body { height: 100%; min-height: 100dvh; margin: 0; }
+  body { overflow: hidden; -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  #root { height: 100%; min-height: 100dvh; display: flex; flex: 1; flex-direction: column; width: 100%; min-height: 0; }
+  #root > div { flex: 1; display: flex; flex-direction: column; min-height: 0; height: 100%; width: 100%; }
+  input, textarea, select {
+    font-size: 16px !important;
+    outline: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  input:focus, input:focus-visible, textarea:focus, textarea:focus-visible, select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+    box-shadow: 0 0 0 1000px transparent inset !important;
+  }
+  [role="button"], button, a { cursor: pointer; }
+  [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] { z-index: 1000 !important; }
+  @media (max-width: 767px) {
+    html, body { background: linear-gradient(180deg, #dbeafe 0%, #eef2ff 100%); height: 100%; height: 100dvh; }
+    #root { justify-content: flex-start; align-items: stretch; height: 100%; height: 100dvh; }
+    [data-testid="bottom-tab-bar"], nav[aria-label*="tab" i] {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      width: min(100%, 520px) !important;
+      max-width: 520px !important;
+      margin-inline: 0 !important;
+      padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    }
+  }
+  @media (min-width: 768px) {
+    html, body { background: #f8fafc; overflow: hidden; }
+    #root { justify-content: stretch; align-items: stretch; }
+    #root > div { max-width: none !important; width: 100% !important; }
+  }
+</style></head>
 
   <body>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
-    <noscript>
-      You need to enable JavaScript to run this app.
-    </noscript>
+    <noscript>Activa JavaScript para usar ZinApp.</noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/_expo/static/js/web/AppEntry-f4b49404df08e3b2280f48bd31e1b381.js" defer></script>
+  <script src="/app/_expo/static/js/web/AppEntry-9233cc62e3b8fc5eba0adbcfcbbe2b76.js" defer></script>
 </body>
 </html>

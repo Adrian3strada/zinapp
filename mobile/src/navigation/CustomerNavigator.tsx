@@ -19,6 +19,8 @@ import MyOrdersScreenEager from '../screens/customer/MyOrdersScreen';
 import RestaurantsScreenEager from '../screens/customer/RestaurantsScreen';
 import ServicesScreenEager from '../screens/customer/ServicesScreen';
 import OffersScreenEager from '../screens/customer/OffersScreen';
+import FavoritesScreenEager from '../screens/customer/FavoritesScreen';
+import SearchScreenEager from '../screens/customer/SearchScreen';
 import MandadoScreenEager from '../screens/customer/MandadoScreen';
 import ProductDetailScreenEager from '../screens/customer/ProductDetailScreen';
 import RestaurantReviewsScreenEager from '../screens/customer/RestaurantReviewsScreen';
@@ -63,6 +65,14 @@ const OffersScreen =
   Platform.OS === 'web'
     ? OffersScreenEager
     : React.lazy(() => import('../screens/customer/OffersScreen'));
+const FavoritesScreen =
+  Platform.OS === 'web'
+    ? FavoritesScreenEager
+    : React.lazy(() => import('../screens/customer/FavoritesScreen'));
+const SearchScreen =
+  Platform.OS === 'web'
+    ? SearchScreenEager
+    : React.lazy(() => import('../screens/customer/SearchScreen'));
 const MandadoScreen =
   Platform.OS === 'web'
     ? MandadoScreenEager
@@ -261,6 +271,22 @@ function LazyOffersScreen(props: import('./types').OffersScreenProps) {
   );
 }
 
+function LazyFavoritesScreen(props: import('./types').FavoritesScreenProps) {
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <FavoritesScreen {...props} />
+    </Suspense>
+  );
+}
+
+function LazySearchScreen(props: import('./types').SearchScreenProps) {
+  return (
+    <Suspense fallback={<TabFallback />}>
+      <SearchScreen {...props} />
+    </Suspense>
+  );
+}
+
 function LazyMandadoScreen(props: import('./types').MandadoScreenProps) {
   if (Platform.OS === 'web') {
     return <MandadoScreen {...props} />;
@@ -337,6 +363,16 @@ export default function CustomerNavigator({
           name="Ofertas"
           component={LazyOffersScreen}
           options={{ ...modalPresentationOptions, title: 'Ofertas y cupones' }}
+        />
+        <Stack.Screen
+          name="Favoritos"
+          component={LazyFavoritesScreen}
+          options={{ ...modalPresentationOptions, title: 'Tus favoritos' }}
+        />
+        <Stack.Screen
+          name="Buscar"
+          component={LazySearchScreen}
+          options={{ ...modalPresentationOptions, title: 'Buscar' }}
         />
         <Stack.Screen
           name="Mandado"

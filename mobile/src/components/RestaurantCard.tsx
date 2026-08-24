@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
@@ -10,10 +10,10 @@ import type { Restaurant } from '../types';
 import { getRestaurantVisual } from '../utils/foodVisuals';
 import { resolveMediaUrl } from '../utils/media';
 import {
-  estimateDeliveryEta,
   formatDeliveryFeeLabel,
   formatRatingLabel,
 } from '../utils/restaurantMeta';
+import { RESTAURANT_CATEGORY_LABELS } from '../utils/restaurantCategories';
 import FoodImage from './FoodImage';
 
 interface Props {
@@ -26,8 +26,10 @@ function RestaurantCard({ restaurant, onPress }: Props) {
   const imageUri = resolveMediaUrl(restaurant.image_url ?? restaurant.image);
   const isOpen = restaurant.is_open !== false;
   const rating = formatRatingLabel(restaurant);
-  const eta = useMemo(() => estimateDeliveryEta(restaurant), [restaurant]);
   const feeShort = formatDeliveryFeeLabel().replace(/^Envío\s+/i, '');
+  const categoryLabel = restaurant.category && restaurant.category !== 'general'
+    ? RESTAURANT_CATEGORY_LABELS[restaurant.category]
+    : null;
 
   return (
     <Pressable
@@ -38,7 +40,7 @@ function RestaurantCard({ restaurant, onPress }: Props) {
       ]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${restaurant.name}, ${isOpen ? 'abierto' : 'cerrado'}, ${eta.label}, envío ${feeShort}${rating ? `, ${rating} estrellas` : ''}`}
+      accessibilityLabel={`${restaurant.name}, ${isOpen ? 'abierto' : 'cerrado'}, envío ${feeShort}${rating ? `, ${rating} estrellas` : ''}`}
     >
       <View style={styles.thumbWrap}>
         <FoodImage
@@ -78,11 +80,12 @@ function RestaurantCard({ restaurant, onPress }: Props) {
               <Text style={styles.signalMuted}>Nuevo</Text>
             </View>
           )}
-          <Text style={styles.dot}>·</Text>
-          <View style={styles.signal}>
-            <Ionicons name="time-outline" size={13} color={colors.primary} />
-            <Text style={styles.signalText}>{eta.label}</Text>
-          </View>
+          {categoryLabel ? (
+            <>
+              <Text style={styles.dot}>·</Text>
+              <Text style={styles.signalText}>{categoryLabel}</Text>
+            </>
+          ) : null}
           <Text style={styles.dot}>·</Text>
           <View style={styles.signal}>
             <Ionicons name="bicycle-outline" size={13} color={colors.accentDark} />

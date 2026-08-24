@@ -244,3 +244,76 @@ class CustomerHomeApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['ok'])
         self.assertEqual(response.data['reason'], 'restaurant_inactive')
+
+
+class CustomerSearchAndFavoritesTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.customer = User.objects.create_user(
+            username='search_customer',
+            password='test1234',
+            role='customer',
+        )
+        self.owner = User.objects.create_user(
+            username='search_owner',
+            password='test1234',
+            role='restaurant',
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Taquería El Puesto',
+            category=RestaurantCategory.TACOS,
+            address='Centro',
+            is_active=True,
+            accepting_orders=True,
+        )
+        self.product = Product.objects.create(
+            restaurant=self.restaurant,
+            name='Tacos al pastor',
+            price=Decimal('25.00'),
+            is_available=True,
+        )
+        from local_services.models import LocalService, LocalServiceCategory
+        LocalService.objects.create(
+            name='Clínica Animal',
+            category=LocalServiceCategory.PETS,
+            description='Consultas y vacunas',
+            is_active=True,
+        )
+
+    def test_search_short_query_returns_empty_groups(self):
+        response = self.client.get('/api/search/', {'q': 't'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['restaurants'], [])
+        self.assertEqual(response.data['products'], [])
+        self.assertEqual(response.data['services'], [])
+        self.assertEqual(response.data['categories'], [])
+
+    def test_search_tacos_returns_category_restaurant_and_product(self):
+        response = self.client.get('/api/search/', {'q': 'tacos'})
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIn('tacos', {row['key'] for row in response.data['categories']})
+        self.assertIn('Taquería El Puesto', {row['name'] for row in response.data['restaurants']})
+        self.assertIn('Tacos al pastor', {row['name'] for row in response.data['products']})
+
+    def test_search_veterinario_returns_pet_services(self):
+        response = self.client.get('/api/search/', {'q': 'veterinario'})
+        self.assertEqual(response.status_code, 200, response.data)
+        names = {row['name'] for row in response.data['services']}
+        self.assertIn('Clínica Animal', names)
+
+    def test_favorites_empty_for_guest(self):
+        response = self.client.get('/api/favorites/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['restaurants'], [])
+        self.assertEqual(response.data['products'], [])
+
+    def test_favorites_list_for_customer(self):
+        RestaurantFavorite.objects.create(user=self.customer, restaurant=self.restaurant)
+        ProductFavorite.objects.create(user=self.customer, product=self.product)
+        self.client.force_authenticate(self.customer)
+        response = self.client.get('/api/favorites/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['restaurants'][0]['id'], self.restaurant.id)
+        self.assertEqual(response.data['products'][0]['id'], self.product.id)

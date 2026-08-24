@@ -7,6 +7,7 @@ import type {
   CouponValidation,
   DeliveryProfile,
   GeocodeResult,
+  FavoritesPayload,
   HomePayload,
   LocalService,
   MandadoCategory,
@@ -20,6 +21,7 @@ import type {
   ReorderPreview,
   Restaurant,
   Review,
+  SearchPayload,
   Shipment,
   ShipmentActiveSummary,
   SettlementSummary,
@@ -589,6 +591,8 @@ export const settlementApi = {
 
 export const homeApi = {
   get: () => api.get<HomePayload>('/home/'),
+  favorites: () => api.get<FavoritesPayload>('/favorites/'),
+  search: (q: string) => api.get<SearchPayload>('/search/', { params: { q } }),
 };
 
 export const couponApi = {
