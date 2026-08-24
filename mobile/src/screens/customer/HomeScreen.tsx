@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import ActiveDeliveryStrip from '../../components/ActiveDeliveryStrip';
+import CategoryIconTile from '../../components/CategoryIconTile';
 import CustomerHomeHeader from '../../components/CustomerHomeHeader';
 import FavoriteHeart from '../../components/FavoriteHeart';
 import FoodImage from '../../components/FoodImage';
@@ -42,8 +43,8 @@ import { appAlert } from '../../utils/appAlert';
 import { formatCurrency, formatTimeAgo } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
-import { categoryEmoji } from '../../utils/restaurantCategories';
 import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
 const EMPTY_HOME: HomePayload = {
   categories: [],
@@ -437,17 +438,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               decelerationRate="fast"
             >
               {home.categories.map((cat) => (
-                <Pressable
+                <CategoryIconTile
                   key={cat.key}
-                  style={styles.catChip}
+                  emoji={categoryEmoji(cat.key)}
+                  label={cat.label}
+                  tint={categoryTint(cat.key)}
                   onPress={() => {
                     trackEvent('home_category_clicked', { category: cat.key });
                     navigation.navigate('Comida', { category: cat.key });
                   }}
-                >
-                  <Text style={styles.catEmoji}>{categoryEmoji(cat.key)}</Text>
-                  <Text style={styles.catText}>{cat.label}</Text>
-                </Pressable>
+                />
               ))}
             </ScrollView>
           </View>
@@ -845,20 +845,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
   seeAll: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  hScroll: { gap: spacing.sm, paddingVertical: 2, paddingRight: 4 },
-  catChip: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    width: 86,
-    paddingVertical: 12,
-    borderRadius: radii.card,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  catEmoji: { fontSize: 26 },
-  catText: { fontSize: 12, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  hScroll: { gap: spacing.md, paddingVertical: 2, paddingRight: 4 },
   productCard: {
     width: 148,
     backgroundColor: colors.surface,

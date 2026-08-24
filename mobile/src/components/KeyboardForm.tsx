@@ -58,6 +58,8 @@ type Props = {
    * @default true
    */
   fill?: boolean;
+  /** `always` evita perder el tap de Agregar cuando el teclado iOS se cierra. */
+  keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
 };
 
 /**
@@ -81,6 +83,7 @@ export default function KeyboardForm({
   footer,
   refreshControl,
   fill = true,
+  keyboardShouldPersistTaps = 'handled',
 }: Props) {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -168,7 +171,7 @@ export default function KeyboardForm({
           ref={scrollRef}
           style={layoutStyle}
           contentContainerStyle={[contentContainerStyle, { paddingBottom: bottomPadding }]}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
           onScroll={onScroll}

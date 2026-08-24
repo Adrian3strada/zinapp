@@ -130,6 +130,35 @@ export function categoryEmoji(key: string | null | undefined): string {
   return found?.emoji ?? '🍽️';
 }
 
+const CATEGORY_TINTS: Record<string, string> = {
+  mexicana: '#FFE8CC',
+  tacos: '#FFE4C4',
+  antojitos: '#FDE68A',
+  pizzas: '#FED7AA',
+  hamburguesas: '#FECACA',
+  pollos: '#FDE68A',
+  mariscos: '#A5F3FC',
+  carnes: '#FECACA',
+  makis: '#BBF7D0',
+  asiatica: '#FECACA',
+  italiana: '#FDE68A',
+  tortas: '#FED7AA',
+  desayunos: '#FDE68A',
+  fondas: '#FED7AA',
+  postres: '#FBCFE8',
+  cafe: '#E7E5E4',
+  bebidas: '#C7D2FE',
+  vinateria: '#FECACA',
+  saludable: '#BBF7D0',
+  alitas: '#FED7AA',
+  comida_rapida: '#FDE68A',
+};
+
+export function categoryTint(key: string | null | undefined): string {
+  if (!key) return '#E8F1FB';
+  return CATEGORY_TINTS[key] ?? '#E8F1FB';
+}
+
 export const RESTAURANT_CATEGORY_LABELS: Record<string, string> = {
   general: 'General',
   mexicana: 'Mexicana',

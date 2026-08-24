@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import CategoryIconTile from '../../components/CategoryIconTile';
 import EmptyState from '../../components/EmptyState';
 import FoodImage from '../../components/FoodImage';
 import HomeRestaurantCard from '../../components/HomeRestaurantCard';
@@ -31,7 +32,7 @@ import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
-import { categoryEmoji } from '../../utils/restaurantCategories';
+import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
 const EMPTY: SearchPayload = {
   q: '',
@@ -171,14 +172,13 @@ export default function SearchScreen({ navigation, route }: SearchScreenProps) {
             <Text style={styles.title}>Categorías</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hScroll}>
               {data.categories.map((cat) => (
-                <Pressable
+                <CategoryIconTile
                   key={cat.key}
-                  style={styles.catChip}
+                  emoji={categoryEmoji(cat.key)}
+                  label={cat.label}
+                  tint={categoryTint(cat.key)}
                   onPress={() => navigation.navigate('Comida', { category: cat.key })}
-                >
-                  <Text style={styles.catEmoji}>{categoryEmoji(cat.key)}</Text>
-                  <Text style={styles.catText}>{cat.label}</Text>
-                </Pressable>
+                />
               ))}
             </ScrollView>
           </View>
@@ -258,19 +258,7 @@ const styles = StyleSheet.create({
   error: { fontSize: 13, color: colors.error, fontWeight: '600' },
   section: { gap: spacing.sm },
   title: { fontSize: 18, fontWeight: '800', color: colors.text },
-  hScroll: { gap: spacing.sm, paddingVertical: 2 },
-  catChip: {
-    alignItems: 'center',
-    width: 86,
-    paddingVertical: 12,
-    borderRadius: radii.card,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    gap: 6,
-  },
-  catEmoji: { fontSize: 24 },
-  catText: { fontSize: 12, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  hScroll: { gap: spacing.md, paddingVertical: 2 },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',

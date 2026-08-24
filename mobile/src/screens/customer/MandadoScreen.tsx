@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
+import CategoryIconTile from '../../components/CategoryIconTile';
 import KeyboardForm from '../../components/KeyboardForm';
 import ScreenContainer from '../../components/ScreenContainer';
 import ShipmentAddressBlock from '../../components/ShipmentAddressBlock';
@@ -45,6 +46,19 @@ import { formatCurrency } from '../../utils/format';
 import { runWithRetry } from '../../utils/runWithRetry';
 import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
 
+const MANDADO_TINTS: Record<MandadoCategory, string> = {
+  verdura: '#BBF7D0',
+  fruta: '#FECACA',
+  legumbre: '#FED7AA',
+  carnes: '#FECACA',
+  abarrotes: '#FDE68A',
+  lacteos: '#E0F2FE',
+  bebidas: '#C7D2FE',
+  limpieza: '#DDD6FE',
+  farmacia: '#FBCFE8',
+  otro: '#E8F1FB',
+};
+
 const ARTICLE_UNIT_LABELS: Record<MandadoUnit, string> = {
   pza: 'pza',
   paq: 'paq',
@@ -66,6 +80,9 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
   const [draftArticleUnit, setDraftArticleUnit] = useState<MandadoUnit>('pza');
   const [draftMode, setDraftMode] = useState<'article' | 'weight'>('article');
   const [draftCategory, setDraftCategory] = useState<MandadoCategory>('abarrotes');
+  const [hasDraft, setHasDraft] = useState(false);
+  const nameRef = useRef('');
+  const lastNameRef = useRef('');
   const [preferredStores, setPreferredStores] = useState('');
   const [pickupNotes, setPickupNotes] = useState('');
   const [estimatedBudget, setEstimatedBudget] = useState('');
@@ -97,13 +114,23 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
   }, []);
 
   const resetDraft = useCallback(() => {
+    nameRef.current = '';
+    lastNameRef.current = '';
+    setHasDraft(false);
     setDraftName('');
     setDraftNotes('');
     setDraftQty('');
   }, []);
 
+  const setName = useCallback((text: string) => {
+    nameRef.current = text;
+    if (text.trim()) lastNameRef.current = text.trim();
+    setHasDraft(!!text.trim() || !!lastNameRef.current);
+    setDraftName(text);
+  }, []);
+
   const addItem = useCallback(() => {
-    const name = draftName.trim().slice(0, 80);
+    const name = (nameRef.current.trim() || lastNameRef.current.trim() || draftName.trim()).slice(0, 80);
     if (!name) {
       appAlert('Producto', 'Escribe qué quieres en el mandado.');
       return;
@@ -307,6 +334,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
         contentContainerStyle={styles.scroll}
         bottomPadding={spacing.xl}
         keyboardVerticalOffset={keyboardOffsetWithHeader(insets)}
+        keyboardShouldPersistTaps="always"
         footer={
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
             <View style={styles.footerInfo}>
@@ -321,11 +349,19 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
               title={
                 items.length > 0
                   ? `Confirmar mandado · ${formatCurrency(deliveryFee)}`
-                  : 'Agrega productos'
+                  : hasDraft
+                    ? 'Agregar a la lista'
+                    : 'Agrega productos'
               }
-              onPress={handleSubmit}
+              onPress={() => {
+                if (items.length === 0) {
+                  addItem();
+                  return;
+                }
+                void handleSubmit();
+              }}
               loading={submitting}
-              disabled={items.length === 0}
+              disabled={items.length === 0 && !hasDraft}
               size="lg"
               style={styles.footerBtn}
             />
@@ -418,21 +454,16 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             contentContainerStyle={styles.categoryRow}
             keyboardShouldPersistTaps="handled"
           >
-            {MANDADO_CATEGORIES.map((cat) => {
-              const active = draftCategory === cat.key;
-              return (
-                <Pressable
-                  key={cat.key}
-                  style={[styles.categoryPill, active && styles.categoryPillActive]}
-                  onPress={() => selectCategory(cat.key)}
-                >
-                  <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-                  <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
-                    {cat.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {MANDADO_CATEGORIES.map((cat) => (
+              <CategoryIconTile
+                key={cat.key}
+                emoji={cat.emoji}
+                label={cat.label}
+                tint={MANDADO_TINTS[cat.key]}
+                selected={draftCategory === cat.key}
+                onPress={() => selectCategory(cat.key)}
+              />
+            ))}
           </ScrollView>
 
           {categoryMeta?.examples.length ? (
@@ -450,7 +481,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
                     key={ex}
                     style={styles.exampleChip}
                     onPress={() => {
-                      setDraftName(ex);
+                      setName(ex);
                       selectCategory(categoryMeta.key);
                     }}
                   >
@@ -494,7 +525,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             <TextInput
               style={styles.nameInput}
               value={draftName}
-              onChangeText={setDraftName}
+              onChangeText={setName}
               placeholder={
                 draftMode === 'weight'
                   ? '¿Qué producto? Ej. jitomate, pollo, frijol…'
@@ -502,7 +533,9 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
               }
               placeholderTextColor={colors.textMuted}
               maxLength={80}
-              returnKeyType="next"
+              returnKeyType="done"
+              blurOnSubmit={false}
+              onSubmitEditing={addItem}
             />
 
             <TextInput
@@ -859,22 +892,7 @@ const styles = StyleSheet.create({
   itemCopy: { flex: 1, minWidth: 0, gap: 2 },
   itemText: { fontSize: 15, fontWeight: '700', color: colors.text },
   itemMeta: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
-  categoryRow: { gap: 8, paddingVertical: 2 },
-  categoryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  categoryPillActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  categoryEmoji: { fontSize: 14 },
-  categoryLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  categoryLabelActive: { color: colors.primary },
+  categoryRow: { gap: 12, paddingVertical: 6, paddingRight: 8 },
   examplesRow: { gap: 8, paddingVertical: 2 },
   exampleChip: {
     paddingHorizontal: 12,
@@ -911,7 +929,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: colors.surface,
   },
   notesInput: {
     borderWidth: 1,
