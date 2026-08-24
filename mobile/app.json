@@ -42,7 +42,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zinapp.delivery",
-      "buildNumber": "52",
+      "buildNumber": "53",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "ZinApp usa tu ubicación para mostrar restaurantes cercanos y el seguimiento de tu pedido.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "ZinApp comparte tu ubicación en segundo plano mientras realizas entregas activas.",
@@ -61,7 +61,7 @@
     },
     "android": {
       "package": "com.zinapp.delivery",
-      "versionCode": 170,
+      "versionCode": 171,
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
