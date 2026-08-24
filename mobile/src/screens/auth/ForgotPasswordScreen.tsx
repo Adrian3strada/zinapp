@@ -113,7 +113,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
                 {submitHint
                   || (viaWhatsApp
                     ? 'Si el correo no llega, restablece por WhatsApp con soporte. Si ya tienes el código, continúa abajo.'
-                    : 'Si la cuenta existe y tiene correo, te enviamos un código válido por 2 horas. Ábrelo y continúa con el botón de abajo.')}
+                    : 'Si la cuenta existe y tiene correo, te enviamos un código válido por 2 horas. Si pediste el código más de una vez, abre solo el correo más reciente.')}
               </Text>
               <Button
                 title="Ya tengo el código"

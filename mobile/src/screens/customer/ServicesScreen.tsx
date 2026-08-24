@@ -148,14 +148,16 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
 
         <ScrollView
           horizontal
+          nestedScrollEnabled
           showsHorizontalScrollIndicator={false}
+          style={styles.categoriesScroll}
           contentContainerStyle={styles.categories}
         >
           {CATEGORIES.map((cat) => {
             const active = category === cat.key;
             return (
               <Pressable
-                key={cat.label}
+                key={cat.key ?? 'all'}
                 style={[styles.chip, active && styles.chipActive]}
                 onPress={() => setCategory(cat.key)}
                 accessibilityRole="button"
@@ -166,7 +168,7 @@ export default function ServicesScreen(_props: ServicesScreenProps) {
                   size={15}
                   color={active ? '#FFF' : colors.textSecondary}
                 />
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
                   {cat.label}
                 </Text>
               </Pressable>
@@ -256,7 +258,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     maxWidth: 340,
   },
+  categoriesScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+    maxHeight: 44,
+  },
   categories: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: 2,
     paddingRight: spacing.sm,
@@ -264,10 +273,11 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'center',
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    minHeight: 34,
+    height: 34,
     borderRadius: radii.pill,
     backgroundColor: colors.surface,
     borderWidth: 1,

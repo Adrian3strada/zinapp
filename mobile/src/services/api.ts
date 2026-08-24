@@ -8,6 +8,7 @@ import type {
   DeliveryProfile,
   GeocodeResult,
   LocalService,
+  MandadoCategory,
   Order,
   OrderActiveSummary,
   OrderDispute,
@@ -26,6 +27,7 @@ import { roundCoordinate } from '../utils/coords';
 import { canRetryOnNetworkError, isMutationMethod, isRetryableNetworkError, sleep, wakeBackend } from './apiWake';
 import { sessionEvents } from './sessionEvents';
 import { tokenStorage } from './tokenStorage';
+import { isAccessTokenExpiringSoon } from '../utils/jwt';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -75,13 +77,28 @@ async function refreshAccessToken(): Promise<string | null> {
         `${API_URL}/auth/token/refresh/`,
         { refresh },
       );
-      await tokenStorage.setTokens(data.access, data.refresh ?? refresh);
+      // Si hubo logout mientras el refresh volaba, no resucitar la sesión.
+      const stillRefresh = await tokenStorage.getRefreshToken();
+      if (stillRefresh == null) {
+        return null;
+      }
+      // Otro refresh ya rotó el token; usar lo que quedó en storage.
+      if (stillRefresh !== refresh) {
+        return tokenStorage.getAccessToken();
+      }
+      const nextRefresh = data.refresh ?? refresh;
+      await tokenStorage.setTokens(data.access, nextRefresh);
       return data.access;
     } catch (error: unknown) {
       const status = (error as { response?: { status?: number } })?.response?.status;
       // Solo invalidar sesión si el refresh fue rechazado (401/403).
       // Errores de red/5xx/404 no deben cerrar la sesión.
       if (status === 401 || status === 403) {
+        // Si el access actual sigue vigente, no expulsar (refresh viejo/rotado).
+        const currentAccess = await tokenStorage.getAccessToken();
+        if (currentAccess && !isAccessTokenExpiringSoon(currentAccess, 0)) {
+          return currentAccess;
+        }
         await tokenStorage.clear();
         sessionEvents.emitExpired();
       }
@@ -94,11 +111,19 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshInFlight;
 }
 
-/** Renueva el access token si hay refresh guardado (arranque / reabrir app). */
+/**
+ * Renueva el access solo si falta o está por vencer.
+ * Importante: con ROTATE_REFRESH_TOKENS en el backend, renovar en cada
+ * navegación/foreground invalidaba el refresh y provocaba cierres de sesión.
+ */
 export async function ensureFreshAccessToken(): Promise<string | null> {
+  const access = await tokenStorage.getAccessToken();
   const refresh = await tokenStorage.getRefreshToken();
   if (!refresh) {
-    return tokenStorage.getAccessToken();
+    return access;
+  }
+  if (access && !isAccessTokenExpiringSoon(access)) {
+    return access;
   }
   const fresh = await refreshAccessToken();
   if (fresh) return fresh;
@@ -107,13 +132,20 @@ export async function ensureFreshAccessToken(): Promise<string | null> {
 
 /**
  * Renueva el access para reconexión WS (4001/4003).
- * Si no se puede renovar, limpia sesión y emite expired.
+ * Solo cierra sesión si el refresh fue rechazado de verdad (vía refreshAccessToken).
  */
 export async function renewAccessTokenForSession(): Promise<string | null> {
   const refresh = await tokenStorage.getRefreshToken();
   if (!refresh) {
-    await tokenStorage.clear();
-    sessionEvents.emitExpired();
+    const access = await tokenStorage.getAccessToken();
+    // Sin refresh pero con access válido: mantener sesión (no expulsar).
+    if (access && !isAccessTokenExpiringSoon(access, 0)) {
+      return access;
+    }
+    if (!access) {
+      await tokenStorage.clear();
+      sessionEvents.emitExpired();
+    }
     return null;
   }
   const fresh = await refreshAccessToken();
@@ -167,7 +199,17 @@ api.interceptors.response.use(
 
       originalRequest._retry = true;
       const access = await refreshAccessToken();
-      if (!access) return Promise.reject(error);
+      if (!access) {
+        // Access aún válido (refresh viejo): reintenta con el token actual.
+        const current = await tokenStorage.getAccessToken();
+        if (current && !isAccessTokenExpiringSoon(current, 0)) {
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${current}`;
+          }
+          return api(originalRequest);
+        }
+        return Promise.reject(error);
+      }
 
       if (originalRequest.headers) {
         originalRequest.headers.Authorization = `Bearer ${access}`;
@@ -249,11 +291,14 @@ export interface CreateMandadoPayload {
   kind: 'mandado';
   mandado_items: {
     name: string;
-    quantity: number;
-    unit: 'kg' | 'g';
-    category?: 'verdura' | 'fruta' | 'legumbre' | 'otro';
+    quantity?: number;
+    unit?: 'kg' | 'g' | 'pza' | 'lt' | 'paq';
+    category?: MandadoCategory;
+    notes?: string;
   }[];
   preferred_stores?: string;
+  estimated_budget?: string;
+  pickup_notes?: string;
   size?: 'small' | 'medium' | 'large';
   delivery_address: string;
   delivery_latitude?: number;
@@ -288,7 +333,7 @@ export const authApi = {
       password_reset_via_whatsapp?: boolean;
     }>('/auth/forgot-password/', { identifier }),
   resetPassword: (token: string, new_password: string) =>
-    api.post('/auth/reset-password/', { token, new_password }),
+    api.post<{ detail: string }>('/auth/reset-password/', { token, new_password }),
   registerPushToken: (expo_push_token: string) =>
     api.post('/auth/push-token/', { expo_push_token }),
 };
@@ -495,7 +540,8 @@ export const shipmentApi = {
       '/shipments/',
       {
         ...data,
-        pickup_address: data.preferred_stores?.trim() || 'Tiendas de abarrotes / mercado',
+        preferred_stores: data.preferred_stores?.trim() ?? '',
+        pickup_address: data.preferred_stores?.trim() ?? '',
         delivery_latitude:
           data.delivery_latitude != null ? roundCoordinate(data.delivery_latitude) : undefined,
         delivery_longitude:

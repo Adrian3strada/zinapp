@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { appAlert } from '../../utils/appAlert';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 
 import DeliveriesHeader from '../../components/driver/DeliveriesHeader';
@@ -12,12 +11,14 @@ import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useRealtimeEvent } from '../../hooks/useRealtime';
 import type { MyDeliveriesScreenProps } from '../../navigation/types';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
-import { orderApi } from '../../services/api';
+import { orderApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import type { Order } from '../../types';
+import type { Order, Shipment } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 
-type DeliveryItem = { kind: 'order'; id: string; order: Order };
+type DeliveryItem =
+  | { kind: 'order'; id: string; order: Order; updatedAt: string }
+  | { kind: 'shipment'; id: string; shipment: Shipment; updatedAt: string };
 
 type DeliveryListRow =
   | { type: 'header'; id: string; label: string; count: number }
@@ -25,6 +26,24 @@ type DeliveryListRow =
 
 function isActiveOrder(order: Order): boolean {
   return order.status === 'on_the_way' || order.status === 'ready';
+}
+
+function isActiveShipment(shipment: Shipment): boolean {
+  return shipment.status === 'picked_up' || shipment.status === 'on_the_way';
+}
+
+function isActiveItem(item: DeliveryItem): boolean {
+  return item.kind === 'order' ? isActiveOrder(item.order) : isActiveShipment(item.shipment);
+}
+
+function itemEarn(item: DeliveryItem): number {
+  if (item.kind === 'order') {
+    const fee = parseFloat(item.order.delivery_fee || '0');
+    const tip = parseFloat(item.order.tip_amount || '0');
+    const earn = (Number.isFinite(fee) ? fee : 0) + (Number.isFinite(tip) ? tip : 0);
+    return earn > 0 ? earn : parseFloat(item.order.total || '0') || 0;
+  }
+  return parseFloat(item.shipment.delivery_fee || item.shipment.total || '0') || 0;
 }
 
 export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenProps) {
@@ -39,14 +58,24 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const { data } = await orderApi.myDeliveries();
-      const merged: DeliveryItem[] = data
-        .map((order) => ({
+      const [ordersRes, shipmentsRes] = await Promise.all([
+        orderApi.myDeliveries(),
+        shipmentApi.myDeliveries(),
+      ]);
+      const merged: DeliveryItem[] = [
+        ...ordersRes.data.map((order) => ({
           kind: 'order' as const,
           id: `order-${order.id}`,
           order,
-        }))
-        .sort((a, b) => b.order.updated_at.localeCompare(a.order.updated_at));
+          updatedAt: order.updated_at,
+        })),
+        ...shipmentsRes.data.map((shipment) => ({
+          kind: 'shipment' as const,
+          id: `shipment-${shipment.id}`,
+          shipment,
+          updatedAt: shipment.updated_at,
+        })),
+      ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setItems(merged);
       setError(null);
     } catch (err) {
@@ -61,21 +90,16 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
     const active: DeliveryItem[] = [];
     const past: DeliveryItem[] = [];
     for (const item of items) {
-      if (isActiveOrder(item.order)) active.push(item);
+      if (isActiveItem(item)) active.push(item);
       else past.push(item);
     }
     return { activeItems: active, pastItems: past };
   }, [items]);
 
-  const activeEarnings = useMemo(() => {
-    return activeItems.reduce((sum, item) => {
-      const fee = parseFloat(item.order.delivery_fee || '0');
-      const tip = parseFloat(item.order.tip_amount || '0');
-      const earn =
-        (Number.isFinite(fee) ? fee : 0) + (Number.isFinite(tip) ? tip : 0);
-      return sum + (earn > 0 ? earn : parseFloat(item.order.total || '0') || 0);
-    }, 0);
-  }, [activeItems]);
+  const activeEarnings = useMemo(
+    () => activeItems.reduce((sum, item) => sum + itemEarn(item), 0),
+    [activeItems],
+  );
 
   useEffect(() => {
     load();
@@ -116,6 +140,33 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
   );
 
   const renderJob = (item: DeliveryItem) => {
+    if (item.kind === 'shipment') {
+      const s = item.shipment;
+      const isActive = isActiveShipment(s);
+      const isMandado = s.kind === 'mandado';
+      return (
+        <DriverJobCard
+          kind="shipment"
+          id={s.id}
+          title={isMandado ? `Mandado #${s.id}` : `Envío #${s.id}`}
+          subtitle={isMandado ? 'Compra en tienda' : s.size_display}
+          status={s.status}
+          statusLabel={s.status_display}
+          lines={[
+            { icon: 'storefront-outline', text: s.pickup_address },
+            { icon: 'location', text: s.delivery_address },
+            ...(s.payment_method === 'cash'
+              ? [{ icon: 'cash-outline' as const, text: 'Cobrar servicio: efectivo' }]
+              : []),
+          ]}
+          total={s.delivery_fee || s.total}
+          onPress={() => navigation.navigate('ShipmentDetail', { shipmentId: s.id })}
+          showActions={isActive}
+          onNavigate={() => navigation.navigate('DriverMap', { shipmentId: s.id })}
+          navigateLabel="Abrir mapa"
+        />
+      );
+    }
     const order = item.order;
     const isActive = isActiveOrder(order);
     return (
@@ -172,7 +223,16 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
             isAvailable={isAvailable}
             activeEarnings={activeEarnings}
             onContinue={
-              activeItems.length > 0 ? () => navigation.navigate('Inicio') : undefined
+              activeItems.length > 0
+                ? () => {
+                    const first = activeItems[0];
+                    if (first.kind === 'shipment') {
+                      navigation.navigate('DriverMap', { shipmentId: first.shipment.id });
+                    } else {
+                      navigation.navigate('Inicio');
+                    }
+                  }
+                : undefined
             }
           />
         }
@@ -195,7 +255,7 @@ export default function MyDeliveriesScreen({ navigation }: MyDeliveriesScreenPro
             <EmptyState
               emoji="🛵"
               title="Aún no tienes entregas"
-              subtitle="Conéctate en Inicio, acepta un pedido del mapa y aparecerá aquí."
+              subtitle="Conéctate en Inicio, acepta un pedido o mandado y aparecerá aquí."
               actionLabel="Ir a Inicio"
               onAction={() => navigation.navigate('Inicio')}
             />

@@ -310,16 +310,30 @@ export type ShipmentSize = 'small' | 'medium' | 'large';
 
 export type ShipmentKind = 'courier' | 'mandado';
 
+export type MandadoCategory =
+  | 'verdura'
+  | 'fruta'
+  | 'legumbre'
+  | 'carnes'
+  | 'abarrotes'
+  | 'lacteos'
+  | 'bebidas'
+  | 'limpieza'
+  | 'farmacia'
+  | 'otro';
+
 export interface MandadoItemPayload {
   name: string;
-  quantity: number;
-  unit: 'kg' | 'g';
-  category?: 'verdura' | 'fruta' | 'legumbre' | 'otro';
+  quantity?: number;
+  unit?: 'kg' | 'g' | 'pza' | 'lt' | 'paq';
+  category?: MandadoCategory;
+  notes?: string;
 }
 
 export interface MandadoDetails {
   items: MandadoItemPayload[];
   preferred_stores?: string;
+  estimated_budget?: string;
 }
 
 export interface Shipment {

@@ -5,8 +5,13 @@
   <div class="col-lg-7">
     <div class="card card-outline card-primary mb-3">
       <div class="card-header">
-        <h3 class="card-title">Envío #{{ shipment.id }}</h3>
+        <h3 class="card-title">
+          {% if shipment.kind == 'mandado' %}Mandado{% else %}Envío{% endif %} #{{ shipment.id }}
+        </h3>
         <div class="card-tools">
+          {% if shipment.kind == 'mandado' %}
+          <span class="badge badge-info mr-1">Mandado</span>
+          {% endif %}
           <span class="badge badge-role">{{ shipment.get_status_display }}</span>
         </div>
       </div>
@@ -15,9 +20,34 @@
           <tbody>
             <tr><td class="text-muted" style="width:35%;">Cliente</td><td>{{ shipment.customer.username }}</td></tr>
             <tr><td class="text-muted">Descripción</td><td>{{ shipment.description }}</td></tr>
+            {% if shipment.kind == 'mandado' and shipment.mandado_details.items %}
+            <tr>
+              <td class="text-muted align-top">Productos</td>
+              <td>
+                <ul class="mb-0 pl-3">
+                  {% for item in shipment.mandado_details.items %}
+                  <li>
+                    {{ item.name }}
+                    {% if item.quantity %} — {{ item.quantity }}{% if item.unit %} {{ item.unit }}{% endif %}{% endif %}
+                    {% if item.notes %}<br><span class="text-muted small">{{ item.notes }}</span>{% endif %}
+                  </li>
+                  {% endfor %}
+                </ul>
+              </td>
+            </tr>
+            {% if shipment.mandado_details.preferred_stores %}
+            <tr><td class="text-muted">Tienda / local</td><td>{{ shipment.mandado_details.preferred_stores }}</td></tr>
+            {% endif %}
+            {% if shipment.mandado_details.estimated_budget %}
+            <tr><td class="text-muted">Presupuesto productos</td><td>{{ shipment.mandado_details.estimated_budget }}</td></tr>
+            {% endif %}
+            {% endif %}
             <tr><td class="text-muted">Tamaño</td><td>{{ shipment.get_size_display }}</td></tr>
             <tr><td class="text-muted">Recoger en</td><td>{{ shipment.pickup_address }}</td></tr>
+            {% if shipment.pickup_notes %}<tr><td class="text-muted">Notas recogida</td><td>{{ shipment.pickup_notes }}</td></tr>{% endif %}
             <tr><td class="text-muted">Entregar en</td><td>{{ shipment.delivery_address }}</td></tr>
+            {% if shipment.delivery_notes %}<tr><td class="text-muted">Notas entrega</td><td>{{ shipment.delivery_notes }}</td></tr>{% endif %}
+            <tr><td class="text-muted">Repartidor</td><td>{% if shipment.driver %}{{ shipment.driver.username }}{% else %}<span class="text-muted">Sin asignar</span>{% endif %}</td></tr>
             <tr><td class="text-muted">Pago</td><td>{{ shipment.get_payment_method_display }}</td></tr>
             <tr><td class="text-muted">Total</td><td class="mono">${{ shipment.total|floatformat:2 }}</td></tr>
             <tr><td class="text-muted">Creado</td><td>{{ shipment.created_at|date:"d/m/Y H:i" }}</td></tr>
@@ -29,7 +59,7 @@
 
   <div class="col-lg-5">
     <div class="card card-outline card-info">
-      <div class="card-header"><h3 class="card-title">Actualizar envío</h3></div>
+      <div class="card-header"><h3 class="card-title">Actualizar {% if shipment.kind == 'mandado' %}mandado{% else %}envío{% endif %}</h3></div>
       <div class="card-body">
         <form method="post" class="gestion-form">
           {% csrf_token %}

@@ -12,7 +12,7 @@ const FIELD_LABELS: Record<string, string> = {
   delivery_longitude: 'Ubicación (longitud)',
   coupon_code: 'Cupón',
   mandado_items: 'Productos del mandado',
-  preferred_stores: 'Tiendas preferidas',
+  preferred_stores: 'Tienda o local',
   items: 'Productos',
   restaurant_id: 'Restaurante',
   payment_method: 'Método de pago',

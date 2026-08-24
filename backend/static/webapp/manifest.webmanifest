@@ -1,20 +1,20 @@
 {
-    "description":  "Comida a domicilio y servicios locales en ZinapÃ©cuaro, MichoacÃ¡n.",
-    "short_name":  "ZinApp",
-    "background_color":  "#FFFFFF",
-    "icons":  [
-                  {
-                      "purpose":  "any",
-                      "type":  "image/x-icon",
-                      "sizes":  "48x48",
-                      "src":  "/app/favicon.ico"
-                  }
-              ],
-    "lang":  "es-MX",
-    "orientation":  "portrait",
-    "theme_color":  "#1E5DB8",
-    "display":  "standalone",
-    "name":  "ZinApp â€” ZinapÃ©cuaro",
-    "scope":  "/app/",
-    "start_url":  "/app/"
+  "name": "ZinApp — Delivery Zinapécuaro",
+  "short_name": "ZinApp",
+  "description": "Pedidos y envíos locales en Zinapécuaro, Michoacán.",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1E5DB8",
+  "background_color": "#FFFFFF",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "/app/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
+    }
+  ]
 }

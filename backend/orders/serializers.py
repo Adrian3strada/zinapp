@@ -620,12 +620,24 @@ def _validate_address_coords(attrs, prefix, errors_field):
 
 
 def _format_mandado_item(item: dict) -> str:
-    qty = item.get('quantity')
-    unit = item.get('unit') or 'kg'
     name = (item.get('name') or '').strip()
-    if qty is None or not name:
+    if not name:
+        return ''
+    qty = item.get('quantity')
+    unit = (item.get('unit') or '').strip()
+    if qty is None or not unit:
         return name
     qty_label = int(qty) if isinstance(qty, (int, float)) and float(qty) == int(qty) else qty
+    if unit == 'pza':
+        if float(qty) == 1:
+            return name
+        return f'{name} ({qty_label} pza)'
+    if unit == 'paq':
+        if float(qty) == 1:
+            return name
+        return f'{name} ({qty_label} paq)'
+    if unit == 'lt':
+        return f'{name} {qty_label} lt'
     return f'{name} {qty_label}{unit}'
 
 
@@ -654,13 +666,44 @@ def _mandado_items_for_storage(items: list) -> list:
 
 class MandadoItemSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=80)
-    quantity = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=Decimal('0.01'))
-    unit = serializers.ChoiceField(choices=['kg', 'g'])
+    quantity = serializers.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+        required=False,
+        allow_null=True,
+    )
+    unit = serializers.ChoiceField(
+        choices=['kg', 'g', 'pza', 'lt', 'paq'],
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
     category = serializers.ChoiceField(
-        choices=['verdura', 'fruta', 'legumbre', 'otro'],
+        choices=[
+            'verdura', 'fruta', 'legumbre', 'carnes', 'abarrotes',
+            'lacteos', 'bebidas', 'limpieza', 'farmacia', 'otro',
+        ],
         required=False,
         default='otro',
     )
+    notes = serializers.CharField(max_length=120, required=False, allow_blank=True, default='')
+
+    def validate(self, attrs):
+        qty = attrs.get('quantity')
+        unit = (attrs.get('unit') or '').strip()
+        if qty is not None and not unit:
+            raise serializers.ValidationError({'unit': 'Indica la unidad.'})
+        if unit and qty is None:
+            raise serializers.ValidationError({'quantity': 'Indica la cantidad.'})
+        if qty is None or not unit:
+            attrs.pop('quantity', None)
+            attrs.pop('unit', None)
+        else:
+            attrs['unit'] = unit
+        notes = (attrs.get('notes') or '').strip()
+        attrs['notes'] = notes
+        return attrs
 
 
 class ShipmentSerializer(serializers.ModelSerializer):
@@ -753,6 +796,7 @@ class ShipmentCreateSerializer(serializers.Serializer):
     description = serializers.CharField(max_length=200, required=False, allow_blank=True)
     mandado_items = MandadoItemSerializer(many=True, required=False)
     preferred_stores = serializers.CharField(required=False, allow_blank=True, default='')
+    estimated_budget = serializers.CharField(required=False, allow_blank=True, max_length=80, default='')
     size = serializers.ChoiceField(choices=ShipmentSize.choices, required=False)
     pickup_address = serializers.CharField()
     pickup_latitude = CoordinateField(
@@ -782,10 +826,15 @@ class ShipmentCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({
                     'mandado_items': 'Agrega al menos un producto al mandado.',
                 })
+            stores = (attrs.get('preferred_stores') or '').strip()
+            if not stores:
+                raise serializers.ValidationError({
+                    'preferred_stores': 'Escribe el nombre de la tienda o local.',
+                })
             attrs['size'] = attrs.get('size') or ShipmentSize.MEDIUM
             attrs['description'] = build_mandado_description(items)
-            stores = (attrs.get('preferred_stores') or '').strip()
-            attrs['pickup_address'] = stores or 'Tiendas de abarrotes / mercado (a confirmar)'
+            attrs['pickup_address'] = stores
+            attrs['preferred_stores'] = stores
         else:
             if not attrs.get('size'):
                 raise serializers.ValidationError({'size': 'Indica el tamaño del envío.'})
@@ -818,6 +867,7 @@ class ShipmentCreateSerializer(serializers.Serializer):
             mandado_details = {
                 'items': _mandado_items_for_storage(validated_data.get('mandado_items') or []),
                 'preferred_stores': (validated_data.get('preferred_stores') or '').strip(),
+                'estimated_budget': (validated_data.get('estimated_budget') or '').strip(),
             }
 
         return Shipment.objects.create(

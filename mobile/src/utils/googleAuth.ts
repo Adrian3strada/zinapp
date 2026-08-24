@@ -145,7 +145,7 @@ export async function signInWithGoogleNative(): Promise<string> {
     if (!isSuccessResponse(response)) {
       throw new Error('No se pudo completar el inicio con Google.');
     }
-    let idToken = response.data.idToken;
+    let idToken = (response as { data?: { idToken?: string | null } }).data?.idToken ?? null;
     if (!idToken) {
       const tokens = await GoogleSignin.getTokens();
       idToken = tokens.idToken;

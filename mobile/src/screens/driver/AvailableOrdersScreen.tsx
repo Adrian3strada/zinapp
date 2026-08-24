@@ -17,13 +17,31 @@ import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDeliver
 import { useRealtimeEvent } from '../../hooks/useRealtime';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
-import { deliveryApi, orderApi } from '../../services/api';
+import { deliveryApi, orderApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
-import type { Order } from '../../types';
+import type { Order, Shipment } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import * as Location from 'expo-location';
 
-type AvailableItem = { kind: 'order'; id: string; order: Order };
+type AvailableItem =
+  | { kind: 'order'; id: string; order: Order; updatedAt: string }
+  | { kind: 'shipment'; id: string; shipment: Shipment; updatedAt: string };
+
+async function syncDriverLocation() {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return;
+    const position = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    await deliveryApi.updateLocation(
+      position.coords.latitude,
+      position.coords.longitude,
+    );
+  } catch {
+    // El GPS se sincronizará en segundo plano
+  }
+}
 
 export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScreenProps) {
   const { user } = useAuth();
@@ -42,14 +60,25 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
     else setRefreshing(true);
     setError(null);
     try {
-      const { data } = await orderApi.available();
-      setItems(
-        data.map((order) => ({
+      const [ordersRes, shipmentsRes] = await Promise.all([
+        orderApi.available(),
+        shipmentApi.available(),
+      ]);
+      const merged: AvailableItem[] = [
+        ...ordersRes.data.map((order) => ({
           kind: 'order' as const,
           id: `order-${order.id}`,
           order,
+          updatedAt: order.updated_at,
         })),
-      );
+        ...shipmentsRes.data.map((shipment) => ({
+          kind: 'shipment' as const,
+          id: `shipment-${shipment.id}`,
+          shipment,
+          updatedAt: shipment.updated_at,
+        })),
+      ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      setItems(merged);
     } catch (err) {
       setError(getApiErrorMessage(err, 'No se pudieron cargar pedidos'));
     } finally {
@@ -84,8 +113,8 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
 
   const countLabel = useMemo(() => {
     const count = items.length;
-    if (!count) return 'Sin pedidos listos por ahora';
-    return `${count} pedido${count === 1 ? '' : 's'} listo${count === 1 ? '' : 's'} para entregar`;
+    if (!count) return 'Sin trabajos listos por ahora';
+    return `${count} trabajo${count === 1 ? '' : 's'} disponible${count === 1 ? '' : 's'}`;
   }, [items]);
 
   const handleAccept = async (item: AvailableItem) => {
@@ -98,26 +127,21 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
     }
     setAcceptingId(item.id);
     try {
-      await orderApi.acceptDelivery(item.order.id);
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const position = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.High,
-          });
-          await deliveryApi.updateLocation(
-            position.coords.latitude,
-            position.coords.longitude,
-          );
-        }
-      } catch {
-        // El GPS se sincronizará en segundo plano
+      if (item.kind === 'order') {
+        await orderApi.acceptDelivery(item.order.id);
+        appAlert('¡Listo!', 'Pedido aceptado');
+      } else {
+        await shipmentApi.acceptDelivery(item.shipment.id);
+        appAlert(
+          '¡Listo!',
+          item.shipment.kind === 'mandado' ? 'Mandado aceptado' : 'Envío aceptado',
+        );
       }
-      appAlert('¡Listo!', 'Pedido aceptado');
+      await syncDriverLocation();
       load(true);
       navigation.navigate('Entregas');
     } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar el pedido'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar'));
     } finally {
       setAcceptingId(null);
     }
@@ -147,8 +171,14 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
             <DriverHeroHeader
               topInset={insets.top}
               firstName={user?.first_name}
-              eyebrow="Pedidos disponibles"
-              subtitle={!isApproved ? 'Completa tu validación para recibir pedidos' : isAvailable ? countLabel : 'Activa tu disponibilidad para ver pedidos'}
+              eyebrow="Trabajos disponibles"
+              subtitle={
+                !isApproved
+                  ? 'Completa tu validación para recibir pedidos'
+                  : isAvailable
+                    ? countLabel
+                    : 'Activa tu disponibilidad para ver pedidos'
+              }
               isAvailable={isAvailable}
             />
             <DriverAvailabilityBanner
@@ -162,7 +192,9 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
                 <Ionicons name="navigate-circle" size={22} color={colors.shipmentStart} />
                 <View style={styles.activeBannerTextWrap}>
                   <Text style={styles.activeBannerTitle}>Tienes una entrega activa</Text>
-                  <Text style={styles.activeBannerText}>Continúala en Mis entregas antes de aceptar otra.</Text>
+                  <Text style={styles.activeBannerText}>
+                    Continúala en Mis entregas antes de aceptar otra.
+                  </Text>
                 </View>
               </View>
             ) : null}
@@ -187,6 +219,31 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
           </>
         }
         renderItem={({ item }) => {
+          if (item.kind === 'shipment') {
+            const s = item.shipment;
+            const isMandado = s.kind === 'mandado';
+            return (
+              <DriverJobCard
+                kind="shipment"
+                id={s.id}
+                title={isMandado ? `Mandado #${s.id}` : `Envío #${s.id}`}
+                subtitle={isMandado ? 'Compra en tienda' : s.size_display}
+                lines={[
+                  { icon: 'storefront-outline', text: s.pickup_address },
+                  { icon: 'location', text: s.delivery_address },
+                  ...(s.payment_method === 'cash'
+                    ? [{ icon: 'cash-outline' as const, text: 'Cobrar servicio: efectivo' }]
+                    : []),
+                ]}
+                total={s.delivery_fee || s.total}
+                onPress={() => navigation.navigate('ShipmentDetail', { shipmentId: s.id })}
+                onAccept={() => handleAccept(item)}
+                acceptLabel={hasActiveDelivery ? 'Entrega en curso' : isMandado ? 'Aceptar mandado' : 'Aceptar envío'}
+                acceptDisabled={!isApproved || !isAvailable || hasActiveDelivery}
+                acceptLoading={acceptingId === item.id}
+              />
+            );
+          }
           const order = item.order;
           return (
             <DriverJobCard
@@ -214,11 +271,11 @@ export default function AvailableOrdersScreen({ navigation }: AvailableOrdersScr
           !loading ? (
             <EmptyState
               emoji={isAvailable ? '📭' : '⏸️'}
-              title={isAvailable ? 'No hay pedidos disponibles' : 'Estás fuera de línea'}
+              title={isAvailable ? 'No hay trabajos disponibles' : 'Estás fuera de línea'}
               subtitle={
                 isAvailable
-                  ? 'Los pedidos listos aparecerán aquí automáticamente.'
-                  : 'Activa tu disponibilidad para ver pedidos cerca de ti.'
+                  ? 'Pedidos, envíos y mandados aparecerán aquí automáticamente.'
+                  : 'Activa tu disponibilidad para ver trabajos cerca de ti.'
               }
             />
           ) : null

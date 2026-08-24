@@ -4,13 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import { cardShadow } from '../../theme/shadows';
-import type { Order } from '../../types';
+import type { Order, Shipment } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { formatOrderLabel } from '../../utils/orderDisplay';
 import SlideAction from './SlideAction';
 
 interface Props {
-  order: Order;
+  order?: Order | null;
+  shipment?: Shipment | null;
   accepting?: boolean;
   acceptDisabled?: boolean;
   onAccept: () => void;
@@ -18,7 +19,7 @@ interface Props {
   onDetails: () => void;
 }
 
-function earningLabel(order: Order): string {
+function orderEarning(order: Order): string {
   const fee = parseFloat(order.delivery_fee || '0');
   const tip = parseFloat(order.tip_amount || '0');
   const sum = (Number.isFinite(fee) ? fee : 0) + (Number.isFinite(tip) ? tip : 0);
@@ -28,31 +29,57 @@ function earningLabel(order: Order): string {
 
 export default function OrderRequestSheet({
   order,
+  shipment,
   accepting = false,
   acceptDisabled = false,
   onAccept,
   onSkip,
   onDetails,
 }: Props) {
-  const restaurant = order.restaurant_detail?.name ?? 'Restaurante';
-  const pickup = order.restaurant_detail?.address ?? 'Recoger en el local';
-  const earn = useMemo(() => earningLabel(order), [order]);
-  const cash = order.payment_method === 'cash';
+  const isShipment = !!shipment;
+  const isMandado = shipment?.kind === 'mandado';
+  const title = order
+    ? formatOrderLabel(order)
+    : isMandado
+      ? `Mandado #${shipment!.id}`
+      : `Envío #${shipment!.id}`;
+  const subtitle = order
+    ? (order.restaurant_detail?.name ?? 'Restaurante')
+    : isMandado
+      ? 'Compra en tienda'
+      : (shipment!.size_display || 'Paquete');
+  const pickup = order
+    ? (order.restaurant_detail?.address ?? 'Recoger en el local')
+    : shipment!.pickup_address;
+  const dropoff = order ? order.delivery_address : shipment!.delivery_address;
+  const earn = useMemo(() => {
+    if (order) return orderEarning(order);
+    return formatCurrency(shipment!.delivery_fee || shipment!.total);
+  }, [order, shipment]);
+  const cash = (order ?? shipment)!.payment_method === 'cash';
+  const badgeLabel = order ? 'Nuevo pedido' : isMandado ? 'Nuevo mandado' : 'Nuevo envío';
+  const badgeIcon = order ? 'fast-food' : isMandado ? 'basket' : 'cube';
 
   return (
     <View style={[styles.sheet, cardShadow]}>
       <View style={styles.handle} />
 
       <View style={styles.topRow}>
-        <View style={styles.badge}>
-          <Ionicons name="fast-food" size={14} color={colors.primaryDark} />
-          <Text style={styles.badgeText}>Nuevo pedido</Text>
+        <View style={[styles.badge, isShipment && styles.badgeShipment]}>
+          <Ionicons
+            name={badgeIcon as keyof typeof Ionicons.glyphMap}
+            size={14}
+            color={isShipment ? '#166534' : colors.primaryDark}
+          />
+          <Text style={[styles.badgeText, isShipment && styles.badgeTextShipment]}>
+            {badgeLabel}
+          </Text>
         </View>
         <Pressable
           onPress={onSkip}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Omitir pedido"
+          accessibilityLabel="Omitir"
           style={styles.skipBtn}
         >
           <Text style={styles.skip}>Ahora no</Text>
@@ -63,11 +90,11 @@ export default function OrderRequestSheet({
         onPress={onDetails}
         style={styles.headerPress}
         accessibilityRole="button"
-        accessibilityLabel={`Ver detalle de ${formatOrderLabel(order)}`}
+        accessibilityLabel={`Ver detalle de ${title}`}
       >
-        <Text style={styles.orderLabel}>{formatOrderLabel(order)}</Text>
+        <Text style={styles.orderLabel}>{title}</Text>
         <Text style={styles.restaurant} numberOfLines={1}>
-          {restaurant}
+          {subtitle}
         </Text>
       </Pressable>
 
@@ -100,7 +127,7 @@ export default function OrderRequestSheet({
           <View style={styles.routeText}>
             <Text style={styles.routeTitle}>Entregar</Text>
             <Text style={styles.routeSub} numberOfLines={2}>
-              {order.delivery_address}
+              {dropoff}
             </Text>
           </View>
         </View>
@@ -110,7 +137,7 @@ export default function OrderRequestSheet({
         label="Desliza para aceptar"
         completeLabel="¡Aceptando!"
         icon="bicycle"
-        color={colors.primary}
+        color={isShipment ? '#16A34A' : colors.primary}
         disabled={acceptDisabled}
         loading={accepting}
         onComplete={onAccept}
@@ -151,7 +178,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
   },
+  badgeShipment: { backgroundColor: '#DCFCE7' },
   badgeText: { fontSize: 12, fontWeight: '800', color: colors.primaryDark },
+  badgeTextShipment: { color: '#166534' },
   skipBtn: {
     minHeight: 44,
     minWidth: 44,

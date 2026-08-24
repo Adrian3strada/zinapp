@@ -14,11 +14,11 @@ import { usePaginatedList } from '../../hooks/usePaginatedList';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { MyOrdersScreenProps } from '../../navigation/types';
 import { formatOrderLabel } from '../../utils/orderDisplay';
-import { orderApi } from '../../services/api';
+import { orderApi, shipmentApi } from '../../services/api';
 import { colors, statusColors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { cardShadow } from '../../theme/shadows';
-import type { Order } from '../../types';
+import type { Order, Shipment } from '../../types';
 import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getApiErrorMessage } from '../../utils/apiErrors';
@@ -27,7 +27,12 @@ import { FLATLIST_TUNING } from '../../utils/responsive';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
 import FoodImage from '../../components/FoodImage';
 
-const ACTIVE_STATUSES = ['pending', 'accepted', 'preparing', 'ready', 'on_the_way'];
+const ACTIVE_ORDER_STATUSES = ['pending', 'accepted', 'preparing', 'ready', 'on_the_way'];
+const ACTIVE_SHIPMENT_STATUSES = ['pending', 'picked_up', 'on_the_way'];
+
+type FeedItem =
+  | { kind: 'order'; id: string; order: Order; createdAt: string }
+  | { kind: 'shipment'; id: string; shipment: Shipment; createdAt: string };
 
 function OrderCard({
   item,
@@ -41,7 +46,7 @@ function OrderCard({
   reordering?: boolean;
 }) {
   const visual = getRestaurantVisual(item.restaurant_detail?.name ?? '');
-  const isActive = ACTIVE_STATUSES.includes(item.status);
+  const isActive = ACTIVE_ORDER_STATUSES.includes(item.status);
   const isLive = item.status === 'on_the_way';
   const accent = statusColors[item.status] ?? colors.primary;
   const canReorder = item.status === 'delivered' && !!onReorder;
@@ -112,10 +117,74 @@ function OrderCard({
   );
 }
 
+function ShipmentCard({
+  item,
+  onPress,
+}: {
+  item: Shipment;
+  onPress: () => void;
+}) {
+  const isMandado = item.kind === 'mandado';
+  const isActive = ACTIVE_SHIPMENT_STATUSES.includes(item.status);
+  const isLive = item.status === 'on_the_way';
+  const accent = statusColors[item.status] ?? (isMandado ? '#16A34A' : colors.shipmentStart);
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.card,
+        isActive && styles.cardActive,
+        isActive && { borderLeftColor: accent },
+        isLive && styles.cardLive,
+        pressed && styles.cardPressed,
+      ]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${isMandado ? 'Mandado' : 'Envío'} #${item.id}, ${item.status_display}`}
+    >
+      <View style={[styles.imageWrap, styles.shipmentIconWrap, isLive && styles.imageWrapLive]}>
+        <Ionicons
+          name={isMandado ? 'basket' : 'cube'}
+          size={22}
+          color={isMandado ? '#16A34A' : colors.shipmentStart}
+        />
+      </View>
+      <View style={styles.content}>
+        <Text style={styles.restaurant}>
+          {isMandado ? 'Mandado' : 'Envío'} #{item.id}
+        </Text>
+        <Text style={styles.orderId} numberOfLines={1}>
+          {item.description}
+        </Text>
+        <View style={styles.badgeRow}>
+          {isLive ? (
+            <LiveBadge label="En camino" />
+          ) : (
+            <OrderStatusBadge status={item.status} label={item.status_display} />
+          )}
+        </View>
+        <Text style={styles.date}>
+          {new Date(item.created_at).toLocaleDateString('es-MX', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </Text>
+      </View>
+      <View style={styles.right}>
+        <Text style={styles.total}>{formatCurrency(item.total)}</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </View>
+    </Pressable>
+  );
+}
+
 export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
   const { insets, listPaddingBottom } = useTabScreenInsets();
   const { replaceCart } = useCart();
   const [reorderingId, setReorderingId] = useState<number | null>(null);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
 
   const fetchPage = useCallback(async (page: number) => {
     const { data } = await orderApi.list(page);
@@ -129,18 +198,57 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
     loadingMore,
     error,
     hasMore,
-    refresh,
+    refresh: refreshOrders,
     loadMore,
   } = usePaginatedList(fetchPage, [fetchPage], 'No se pudieron cargar los pedidos');
 
+  const loadShipments = useCallback(async () => {
+    try {
+      const { data } = await shipmentApi.list(1);
+      setShipments(data.results ?? []);
+    } catch {
+      // Pedidos de comida siguen visibles aunque fallen los envíos
+    }
+  }, []);
+
+  const refresh = useCallback(async () => {
+    await Promise.all([refreshOrders(), loadShipments()]);
+  }, [refreshOrders, loadShipments]);
+
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', refresh);
+    void loadShipments();
+  }, [loadShipments]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      void refresh();
+    });
     return unsubscribe;
   }, [navigation, refresh]);
 
+  const feed = useMemo((): FeedItem[] => {
+    const items: FeedItem[] = [
+      ...orders.map((order) => ({
+        kind: 'order' as const,
+        id: `order-${order.id}`,
+        order,
+        createdAt: order.created_at,
+      })),
+      ...shipments.map((shipment) => ({
+        kind: 'shipment' as const,
+        id: `shipment-${shipment.id}`,
+        shipment,
+        createdAt: shipment.created_at,
+      })),
+    ];
+    return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [orders, shipments]);
+
   const activeCount = useMemo(
-    () => orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length,
-    [orders],
+    () =>
+      orders.filter((o) => ACTIVE_ORDER_STATUSES.includes(o.status)).length
+      + shipments.filter((s) => ACTIVE_SHIPMENT_STATUSES.includes(s.status)).length,
+    [orders, shipments],
   );
 
   const handleReorder = useCallback(
@@ -184,46 +292,64 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Order }) => (
-      <OrderCard
-        item={item}
-        onPress={() => navigation.navigate('OrderDetail', { orderId: item.id })}
-        onReorder={item.status === 'delivered' ? () => { void handleReorder(item); } : undefined}
-        reordering={reorderingId === item.id}
-      />
-    ),
+    ({ item }: { item: FeedItem }) => {
+      if (item.kind === 'shipment') {
+        return (
+          <ShipmentCard
+            item={item.shipment}
+            onPress={() =>
+              navigation.navigate('ShipmentDetail', { shipmentId: item.shipment.id })
+            }
+          />
+        );
+      }
+      return (
+        <OrderCard
+          item={item.order}
+          onPress={() => navigation.navigate('OrderDetail', { orderId: item.order.id })}
+          onReorder={
+            item.order.status === 'delivered'
+              ? () => {
+                  void handleReorder(item.order);
+                }
+              : undefined
+          }
+          reordering={reorderingId === item.order.id}
+        />
+      );
+    },
     [navigation, handleReorder, reorderingId],
   );
 
   const header = useMemo(
     () => (
-      <>
-        <CustomerOrdersHero
-          topInset={insets.top}
-          activeCount={activeCount}
-          totalLoaded={orders.length}
-        />
-      </>
+      <CustomerOrdersHero
+        topInset={insets.top}
+        activeCount={activeCount}
+        totalLoaded={feed.length}
+      />
     ),
-    [activeCount, insets.top, orders.length],
+    [activeCount, insets.top, feed.length],
   );
 
   return (
     <ScreenContainer
-      loading={loading && orders.length === 0}
+      loading={loading && feed.length === 0}
       loadingSkeleton={
         <View style={[styles.skeletonWrap, listPaddingBottom()]}>
           <ListSkeleton count={4} variant="order" />
         </View>
       }
-      error={error && orders.length === 0 ? error : null}
+      error={error && feed.length === 0 ? error : null}
       onRetry={refresh}
     >
       <FlatList
-        data={orders}
-        keyExtractor={(item) => String(item.id)}
+        data={feed}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.list, listPaddingBottom()]}
-        onRefresh={refresh}
+        onRefresh={() => {
+          void refresh();
+        }}
         refreshing={refreshing}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
@@ -237,7 +363,7 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
             <EmptyState
               emoji="📋"
               title="Sin pedidos aún"
-              subtitle="Cuando pidas comida, aparecerá aquí con seguimiento en tiempo real"
+              subtitle="Aquí verás comida, envíos y mandados con seguimiento en vivo"
               actionLabel="Explorar restaurantes"
               onAction={() => navigation.navigate('Inicio')}
             />
@@ -273,29 +399,30 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
   },
+  shipmentIconWrap: {
+    width: 48,
+    height: 48,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   imageWrapLive: {
     borderWidth: 2,
     borderColor: colors.primary + '55',
   },
   content: { flex: 1, minWidth: 0, gap: 4 },
-  restaurant: { fontSize: 16, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
-  orderId: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
-  date: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
-  trackHint: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 2 },
+  restaurant: { fontSize: 15, fontWeight: '800', color: colors.text },
+  orderId: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  date: { fontSize: 12, color: colors.textMuted },
+  trackHint: { fontSize: 12, fontWeight: '600', color: colors.primary },
   reorderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     gap: 4,
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    minHeight: 40,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    marginTop: 2,
   },
   reorderText: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  right: { alignItems: 'flex-end', gap: 6, justifyContent: 'center' },
-  total: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  right: { alignItems: 'flex-end', gap: 8 },
+  total: { fontSize: 15, fontWeight: '800', color: colors.text },
 });

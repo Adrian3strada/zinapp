@@ -390,6 +390,30 @@ class OrderApiTests(TestCase):
         self.assertEqual(response.data['kind'], 'mandado')
         self.assertEqual(len(response.data['mandado_details']['items']), 1)
 
+    def test_create_mandado_with_article_only_items(self):
+        self.client.force_authenticate(self.customer)
+        response = self.client.post('/api/shipments/', {
+            'kind': 'mandado',
+            'mandado_items': [
+                {'name': 'Leche entera', 'category': 'lacteos'},
+                {'name': 'Pan blanco', 'quantity': '2', 'unit': 'pza', 'category': 'abarrotes'},
+                {'name': 'Jitomate', 'quantity': '1.5', 'unit': 'kg', 'category': 'verdura'},
+            ],
+            'preferred_stores': 'Abarrotes Don Pepe',
+            'pickup_address': 'Abarrotes Don Pepe',
+            'size': 'medium',
+            'delivery_address': 'Destino, Zinapécuaro',
+            'delivery_latitude': '19.865000',
+            'delivery_longitude': '-100.830000',
+            'payment_method': 'cash',
+        }, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        items = response.data['mandado_details']['items']
+        self.assertEqual(items[0]['name'], 'Leche entera')
+        self.assertNotIn('quantity', items[0])
+        self.assertEqual(items[1]['unit'], 'pza')
+        self.assertIn('Leche entera', response.data['description'])
+
     def test_restaurant_owner_can_update_own_product(self):
         from restaurants.models import Product
 

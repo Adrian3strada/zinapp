@@ -1,6 +1,10 @@
 {% extends "dashboard/base.html" %}
 
 {% block content %}
+<div class="alert alert-info">
+  Los <strong>mandados de víveres</strong> no son pedidos de restaurante. Consúltalos en
+  <a href="{% url 'gestion:shipments' %}?kind=mandado" class="alert-link">Operaciones → Envíos / Mandados</a>.
+</div>
 <div class="card zin-panel-card">
   <div class="card-header zin-toolbar">
     <div class="zin-filter-group">

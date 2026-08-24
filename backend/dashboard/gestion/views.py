@@ -14,7 +14,7 @@ from accounts.audit import write_audit_log
 from accounts.models import AuditLog, DeliveryProfile, User, UserRole
 from accounts.setup import driver_setup_status
 from local_services.models import LocalService
-from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentStatus
+from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentKind, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
 from restaurants.models import Product, ProductPromotion, Restaurant
 
@@ -516,6 +516,9 @@ class ShipmentListView(PanelAccessMixin, ListView):
         status = self.request.GET.get('status', '').strip()
         if status and status in ShipmentStatus.values:
             qs = qs.filter(status=status)
+        kind = self.request.GET.get('kind', '').strip()
+        if kind in ShipmentKind.values:
+            qs = qs.filter(kind=kind)
         search = self.request.GET.get('q', '').strip()
         if search:
             if search.isdigit():
@@ -532,13 +535,15 @@ class ShipmentListView(PanelAccessMixin, ListView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(page_context(
-            'Envíos',
+            'Envíos y mandados',
             'shipments',
-            subtitle='Paquetes y entregas independientes de pedidos de comida.',
+            subtitle='Paquetes, mandados de víveres y entregas independientes de pedidos de comida.',
         ))
         ctx.update(
             status_filter=self.request.GET.get('status', ''),
+            kind_filter=self.request.GET.get('kind', ''),
             status_choices=ShipmentStatus.choices,
+            kind_choices=ShipmentKind.choices,
             search_query=self.request.GET.get('q', ''),
         )
         return ctx
@@ -555,11 +560,12 @@ class ShipmentDetailView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        kind_label = 'Mandado' if self.object.kind == ShipmentKind.MANDADO else 'Envío'
         ctx.update(page_context(
-            f'Envío #{self.object.pk}',
+            f'{kind_label} #{self.object.pk}',
             'shipments',
             breadcrumbs=[
-                {'label': 'Envíos', 'url': reverse('gestion:shipments')},
+                {'label': 'Envíos / Mandados', 'url': reverse('gestion:shipments')},
                 {'label': f'#{self.object.pk}', 'url': None},
             ],
         ))

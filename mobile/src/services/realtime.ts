@@ -137,9 +137,19 @@ export class RealtimeClient {
   }
 
   setDriverAvailable(available: boolean): void {
+    // Si el socket aún no está listo, al conectar el backend ya une al grupo
+    // según delivery_profile.is_available. Reintenta cuando abra.
     if (this.isConnected()) {
       this.socket?.send(JSON.stringify({ action: 'set_driver_available', available }));
+      return;
     }
+    const trySend = () => {
+      if (this.isConnected()) {
+        this.socket?.send(JSON.stringify({ action: 'set_driver_available', available }));
+      }
+    };
+    // Un intento corto tras reconectar (p. ej. toggle mientras despertaba el WS).
+    setTimeout(trySend, 800);
   }
 
   /** Visible para pruebas. */

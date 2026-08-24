@@ -66,6 +66,39 @@ class ForgotPasswordEmailTests(APITestCase):
         token = PasswordResetToken.objects.filter(user=self.user, used=False).latest('created_at')
         self.assertIn(token.token, body['text'])
 
+    def test_reset_password_idempotent_on_retry(self):
+        from django.utils import timezone
+        from datetime import timedelta
+
+        token = PasswordResetToken.objects.create(
+            user=self.user,
+            token='ABCD2345',
+            expires_at=timezone.now() + timedelta(hours=2),
+        )
+        first = self.client.post(
+            '/api/auth/reset-password/',
+            {'token': 'ABCD2345', 'new_password': 'NuevaClave99'},
+        )
+        self.assertEqual(first.status_code, 200, first.data)
+        token.refresh_from_db()
+        self.assertTrue(token.used)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NuevaClave99'))
+
+        # Doble toque / reintento con la misma contraseña no debe fallar.
+        second = self.client.post(
+            '/api/auth/reset-password/',
+            {'token': 'abcd2345', 'new_password': 'NuevaClave99'},
+        )
+        self.assertEqual(second.status_code, 200, second.data)
+
+        # Código ya usado con otra contraseña sí falla.
+        third = self.client.post(
+            '/api/auth/reset-password/',
+            {'token': 'ABCD2345', 'new_password': 'OtraClave88'},
+        )
+        self.assertEqual(third.status_code, 400)
+
 
 class HardeningApiTests(APITestCase):
     def setUp(self):

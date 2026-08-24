@@ -250,6 +250,7 @@ ORDER_OWNER_MESSAGES = {
 
 SHIPMENT_CUSTOMER_MESSAGES = {
     'pending': 'Tu envío fue registrado. Buscando repartidor…',
+    'picked_up': 'El repartidor va a recoger tu paquete.',
     'on_the_way': '¡Tu paquete va en camino!',
     'delivered': 'Envío entregado correctamente.',
     'cancelled': 'Tu envío fue cancelado.',
@@ -314,6 +315,12 @@ def send_push_to_user(
     # En Android 8+ el tono lo define el canal (channelId). El sound del
     # payload aplica sobre todo a iOS; no forzar alert.wav en android.* para
     # evitar que FCM trate el push como silencioso si no resuelve el asset.
+    # Expo/FCM: data debe ser dict[str, str] o algunos clientes pierden campos.
+    safe_data = {
+        str(key): value if isinstance(value, str) else str(value)
+        for key, value in (data or {}).items()
+        if value is not None
+    }
     payload = {
         'to': token,
         'title': title,
@@ -321,7 +328,7 @@ def send_push_to_user(
         'sound': 'alert.wav',
         'priority': 'high',
         'channelId': channel_id,
-        'data': data or {},
+        'data': safe_data,
         'android': {
             'channelId': channel_id,
             'priority': 'high',
@@ -577,6 +584,26 @@ def notify_order_status(order, previous_status=None):
             f'Pedido {ref} listo en {order.restaurant.name}.',
             data,
         )
+    elif (
+        previous_status == 'ready'
+        and status in ('on_the_way', 'cancelled')
+        and getattr(order, 'source', 'zinapp') == 'zinapp'
+    ):
+        try:
+            from realtime.broadcast import broadcast_drivers_job
+
+            broadcast_drivers_job(
+                kind='order',
+                ref_id=int(order.id),
+                title='Pedido actualizado',
+                body=(
+                    f'Pedido {ref} ya fue tomado.'
+                    if status == 'on_the_way'
+                    else f'Pedido {ref} cancelado.'
+                ),
+            )
+        except Exception:
+            logger.exception('realtime drivers.job (order taken/cancel) failed')
 
     if order.driver:
         if status == 'delivered':
@@ -608,31 +635,74 @@ def notify_shipment_status(shipment, previous_status=None):
             getattr(shipment, 'id', None),
         )
 
-    title = f'Envío #{shipment.id}'
-    data = {'shipmentId': shipment.id, 'status': shipment.status, 'type': 'shipment'}
+    is_mandado = getattr(shipment, 'kind', '') == 'mandado'
+    label = 'Mandado' if is_mandado else 'Envío'
+    title = f'{label} #{shipment.id}'
+    # Expo/FCM: valores de data como string para que el cliente los lea bien.
+    data = {
+        'shipmentId': str(shipment.id),
+        'status': str(shipment.status),
+        'type': 'shipment',
+        'kind': 'mandado' if is_mandado else 'courier',
+    }
     status = shipment.status
 
     customer_msg = SHIPMENT_CUSTOMER_MESSAGES.get(status)
+    if status == 'pending' and is_mandado:
+        customer_msg = (
+            'Tu mandado fue registrado. Un repartidor irá a comprar y te lo lleva.'
+        )
+    if status == 'picked_up' and is_mandado:
+        customer_msg = 'El repartidor va a la tienda por tu mandado.'
     if status == 'on_the_way' and shipment.driver:
-        customer_msg = f'¡Tu paquete va en camino! {_driver_name(shipment.driver)} te lo lleva.'
+        customer_msg = (
+            f'¡Tu {"mandado" if is_mandado else "paquete"} va en camino! '
+            f'{_driver_name(shipment.driver)} te lo lleva.'
+        )
     if customer_msg:
         send_push_to_user(shipment.customer, title, customer_msg, data, channel_id='deliveries_v3')
 
     # Solo al crear / llegar a pending (no re-broadcast si ya estaba pending).
     if status == 'pending' and previous_status != 'pending':
+        desc = (shipment.description or '')[:60]
         _broadcast_to_available_drivers(
-            'Envío disponible',
-            f'Envío #{shipment.id}: {shipment.description[:60]}',
+            f'{label} disponible',
+            f'{label} #{shipment.id}: {desc}' if desc else f'{label} #{shipment.id} esperando repartidor.',
             data,
         )
+    elif previous_status == 'pending' and status in ('picked_up', 'cancelled'):
+        # Otros repas deben quitar el trabajo de su lista al instante.
+        try:
+            from realtime.broadcast import broadcast_drivers_job
+
+            broadcast_drivers_job(
+                kind='shipment',
+                ref_id=int(shipment.id),
+                title=f'{label} actualizado',
+                body=(
+                    f'{label} #{shipment.id} ya fue tomado.'
+                    if status == 'picked_up'
+                    else f'{label} #{shipment.id} cancelado.'
+                ),
+            )
+        except Exception:
+            logger.exception('realtime drivers.job (taken/cancel) failed')
 
     if shipment.driver:
-        driver_messages = {
-            'picked_up': f'Envío #{shipment.id} — ve a recoger el paquete.',
-            'on_the_way': f'Envío #{shipment.id} — lleva el paquete al destino.',
-            'delivered': f'Envío #{shipment.id} completado.',
-            'cancelled': f'El envío #{shipment.id} fue cancelado.',
-        }
+        if is_mandado:
+            driver_messages = {
+                'picked_up': f'Mandado #{shipment.id} — ve a la tienda a comprar.',
+                'on_the_way': f'Mandado #{shipment.id} — lleva la compra al cliente.',
+                'delivered': f'Mandado #{shipment.id} completado.',
+                'cancelled': f'El mandado #{shipment.id} fue cancelado.',
+            }
+        else:
+            driver_messages = {
+                'picked_up': f'Envío #{shipment.id} — ve a recoger el paquete.',
+                'on_the_way': f'Envío #{shipment.id} — lleva el paquete al destino.',
+                'delivered': f'Envío #{shipment.id} completado.',
+                'cancelled': f'El envío #{shipment.id} fue cancelado.',
+            }
         driver_msg = driver_messages.get(status)
         if driver_msg:
             send_push_to_user(shipment.driver, title, driver_msg, data, channel_id='deliveries_v3')

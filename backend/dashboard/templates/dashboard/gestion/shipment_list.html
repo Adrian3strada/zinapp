@@ -4,21 +4,30 @@
 <div class="card zin-panel-card">
   <div class="card-header zin-toolbar">
     <div class="zin-filter-group">
-      <a href="{% url 'gestion:shipments' %}" class="zin-filter {% if not status_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'gestion:shipments' %}{% if kind_filter %}?kind={{ kind_filter }}{% endif %}" class="zin-filter {% if not status_filter %}active{% endif %}">Todos</a>
       {% for value, label in status_choices %}
-      <a href="?status={{ value }}" class="zin-filter {% if status_filter == value %}active{% endif %}">{{ label }}</a>
+      <a href="?status={{ value }}{% if kind_filter %}&amp;kind={{ kind_filter }}{% endif %}" class="zin-filter {% if status_filter == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
-      <form class="zin-search" method="get">
-        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
-        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar #, cliente…" %}
-      </form>
     </div>
+    <div class="zin-filter-group mt-2">
+      <span class="text-muted small mr-2 align-self-center">Tipo:</span>
+      <a href="{% if status_filter %}?status={{ status_filter }}{% else %}{% url 'gestion:shipments' %}{% endif %}" class="zin-filter {% if not kind_filter %}active{% endif %}">Todos</a>
+      {% for value, label in kind_choices %}
+      <a href="?{% if status_filter %}status={{ status_filter }}&amp;{% endif %}kind={{ value }}" class="zin-filter {% if kind_filter == value %}active{% endif %}">{{ label }}</a>
+      {% endfor %}
+    </div>
+    <form class="zin-search mt-2" method="get">
+      {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      {% if kind_filter %}<input type="hidden" name="kind" value="{{ kind_filter }}">{% endif %}
+      {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar #, cliente, productos…" %}
+    </form>
   </div>
   <div class="card-body p-0 table-responsive">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
           <th>#</th>
+          <th>Tipo</th>
           <th>Cliente</th>
           <th>Descripción</th>
           <th>Tamaño</th>
@@ -32,6 +41,13 @@
         {% for s in shipments %}
         <tr>
           <td><strong>#{{ s.id }}</strong></td>
+          <td>
+            {% if s.kind == 'mandado' %}
+            <span class="badge badge-info">Mandado</span>
+            {% else %}
+            <span class="badge badge-secondary">Envío</span>
+            {% endif %}
+          </td>
           <td>{{ s.customer.username }}</td>
           <td>{{ s.description|truncatechars:40 }}</td>
           <td>{{ s.get_size_display }}</td>
@@ -45,7 +61,7 @@
           </td>
         </tr>
         {% empty %}
-        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-truck-fast" title="No hay envíos" message="Los envíos de paquetes aparecerán aquí." %}
+        {% include "dashboard/includes/empty_state.html" with colspan=9 icon="fa-truck-fast" title="No hay envíos ni mandados" message="Los paquetes y mandados de víveres aparecerán aquí." %}
         {% endfor %}
       </tbody>
     </table>

@@ -310,7 +310,26 @@ class ResetPasswordView(APIView):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data['reset_token']
-        token.user.set_password(serializer.validated_data['new_password'])
+        new_password = serializer.validated_data['new_password']
+        already_used = bool(serializer.validated_data.get('already_used'))
+
+        if already_used:
+            # Reintento tras éxito (doble toque): no fallar si la clave ya coincide.
+            if token.user.check_password(new_password):
+                return Response(
+                    {'detail': 'Contraseña ya actualizada. Ya puedes iniciar sesión.'}
+                )
+            return Response(
+                {
+                    'token': (
+                        'Este código ya se usó. Si acabas de restablecer, inicia sesión '
+                        'con la nueva contraseña. Si no, solicita un código nuevo.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        token.user.set_password(new_password)
         token.user.save(update_fields=['password'])
         token.used = True
         token.save(update_fields=['used'])

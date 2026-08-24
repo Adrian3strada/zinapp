@@ -368,30 +368,32 @@ class ResetPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True, validators=[validate_password])
 
     def validate(self, attrs):
-        # iOS Mail a veces pega espacios o caracteres invisibles (zero-width).
+        # iOS Mail / teclado a veces pegan espacios o caracteres invisibles.
         raw = (attrs.get('token') or '').upper()
         code = ''.join(ch for ch in raw if ch.isalnum())
         if len(code) != 8:
             raise serializers.ValidationError(
                 {'token': 'El código tiene 8 caracteres. Copia el del correo más reciente.'}
             )
-        try:
-            token = PasswordResetToken.objects.select_related('user').get(
-                token=code,
-                used=False,
+
+        token = (
+            PasswordResetToken.objects.select_related('user')
+            .filter(token=code, used=False)
+            .first()
+        )
+        if token is None:
+            used_token = (
+                PasswordResetToken.objects.select_related('user')
+                .filter(token=code, used=True)
+                .order_by('-created_at')
+                .first()
             )
-        except PasswordResetToken.DoesNotExist:
-            used = PasswordResetToken.objects.filter(token=code, used=True).exists()
-            if used:
-                raise serializers.ValidationError(
-                    {
-                        'token': (
-                            'Este código ya se usó. Si acabas de restablecer, '
-                            'inicia sesión con la nueva contraseña. Si no funcionó, '
-                            'solicita un código nuevo.'
-                        )
-                    }
-                )
+            if used_token is not None:
+                # Doble toque / reintento: si la contraseña ya quedó aplicada, éxito.
+                attrs['reset_token'] = used_token
+                attrs['token'] = code
+                attrs['already_used'] = True
+                return attrs
             raise serializers.ValidationError(
                 {
                     'token': (
@@ -400,12 +402,14 @@ class ResetPasswordSerializer(serializers.Serializer):
                     )
                 }
             )
+
         if token.expires_at < timezone.now():
             raise serializers.ValidationError(
                 {'token': 'Código expirado. Solicita uno nuevo en Recuperar contraseña.'}
             )
         attrs['reset_token'] = token
         attrs['token'] = code
+        attrs['already_used'] = False
         return attrs
 
 

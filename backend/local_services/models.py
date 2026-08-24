@@ -3,10 +3,18 @@ from django.db import models
 
 class LocalServiceCategory(models.TextChoices):
     BEAUTY = 'beauty', 'Belleza'
+    AUTO = 'auto', 'Mecánicos'
+    CONSTRUCTION = 'construction', 'Albañilería'
+    PLUMBING = 'plumbing', 'Plomería'
+    ELECTRICAL = 'electrical', 'Electricista'
     HOME = 'home', 'Hogar'
-    AUTO = 'auto', 'Automotriz'
+    GARDEN = 'garden', 'Jardinería'
+    TECH = 'tech', 'Tecnología'
+    PETS = 'pets', 'Mascotas'
     HEALTH = 'health', 'Salud'
     FOOD = 'food', 'Alimentos'
+    LAUNDRY = 'laundry', 'Lavandería'
+    EDUCATION = 'education', 'Clases'
     OTHER = 'other', 'Otros'
 
 

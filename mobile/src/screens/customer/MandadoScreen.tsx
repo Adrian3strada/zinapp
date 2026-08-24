@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -25,18 +25,33 @@ import { radii } from '../../theme/radii';
 import { spacing } from '../../theme/spacing';
 import type { MandadoCategory, MandadoItem, MandadoUnit } from '../../utils/mandadoCategories';
 import {
+  categoryArticleUnits,
+  categoryDefaultMode,
   createMandadoItem,
   formatMandadoItem,
+  getCategoryMeta,
   MANDADO_CATEGORIES,
+  MANDADO_STEPS,
   MANDADO_STORE_SUGGESTIONS,
+  mandadoItemToPayload,
+  QUICK_QTY_ARTICLE,
+  QUICK_QTY_WEIGHT_KG,
 } from '../../utils/mandadoCategories';
-import { appAlert } from '../../utils/appAlert';
+import { appAlert, appConfirm } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { isInCoverage } from '../../utils/coverage';
 import { formatCurrency } from '../../utils/format';
 import { runWithRetry } from '../../utils/runWithRetry';
 import { keyboardOffsetWithHeader } from '../../utils/screenInsets';
+
+const ARTICLE_UNIT_LABELS: Record<MandadoUnit, string> = {
+  pza: 'pza',
+  paq: 'paq',
+  lt: 'lt',
+  kg: 'kg',
+  g: 'g',
+};
 
 export default function MandadoScreen({ navigation }: MandadoScreenProps) {
   const insets = useSafeAreaInsets();
@@ -45,10 +60,15 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
 
   const [items, setItems] = useState<MandadoItem[]>([]);
   const [draftName, setDraftName] = useState('');
-  const [draftQty, setDraftQty] = useState('1');
+  const [draftNotes, setDraftNotes] = useState('');
+  const [draftQty, setDraftQty] = useState('');
   const [draftUnit, setDraftUnit] = useState<MandadoUnit>('kg');
-  const [draftCategory, setDraftCategory] = useState<MandadoCategory>('verdura');
+  const [draftArticleUnit, setDraftArticleUnit] = useState<MandadoUnit>('pza');
+  const [draftMode, setDraftMode] = useState<'article' | 'weight'>('article');
+  const [draftCategory, setDraftCategory] = useState<MandadoCategory>('abarrotes');
   const [preferredStores, setPreferredStores] = useState('');
+  const [pickupNotes, setPickupNotes] = useState('');
+  const [estimatedBudget, setEstimatedBudget] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState(user?.address ?? '');
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [deliveryCoords, setDeliveryCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -60,7 +80,27 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
   const idempotencyKey = useRef<string | null>(null);
 
   const deliveryFee = getShipmentFee('medium');
-  const categoryMeta = MANDADO_CATEGORIES.find((c) => c.key === draftCategory);
+  const categoryMeta = getCategoryMeta(draftCategory);
+  const articleUnits = useMemo(() => categoryArticleUnits(draftCategory), [draftCategory]);
+
+  const selectCategory = useCallback((key: MandadoCategory) => {
+    setDraftCategory(key);
+    const mode = categoryDefaultMode(key);
+    setDraftMode(mode);
+    setDraftQty('');
+    if (mode === 'weight') {
+      setDraftUnit('kg');
+    } else {
+      const units = categoryArticleUnits(key);
+      setDraftArticleUnit(units[0] ?? 'pza');
+    }
+  }, []);
+
+  const resetDraft = useCallback(() => {
+    setDraftName('');
+    setDraftNotes('');
+    setDraftQty('');
+  }, []);
 
   const addItem = useCallback(() => {
     const name = draftName.trim().slice(0, 80);
@@ -68,27 +108,69 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
       appAlert('Producto', 'Escribe qué quieres en el mandado.');
       return;
     }
-    const qty = parseFloat(draftQty.replace(',', '.'));
-    if (!Number.isFinite(qty) || qty <= 0) {
-      appAlert('Cantidad', 'Indica kilos o gramos válidos.');
-      return;
+    const notes = draftNotes.trim().slice(0, 120) || undefined;
+
+    if (draftMode === 'weight') {
+      const qty = parseFloat(draftQty.replace(',', '.'));
+      if (!Number.isFinite(qty) || qty <= 0) {
+        appAlert('Cantidad', 'Indica kilos o gramos válidos.');
+        return;
+      }
+      setItems((prev) => [
+        ...prev,
+        createMandadoItem({
+          name,
+          notes,
+          quantity: String(Number(qty.toFixed(2))),
+          unit: draftUnit === 'pza' || draftUnit === 'lt' || draftUnit === 'paq' ? 'kg' : draftUnit,
+          category: draftCategory,
+        }),
+      ]);
+    } else {
+      const qtyText = draftQty.trim();
+      if (qtyText) {
+        const qty = parseFloat(qtyText.replace(',', '.'));
+        if (!Number.isFinite(qty) || qty <= 0) {
+          appAlert('Cantidad', 'Indica un número válido o déjalo vacío.');
+          return;
+        }
+        setItems((prev) => [
+          ...prev,
+          createMandadoItem({
+            name,
+            notes,
+            quantity: String(Number.isInteger(qty) ? qty : Number(qty.toFixed(2))),
+            unit: draftArticleUnit,
+            category: draftCategory,
+          }),
+        ]);
+      } else {
+        setItems((prev) => [
+          ...prev,
+          createMandadoItem({ name, notes, category: draftCategory }),
+        ]);
+      }
     }
-    setItems((prev) => [
-      ...prev,
-      createMandadoItem({
-        name,
-        quantity: String(Number(qty.toFixed(2))),
-        unit: draftUnit,
-        category: draftCategory,
-      }),
-    ]);
-    setDraftName('');
-    setDraftQty('1');
-  }, [draftCategory, draftName, draftQty, draftUnit]);
+    resetDraft();
+  }, [
+    draftArticleUnit,
+    draftCategory,
+    draftMode,
+    draftName,
+    draftNotes,
+    draftQty,
+    draftUnit,
+    resetDraft,
+  ]);
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
   }, []);
+
+  const clearList = useCallback(() => {
+    if (items.length === 0) return;
+    appConfirm('Vaciar lista', '¿Quitar todos los productos?', () => setItems([]));
+  }, [items.length]);
 
   const handleAddressChange = useCallback((text: string) => {
     setDeliveryAddress(text);
@@ -146,6 +228,10 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
       appAlert('Lista vacía', 'Agrega al menos un producto.');
       return;
     }
+    if (!preferredStores.trim()) {
+      appAlert('Tienda', 'Escribe el nombre de la tienda o local donde quieres que compremos.');
+      return;
+    }
     if (!deliveryAddress.trim()) {
       appAlert('Entrega', 'Indica dónde entregar el mandado.');
       return;
@@ -178,13 +264,10 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
       const { data } = await shipmentApi.createMandado(
         {
           kind: 'mandado',
-          mandado_items: items.map((it) => ({
-            name: it.name.slice(0, 80),
-            quantity: Number(parseFloat(it.quantity).toFixed(2)),
-            unit: it.unit,
-            category: it.category,
-          })),
+          mandado_items: items.map(mandadoItemToPayload),
           preferred_stores: preferredStores.trim(),
+          estimated_budget: estimatedBudget.trim() || undefined,
+          pickup_notes: pickupNotes.trim() || undefined,
           size: 'medium',
           delivery_address: deliveryAddress.trim(),
           delivery_latitude: coords.latitude,
@@ -206,13 +289,17 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
     deliveryAddress,
     deliveryCoords,
     deliveryNotes,
+    estimatedBudget,
     items,
     navigation,
     paymentMethod,
+    pickupNotes,
     preferredStores,
     requestLogin,
     user,
   ]);
+
+  const quickPresets = draftMode === 'weight' ? QUICK_QTY_WEIGHT_KG : QUICK_QTY_ARTICLE;
 
   return (
     <ScreenContainer>
@@ -224,7 +311,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
             <View style={styles.footerInfo}>
               <Text style={styles.footerLabel} numberOfLines={1}>
-                Servicio + entrega
+                {items.length > 0 ? `${items.length} producto${items.length === 1 ? '' : 's'} · servicio + entrega` : 'Servicio + entrega'}
               </Text>
               <Text style={styles.footerPrice} numberOfLines={1}>
                 {formatCurrency(deliveryFee)}
@@ -259,43 +346,85 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
               Haz tu mandado
             </Text>
             <Text style={styles.heroSub} numberOfLines={3}>
-              Arma tu lista y te llevamos lo que necesites de la tienda o mercado.
+              Compramos en la tienda que elijas y te llevamos víveres, abarrotes, farmacia y más.
             </Text>
           </View>
         </LinearGradient>
 
-        <SectionCard title="Tu lista" icon="list-outline">
+        <View style={styles.stepsCard}>
+          {MANDADO_STEPS.map((step, index) => (
+            <View key={step.title} style={styles.stepRow}>
+              <View style={styles.stepIcon}>
+                <Ionicons name={step.icon} size={16} color={colors.primary} />
+              </View>
+              <View style={styles.stepCopy}>
+                <Text style={styles.stepTitle}>
+                  {index + 1}. {step.title}
+                </Text>
+                <Text style={styles.stepBody}>{step.body}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <SectionCard
+          title="Tu lista"
+          icon="list-outline"
+          badge={items.length > 0 ? String(items.length) : undefined}
+          action={
+            items.length > 0 ? (
+              <Pressable onPress={clearList} hitSlop={8}>
+                <Text style={styles.clearLink}>Vaciar</Text>
+              </Pressable>
+            ) : null
+          }
+        >
           {items.length === 0 ? (
-            <Text style={styles.emptyHint}>Aún no hay productos. Agrega el primero abajo.</Text>
+            <Text style={styles.emptyHint}>
+              Agrega productos abajo. Puedes poner solo el nombre o indicar cantidad y peso.
+            </Text>
           ) : (
             <View style={styles.itemsList}>
-              {items.map((item, index) => (
-                <View
-                  key={item.id}
-                  style={[styles.itemRow, index < items.length - 1 && styles.itemRowBorder]}
-                >
-                  <Text style={styles.itemEmoji}>
-                    {MANDADO_CATEGORIES.find((c) => c.key === item.category)?.emoji ?? '🛒'}
-                  </Text>
-                  <Text style={styles.itemText} numberOfLines={2}>
-                    {formatMandadoItem(item)}
-                  </Text>
-                  <Pressable onPress={() => removeItem(item.id)} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-              ))}
+              {items.map((item, index) => {
+                const cat = getCategoryMeta(item.category);
+                return (
+                  <View
+                    key={item.id}
+                    style={[styles.itemRow, index < items.length - 1 && styles.itemRowBorder]}
+                  >
+                    <Text style={styles.itemEmoji}>{cat?.emoji ?? '🛒'}</Text>
+                    <View style={styles.itemCopy}>
+                      <Text style={styles.itemText} numberOfLines={2}>
+                        {formatMandadoItem(item)}
+                      </Text>
+                      <Text style={styles.itemMeta} numberOfLines={2}>
+                        {item.notes ? item.notes : cat?.label}
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => removeItem(item.id)} hitSlop={8}>
+                      <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
           )}
 
-          <View style={styles.categoryGrid}>
+          <Text style={styles.sectionLabel}>Categoría</Text>
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryRow}
+            keyboardShouldPersistTaps="handled"
+          >
             {MANDADO_CATEGORIES.map((cat) => {
               const active = draftCategory === cat.key;
               return (
                 <Pressable
                   key={cat.key}
                   style={[styles.categoryPill, active && styles.categoryPillActive]}
-                  onPress={() => setDraftCategory(cat.key)}
+                  onPress={() => selectCategory(cat.key)}
                 >
                   <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
                   <Text style={[styles.categoryLabel, active && styles.categoryLabelActive]}>
@@ -304,89 +433,243 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
 
           {categoryMeta?.examples.length ? (
-            <ScrollView
-              horizontal
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.examplesRow}
-              keyboardShouldPersistTaps="handled"
-            >
-              {categoryMeta.examples.map((ex) => (
-                <Pressable
-                  key={ex}
-                  style={styles.exampleChip}
-                  onPress={() => {
-                    setDraftName(ex);
-                    setDraftCategory(categoryMeta.key);
-                  }}
-                >
-                  <Text style={styles.exampleChipText}>{ex}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <>
+              <Text style={styles.sectionLabel}>Sugerencias</Text>
+              <ScrollView
+                horizontal
+                nestedScrollEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.examplesRow}
+                keyboardShouldPersistTaps="handled"
+              >
+                {categoryMeta.examples.map((ex) => (
+                  <Pressable
+                    key={ex}
+                    style={styles.exampleChip}
+                    onPress={() => {
+                      setDraftName(ex);
+                      selectCategory(categoryMeta.key);
+                    }}
+                  >
+                    <Text style={styles.exampleChipText}>{ex}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </>
           ) : null}
 
           <View style={styles.addCard}>
+            <View style={styles.modeRow}>
+              {([
+                { key: 'article' as const, label: 'Artículo', icon: 'cube-outline' as const },
+                { key: 'weight' as const, label: 'Por peso', icon: 'scale-outline' as const },
+              ]).map((mode) => {
+                const active = draftMode === mode.key;
+                return (
+                  <Pressable
+                    key={mode.key}
+                    style={[styles.modeBtn, active && styles.modeBtnActive]}
+                    onPress={() => {
+                      setDraftMode(mode.key);
+                      setDraftQty('');
+                      if (mode.key === 'weight') setDraftUnit('kg');
+                    }}
+                  >
+                    <Ionicons
+                      name={mode.icon}
+                      size={16}
+                      color={active ? colors.primary : colors.textMuted}
+                    />
+                    <Text style={[styles.modeBtnText, active && styles.modeBtnTextActive]}>
+                      {mode.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             <TextInput
               style={styles.nameInput}
               value={draftName}
               onChangeText={setDraftName}
-              placeholder="Ej. Jitomate, plátano, frijol…"
+              placeholder={
+                draftMode === 'weight'
+                  ? '¿Qué producto? Ej. jitomate, pollo, frijol…'
+                  : '¿Qué artículo? Ej. leche, pan, cloro, medicina…'
+              }
               placeholderTextColor={colors.textMuted}
               maxLength={80}
+              returnKeyType="next"
             />
-            <View style={styles.addControls}>
-              <TextInput
-                style={styles.qtyInput}
-                value={draftQty}
-                onChangeText={setDraftQty}
-                keyboardType="decimal-pad"
-                placeholder="1"
-                placeholderTextColor={colors.textMuted}
-              />
-              <View style={styles.unitRow}>
-                {(['kg', 'g'] as MandadoUnit[]).map((unit) => (
+
+            <TextInput
+              style={styles.notesInput}
+              value={draftNotes}
+              onChangeText={setDraftNotes}
+              placeholder="Detalle opcional: marca, presentación, que estén frescos…"
+              placeholderTextColor={colors.textMuted}
+              maxLength={120}
+            />
+
+            <ScrollView
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickRow}
+              keyboardShouldPersistTaps="handled"
+            >
+              {quickPresets.map((preset) => {
+                const label = draftMode === 'weight' ? `${preset} kg` : String(preset);
+                const active = draftQty === String(preset);
+                return (
                   <Pressable
-                    key={unit}
-                    style={[styles.unitBtn, draftUnit === unit && styles.unitBtnActive]}
-                    onPress={() => setDraftUnit(unit)}
+                    key={label}
+                    style={[styles.quickChip, active && styles.quickChipActive]}
+                    onPress={() => setDraftQty(String(preset))}
                   >
-                    <Text style={[styles.unitBtnText, draftUnit === unit && styles.unitBtnTextActive]}>
-                      {unit}
+                    <Text style={[styles.quickChipText, active && styles.quickChipTextActive]}>
+                      {label}
                     </Text>
                   </Pressable>
-                ))}
+                );
+              })}
+              {draftMode === 'article' ? (
+                <Pressable
+                  style={[styles.quickChip, !draftQty && styles.quickChipActive]}
+                  onPress={() => setDraftQty('')}
+                >
+                  <Text style={[styles.quickChipText, !draftQty && styles.quickChipTextActive]}>
+                    Sin cantidad
+                  </Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
+
+            {draftMode === 'weight' ? (
+              <View style={styles.addControls}>
+                <TextInput
+                  style={styles.qtyInput}
+                  value={draftQty}
+                  onChangeText={setDraftQty}
+                  keyboardType="decimal-pad"
+                  placeholder="Cant."
+                  placeholderTextColor={colors.textMuted}
+                />
+                <View style={styles.unitRow}>
+                  {(['kg', 'g'] as MandadoUnit[]).map((unit) => (
+                    <Pressable
+                      key={unit}
+                      style={[styles.unitBtn, draftUnit === unit && styles.unitBtnActive]}
+                      onPress={() => setDraftUnit(unit)}
+                    >
+                      <Text style={[styles.unitBtnText, draftUnit === unit && styles.unitBtnTextActive]}>
+                        {unit}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable style={styles.addBtn} onPress={addItem}>
+                  <Ionicons name="add" size={22} color="#FFF" />
+                </Pressable>
               </View>
-              <Pressable style={styles.addBtn} onPress={addItem}>
-                <Ionicons name="add" size={22} color="#FFF" />
-              </Pressable>
-            </View>
+            ) : (
+              <View style={styles.articleBlock}>
+                <View style={styles.addControls}>
+                  <TextInput
+                    style={styles.qtyInputOptional}
+                    value={draftQty}
+                    onChangeText={setDraftQty}
+                    keyboardType="decimal-pad"
+                    placeholder="Cantidad (opcional)"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  {draftQty.trim() ? (
+                    <View style={styles.unitRow}>
+                      {articleUnits.map((unit) => (
+                        <Pressable
+                          key={unit}
+                          style={[styles.unitBtn, draftArticleUnit === unit && styles.unitBtnActive]}
+                          onPress={() => setDraftArticleUnit(unit)}
+                        >
+                          <Text
+                            style={[
+                              styles.unitBtnText,
+                              draftArticleUnit === unit && styles.unitBtnTextActive,
+                            ]}
+                          >
+                            {ARTICLE_UNIT_LABELS[unit]}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ) : null}
+                  <Pressable style={styles.addBtn} onPress={addItem}>
+                    <Ionicons name="add" size={22} color="#FFF" />
+                  </Pressable>
+                </View>
+                <Pressable style={styles.addTextBtn} onPress={addItem}>
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                  <Text style={styles.addTextBtnLabel}>Agregar a la lista</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         </SectionCard>
 
-        <SectionCard title="Tiendas preferidas" icon="storefront-outline" optional>
-          <TextInput
-            style={styles.textArea}
-            value={preferredStores}
-            onChangeText={setPreferredStores}
-            placeholder="Central de abastos, Soriana, tiendita de la esquina…"
-            placeholderTextColor={colors.textMuted}
-            multiline
-          />
-          <View style={styles.storeRow}>
+        <SectionCard title="¿Dónde compramos?" icon="storefront-outline">
+          <Text style={styles.storeHint}>
+            Nombre de la tienda, mercado o abarrotes. El repartidor irá ahí.
+          </Text>
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.examplesRow}
+            keyboardShouldPersistTaps="handled"
+          >
             {MANDADO_STORE_SUGGESTIONS.map((store) => (
               <Pressable
                 key={store}
-                style={styles.storeChip}
-                onPress={() => setPreferredStores((prev) => (prev ? `${prev}, ${store}` : store))}
+                style={styles.exampleChip}
+                onPress={() => setPreferredStores(store)}
               >
-                <Text style={styles.storeChipText}>{store}</Text>
+                <Text style={styles.exampleChipText}>{store}</Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
+          <TextInput
+            style={styles.storeInput}
+            value={preferredStores}
+            onChangeText={setPreferredStores}
+            placeholder="Ej. Abarrotes Don Pepe, Mercado municipal…"
+            placeholderTextColor={colors.textMuted}
+            maxLength={120}
+            autoCapitalize="words"
+          />
+          <Text style={styles.sectionLabel}>Instrucciones para la tienda (opcional)</Text>
+          <TextInput
+            style={styles.notesInput}
+            value={pickupNotes}
+            onChangeText={setPickupNotes}
+            placeholder="Ej. preguntar promos, llevar bolsa, pedir factura…"
+            placeholderTextColor={colors.textMuted}
+            maxLength={200}
+          />
+          <Text style={styles.sectionLabel}>Presupuesto aproximado de productos (opcional)</Text>
+          <TextInput
+            style={styles.storeInput}
+            value={estimatedBudget}
+            onChangeText={setEstimatedBudget}
+            placeholder="Ej. $300 – $500 en productos"
+            placeholderTextColor={colors.textMuted}
+            maxLength={80}
+          />
+          <Text style={styles.payNote}>
+            El costo de los productos se paga aparte al repartidor o en la tienda.
+          </Text>
         </SectionCard>
 
         <SectionCard title="Entrega" icon="location-outline">
@@ -404,12 +687,12 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             coverageOk={coverageOk}
             approximate={addressApproximate}
           />
-          <Text style={styles.notesLabel}>Notas (opcional)</Text>
+          <Text style={styles.sectionLabel}>Notas de entrega (opcional)</Text>
           <TextInput
             style={styles.textArea}
             value={deliveryNotes}
             onChangeText={setDeliveryNotes}
-            placeholder="Ej. que estén maduros, timbre rojo…"
+            placeholder="Ej. timbre rojo, dejar en portería…"
             placeholderTextColor={colors.textMuted}
             multiline
           />
@@ -438,7 +721,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             ))}
           </View>
           <Text style={styles.payNote}>
-            Los productos se pagan aparte al repartidor o en la tienda.
+            Este pago es solo por el servicio de mandado ({formatCurrency(deliveryFee)}). Los productos van aparte.
           </Text>
         </SectionCard>
       </KeyboardForm>
@@ -449,12 +732,14 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
 function SectionCard({
   title,
   icon,
-  optional,
+  badge,
+  action,
   children,
 }: {
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
-  optional?: boolean;
+  badge?: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -466,7 +751,12 @@ function SectionCard({
         <Text style={styles.cardTitle} numberOfLines={1}>
           {title}
         </Text>
-        {optional ? <Text style={styles.optionalTag}>Opcional</Text> : null}
+        {badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge}</Text>
+          </View>
+        ) : null}
+        {action}
       </View>
       {children}
     </View>
@@ -486,7 +776,6 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: radii.xl,
     padding: spacing.lg,
-    marginBottom: spacing.xs,
   },
   heroIcon: {
     width: 52,
@@ -500,6 +789,27 @@ const styles = StyleSheet.create({
   heroCopy: { flex: 1, minWidth: 0 },
   heroTitle: { fontSize: 22, fontWeight: '900', color: '#FFF' },
   heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.92)', marginTop: 4, lineHeight: 18 },
+  stepsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    gap: 10,
+  },
+  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  stepIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  stepCopy: { flex: 1, minWidth: 0 },
+  stepTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
+  stepBody: { fontSize: 12, color: colors.textMuted, marginTop: 2, lineHeight: 16 },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radii.xl,
@@ -519,7 +829,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   cardTitle: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '800', color: colors.text },
-  optionalTag: { fontSize: 11, fontWeight: '700', color: colors.textMuted, flexShrink: 0 },
+  badge: {
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  badgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  clearLink: { fontSize: 13, fontWeight: '700', color: colors.error },
+  sectionLabel: { fontSize: 12, fontWeight: '800', color: colors.textSecondary, marginTop: 2 },
   emptyHint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   itemsList: {
     backgroundColor: colors.background,
@@ -535,8 +856,10 @@ const styles = StyleSheet.create({
   },
   itemRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   itemEmoji: { fontSize: 18, flexShrink: 0 },
-  itemText: { flex: 1, minWidth: 0, fontSize: 15, fontWeight: '600', color: colors.text },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  itemCopy: { flex: 1, minWidth: 0, gap: 2 },
+  itemText: { fontSize: 15, fontWeight: '700', color: colors.text },
+  itemMeta: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
+  categoryRow: { gap: 8, paddingVertical: 2 },
   categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,12 +891,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
+  modeRow: { flexDirection: 'row', gap: 8 },
+  modeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+  },
+  modeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  modeBtnText: { fontSize: 13, fontWeight: '800', color: colors.textMuted },
+  modeBtnTextActive: { color: colors.primary },
   nameInput: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
     paddingVertical: 4,
   },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  quickRow: { gap: 8 },
+  quickChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.surface,
+  },
+  quickChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  quickChipText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  quickChipTextActive: { color: colors.primary },
+  articleBlock: { gap: 8 },
   addControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -581,7 +943,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   qtyInput: {
-    width: 64,
+    width: 72,
     minWidth: 56,
     borderWidth: 1,
     borderColor: colors.border,
@@ -593,6 +955,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     color: colors.text,
     textAlign: 'center',
+  },
+  qtyInputOptional: {
+    flex: 1,
+    minWidth: 120,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    fontWeight: '600',
+    backgroundColor: colors.surface,
+    color: colors.text,
   },
   unitRow: {
     flexDirection: 'row',
@@ -616,6 +991,14 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
     flexShrink: 0,
   },
+  addTextBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 4,
+  },
+  addTextBtnLabel: { fontSize: 14, fontWeight: '800', color: colors.primary },
   textArea: {
     minHeight: 72,
     borderWidth: 1,
@@ -628,17 +1011,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     textAlignVertical: 'top',
   },
-  storeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  storeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.background,
+  storeHint: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  storeInput: {
     borderWidth: 1,
     borderColor: colors.borderLight,
+    borderRadius: radii.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    backgroundColor: colors.background,
   },
-  storeChipText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  notesLabel: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, marginTop: 4 },
   payRow: { flexDirection: 'row', gap: 10 },
   payOption: {
     flex: 1,

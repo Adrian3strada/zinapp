@@ -27,10 +27,10 @@ import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDeliver
 import { useRealtimeEvent } from '../../hooks/useRealtime';
 import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
-import { deliveryApi, orderApi } from '../../services/api';
+import { deliveryApi, orderApi, shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
-import type { Order } from '../../types';
+import type { Order, Shipment } from '../../types';
 import { appAlert } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import {
@@ -67,15 +67,17 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   const {
     hasActiveDelivery,
     activeOrder,
+    activeShipment,
     refreshActive,
   } = useDriverActiveDeliveries(4000);
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const acceptingRef = useRef(false);
   const [delivering, setDelivering] = useState(false);
-  const [skippedIds, setSkippedIds] = useState<Set<number>>(() => new Set());
+  const [skippedIds, setSkippedIds] = useState<Set<string>>(() => new Set());
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapHeight, setMapHeight] = useState(Dimensions.get('window').height);
   const [pickupTick, setPickupTick] = useState(0);
@@ -84,10 +86,17 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   const loadOrders = useCallback(async (silent = false) => {
     if (!silent) setLoadingOrders(true);
     try {
-      const { data } = await orderApi.available();
-      setOrders(data);
+      const [ordersRes, shipmentsRes] = await Promise.all([
+        orderApi.available(),
+        shipmentApi.available(),
+      ]);
+      setOrders(ordersRes.data);
+      setShipments(shipmentsRes.data);
     } catch {
-      if (!silent) setOrders([]);
+      if (!silent) {
+        setOrders([]);
+        setShipments([]);
+      }
     } finally {
       setLoadingOrders(false);
     }
@@ -233,14 +242,38 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   }, [hasActiveDelivery]);
 
   const visibleOrders = useMemo(
-    () => orders.filter((o) => !skippedIds.has(o.id)),
+    () => orders.filter((o) => !skippedIds.has(`order-${o.id}`)),
     [orders, skippedIds],
   );
+  const visibleShipments = useMemo(
+    () => shipments.filter((s) => !skippedIds.has(`shipment-${s.id}`)),
+    [shipments, skippedIds],
+  );
 
-  const offerOrder = useMemo(() => {
+  type OfferJob =
+    | { kind: 'order'; order: Order; sortAt: string }
+    | { kind: 'shipment'; shipment: Shipment; sortAt: string };
+
+  const offerJob = useMemo((): OfferJob | null => {
     if (!isAvailable || !isApproved || hasActiveDelivery) return null;
-    return visibleOrders[0] ?? null;
-  }, [isAvailable, isApproved, hasActiveDelivery, visibleOrders]);
+    const queue: OfferJob[] = [
+      ...visibleOrders.map((order) => ({
+        kind: 'order' as const,
+        order,
+        sortAt: order.updated_at || order.created_at,
+      })),
+      ...visibleShipments.map((shipment) => ({
+        kind: 'shipment' as const,
+        shipment,
+        sortAt: shipment.updated_at || shipment.created_at,
+      })),
+    ].sort((a, b) => b.sortAt.localeCompare(a.sortAt));
+    return queue[0] ?? null;
+  }, [isAvailable, isApproved, hasActiveDelivery, visibleOrders, visibleShipments]);
+
+  const offerOrder = offerJob?.kind === 'order' ? offerJob.order : null;
+  const offerShipment = offerJob?.kind === 'shipment' ? offerJob.shipment : null;
+  const offerCount = visibleOrders.length + visibleShipments.length;
 
   const restaurantCoord = useMemo(
     () =>
@@ -380,6 +413,36 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       return list;
     }
 
+    if (activeShipment) {
+      const pickup = toCoordinate(
+        activeShipment.pickup_latitude,
+        activeShipment.pickup_longitude,
+      );
+      const drop = toCoordinate(
+        activeShipment.delivery_latitude,
+        activeShipment.delivery_longitude,
+      );
+      if (activeShipment.status === 'picked_up' && pickup) {
+        list.push({
+          id: 'ship-pickup',
+          coordinate: pickup,
+          title: 'Recoger',
+          description: activeShipment.pickup_address,
+          pinType: 'restaurant',
+        });
+      }
+      if (drop) {
+        list.push({
+          id: 'ship-drop',
+          coordinate: drop,
+          title: 'Entregar',
+          description: activeShipment.delivery_address,
+          pinType: 'delivery',
+        });
+      }
+      return list;
+    }
+
     for (const order of visibleOrders.slice(0, 8)) {
       const restaurant = toCoordinate(
         order.restaurant_detail?.latitude,
@@ -405,8 +468,39 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         });
       }
     }
+    for (const shipment of visibleShipments.slice(0, 8)) {
+      const pickup = toCoordinate(shipment.pickup_latitude, shipment.pickup_longitude);
+      if (pickup) {
+        list.push({
+          id: `ship-p-${shipment.id}`,
+          coordinate: pickup,
+          title: shipment.kind === 'mandado' ? 'Mandado' : 'Envío',
+          description: shipment.pickup_address,
+          pinType: 'restaurant',
+        });
+      }
+      const drop = toCoordinate(shipment.delivery_latitude, shipment.delivery_longitude);
+      if (drop) {
+        list.push({
+          id: `ship-d-${shipment.id}`,
+          coordinate: drop,
+          title: 'Entrega',
+          description: shipment.delivery_address,
+          pinType: 'delivery',
+        });
+      }
+    }
     return list;
-  }, [driverCoord, activeOrder, deliveryStep, restaurantCoord, deliveryCoord, visibleOrders]);
+  }, [
+    driverCoord,
+    activeOrder,
+    activeShipment,
+    deliveryStep,
+    restaurantCoord,
+    deliveryCoord,
+    visibleOrders,
+    visibleShipments,
+  ]);
 
   const [deliveryMapRegion, setDeliveryMapRegion] = useState<MapRegion | null>(null);
   /** Altura del sheet inferior: el mapa deja ese hueco libre al encuadrar la ruta. */
@@ -432,6 +526,14 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     if (activeOrder) {
       return deliveryMapRegion ?? ZINAPECUARO_REGION;
     }
+    if (activeShipment) {
+      const coords = [
+        toCoordinate(activeShipment.pickup_latitude, activeShipment.pickup_longitude),
+        toCoordinate(activeShipment.delivery_latitude, activeShipment.delivery_longitude),
+        userLocation,
+      ].filter(isValidCoordinate);
+      if (coords.length) return regionForCoordinates(coords, { bottomBias: 0.28 });
+    }
     if (offerOrder) {
       const coords = [
         toCoordinate(
@@ -439,6 +541,14 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
           offerOrder.restaurant_detail?.longitude,
         ),
         toCoordinate(offerOrder.delivery_latitude, offerOrder.delivery_longitude),
+        userLocation,
+      ].filter(isValidCoordinate);
+      if (coords.length) return regionForCoordinates(coords, { bottomBias: 0.28 });
+    }
+    if (offerShipment) {
+      const coords = [
+        toCoordinate(offerShipment.pickup_latitude, offerShipment.pickup_longitude),
+        toCoordinate(offerShipment.delivery_latitude, offerShipment.delivery_longitude),
         userLocation,
       ].filter(isValidCoordinate);
       if (coords.length) return regionForCoordinates(coords, { bottomBias: 0.28 });
@@ -451,7 +561,14 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       };
     }
     return ZINAPECUARO_REGION;
-  }, [activeOrder, deliveryMapRegion, offerOrder, userLocation]);
+  }, [
+    activeOrder,
+    activeShipment,
+    deliveryMapRegion,
+    offerOrder,
+    offerShipment,
+    userLocation,
+  ]);
 
   const handleConnect = useCallback(async () => {
     if (!isApproved) {
@@ -466,7 +583,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   }, [isApproved, isAvailable, navigation, toggleAvailability]);
 
   const handleAccept = useCallback(async () => {
-    if (!offerOrder || acceptingRef.current || hasActiveDelivery) {
+    if (!offerJob || acceptingRef.current || hasActiveDelivery) {
       if (hasActiveDelivery) {
         appAlert('Entrega en curso', 'Termina tu entrega actual antes de aceptar otra.');
       }
@@ -475,7 +592,11 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     acceptingRef.current = true;
     setAccepting(true);
     try {
-      await orderApi.acceptDelivery(offerOrder.id);
+      if (offerJob.kind === 'order') {
+        await orderApi.acceptDelivery(offerJob.order.id);
+      } else {
+        await shipmentApi.acceptDelivery(offerJob.shipment.id);
+      }
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
@@ -494,17 +615,21 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       await loadOrders(true);
       await refreshActive();
     } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar el pedido'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar el trabajo'));
     } finally {
       acceptingRef.current = false;
       setAccepting(false);
     }
-  }, [offerOrder, hasActiveDelivery, loadOrders, refreshActive]);
+  }, [offerJob, hasActiveDelivery, loadOrders, refreshActive]);
 
   const handleSkip = useCallback(() => {
-    if (!offerOrder) return;
-    setSkippedIds((prev) => new Set(prev).add(offerOrder.id));
-  }, [offerOrder]);
+    if (!offerJob) return;
+    const key =
+      offerJob.kind === 'order'
+        ? `order-${offerJob.order.id}`
+        : `shipment-${offerJob.shipment.id}`;
+    setSkippedIds((prev) => new Set(prev).add(key));
+  }, [offerJob]);
 
   const openNavToNextStop = useCallback(() => {
     if (!nextStopCoord || !activeOrder || !deliveryStep) return;
@@ -553,11 +678,17 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
     ? deliveryStep === 'pickup'
       ? 'En camino al restaurante'
       : 'En camino a entregar'
-    : !isApproved
-      ? 'Pendiente de aprobación'
-      : isAvailable
-        ? 'Conectado · recibiendo pedidos'
-        : 'Desconectado';
+    : activeShipment
+      ? activeShipment.status === 'picked_up'
+        ? activeShipment.kind === 'mandado'
+          ? 'Mandado · ve a la tienda'
+          : 'Envío · ve a recoger'
+        : 'En camino a entregar'
+      : !isApproved
+        ? 'Pendiente de aprobación'
+        : isAvailable
+          ? 'Conectado · recibiendo pedidos'
+          : 'Desconectado';
 
   // Web: tab bar fixed overlays content. Native: scene already sits above tab bar.
   const bottomPad = {
@@ -567,7 +698,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
         : 12 + Math.max(insets.bottom, 0),
   };
 
-  const online = !!(activeOrder || (isAvailable && isApproved));
+  const online = !!(activeOrder || activeShipment || (isAvailable && isApproved));
 
   const mapFitPadding = useMemo(
     () => ({
@@ -617,11 +748,11 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
               </Text>
             </View>
           </View>
-          {loadingOrders && isAvailable && !activeOrder ? (
+          {loadingOrders && isAvailable && !activeOrder && !activeShipment ? (
             <ActivityIndicator size="small" color="#FFF" />
-          ) : isAvailable && !activeOrder && visibleOrders.length > 0 ? (
+          ) : isAvailable && !activeOrder && !activeShipment && offerCount > 0 ? (
             <View style={styles.countPill}>
-              <Text style={styles.countText}>{visibleOrders.length}</Text>
+              <Text style={styles.countText}>{offerCount}</Text>
             </View>
           ) : null}
         </View>
@@ -650,7 +781,7 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
             if (h > 0 && Math.abs(h - sheetHeight) > 8) setSheetHeight(h);
           }}
         >
-          {!isApproved && !activeOrder ? (
+          {!isApproved && !activeOrder && !activeShipment ? (
             <View style={styles.tipBanner}>
               <Ionicons name="shield-checkmark-outline" size={20} color={colors.primaryDark} />
               <Text style={styles.tipText}>
@@ -674,17 +805,62 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
                 }
               />
             </SheetEnter>
-          ) : offerOrder ? (
-            <SheetEnter animKey={`offer-${offerOrder.id}`}>
+          ) : activeShipment ? (
+            <SheetEnter animKey={`active-ship-${activeShipment.id}`}>
+              <View style={styles.connectCard}>
+                <Text style={styles.connectHint}>
+                  {activeShipment.kind === 'mandado'
+                    ? `Mandado #${activeShipment.id} en curso`
+                    : `Envío #${activeShipment.id} en curso`}
+                </Text>
+                <Text style={styles.shipmentHint} numberOfLines={2}>
+                  {activeShipment.status === 'picked_up'
+                    ? `Recoger: ${activeShipment.pickup_address}`
+                    : `Entregar: ${activeShipment.delivery_address}`}
+                </Text>
+                <SlideAction
+                  label="Desliza para abrir mapa"
+                  completeLabel="Abriendo…"
+                  icon="navigate"
+                  color="#16A34A"
+                  onComplete={() =>
+                    navigation.navigate('DriverMap', { shipmentId: activeShipment.id })
+                  }
+                />
+                <Pressable
+                  onPress={() =>
+                    navigation.navigate('ShipmentDetail', { shipmentId: activeShipment.id })
+                  }
+                  style={styles.detailsLink}
+                >
+                  <Text style={styles.detailsLinkText}>Ver detalle y marcar avance</Text>
+                </Pressable>
+              </View>
+            </SheetEnter>
+          ) : offerJob ? (
+            <SheetEnter
+              animKey={
+                offerJob.kind === 'order'
+                  ? `offer-order-${offerJob.order.id}`
+                  : `offer-ship-${offerJob.shipment.id}`
+              }
+            >
               <OrderRequestSheet
                 order={offerOrder}
+                shipment={offerShipment}
                 accepting={accepting}
                 acceptDisabled={!isApproved || !isAvailable || hasActiveDelivery}
                 onAccept={handleAccept}
                 onSkip={handleSkip}
-                onDetails={() =>
-                  navigation.navigate('OrderDetail', { orderId: offerOrder.id })
-                }
+                onDetails={() => {
+                  if (offerJob.kind === 'order') {
+                    navigation.navigate('OrderDetail', { orderId: offerJob.order.id });
+                  } else {
+                    navigation.navigate('ShipmentDetail', {
+                      shipmentId: offerJob.shipment.id,
+                    });
+                  }
+                }}
               />
             </SheetEnter>
           ) : (
@@ -694,9 +870,9 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
                   {!isApproved
                     ? 'Tu cuenta aún no está aprobada'
                     : isAvailable
-                      ? visibleOrders.length === 0
-                        ? 'Buscando pedidos cerca de ti…'
-                        : 'Pedidos cerca en el mapa'
+                      ? offerCount === 0
+                        ? 'Buscando pedidos y mandados…'
+                        : 'Trabajos cerca en el mapa'
                       : 'Conéctate para recibir pedidos'}
                 </Text>
                 <SlideAction
@@ -868,5 +1044,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  shipmentHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  detailsLink: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  detailsLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
   },
 });

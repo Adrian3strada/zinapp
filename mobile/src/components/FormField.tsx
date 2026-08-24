@@ -33,6 +33,7 @@ interface Props {
   embedded?: boolean;
   rightElement?: React.ReactNode;
   autoComplete?: TextInputProps['autoComplete'];
+  textContentType?: TextInputProps['textContentType'];
   error?: string;
   style?: StyleProp<ViewStyle>;
   onFocus?: TextInputProps['onFocus'];
@@ -56,6 +57,7 @@ export default function FormField({
   embedded = false,
   rightElement,
   autoComplete,
+  textContentType,
   error,
   style,
   onFocus,
@@ -109,7 +111,11 @@ export default function FormField({
           autoCorrect={autoCorrect}
           accessibilityLabel={label || placeholder || 'Campo de texto'}
           accessibilityHint={error || hint}
-          {...(Platform.OS === 'web' && autoComplete ? { autoComplete } : {})}
+          {...(autoComplete ? { autoComplete } : {})}
+          {...(textContentType ? { textContentType } : {})}
+          {...(Platform.OS === 'ios' && secureTextEntry && !textContentType
+            ? { textContentType: 'password' as const }
+            : {})}
         />
         {rightElement ? <View style={styles.rightElement}>{rightElement}</View> : null}
       </View>

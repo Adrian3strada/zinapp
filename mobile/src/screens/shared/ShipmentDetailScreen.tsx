@@ -24,6 +24,7 @@ import { shipmentApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { cardShadow } from '../../theme/shadows';
 import type { Shipment } from '../../types';
+import { formatMandadoItem } from '../../utils/mandadoCategories';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
 import {
@@ -35,9 +36,9 @@ import { toCoordinate } from '../../utils/maps';
 const ACTIVE_STATUSES = ['pending', 'picked_up', 'on_the_way'];
 const STATUS_HINTS: Record<string, string> = {
   pending: 'Buscando repartidor disponible',
-  picked_up: 'El repartidor va a recoger tu paquete',
-  on_the_way: 'Tu paquete va en camino',
-  delivered: 'Envío entregado correctamente',
+  picked_up: 'El repartidor va a la tienda / punto de recogida',
+  on_the_way: 'Va en camino a tu domicilio',
+  delivered: 'Entregado correctamente',
   cancelled: 'Este envío fue cancelado',
 };
 
@@ -157,6 +158,23 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
     }
   };
 
+  const handleAccept = async () => {
+    if (!shipment || actionBusy) return;
+    setActionBusy(true);
+    try {
+      const { data } = await shipmentApi.acceptDelivery(shipment.id);
+      setShipment(data);
+      appAlert(
+        '¡Listo!',
+        data.kind === 'mandado' ? 'Mandado aceptado. Ve a la tienda.' : 'Envío aceptado. Ve a recoger.',
+      );
+    } catch (err) {
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar.'));
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const handlePickedUp = async () => {
     if (!shipment || actionBusy) return;
     setActionBusy(true);
@@ -164,7 +182,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
       const { data } = await shipmentApi.markPickedUp(shipment.id);
       setShipment(data);
     } catch (err) {
-      appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar recogido.'));
+      appAlert('Error', getApiErrorMessage(err, 'No se pudo marcar en camino.'));
     } finally {
       setActionBusy(false);
     }
@@ -291,11 +309,24 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
               <Text style={styles.section}>Lista del mandado</Text>
               {shipment.mandado_details.items.map((item, index) => (
                 <View key={`${item.name}-${index}`} style={styles.mandadoRow}>
-                  <Text style={styles.mandadoItem}>
-                    {item.name} — {item.quantity}{item.unit}
-                  </Text>
+                  <Text style={styles.mandadoItem}>{formatMandadoItem(item)}</Text>
+                  {item.notes ? (
+                    <Text style={styles.mandadoNotes}>{item.notes}</Text>
+                  ) : null}
                 </View>
               ))}
+              {shipment.mandado_details.preferred_stores ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Tienda</Text>
+                  <Text style={styles.summaryValue}>{shipment.mandado_details.preferred_stores}</Text>
+                </View>
+              ) : null}
+              {shipment.mandado_details.estimated_budget ? (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Presupuesto</Text>
+                  <Text style={styles.summaryValue}>{shipment.mandado_details.estimated_budget}</Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -362,17 +393,42 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             </View>
           )}
 
+          {isDriver && shipment.status === 'pending' && !shipment.driver && (
+            <View style={styles.card}>
+              <Button
+                title={shipment.kind === 'mandado' ? 'Aceptar mandado' : 'Aceptar envío'}
+                onPress={handleAccept}
+                loading={actionBusy}
+                disabled={actionBusy}
+              />
+            </View>
+          )}
+
           {isDriver && shipment.status === 'picked_up' && shipment.driver === user?.id && (
             <View style={styles.card}>
               <Button title="Abrir mapa de navegación" variant="secondary" onPress={openDriverMap} />
-              <Button title="Marcar recogido" onPress={handlePickedUp} />
+              <Button
+                title={
+                  shipment.kind === 'mandado'
+                    ? 'Ya tengo la compra · En camino'
+                    : 'Ya lo recogí · En camino'
+                }
+                onPress={handlePickedUp}
+                loading={actionBusy}
+                disabled={actionBusy}
+              />
             </View>
           )}
 
           {isDriver && shipment.status === 'on_the_way' && shipment.driver === user?.id && (
             <View style={styles.card}>
               <Button title="Abrir mapa de navegación" variant="secondary" onPress={openDriverMap} />
-              <Button title="Marcar entregado" onPress={handleDelivered} />
+              <Button
+                title="Marcar entregado"
+                onPress={handleDelivered}
+                loading={actionBusy}
+                disabled={actionBusy}
+              />
             </View>
           )}
         </ScrollView>
@@ -432,6 +488,7 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 12 },
   mandadoRow: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   mandadoItem: { fontSize: 15, fontWeight: '600', color: colors.text },
+  mandadoNotes: { fontSize: 12, fontWeight: '600', color: colors.textMuted, marginTop: 2 },
   summaryLabel: { color: colors.textSecondary, flex: 1 },
   summaryValue: { fontWeight: '600', color: colors.text, flex: 1, textAlign: 'right' },
   totalRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
