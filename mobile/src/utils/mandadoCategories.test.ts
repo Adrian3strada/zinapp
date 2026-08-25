@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createMandadoItem,
   formatMandadoItem,
+  mandadoDraftToItem,
   mandadoItemToPayload,
 } from './mandadoCategories';
 
@@ -22,6 +23,41 @@ describe('mandadoCategories', () => {
     const item = createMandadoItem({ name: 'Cloro', category: 'limpieza', notes: 'marca X' });
     expect(item.quantity).toBeUndefined();
     expect(item.notes).toBe('marca X');
+  });
+
+  it('mandadoDraftToItem agrega solo con el nombre, también en modo peso', () => {
+    const article = mandadoDraftToItem({
+      name: 'Salsa Valentina',
+      mode: 'article',
+      unit: 'kg',
+      articleUnit: 'pza',
+      category: 'abarrotes',
+    });
+    expect(article.ok).toBe(true);
+    if (article.ok) {
+      expect(article.item.name).toBe('Salsa Valentina');
+      expect(article.item.quantity).toBeUndefined();
+    }
+
+    const weight = mandadoDraftToItem({
+      name: '  Jitomate  ',
+      mode: 'weight',
+      unit: 'kg',
+      articleUnit: 'pza',
+      category: 'verdura',
+    });
+    expect(weight.ok).toBe(true);
+    if (weight.ok) expect(weight.item.name).toBe('Jitomate');
+  });
+
+  it('mandadoDraftToItem rechaza nombre vacío', () => {
+    expect(mandadoDraftToItem({
+      name: '   ',
+      mode: 'article',
+      unit: 'kg',
+      articleUnit: 'pza',
+      category: 'abarrotes',
+    }).ok).toBe(false);
   });
 
   it('mandadoItemToPayload respeta notas y omite cantidad vacía', () => {

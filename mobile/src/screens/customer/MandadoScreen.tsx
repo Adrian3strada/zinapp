@@ -27,13 +27,12 @@ import { spacing } from '../../theme/spacing';
 import type { MandadoCategory, MandadoItem, MandadoUnit } from '../../utils/mandadoCategories';
 import {
   categoryArticleUnits,
-  categoryDefaultMode,
-  createMandadoItem,
   formatMandadoItem,
   getCategoryMeta,
   MANDADO_CATEGORIES,
   MANDADO_STEPS,
   MANDADO_STORE_SUGGESTIONS,
+  mandadoDraftToItem,
   mandadoItemToPayload,
   QUICK_QTY_ARTICLE,
   QUICK_QTY_WEIGHT_KG,
@@ -102,15 +101,8 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
 
   const selectCategory = useCallback((key: MandadoCategory) => {
     setDraftCategory(key);
-    const mode = categoryDefaultMode(key);
-    setDraftMode(mode);
-    setDraftQty('');
-    if (mode === 'weight') {
-      setDraftUnit('kg');
-    } else {
-      const units = categoryArticleUnits(key);
-      setDraftArticleUnit(units[0] ?? 'pza');
-    }
+    const units = categoryArticleUnits(key);
+    setDraftArticleUnit((current) => (units.includes(current) ? current : (units[0] ?? 'pza')));
   }, []);
 
   const resetDraft = useCallback(() => {
@@ -129,66 +121,33 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
     setDraftName(text);
   }, []);
 
-  const addItem = useCallback(() => {
-    const name = (nameRef.current.trim() || lastNameRef.current.trim() || draftName.trim()).slice(0, 80);
-    if (!name) {
-      appAlert('Producto', 'Escribe qué quieres en el mandado.');
-      return;
-    }
-    const notes = draftNotes.trim().slice(0, 120) || undefined;
+  const readDraftItem = useCallback(() => {
+    return mandadoDraftToItem({
+      name: nameRef.current || lastNameRef.current || draftName,
+      notes: draftNotes,
+      quantity: draftQty,
+      mode: draftMode,
+      unit: draftUnit,
+      articleUnit: draftArticleUnit,
+      category: draftCategory,
+    });
+  }, [draftArticleUnit, draftCategory, draftMode, draftName, draftNotes, draftQty, draftUnit]);
 
-    if (draftMode === 'weight') {
-      const qty = parseFloat(draftQty.replace(',', '.'));
-      if (!Number.isFinite(qty) || qty <= 0) {
-        appAlert('Cantidad', 'Indica kilos o gramos válidos.');
-        return;
-      }
-      setItems((prev) => [
-        ...prev,
-        createMandadoItem({
-          name,
-          notes,
-          quantity: String(Number(qty.toFixed(2))),
-          unit: draftUnit === 'pza' || draftUnit === 'lt' || draftUnit === 'paq' ? 'kg' : draftUnit,
-          category: draftCategory,
-        }),
-      ]);
-    } else {
-      const qtyText = draftQty.trim();
-      if (qtyText) {
-        const qty = parseFloat(qtyText.replace(',', '.'));
-        if (!Number.isFinite(qty) || qty <= 0) {
-          appAlert('Cantidad', 'Indica un número válido o déjalo vacío.');
-          return;
-        }
-        setItems((prev) => [
-          ...prev,
-          createMandadoItem({
-            name,
-            notes,
-            quantity: String(Number.isInteger(qty) ? qty : Number(qty.toFixed(2))),
-            unit: draftArticleUnit,
-            category: draftCategory,
-          }),
-        ]);
-      } else {
-        setItems((prev) => [
-          ...prev,
-          createMandadoItem({ name, notes, category: draftCategory }),
-        ]);
-      }
+  const addItem = useCallback(() => {
+    const result = readDraftItem();
+    if (!result.ok) {
+      appAlert(
+        result.reason === 'bad_qty' ? 'Cantidad' : 'Producto',
+        result.reason === 'bad_qty'
+          ? 'Indica un número válido o déjalo vacío.'
+          : 'Escribe qué quieres en el mandado.',
+      );
+      return false;
     }
+    setItems((prev) => [...prev, result.item]);
     resetDraft();
-  }, [
-    draftArticleUnit,
-    draftCategory,
-    draftMode,
-    draftName,
-    draftNotes,
-    draftQty,
-    draftUnit,
-    resetDraft,
-  ]);
+    return true;
+  }, [readDraftItem, resetDraft]);
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
@@ -251,8 +210,10 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
       ]);
       return;
     }
-    if (items.length === 0) {
-      appAlert('Lista vacía', 'Agrega al menos un producto.');
+    const pending = readDraftItem();
+    const list = pending.ok ? [...items, pending.item] : items;
+    if (list.length === 0) {
+      appAlert('Lista vacía', 'Escribe al menos un producto.');
       return;
     }
     if (!preferredStores.trim()) {
@@ -291,7 +252,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
       const { data } = await shipmentApi.createMandado(
         {
           kind: 'mandado',
-          mandado_items: items.map(mandadoItemToPayload),
+          mandado_items: list.map(mandadoItemToPayload),
           preferred_stores: preferredStores.trim(),
           estimated_budget: estimatedBudget.trim() || undefined,
           pickup_notes: pickupNotes.trim() || undefined,
@@ -322,6 +283,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
     paymentMethod,
     pickupNotes,
     preferredStores,
+    readDraftItem,
     requestLogin,
     user,
   ]);
@@ -339,7 +301,9 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
           <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
             <View style={styles.footerInfo}>
               <Text style={styles.footerLabel} numberOfLines={1}>
-                {items.length > 0 ? `${items.length} producto${items.length === 1 ? '' : 's'} · servicio + entrega` : 'Servicio + entrega'}
+                {items.length + (hasDraft ? 1 : 0) > 0
+                  ? `${items.length + (hasDraft ? 1 : 0)} producto${items.length + (hasDraft ? 1 : 0) === 1 ? '' : 's'} · servicio + entrega`
+                  : 'Servicio + entrega'}
               </Text>
               <Text style={styles.footerPrice} numberOfLines={1}>
                 {formatCurrency(deliveryFee)}
@@ -347,19 +311,11 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             </View>
             <Button
               title={
-                items.length > 0
+                items.length > 0 || hasDraft
                   ? `Confirmar mandado · ${formatCurrency(deliveryFee)}`
-                  : hasDraft
-                    ? 'Agregar a la lista'
-                    : 'Agrega productos'
+                  : 'Escribe qué quieres'
               }
-              onPress={() => {
-                if (items.length === 0) {
-                  addItem();
-                  return;
-                }
-                void handleSubmit();
-              }}
+              onPress={() => { void handleSubmit(); }}
               loading={submitting}
               disabled={items.length === 0 && !hasDraft}
               size="lg"
@@ -404,9 +360,9 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
         </View>
 
         <SectionCard
-          title="Tu lista"
+          title="Qué compras"
           icon="list-outline"
-          badge={items.length > 0 ? String(items.length) : undefined}
+          badge={items.length + (hasDraft ? 1 : 0) > 0 ? String(items.length + (hasDraft ? 1 : 0)) : undefined}
           action={
             items.length > 0 ? (
               <Pressable onPress={clearList} hitSlop={8}>
@@ -415,44 +371,13 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             ) : null
           }
         >
-          {items.length === 0 ? (
-            <Text style={styles.emptyHint}>
-              Agrega productos abajo. Puedes poner solo el nombre o indicar cantidad y peso.
-            </Text>
-          ) : (
-            <View style={styles.itemsList}>
-              {items.map((item, index) => {
-                const cat = getCategoryMeta(item.category);
-                return (
-                  <View
-                    key={item.id}
-                    style={[styles.itemRow, index < items.length - 1 && styles.itemRowBorder]}
-                  >
-                    <Text style={styles.itemEmoji}>{cat?.emoji ?? '🛒'}</Text>
-                    <View style={styles.itemCopy}>
-                      <Text style={styles.itemText} numberOfLines={2}>
-                        {formatMandadoItem(item)}
-                      </Text>
-                      <Text style={styles.itemMeta} numberOfLines={2}>
-                        {item.notes ? item.notes : cat?.label}
-                      </Text>
-                    </View>
-                    <Pressable onPress={() => removeItem(item.id)} hitSlop={8}>
-                      <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
-          )}
-
           <Text style={styles.sectionLabel}>Categoría</Text>
           <ScrollView
             horizontal
             nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.categoryRow}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
           >
             {MANDADO_CATEGORIES.map((cat) => (
               <CategoryIconTile
@@ -474,16 +399,13 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
                 nestedScrollEnabled
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.examplesRow}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
               >
                 {categoryMeta.examples.map((ex) => (
                   <Pressable
                     key={ex}
                     style={styles.exampleChip}
-                    onPress={() => {
-                      setName(ex);
-                      selectCategory(categoryMeta.key);
-                    }}
+                    onPress={() => setName(ex)}
                   >
                     <Text style={styles.exampleChipText}>{ex}</Text>
                   </Pressable>
@@ -493,6 +415,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
           ) : null}
 
           <View style={styles.addCard}>
+            <Text style={styles.sectionLabel}>Producto</Text>
             <View style={styles.modeRow}>
               {([
                 { key: 'article' as const, label: 'Artículo', icon: 'cube-outline' as const },
@@ -526,11 +449,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
               style={styles.nameInput}
               value={draftName}
               onChangeText={setName}
-              placeholder={
-                draftMode === 'weight'
-                  ? '¿Qué producto? Ej. jitomate, pollo, frijol…'
-                  : '¿Qué artículo? Ej. leche, pan, cloro, medicina…'
-              }
+              placeholder="Ej. salsa Valentina, leche, jitomate…"
               placeholderTextColor={colors.textMuted}
               maxLength={80}
               returnKeyType="done"
@@ -552,7 +471,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
               nestedScrollEnabled
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.quickRow}
-              keyboardShouldPersistTaps="handled"
+              keyboardShouldPersistTaps="always"
             >
               {quickPresets.map((preset) => {
                 const label = draftMode === 'weight' ? `${preset} kg` : String(preset);
@@ -569,16 +488,14 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
                   </Pressable>
                 );
               })}
-              {draftMode === 'article' ? (
-                <Pressable
-                  style={[styles.quickChip, !draftQty && styles.quickChipActive]}
-                  onPress={() => setDraftQty('')}
-                >
-                  <Text style={[styles.quickChipText, !draftQty && styles.quickChipTextActive]}>
-                    Sin cantidad
-                  </Text>
-                </Pressable>
-              ) : null}
+              <Pressable
+                style={[styles.quickChip, !draftQty && styles.quickChipActive]}
+                onPress={() => setDraftQty('')}
+              >
+                <Text style={[styles.quickChipText, !draftQty && styles.quickChipTextActive]}>
+                  Sin cantidad
+                </Text>
+              </Pressable>
             </ScrollView>
 
             {draftMode === 'weight' ? (
@@ -604,64 +521,100 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
                     </Pressable>
                   ))}
                 </View>
-                <Pressable style={styles.addBtn} onPress={addItem}>
-                  <Ionicons name="add" size={22} color="#FFF" />
-                </Pressable>
               </View>
             ) : (
-              <View style={styles.articleBlock}>
-                <View style={styles.addControls}>
-                  <TextInput
-                    style={styles.qtyInputOptional}
-                    value={draftQty}
-                    onChangeText={setDraftQty}
-                    keyboardType="decimal-pad"
-                    placeholder="Cantidad (opcional)"
-                    placeholderTextColor={colors.textMuted}
-                  />
-                  {draftQty.trim() ? (
-                    <View style={styles.unitRow}>
-                      {articleUnits.map((unit) => (
-                        <Pressable
-                          key={unit}
-                          style={[styles.unitBtn, draftArticleUnit === unit && styles.unitBtnActive]}
-                          onPress={() => setDraftArticleUnit(unit)}
+              <View style={styles.addControls}>
+                <TextInput
+                  style={styles.qtyInputOptional}
+                  value={draftQty}
+                  onChangeText={setDraftQty}
+                  keyboardType="decimal-pad"
+                  placeholder="Cantidad (opcional)"
+                  placeholderTextColor={colors.textMuted}
+                />
+                {draftQty.trim() ? (
+                  <View style={styles.unitRow}>
+                    {articleUnits.map((unit) => (
+                      <Pressable
+                        key={unit}
+                        style={[styles.unitBtn, draftArticleUnit === unit && styles.unitBtnActive]}
+                        onPress={() => setDraftArticleUnit(unit)}
+                      >
+                        <Text
+                          style={[
+                            styles.unitBtnText,
+                            draftArticleUnit === unit && styles.unitBtnTextActive,
+                          ]}
                         >
-                          <Text
-                            style={[
-                              styles.unitBtnText,
-                              draftArticleUnit === unit && styles.unitBtnTextActive,
-                            ]}
-                          >
-                            {ARTICLE_UNIT_LABELS[unit]}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : null}
-                  <Pressable style={styles.addBtn} onPress={addItem}>
-                    <Ionicons name="add" size={22} color="#FFF" />
-                  </Pressable>
-                </View>
-                <Pressable style={styles.addTextBtn} onPress={addItem}>
-                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-                  <Text style={styles.addTextBtnLabel}>Agregar a la lista</Text>
-                </Pressable>
+                          {ARTICLE_UNIT_LABELS[unit]}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             )}
+
+            <Pressable style={styles.addTextBtn} onPress={addItem}>
+              <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+              <Text style={styles.addTextBtnLabel}>Agregar otro a la lista</Text>
+            </Pressable>
           </View>
+
+          <Text style={styles.sectionLabel}>En tu lista</Text>
+          {items.length === 0 && !hasDraft ? (
+            <Text style={styles.emptyHint}>
+              Lo que escribas arriba ya cuenta como producto. Confirma el mandado o pulsa agregar otro.
+            </Text>
+          ) : (
+            <View style={styles.itemsList}>
+              {items.map((item, index) => {
+                const cat = getCategoryMeta(item.category);
+                return (
+                  <View
+                    key={item.id}
+                    style={[styles.itemRow, (index < items.length - 1 || hasDraft) && styles.itemRowBorder]}
+                  >
+                    <Text style={styles.itemEmoji}>{cat?.emoji ?? '🛒'}</Text>
+                    <View style={styles.itemCopy}>
+                      <Text style={styles.itemText} numberOfLines={2}>
+                        {formatMandadoItem(item)}
+                      </Text>
+                      <Text style={styles.itemMeta} numberOfLines={2}>
+                        {item.notes ? item.notes : cat?.label}
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => removeItem(item.id)} hitSlop={8}>
+                      <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                );
+              })}
+              {hasDraft ? (
+                <View style={styles.itemRow}>
+                  <Text style={styles.itemEmoji}>{categoryMeta?.emoji ?? '🛒'}</Text>
+                  <View style={styles.itemCopy}>
+                    <Text style={styles.itemText} numberOfLines={2}>
+                      {draftName.trim() || lastNameRef.current}
+                    </Text>
+                    <Text style={styles.itemMeta}>Se incluye al confirmar</Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          )}
         </SectionCard>
 
         <SectionCard title="¿Dónde compramos?" icon="storefront-outline">
           <Text style={styles.storeHint}>
-            Nombre de la tienda, mercado o abarrotes. El repartidor irá ahí.
+            Elige un atajo o escribe la tienda, verdulería o abarrotes que quieras. El repartidor irá ahí.
           </Text>
           <ScrollView
             horizontal
             nestedScrollEnabled
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.examplesRow}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
           >
             {MANDADO_STORE_SUGGESTIONS.map((store) => (
               <Pressable
@@ -677,7 +630,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
             style={styles.storeInput}
             value={preferredStores}
             onChangeText={setPreferredStores}
-            placeholder="Ej. Abarrotes Don Pepe, Mercado municipal…"
+            placeholder="Ej. Verdulería de la esquina, Abarrotes Don Pepe…"
             placeholderTextColor={colors.textMuted}
             maxLength={120}
             autoCapitalize="words"
@@ -1019,7 +972,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 4,
+    minHeight: 44,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    backgroundColor: colors.primaryLight,
   },
   addTextBtnLabel: { fontSize: 14, fontWeight: '800', color: colors.primary },
   textArea: {

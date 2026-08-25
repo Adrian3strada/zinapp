@@ -23,10 +23,8 @@ export interface MandadoItem {
 
 export const MANDADO_STORE_SUGGESTIONS = [
   'Mercado municipal',
-  'Central de abastos',
-  'Abarrotes del barrio',
-  'Soriana',
   'Bodega Aurrera',
+  '3 B',
 ] as const;
 
 export const MANDADO_STEPS = [
@@ -184,6 +182,45 @@ export function createMandadoItem(
     unit: hasMeasure ? unit : undefined,
     category: partial.category ?? 'otro',
     notes: notes || undefined,
+  };
+}
+
+export type MandadoDraft = {
+  name: string;
+  notes?: string;
+  quantity?: string;
+  mode: 'article' | 'weight';
+  unit: MandadoUnit;
+  articleUnit: MandadoUnit;
+  category: MandadoCategory;
+};
+
+/** Convierte lo escrito en el formulario. La cantidad es opcional en ambos modos. */
+export function mandadoDraftToItem(
+  draft: MandadoDraft,
+): { ok: true; item: MandadoItem } | { ok: false; reason: 'empty_name' | 'bad_qty' } {
+  const name = draft.name.trim().slice(0, 80);
+  if (!name) return { ok: false, reason: 'empty_name' };
+  const notes = draft.notes?.trim().slice(0, 120) || undefined;
+  const qtyText = (draft.quantity ?? '').trim().replace(',', '.');
+  if (!qtyText) {
+    return { ok: true, item: createMandadoItem({ name, notes, category: draft.category }) };
+  }
+  const qty = parseFloat(qtyText);
+  if (!Number.isFinite(qty) || qty <= 0) return { ok: false, reason: 'bad_qty' };
+  const unit =
+    draft.mode === 'weight'
+      ? (draft.unit === 'g' || draft.unit === 'kg' ? draft.unit : 'kg')
+      : draft.articleUnit;
+  return {
+    ok: true,
+    item: createMandadoItem({
+      name,
+      notes,
+      quantity: String(Number.isInteger(qty) ? qty : Number(qty.toFixed(2))),
+      unit,
+      category: draft.category,
+    }),
   };
 }
 
