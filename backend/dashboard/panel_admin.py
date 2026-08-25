@@ -12,9 +12,9 @@ from dashboard.access import can_access_panel
 class PanelAdminSite(AdminSite):
     """Admin de Django integrado al panel de operaciones (sin /admin/ público)."""
 
-    site_header = 'ZinApp — Gestión de datos'
+    site_header = 'ZinApp — Consola técnica'
     site_title = 'ZinApp Panel'
-    index_title = 'Catálogo y registros del sistema'
+    index_title = 'Consola técnica'
     enable_nav_sidebar = False
 
     def has_permission(self, request):
@@ -34,7 +34,8 @@ class PanelAdminSite(AdminSite):
     def each_context(self, request):
         context = super().each_context(request)
         context['nav'] = 'gestion'
-        context['page_title'] = 'Gestión de datos'
+        context['nav_group'] = 'sistema'
+        context['page_title'] = 'Consola técnica'
         return context
 
 

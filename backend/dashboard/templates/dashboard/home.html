@@ -16,49 +16,161 @@
 
   <header class="ops-page-head">
     <div>
-      <h1 class="ops-page-title">Resumen</h1>
-      <p class="ops-page-sub">Operación y ventas · Zinapécuaro</p>
+      <h1 class="ops-page-title">Hoy</h1>
+      <p class="ops-page-sub">{{ today|date:"l j \d\e F Y" }} · Zinapécuaro</p>
     </div>
   </header>
 
-  <form class="ops-filters" method="get" aria-label="Filtros de ventas">
-    <div class="ops-filter-field">
-      <label for="period">Periodo</label>
-      <select id="period" name="period" class="ops-select" onchange="if(this.value!=='range')this.form.submit()">
-        <option value="day" {% if financial_report.period == 'day' %}selected{% endif %}>Hoy</option>
-        <option value="week" {% if financial_report.period == 'week' %}selected{% endif %}>Semana</option>
-        <option value="month" {% if financial_report.period == 'month' %}selected{% endif %}>Mes</option>
-        <option value="range" {% if financial_report.period == 'range' %}selected{% endif %}>Rango</option>
-        <option value="all" {% if financial_report.period == 'all' %}selected{% endif %}>Todo</option>
-      </select>
-    </div>
-    <div class="ops-filter-field">
-      <label for="start">Fecha inicial</label>
-      <input id="start" name="start" type="date" class="ops-select" value="{{ financial_report.start_date|date:'Y-m-d' }}">
-    </div>
-    <div class="ops-filter-field">
-      <label for="end">Fecha final</label>
-      <input id="end" name="end" type="date" class="ops-select" value="{{ financial_report.end_date|date:'Y-m-d' }}">
-    </div>
-    <div class="ops-filter-actions">
-      <button
-        type="submit"
-        class="btn btn-primary btn-sm ops-filter-btn"
-        onclick="this.form.period.value='range'"
-      >Aplicar</button>
-    </div>
-  </form>
+  <div class="ops-kpi-grid ops-kpi-grid-primary" role="group" aria-label="Indicadores de hoy">
+    {% url 'dashboard:orders' as orders_url %}
+    {% url 'dashboard:drivers' as drivers_url %}
+    {% url 'dashboard:restaurants' as restaurants_url %}
+    {% url 'dashboard:customers' as customers_url %}
+    {% url 'gestion:shipments' as shipments_url %}
+    {% include "dashboard/includes/metric_card.html" with label="Pedidos hoy" value=orders_today meta="Creados hoy" change=kpi_orders_today_change href=orders_url accent="1" %}
+    {% include "dashboard/includes/metric_card.html" with label="Ventas" value=sales_today money="1" meta="Entregados y cobrados" change=kpi_sales_today_change %}
+    {% include "dashboard/includes/metric_card.html" with label="Pedidos activos" value=orders_active meta="En curso ahora" href=orders_url %}
+    {% include "dashboard/includes/metric_card.html" with label="Repartidores disponibles" value=drivers_available meta=kpi_drivers_meta href=drivers_url %}
+  </div>
 
-  <div class="ops-kpi-grid" role="group" aria-label="Métricas principales">
-    <article class="ops-kpi ops-kpi-accent">
+  <div class="ops-kpi-grid ops-kpi-grid-secondary" role="group" aria-label="Operación complementaria">
+    {% include "dashboard/includes/metric_card.html" with label="Pendientes" value=orders_pending meta="Sin aceptar" href=orders_url|add:"?status=pending" %}
+    {% include "dashboard/includes/metric_card.html" with label="Entregados hoy" value=orders_delivered_today meta="Completados" %}
+    {% include "dashboard/includes/metric_card.html" with label="Restaurantes abiertos" value=restaurants_open meta=kpi_restaurants_meta href=restaurants_url %}
+    {% include "dashboard/includes/metric_card.html" with label="Mandados activos" value=mandados_active meta="En curso" href=shipments_url|add:"?kind=mandado" %}
+    {% include "dashboard/includes/metric_card.html" with label="Envíos activos" value=envios_active meta="En curso" href=shipments_url|add:"?kind=courier" %}
+    {% include "dashboard/includes/metric_card.html" with label="Clientes nuevos" value=customers_today meta="Registros de hoy" change=kpi_customers_today_change href=customers_url %}
+  </div>
+
+  <section class="ops-block ops-block-attention">
+    <header class="ops-block-head">
+      <h2>Requiere atención</h2>
+      <p>Pendientes accionables</p>
+    </header>
+    {% if attention_items %}
+    <div class="ops-alerts" role="status">
+      {% for item in attention_items %}
+      <a class="ops-alert ops-alert-{{ item.tone }}" href="{{ item.url }}">
+        {{ item.title }}
+        <span aria-hidden="true">→</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <ul class="ops-queue">
+      {% for order in pending_orders %}
+      <li>
+        <a href="{% url 'dashboard:order-detail' order.pk %}">
+          <span class="ops-tag ops-tag-red">Pedido</span>
+          <span class="ops-queue-title">{{ order.display_ref }} · {{ order.restaurant.name }}</span>
+          <span class="ops-queue-meta">{{ order.created_at|timesince }}</span>
+        </a>
+      </li>
+      {% endfor %}
+      {% for order in failed_payments %}
+      <li>
+        <a href="{% url 'dashboard:order-detail' order.pk %}">
+          <span class="ops-tag ops-tag-red">Pago</span>
+          <span class="ops-queue-title">{{ order.display_ref }} · cobro fallido</span>
+          <span class="ops-queue-meta">{{ order.get_payment_method_display }}</span>
+        </a>
+      </li>
+      {% endfor %}
+      {% for promo in expired_promos %}
+      <li>
+        <a href="{% url 'gestion:promotion-edit' promo.pk %}">
+          <span class="ops-tag ops-tag-amber">Promo</span>
+          <span class="ops-queue-title">{{ promo.product.name }} · {{ promo.restaurant.name }}</span>
+          <span class="ops-queue-meta">Venció {{ promo.valid_until|date:"d/m" }}</span>
+        </a>
+      </li>
+      {% endfor %}
+      {% if pending_restaurants %}
+        {% for restaurant in pending_restaurants %}
+        <li>
+          <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">
+            <span class="ops-tag ops-tag-amber">Local</span>
+            <span class="ops-queue-title">{{ restaurant.name }}</span>
+            <span class="ops-queue-meta">Por activar</span>
+          </a>
+        </li>
+        {% endfor %}
+      {% endif %}
+      {% if not attention_items and not pending_orders and not failed_payments and not expired_promos and not pending_restaurants %}
+      <li class="ops-queue-ok">Todo al día. Sin pendientes operativos.</li>
+      {% endif %}
+    </ul>
+  </section>
+
+  <section class="ops-block">
+    <header class="ops-block-head ops-block-head-row">
+      <div>
+        <h2>Operación actual</h2>
+        <p>{% if orders_active %}{{ orders_active }} pedido{{ orders_active|pluralize:"s" }} en curso{% else %}Sin pedidos activos{% endif %}</p>
+      </div>
+      <a href="{% url 'dashboard:orders' %}" class="ops-text-link">Ver todos</a>
+    </header>
+    <div class="table-responsive zin-table-wrap">
+      <table class="ops-table ops-table-compact">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Cliente</th>
+            <th>Restaurante</th>
+            <th class="d-none d-md-table-cell">Repartidor</th>
+            <th class="text-right">Total</th>
+            <th>Estado</th>
+            <th class="d-none d-lg-table-cell">Pago</th>
+            <th class="d-none d-sm-table-cell">Hora</th>
+            <th>Tiempo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in active_pipeline_orders %}
+          <tr>
+            <td><a class="ops-text-link" href="{% url 'dashboard:order-detail' order.pk %}">{{ order.display_ref }}</a></td>
+            <td>{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}—{% endif %}</td>
+            <td>{{ order.restaurant.name }}</td>
+            <td class="d-none d-md-table-cell">{% if order.driver %}{{ order.driver.username }}{% else %}<span class="ops-dim">Sin asignar</span>{% endif %}</td>
+            <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
+            <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
+            <td class="d-none d-lg-table-cell ops-dim">{{ order.get_payment_method_display }}</td>
+            <td class="d-none d-sm-table-cell ops-dim">{{ order.created_at|date:"H:i" }}</td>
+            <td class="ops-dim">{{ order.created_at|timesince }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="ops-table-empty">No hay pedidos en curso. <a href="{% url 'dashboard:orders' %}">Ver pedidos recientes</a></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <header class="ops-section-head">
+    <div>
+      <h2 class="ops-section-title">Ventas del periodo</h2>
+      <p class="ops-page-sub">
+        {% if financial_report.period == 'day' %}Hoy
+        {% elif financial_report.period == 'week' %}Esta semana
+        {% elif financial_report.period == 'all' %}Histórico
+        {% elif financial_report.period == 'range' %}Rango elegido
+        {% else %}Mes en curso{% endif %}
+        · pedidos entregados y cobrados · comisión 10%
+      </p>
+    </div>
+    <a href="{% url 'dashboard:reports' %}" class="ops-text-link">Ver reportes</a>
+  </header>
+
+  <div class="ops-kpi-grid ops-kpi-grid-finance" role="group" aria-label="Métricas del periodo">
+    <article class="ops-kpi">
       <span class="ops-kpi-label">Ventas del periodo</span>
       <strong class="ops-kpi-value">${{ financial_report.total_ventas_productos|floatformat:0|intcomma }}</strong>
       <span class="ops-kpi-meta">Productos cobrados</span>
     </article>
     <article class="ops-kpi">
-      <span class="ops-kpi-label">Ganancia por comisión</span>
+      <span class="ops-kpi-label">Comisión 10%</span>
       <strong class="ops-kpi-value">${{ financial_report.ganancia_10_por_ciento|floatformat:0|intcomma }}</strong>
-      <span class="ops-kpi-meta">10% sobre ventas</span>
+      <span class="ops-kpi-meta">Sobre ventas</span>
     </article>
     <article class="ops-kpi">
       <span class="ops-kpi-label">Ganancia por envíos</span>
@@ -66,299 +178,20 @@
       <span class="ops-kpi-meta">Del periodo</span>
     </article>
     <article class="ops-kpi">
-      <span class="ops-kpi-label">Pedidos</span>
+      <span class="ops-kpi-label">Pedidos cobrados</span>
       <strong class="ops-kpi-value">{{ financial_report.cantidad_pedidos_completados }}</strong>
-      <span class="ops-kpi-meta">{{ orders_active }} en curso · {{ orders_today }} hoy</span>
-    </article>
-    <article class="ops-kpi">
-      <span class="ops-kpi-label">Restaurantes activos</span>
-      <strong class="ops-kpi-value">{{ restaurants_active }}<span class="ops-muted">/{{ restaurants_total }}</span></strong>
-      <span class="ops-kpi-meta">{% if restaurants_pending %}{{ restaurants_pending }} por activar{% else %}Catálogo activo{% endif %}</span>
-    </article>
-    <article class="ops-kpi">
-      <span class="ops-kpi-label">Repartidores disponibles</span>
-      <strong class="ops-kpi-value">{{ drivers_available }}<span class="ops-muted">/{{ drivers_total }}</span></strong>
-      <span class="ops-kpi-meta">En línea ahora</span>
+      <span class="ops-kpi-meta">Entregados y pagados</span>
     </article>
   </div>
-
-  {% if pending_restaurants %}
-  <section class="ops-block ops-block-pending">
-    <header class="ops-block-head ops-block-head-row">
-      <div>
-        <h2>Locales pendientes</h2>
-        <p>{{ restaurants_pending }} por activar</p>
-      </div>
-      <a href="{% url 'dashboard:restaurants' %}?active=0" class="ops-text-link">Ver todos</a>
-    </header>
-    <div class="table-responsive">
-      <table class="ops-table ops-table-compact">
-        <thead>
-          <tr>
-            <th>Negocio</th>
-            <th>Dueño</th>
-            <th>Fecha</th>
-            <th class="text-right">Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for restaurant in pending_restaurants %}
-          <tr>
-            <td class="ops-cell-strong">{{ restaurant.name }}</td>
-            <td>{{ restaurant.owner.username }}</td>
-            <td class="ops-dim">{{ restaurant.created_at|date:"d/m/Y" }}</td>
-            <td class="text-right">
-              <a class="ops-btn-ghost" href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">Revisar</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
-
-  {% if orders_pending or restaurants_pending or disputes_pending or drivers_pending %}
-  <div class="ops-alerts" role="status">
-    {% if orders_pending %}
-    <a class="ops-alert ops-alert-danger" href="{% url 'dashboard:orders' %}?status=pending">
-      <strong>{{ orders_pending }}</strong> pedido{{ orders_pending|pluralize:"s" }} pendiente{{ orders_pending|pluralize:"s" }}
-      <span aria-hidden="true">→</span>
-    </a>
-    {% endif %}
-    {% if restaurants_pending %}
-    <a class="ops-alert ops-alert-warn" href="{% url 'dashboard:restaurants' %}?active=0">
-      <strong>{{ restaurants_pending }}</strong> local{{ restaurants_pending|pluralize:"es" }} por activar
-      <span aria-hidden="true">→</span>
-    </a>
-    {% endif %}
-    {% if drivers_pending %}
-    <a class="ops-alert ops-alert-warn" href="{% url 'dashboard:drivers' %}?verification=pending">
-      <strong>{{ drivers_pending }}</strong> repartidor{{ drivers_pending|pluralize:"es" }} por revisar
-      <span aria-hidden="true">→</span>
-    </a>
-    {% endif %}
-    {% if disputes_pending %}
-    <a class="ops-alert ops-alert-warn" href="{% url 'gestion:disputes' %}?status=pending">
-      <strong>{{ disputes_pending }}</strong> disputa{{ disputes_pending|pluralize:"s" }} abierta{{ disputes_pending|pluralize:"s" }}
-      <span aria-hidden="true">→</span>
-    </a>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <div class="ops-split">
-    <section class="ops-block ops-block-chart">
-      <header class="ops-block-head">
-        <h2>Ventas por día</h2>
-        <p>Productos cobrados · pedidos entregados y pagados</p>
-      </header>
-      {% if financial_report.by_day_chart %}
-      <div class="ops-bars" role="img" aria-label="Gráfica de ventas diarias">
-        {% for row in financial_report.by_day_chart %}
-        <div class="ops-bar-col" title="{{ row.day|date:'d/m/Y' }}: ${{ row.product_sales|floatformat:2 }} · {{ row.orders_count }} pedido{{ row.orders_count|pluralize:'s' }}">
-          <div class="ops-bar-track">
-            <div class="ops-bar-fill" style="height: {% widthratio row.product_sales financial_report.by_day_max 100 %}%;"></div>
-          </div>
-          <span class="ops-bar-label">{{ row.day|date:"j" }}</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="ops-empty">Sin ventas en este periodo.</div>
-      {% endif %}
-    </section>
-
-    <section class="ops-block ops-block-queue">
-      <header class="ops-block-head">
-        <h2>Requiere atención</h2>
-        <p>Cola operativa</p>
-      </header>
-      <ul class="ops-queue">
-        {% if pending_orders %}
-          {% for order in pending_orders %}
-          <li>
-            <a href="{% url 'dashboard:order-detail' order.pk %}">
-              <span class="ops-tag ops-tag-red">Pedido</span>
-              <span class="ops-queue-title">#{{ order.code|default:order.id }} · {{ order.restaurant.name }}</span>
-              <span class="ops-queue-meta">{{ order.created_at|timesince }}</span>
-            </a>
-          </li>
-          {% endfor %}
-        {% endif %}
-        {% if drivers_pending %}
-        <li>
-          <a href="{% url 'dashboard:drivers' %}?verification=pending">
-            <span class="ops-tag ops-tag-amber">Drivers</span>
-            <span class="ops-queue-title">{{ drivers_pending }} por revisar</span>
-            <span class="ops-queue-meta">Verificación</span>
-          </a>
-        </li>
-        {% endif %}
-        {% if disputes_pending %}
-        <li>
-          <a href="{% url 'gestion:disputes' %}?status=pending">
-            <span class="ops-tag ops-tag-amber">Disputa</span>
-            <span class="ops-queue-title">{{ disputes_pending }} abierta{{ disputes_pending|pluralize:"s" }}</span>
-            <span class="ops-queue-meta">Reembolso</span>
-          </a>
-        </li>
-        {% endif %}
-        {% if not pending_orders and not drivers_pending and not disputes_pending %}
-        <li class="ops-queue-ok">Todo al día. Sin pendientes.</li>
-        {% endif %}
-      </ul>
-    </section>
-  </div>
-
-  <section class="ops-block">
-    <header class="ops-block-head ops-block-head-row">
-      <div>
-        <h2>Actividad reciente</h2>
-        <p>{% if orders_active %}{{ orders_active }} en curso · {% endif %}últimos pedidos</p>
-      </div>
-      <a href="{% url 'dashboard:orders' %}" class="ops-text-link">Ver todos</a>
-    </header>
-    <div class="table-responsive">
-      <table class="ops-table ops-table-compact">
-        <thead>
-          <tr>
-            <th>Pedido</th>
-            <th>Local</th>
-            <th>Cliente</th>
-            <th>Estado</th>
-            <th class="text-right">Total</th>
-            <th>Cuándo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for order in recent_orders %}
-          <tr>
-            <td><a class="ops-text-link" href="{% url 'dashboard:order-detail' order.pk %}">#{{ order.code|default:order.id }}</a></td>
-            <td>{{ order.restaurant.name }}</td>
-            <td>{{ order.customer.username }}</td>
-            <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
-            <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
-            <td class="ops-dim">{{ order.created_at|date:"d/m H:i" }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="6" class="ops-table-empty">Aún no hay pedidos.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <div class="ops-split ops-split-secondary">
-    <section class="ops-block">
-      <header class="ops-block-head">
-        <h2>Por estado</h2>
-        <p>Distribución histórica</p>
-      </header>
-      <div class="ops-status-bars">
-        {% if has_order_status_data %}
-          {% for item in status_breakdown %}
-            {% if item.count > 0 %}
-            <div class="ops-status-row">
-              <span>{{ item.label }}</span>
-              <div class="ops-status-track"><div class="ops-status-fill {{ item.status }}" style="width: {% widthratio item.count status_breakdown_max 100 %}%;"></div></div>
-              <strong>{{ item.count }}</strong>
-            </div>
-            {% endif %}
-          {% endfor %}
-        {% else %}
-        <div class="ops-empty">Sin pedidos.</div>
-        {% endif %}
-      </div>
-    </section>
-
-    <section class="ops-block">
-      <header class="ops-block-head ops-block-head-row">
-        <div>
-          <h2>Top restaurantes</h2>
-          <p>Ventas del periodo</p>
-        </div>
-        <a href="{% url 'dashboard:restaurants' %}" class="ops-text-link">Catálogo</a>
-      </header>
-      <div class="table-responsive">
-        <table class="ops-table ops-table-compact">
-          <thead>
-            <tr>
-              <th>Restaurante</th>
-              <th>Pedidos</th>
-              <th class="text-right">Ventas</th>
-              <th class="text-right">10%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in financial_report.by_restaurant %}
-            <tr>
-              <td>{{ row.restaurant__name }}</td>
-              <td>{{ row.orders_count }}</td>
-              <td class="text-right mono">${{ row.product_sales|floatformat:0|intcomma }}</td>
-              <td class="text-right mono">${{ row.zinapp_product_commission|floatformat:0|intcomma }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" class="ops-table-empty">Sin ventas en el periodo.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-
-  <details class="ops-more">
-    <summary>Más detalle financiero</summary>
-    <div class="ops-split ops-split-secondary ops-more-grid">
-      <section class="ops-block">
-        <header class="ops-block-head"><h2>Por producto</h2></header>
-        <div class="table-responsive">
-          <table class="ops-table ops-table-compact">
-            <thead><tr><th>Producto</th><th>Local</th><th class="text-right">Ventas</th></tr></thead>
-            <tbody>
-              {% for row in financial_report.by_product %}
-              <tr>
-                <td>{{ row.product__name }} <span class="ops-dim">×{{ row.quantity }}</span></td>
-                <td>{{ row.order__restaurant__name }}</td>
-                <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="3" class="ops-table-empty">Sin datos.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section class="ops-block">
-        <header class="ops-block-head"><h2>Por pedido completado</h2></header>
-        <div class="table-responsive">
-          <table class="ops-table ops-table-compact">
-            <thead><tr><th>Pedido</th><th>Local</th><th class="text-right">Productos</th><th class="text-right">Envío</th></tr></thead>
-            <tbody>
-              {% for row in financial_report.by_order %}
-              <tr>
-                <td><a class="ops-text-link" href="{% url 'dashboard:order-detail' row.id %}">#{{ row.id }}</a></td>
-                <td>{{ row.restaurant_name }}</td>
-                <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
-                <td class="text-right mono">${{ row.delivery_earnings|floatformat:2 }}</td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="4" class="ops-table-empty">Sin datos.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  </details>
 
   <nav class="ops-shortcuts" aria-label="Accesos">
+    <a href="{% url 'dashboard:reports' %}">Reportes</a>
     <a href="{% url 'dashboard:orders' %}">Pedidos</a>
     <a href="{% url 'dashboard:restaurants' %}">Restaurantes</a>
     <a href="{% url 'dashboard:drivers' %}">Repartidores</a>
     <a href="{% url 'dashboard:customers' %}">Clientes</a>
+    <a href="{% url 'gestion:shipments' %}">Envíos y mandados</a>
     <a href="{% url 'gestion:disputes' %}">Disputas</a>
-    <a href="{% url 'gestion:coupons' %}">Cupones</a>
   </nav>
 
 </div>

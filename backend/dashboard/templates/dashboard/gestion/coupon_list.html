@@ -1,24 +1,32 @@
 {% extends "dashboard/base.html" %}
+{% load panel_query %}
 
 {% block content %}
+{% include "dashboard/includes/marketing_nav.html" %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <div class="zin-filter-group">
-      <a href="{% url 'gestion:coupons' %}" class="zin-filter {% if not active_filter %}active{% endif %}">Todos</a>
-      <a href="?active=1" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
-      <a href="?active=0" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Inactivos</a>
+      <a href="{% url 'gestion:coupons' %}{% keep_query status='' active='' %}" class="zin-filter {% if not status_filter and not active_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'gestion:coupons' %}{% keep_query status='live' active='' %}" class="zin-filter {% if status_filter == 'live' %}active{% endif %}">Vigentes</a>
+      <a href="{% url 'gestion:coupons' %}{% keep_query active='0' status='' %}" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Inactivos</a>
+      <a href="{% url 'gestion:coupons' %}{% keep_query status='expired' active='' %}" class="zin-filter {% if status_filter == 'expired' %}active{% endif %}">Vencidos</a>
+      <a href="{% url 'gestion:coupons' %}{% keep_query status='exhausted' active='' %}" class="zin-filter {% if status_filter == 'exhausted' %}active{% endif %}">Agotados</a>
       <form class="zin-search" method="get">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
-        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar código…" %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Código o descripción…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
+      {% if has_filters %}
+      <a href="{% url 'gestion:coupons' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
       <a href="{% url 'gestion:coupon-create' %}" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Nuevo cupón
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
@@ -34,26 +42,40 @@
       <tbody>
         {% for c in coupons %}
         <tr>
-          <td><strong>{{ c.code }}</strong></td>
+          <td>
+            <a href="{% url 'gestion:coupon-edit' c.pk %}" class="zin-link-strong">{{ c.code }}</a>
+            {% if c.description %}<div class="text-muted small">{{ c.description }}</div>{% endif %}
+          </td>
           <td>{% if c.discount_percent %}{{ c.discount_percent }}%{% else %}${{ c.discount_fixed|floatformat:2 }}{% endif %}</td>
           <td>${{ c.min_order_amount|floatformat:2 }}</td>
           <td>{{ c.times_used }}{% if c.max_uses %} / {{ c.max_uses }}{% endif %}</td>
-          <td>{% if c.is_active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-muted">Inactivo</span>{% endif %}</td>
+          <td>
+            {% if c.panel_status == 'live' %}
+              {% include "dashboard/includes/status_badge.html" with tone="success" label=c.panel_status_label %}
+            {% elif c.panel_status == 'inactive' %}
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label=c.panel_status_label %}
+            {% else %}
+              {% include "dashboard/includes/status_badge.html" with tone="warning" label=c.panel_status_label %}
+            {% endif %}
+          </td>
           <td class="text-muted">{{ c.expires_at|date:"d/m/Y H:i"|default:"—" }}</td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:coupon-edit' c.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar cupón">
-                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-              </a>
-              <a href="{% url 'gestion:coupon-delete' c.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar cupón">
-                <i class="fas fa-trash" aria-hidden="true"></i>
-              </a>
-            </div>
+            {% url 'gestion:coupon-edit' c.pk as coupon_edit_url %}
+            {% url 'gestion:coupon-delete' c.pk as coupon_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=coupon_edit_url label="Editar" icon="fa-pen" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=coupon_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
+        {% url 'gestion:coupons' as coupons_clear_url %}
         {% url 'gestion:coupon-create' as coupon_create_url %}
-        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-ticket" title="No hay cupones" message="Crea códigos de descuento para promociones." action_url=coupon_create_url action_label="Nuevo cupón" %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-ticket" title="No hay cupones con estos filtros" message="Prueba otro estado o término de búsqueda." action_url=coupons_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-ticket" title="No hay cupones" message="Crea códigos de descuento para campañas de toda la plataforma." action_url=coupon_create_url action_label="Nuevo cupón" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

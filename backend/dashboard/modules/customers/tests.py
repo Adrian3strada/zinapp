@@ -252,3 +252,77 @@ class CustomerModuleTests(TestCase):
         response = self.client.get(reverse('dashboard:customers'), {'page': 2})
         self.assertEqual(response.status_code, 200)
         self.assertGreaterEqual(len(response.context['customers']), 1)
+
+    def test_list_counts_zinapp_orders_and_filters_with_orders(self):
+        from orders.models import OrderSource
+
+        self._make_order(self.customer)
+        Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            status=OrderStatus.PENDING,
+            delivery_address='POS',
+            subtotal=Decimal('9.00'),
+            delivery_fee=Decimal('0.00'),
+            total=Decimal('9.00'),
+            source=OrderSource.POS,
+        )
+        User.objects.create_user(
+            username='cli_sin_pedidos',
+            password='clientepass123',
+            role=UserRole.CUSTOMER,
+            phone='4439990000',
+            email='sin@example.com',
+        )
+
+        listed = self.client.get(reverse('dashboard:customers'))
+        self.assertContains(listed, 'Ana Cliente')
+        self.assertContains(listed, 'Último pedido')
+        body = listed.content.decode()
+        ana = body[body.index('Ana Cliente'):body.index('Ana Cliente') + 1400]
+        self.assertIn('>1<', ana)
+        self.assertNotIn('$9', ana)
+
+        with_orders = self.client.get(reverse('dashboard:customers'), {'orders': '1'})
+        usernames = [u.username for u in with_orders.context['customers']]
+        self.assertIn('cli_uno', usernames)
+        self.assertNotIn('cli_sin_pedidos', usernames)
+        self.assertContains(with_orders, 'Quitar filtros')
+
+    def test_detail_tabs_and_header(self):
+        from orders.models import Shipment, ShipmentKind, ShipmentStatus
+
+        order = self._make_order(self.customer)
+        shipment = Shipment.objects.create(
+            customer=self.customer,
+            kind=ShipmentKind.MANDADO,
+            status=ShipmentStatus.PENDING,
+            description='Leche y pan',
+            pickup_address='A',
+            delivery_address='B',
+        )
+
+        info = self.client.get(reverse('dashboard:customer-detail', kwargs={'pk': self.customer.pk}))
+        self.assertEqual(info.status_code, 200)
+        self.assertContains(info, 'Ana Cliente')
+        self.assertContains(info, 'Activo')
+        self.assertContains(info, 'Información')
+        self.assertContains(info, '?tab=orders')
+        self.assertContains(info, 'Eliminar cliente')
+
+        orders = self.client.get(
+            reverse('dashboard:customer-detail', kwargs={'pk': self.customer.pk}),
+            {'tab': 'orders'},
+        )
+        self.assertContains(orders, order.display_ref)
+        self.assertContains(orders, f'/panel/pedidos/{order.pk}/')
+        self.assertContains(orders, 'Tacos Test')
+
+        shipments = self.client.get(
+            reverse('dashboard:customer-detail', kwargs={'pk': self.customer.pk}),
+            {'tab': 'shipments'},
+        )
+        self.assertContains(shipments, f'#{shipment.pk}')
+        self.assertContains(shipments, 'Mandado')
+        self.assertContains(shipments, f'/panel/gestion/envios/{shipment.pk}/')
+        self.assertContains(shipments, f'customer={self.customer.pk}')

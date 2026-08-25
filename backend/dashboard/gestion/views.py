@@ -3,10 +3,11 @@ import logging
 from django.contrib import messages
 from django.contrib.auth import authenticate
 from django.db.models.deletion import ProtectedError
-from django.db.models import Avg, Q
+from django.db.models import Avg, Count, F, Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
@@ -14,12 +15,13 @@ from accounts.audit import write_audit_log
 from accounts.models import AuditLog, DeliveryProfile, User, UserRole
 from accounts.setup import driver_setup_status
 from local_services.models import LocalService
-from orders.models import Coupon, Order, OrderStatus, Review, Shipment, ShipmentKind, ShipmentStatus
+from orders.models import Coupon, Order, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentKind, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
 from restaurants.models import Product, ProductPromotion, Restaurant
 
 from ..mixins import PanelAccessMixin
 from ..page_context import page_context
+from ..services import get_shipment_timeline
 from .forms import (
     CouponForm,
     DisputeResolveForm,
@@ -58,6 +60,26 @@ def _changed_metadata(form, old_values):
     return changes
 
 
+def _active_coupon_q(now=None):
+    now = now or timezone.now()
+    return (
+        Q(is_active=True)
+        & (Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        & (Q(max_uses__isnull=True) | Q(times_used__lt=F('max_uses')))
+    )
+
+
+def _coupon_panel_status(coupon, now=None):
+    now = now or timezone.now()
+    if not coupon.is_active:
+        return 'inactive', 'Inactivo'
+    if coupon.expires_at and coupon.expires_at <= now:
+        return 'expired', 'Vencido'
+    if coupon.max_uses is not None and coupon.times_used >= coupon.max_uses:
+        return 'exhausted', 'Agotado'
+    return 'live', 'Vigente'
+
+
 class CouponListView(PanelAccessMixin, ListView):
     model = Coupon
     template_name = 'dashboard/gestion/coupon_list.html'
@@ -66,24 +88,47 @@ class CouponListView(PanelAccessMixin, ListView):
 
     def get_queryset(self):
         qs = Coupon.objects.order_by('-created_at')
-        if self.request.GET.get('active') == '1':
+        get = self.request.GET
+        now = timezone.now()
+        status = get.get('status', '').strip()
+        active = get.get('active', '').strip()
+        if status == 'live':
+            qs = qs.filter(_active_coupon_q(now))
+        elif status == 'expired':
+            qs = qs.filter(expires_at__isnull=False, expires_at__lte=now)
+        elif status == 'exhausted':
+            qs = qs.filter(max_uses__isnull=False, times_used__gte=F('max_uses'))
+        elif active == '1':
             qs = qs.filter(is_active=True)
-        elif self.request.GET.get('active') == '0':
+        elif active == '0':
             qs = qs.filter(is_active=False)
-        q = self.request.GET.get('q', '').strip()
+        q = get.get('q', '').strip()
         if q:
             qs = qs.filter(Q(code__icontains=q) | Q(description__icontains=q))
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        get = self.request.GET
+        status = get.get('status', '').strip()
+        active = get.get('active', '').strip()
+        search = get.get('q', '').strip()
+        now = timezone.now()
         ctx.update(page_context(
             'Cupones',
             'coupons',
-            subtitle='Códigos de descuento para promociones y campañas.',
+            subtitle='Códigos de descuento de toda la plataforma. Las vigentes son las que ve la app.',
         ))
-        ctx['active_filter'] = self.request.GET.get('active', '')
-        ctx['search_query'] = self.request.GET.get('q', '')
+        ctx.update(
+            status_filter=status,
+            active_filter=active,
+            search_query=search,
+            has_filters=bool(status or active or search),
+        )
+        for coupon in ctx['coupons']:
+            key, label = _coupon_panel_status(coupon, now)
+            coupon.panel_status = key
+            coupon.panel_status_label = label
         return ctx
 
 
@@ -356,15 +401,23 @@ class ProductPromotionListView(PanelAccessMixin, ListView):
         qs = ProductPromotion.objects.select_related(
             'restaurant', 'product',
         ).order_by('-is_active', '-valid_until', '-id')
-        restaurant_id = self.request.GET.get('restaurant', '').strip()
+        get = self.request.GET
+        restaurant_id = get.get('restaurant', '').strip()
         if restaurant_id.isdigit():
             qs = qs.filter(restaurant_id=int(restaurant_id))
-        active = self.request.GET.get('active', '')
-        if active == '1':
+        now = timezone.now()
+        status = get.get('status', '').strip()
+        active = get.get('active', '').strip()
+        expired = get.get('expired', '').strip()
+        if expired == '1' or status == 'expired':
+            qs = qs.filter(is_active=True, valid_until__lt=now)
+        elif status == 'live':
+            qs = qs.filter(is_active=True, valid_until__gte=now)
+        elif active == '1':
             qs = qs.filter(is_active=True)
         elif active == '0':
             qs = qs.filter(is_active=False)
-        q = self.request.GET.get('q', '').strip()
+        q = get.get('q', '').strip()
         if q:
             qs = qs.filter(
                 Q(product__name__icontains=q)
@@ -375,16 +428,34 @@ class ProductPromotionListView(PanelAccessMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        get = self.request.GET
+        restaurant = get.get('restaurant', '').strip()
+        status = get.get('status', '').strip()
+        active = get.get('active', '').strip()
+        expired = get.get('expired', '').strip()
+        search = get.get('q', '').strip()
+        if expired == '1' or status == 'expired':
+            status_chip = 'expired'
+        elif status == 'live':
+            status_chip = 'live'
+        elif active == '0':
+            status_chip = 'off'
+        else:
+            status_chip = ''
         ctx.update(page_context(
             'Promociones',
             'promotions',
-            subtitle='Promos activas y programadas para productos del catálogo.',
+            subtitle='Descuentos de platillo. Las vigentes son las que ve la app.',
         ))
         ctx.update(
-            restaurants=Restaurant.objects.order_by('name'),
-            restaurant_filter=self.request.GET.get('restaurant', ''),
-            active_filter=self.request.GET.get('active', ''),
-            search_query=self.request.GET.get('q', ''),
+            restaurants=Restaurant.objects.order_by('name').only('id', 'name'),
+            restaurant_filter=restaurant,
+            active_filter=active,
+            expired_filter=expired,
+            status_filter=status,
+            status_chip=status_chip,
+            search_query=search,
+            has_filters=bool(restaurant or status or active or expired or search),
         )
         return ctx
 
@@ -513,38 +584,97 @@ class ShipmentListView(PanelAccessMixin, ListView):
 
     def get_queryset(self):
         qs = Shipment.objects.select_related('customer', 'driver').order_by('-created_at')
-        status = self.request.GET.get('status', '').strip()
+        get = self.request.GET
+        status = get.get('status', '').strip()
         if status and status in ShipmentStatus.values:
             qs = qs.filter(status=status)
-        kind = self.request.GET.get('kind', '').strip()
+        kind = get.get('kind', '').strip()
         if kind in ShipmentKind.values:
             qs = qs.filter(kind=kind)
-        search = self.request.GET.get('q', '').strip()
+        payment = get.get('payment', '').strip()
+        if payment and payment in PaymentStatus.values:
+            qs = qs.filter(payment_status=payment)
+        method = get.get('method', '').strip()
+        if method and method in PaymentMethod.values:
+            qs = qs.filter(payment_method=method)
+        driver = get.get('driver', '').strip()
+        if driver == 'none':
+            qs = qs.filter(driver__isnull=True)
+        elif driver.isdigit():
+            qs = qs.filter(driver_id=int(driver), driver__role=UserRole.DRIVER)
+        customer_id = get.get('customer', '').strip()
+        if customer_id.isdigit():
+            qs = qs.filter(customer_id=int(customer_id), customer__role=UserRole.CUSTOMER)
+        date_from = parse_date(get.get('date_from') or '')
+        date_to = parse_date(get.get('date_to') or '')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        search = get.get('q', '').strip()
         if search:
+            lookup = (
+                Q(customer__username__icontains=search)
+                | Q(customer__first_name__icontains=search)
+                | Q(customer__last_name__icontains=search)
+                | Q(customer__phone__icontains=search)
+                | Q(description__icontains=search)
+                | Q(pickup_address__icontains=search)
+                | Q(delivery_address__icontains=search)
+                | Q(driver__username__icontains=search)
+            )
             if search.isdigit():
-                qs = qs.filter(Q(id=int(search)) | Q(customer__username__icontains=search))
-            else:
-                qs = qs.filter(
-                    Q(customer__username__icontains=search)
-                    | Q(description__icontains=search)
-                    | Q(pickup_address__icontains=search)
-                    | Q(delivery_address__icontains=search)
-                )
+                lookup |= Q(id=int(search))
+            qs = qs.filter(lookup)
+        sort = get.get('sort', '').strip()
+        if sort == 'oldest':
+            qs = qs.order_by('created_at')
+        elif sort == 'total':
+            qs = qs.order_by('-total', '-created_at')
+        else:
+            qs = qs.order_by('-created_at')
         return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        get = self.request.GET
+        status = get.get('status', '').strip()
+        kind = get.get('kind', '').strip()
+        payment = get.get('payment', '').strip()
+        method = get.get('method', '').strip()
+        driver = get.get('driver', '').strip()
+        customer = get.get('customer', '').strip()
+        date_from = get.get('date_from', '').strip()
+        date_to = get.get('date_to', '').strip()
+        sort = get.get('sort', '').strip()
+        search = get.get('q', '').strip()
         ctx.update(page_context(
             'Envíos y mandados',
             'shipments',
-            subtitle='Paquetes, mandados de víveres y entregas independientes de pedidos de comida.',
+            subtitle='Paquetes y mandados de víveres. No son pedidos de restaurante.',
         ))
         ctx.update(
-            status_filter=self.request.GET.get('status', ''),
-            kind_filter=self.request.GET.get('kind', ''),
+            status_filter=status,
+            kind_filter=kind,
+            payment_filter=payment,
+            method_filter=method,
+            driver_filter=driver,
+            customer_filter=customer,
+            date_from=date_from,
+            date_to=date_to,
+            sort=sort or 'newest',
+            search_query=search,
+            has_filters=bool(
+                status or kind or payment or method or driver or customer
+                or date_from or date_to or search or (sort and sort != 'newest')
+            ),
             status_choices=ShipmentStatus.choices,
             kind_choices=ShipmentKind.choices,
-            search_query=self.request.GET.get('q', ''),
+            payment_choices=PaymentStatus.choices,
+            method_choices=PaymentMethod.choices,
+            drivers=User.objects.filter(role=UserRole.DRIVER).order_by('username').only(
+                'id', 'username', 'first_name', 'last_name',
+            ),
         )
         return ctx
 
@@ -560,15 +690,30 @@ class ShipmentDetailView(PanelAccessMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        kind_label = 'Mandado' if self.object.kind == ShipmentKind.MANDADO else 'Envío'
+        shipment = self.object
+        kind_label = 'Mandado' if shipment.kind == ShipmentKind.MANDADO else 'Envío'
         ctx.update(page_context(
-            f'{kind_label} #{self.object.pk}',
+            f'{kind_label} #{shipment.pk}',
             'shipments',
             breadcrumbs=[
-                {'label': 'Envíos / Mandados', 'url': reverse('gestion:shipments')},
-                {'label': f'#{self.object.pk}', 'url': None},
+                {'label': 'Envíos y mandados', 'url': reverse('gestion:shipments')},
+                {'label': f'#{shipment.pk}', 'url': None},
             ],
         ))
+        ctx['timeline_steps'] = get_shipment_timeline(shipment)
+        driver_profile = None
+        if shipment.driver_id:
+            try:
+                driver_profile = shipment.driver.delivery_profile
+            except DeliveryProfile.DoesNotExist:
+                driver_profile = None
+        ctx['driver_profile'] = driver_profile
+        ctx['audit_logs'] = list(
+            AuditLog.objects.filter(
+                object_type='Shipment',
+                object_id=str(shipment.pk),
+            ).select_related('actor')[:8]
+        )
         return ctx
 
     def get_success_url(self):
@@ -701,23 +846,58 @@ class ReviewListView(PanelAccessMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        return Review.objects.select_related(
+        qs = Review.objects.select_related(
             'customer', 'restaurant', 'driver', 'order',
         ).order_by('-created_at')
+        get = self.request.GET
+        restaurant_id = get.get('restaurant', '').strip()
+        if restaurant_id.isdigit():
+            qs = qs.filter(restaurant_id=int(restaurant_id))
+        stars = get.get('stars', '').strip()
+        if stars.isdigit() and stars in {'1', '2', '3', '4', '5'}:
+            qs = qs.filter(restaurant_rating=int(stars))
+        q = get.get('q', '').strip()
+        if q:
+            lookup = (
+                Q(customer__username__icontains=q)
+                | Q(customer__first_name__icontains=q)
+                | Q(customer__last_name__icontains=q)
+                | Q(comment__icontains=q)
+                | Q(restaurant__name__icontains=q)
+                | Q(order__code__icontains=q)
+            )
+            if q.isdigit():
+                lookup |= Q(order_id=int(q))
+            qs = qs.filter(lookup)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        get = self.request.GET
+        restaurant = get.get('restaurant', '').strip()
+        stars = get.get('stars', '').strip()
+        search = get.get('q', '').strip()
         ctx.update(page_context(
             'Reseñas',
             'reviews',
-            subtitle='Calificaciones de clientes sobre restaurantes y repartidores.',
+            subtitle='Calificaciones reales de pedidos. El promedio de arriba no cambia con los filtros.',
         ))
         agg = Review.objects.aggregate(
             avg_restaurant=Avg('restaurant_rating'),
             avg_driver=Avg('driver_rating'),
+            total=Count('id'),
         )
-        ctx['avg_restaurant'] = agg['avg_restaurant']
-        ctx['avg_driver'] = agg['avg_driver']
+        ctx.update(
+            avg_restaurant=agg['avg_restaurant'],
+            avg_driver=agg['avg_driver'],
+            review_total=agg['total'] or 0,
+            restaurants=Restaurant.objects.order_by('name').only('id', 'name'),
+            restaurant_filter=restaurant,
+            stars_filter=stars,
+            star_choices=('5', '4', '3', '2', '1'),
+            search_query=search,
+            has_filters=bool(restaurant or stars or search),
+        )
         return ctx
 
 
@@ -773,14 +953,14 @@ class UserCreateView(PanelAccessMixin, CreateView):
                 'Nuevo usuario',
                 'users',
                 breadcrumbs=[
-                    {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                    {'label': 'Cuentas', 'url': reverse('dashboard:users')},
                     {'label': 'Nuevo', 'url': None},
                 ],
             ))
             ctx.update(
                 form_title='Crear usuario',
                 back_url=reverse('dashboard:users'),
-                back_label='Usuarios',
+                back_label='Cuentas',
                 cancel_url=reverse('dashboard:users'),
                 form_is_multipart=True,
             )
@@ -881,14 +1061,14 @@ class UserEditView(PanelAccessMixin, UpdateView):
             self.object.username,
             'users',
             breadcrumbs=[
-                {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                {'label': 'Cuentas', 'url': reverse('dashboard:users')},
                 {'label': self.object.username, 'url': None},
             ],
         ))
         ctx.update(
             form_title='Editar usuario',
             back_url=reverse('dashboard:users'),
-            back_label='Usuarios',
+            back_label='Cuentas',
             cancel_url=reverse('dashboard:users'),
             form_is_multipart=True,
         )
@@ -955,7 +1135,7 @@ class UserDeleteView(PanelAccessMixin, DeleteView):
             'Eliminar usuario',
             'users',
             breadcrumbs=[
-                {'label': 'Usuarios', 'url': reverse('dashboard:users')},
+                {'label': 'Cuentas', 'url': reverse('dashboard:users')},
                 {'label': self.object.username, 'url': reverse('gestion:user-edit', kwargs={'pk': self.object.pk})},
                 {'label': 'Eliminar', 'url': None},
             ],

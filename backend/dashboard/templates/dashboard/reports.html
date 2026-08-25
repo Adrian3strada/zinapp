@@ -1,0 +1,243 @@
+{% extends "dashboard/base.html" %}
+{% load humanize %}
+
+{% block content %}
+<form class="ops-filters mb-3" method="get" aria-label="Periodo del reporte">
+  <div class="ops-filter-field">
+    <label for="period">Periodo</label>
+    <select id="period" name="period" class="ops-select" onchange="if(this.value!=='range')this.form.submit()">
+      <option value="day" {% if report.period == 'day' %}selected{% endif %}>Hoy</option>
+      <option value="week" {% if report.period == 'week' %}selected{% endif %}>Semana</option>
+      <option value="month" {% if report.period == 'month' %}selected{% endif %}>Mes</option>
+      <option value="range" {% if report.period == 'range' %}selected{% endif %}>Rango</option>
+      <option value="all" {% if report.period == 'all' %}selected{% endif %}>Todo</option>
+    </select>
+  </div>
+  <div class="ops-filter-field">
+    <label for="start">Fecha inicial</label>
+    <input id="start" name="start" type="date" class="ops-select" value="{{ report.start_date|date:'Y-m-d' }}">
+  </div>
+  <div class="ops-filter-field">
+    <label for="end">Fecha final</label>
+    <input id="end" name="end" type="date" class="ops-select" value="{{ report.end_date|date:'Y-m-d' }}">
+  </div>
+  <div class="ops-filter-actions">
+    <button type="submit" class="btn btn-primary btn-sm ops-filter-btn" onclick="this.form.period.value='range'">Aplicar rango</button>
+  </div>
+</form>
+
+<p class="text-muted small mb-3">
+  Las ventas son subtotales de productos en pedidos de ZinApp entregados y pagados, sin pedidos POS ni disputas reembolsadas. La comisión es el 10% de esas ventas. Los envíos incluyen cuotas de pedidos y de mandados/paquetes cobrados.
+</p>
+
+<div class="zin-stat-grid mb-4" role="group" aria-label="Resumen del periodo">
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Ventas</span>
+    <strong class="zin-stat-value">${{ report.total_ventas_productos|floatformat:0|intcomma }}</strong>
+    <span class="zin-stat-meta">Productos cobrados</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Comisión 10%</span>
+    <strong class="zin-stat-value">${{ report.ganancia_10_por_ciento|floatformat:0|intcomma }}</strong>
+    <span class="zin-stat-meta">Sobre ventas de productos</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Ganancia por envíos</span>
+    <strong class="zin-stat-value">${{ report.ganancias_envios|floatformat:0|intcomma }}</strong>
+    <span class="zin-stat-meta">Pedidos y mandados cobrados</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Pedidos cobrados</span>
+    <strong class="zin-stat-value">{{ report.cantidad_pedidos_completados }}</strong>
+    <span class="zin-stat-meta">Entregados y pagados</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Pedidos creados</span>
+    <strong class="zin-stat-value">{{ report.orders_created }}</strong>
+    <span class="zin-stat-meta">Alta en el periodo</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Cancelados</span>
+    <strong class="zin-stat-value">{{ report.cancelled_count }}</strong>
+    <span class="zin-stat-meta">Marcados cancelados en el periodo</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Envíos cobrados</span>
+    <strong class="zin-stat-value">{{ report.shipments_completed }}</strong>
+    <span class="zin-stat-meta">Mandados y paquetes</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Clientes nuevos</span>
+    <strong class="zin-stat-value">{{ report.new_customers }}</strong>
+    <span class="zin-stat-meta">Registros en el periodo</span>
+  </article>
+</div>
+
+<div class="ops-split mb-4">
+  <section class="ops-block ops-block-chart">
+    <header class="ops-block-head">
+      <h2>Ventas por día</h2>
+      <p>Productos cobrados · pedidos entregados y pagados</p>
+    </header>
+    {% if report.by_day_chart %}
+    <div class="ops-bars" role="img" aria-label="Gráfica de ventas diarias">
+      {% for row in report.by_day_chart %}
+      <div class="ops-bar-col" title="{{ row.day|date:'d/m/Y' }}: ${{ row.product_sales|floatformat:2 }} · {{ row.orders_count }} pedido{{ row.orders_count|pluralize:'s' }}">
+        <div class="ops-bar-track">
+          <div class="ops-bar-fill" style="height: {% widthratio row.product_sales report.by_day_max 100 %}%;"></div>
+        </div>
+        <span class="ops-bar-label">{{ row.day|date:"j" }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="ops-empty">Sin ventas cobradas en este periodo.</div>
+    {% endif %}
+  </section>
+
+  <section class="ops-block">
+    <header class="ops-block-head ops-block-head-row">
+      <div>
+        <h2>Pedidos por estado</h2>
+        <p>Creados en el periodo</p>
+      </div>
+      <a href="{% url 'dashboard:orders' %}" class="ops-text-link">Ver pedidos</a>
+    </header>
+    <div class="table-responsive">
+      <table class="table zin-table mb-0">
+        <thead>
+          <tr>
+            <th>Estado</th>
+            <th class="text-right">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.orders_by_status %}
+          <tr>
+            <td>
+              <a href="{% url 'dashboard:orders' %}?status={{ row.status }}">{{ row.label }}</a>
+            </td>
+            <td class="text-right mono">{{ row.count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="ops-split mb-4">
+  <section class="ops-block">
+    <header class="ops-block-head ops-block-head-row">
+      <div>
+        <h2>Top restaurantes</h2>
+        <p>Ventas cobradas del periodo</p>
+      </div>
+      <a href="{% url 'dashboard:restaurants' %}" class="ops-text-link">Restaurantes</a>
+    </header>
+    <div class="table-responsive">
+      <table class="table zin-table mb-0">
+        <thead>
+          <tr>
+            <th>Restaurante</th>
+            <th>Pedidos</th>
+            <th class="text-right">Ventas</th>
+            <th class="text-right">10%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.by_restaurant %}
+          <tr>
+            <td>
+              {% if row.restaurant_id %}
+              <a href="{% url 'dashboard:restaurant-detail' row.restaurant_id %}">{{ row.restaurant__name }}</a>
+              {% else %}
+              {{ row.restaurant__name }}
+              {% endif %}
+            </td>
+            <td>{{ row.orders_count }}</td>
+            <td class="text-right mono">${{ row.product_sales|floatformat:0|intcomma }}</td>
+            <td class="text-right mono">${{ row.zinapp_product_commission|floatformat:0|intcomma }}</td>
+          </tr>
+          {% empty %}
+          {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-utensils" title="Sin ventas en el periodo" message="Los pedidos entregados y cobrados aparecerán aquí." %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ops-block">
+    <header class="ops-block-head">
+      <h2>Métodos de pago</h2>
+      <p>Pedidos entregados y cobrados</p>
+    </header>
+    <div class="table-responsive">
+      <table class="table zin-table mb-0">
+        <thead>
+          <tr>
+            <th>Método</th>
+            <th>Pedidos</th>
+            <th class="text-right">Ventas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in report.by_payment_method %}
+          <tr>
+            <td>
+              <a href="{% url 'dashboard:orders' %}?method={{ row.method }}">{{ row.label }}</a>
+            </td>
+            <td>{{ row.orders_count }}</td>
+            <td class="text-right mono">${{ row.product_sales|floatformat:0|intcomma }}</td>
+          </tr>
+          {% empty %}
+          {% include "dashboard/includes/empty_state.html" with colspan=3 icon="fa-wallet" title="Sin cobros en el periodo" message="Cuando haya pedidos entregados y pagados verás el desglose." %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="ops-split">
+  <section class="ops-block">
+    <header class="ops-block-head"><h2>Por producto</h2></header>
+    <div class="table-responsive">
+      <table class="table zin-table mb-0">
+        <thead><tr><th>Producto</th><th>Local</th><th class="text-right">Ventas</th></tr></thead>
+        <tbody>
+          {% for row in report.by_product %}
+          <tr>
+            <td>{{ row.product__name }} <span class="text-muted">×{{ row.quantity }}</span></td>
+            <td>{{ row.order__restaurant__name }}</td>
+            <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          {% include "dashboard/includes/empty_state.html" with colspan=3 icon="fa-burger" title="Sin productos cobrados" %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="ops-block">
+    <header class="ops-block-head"><h2>Por pedido completado</h2></header>
+    <div class="table-responsive">
+      <table class="table zin-table mb-0">
+        <thead><tr><th>Pedido</th><th>Local</th><th class="text-right">Productos</th><th class="text-right">Envío</th></tr></thead>
+        <tbody>
+          {% for row in report.by_order %}
+          <tr>
+            <td><a href="{% url 'dashboard:order-detail' row.id %}">#{{ row.id }}</a></td>
+            <td>{{ row.restaurant_name }}</td>
+            <td class="text-right mono">${{ row.product_sales|floatformat:2 }}</td>
+            <td class="text-right mono">${{ row.delivery_earnings|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-bag-shopping" title="Sin pedidos cobrados" %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

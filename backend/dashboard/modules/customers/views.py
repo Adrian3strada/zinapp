@@ -1,7 +1,7 @@
 """Vistas del módulo Clientes — solo users con role=customer."""
 
 from django.contrib import messages
-from django.db.models import Count, Q
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views import View
@@ -10,6 +10,11 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, U
 from accounts.models import DeliveryProfile, User, UserRole
 from dashboard.mixins import PanelAccessMixin
 from dashboard.page_context import page_context
+from dashboard.services import (
+    CUSTOMER_DETAIL_TABS,
+    annotate_customer_list,
+    get_customer_panel_activity,
+)
 from orders.models import Order
 from restaurants.models import Restaurant
 
@@ -46,8 +51,9 @@ class CustomerListView(PanelAccessMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        qs = customer_queryset().annotate(orders_count=Count('orders'))
-        search = self.request.GET.get('q', '').strip()
+        qs = annotate_customer_list(customer_queryset())
+        get = self.request.GET
+        search = get.get('q', '').strip()
         if search:
             qs = qs.filter(
                 Q(username__icontains=search)
@@ -56,26 +62,35 @@ class CustomerListView(PanelAccessMixin, ListView):
                 | Q(first_name__icontains=search)
                 | Q(last_name__icontains=search)
             )
-        active = self.request.GET.get('active', '').strip()
+        active = get.get('active', '').strip()
         if active == '1':
             qs = qs.filter(is_active=True)
         elif active == '0':
             qs = qs.filter(is_active=False)
+        if get.get('orders', '').strip() == '1':
+            qs = qs.filter(orders_count__gt=0)
 
-        sort_key = self.request.GET.get('sort', 'joined').strip()
+        sort_key = get.get('sort', 'joined').strip()
         order = SORT_CHOICES.get(sort_key, '-date_joined')
         return qs.order_by(order, '-id')
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        get = self.request.GET
         ctx.update(page_context(
             'Clientes',
             'customers',
-            subtitle='Cuentas de clientes de la app. Sin datos de restaurantes ni repartidores.',
+            subtitle='Cuentas de la app, pedidos recientes y quién está activo.',
         ))
-        ctx['search_query'] = self.request.GET.get('q', '')
-        ctx['active_filter'] = self.request.GET.get('active', '')
-        ctx['sort'] = self.request.GET.get('sort', 'joined')
+        ctx['search_query'] = get.get('q', '')
+        ctx['active_filter'] = get.get('active', '')
+        ctx['orders_filter'] = get.get('orders', '')
+        ctx['sort'] = get.get('sort', 'joined')
+        ctx['has_filters'] = bool(
+            ctx['search_query'].strip()
+            or ctx['active_filter']
+            or ctx['orders_filter']
+        )
         ctx['sort_choices'] = [
             ('joined', 'Más recientes'),
             ('-joined', 'Más antiguos'),
@@ -96,6 +111,9 @@ class CustomerDetailView(PanelAccessMixin, CustomerQuerysetMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         customer = self.object
         display = customer.get_full_name() or customer.username
+        tab = (self.request.GET.get('tab') or 'info').strip()
+        if tab not in CUSTOMER_DETAIL_TABS:
+            tab = 'info'
         ctx.update(page_context(
             display,
             'customers',
@@ -104,16 +122,9 @@ class CustomerDetailView(PanelAccessMixin, CustomerQuerysetMixin, DetailView):
                 {'label': display, 'url': None},
             ],
         ))
-        orders = (
-            Order.objects.filter(customer=customer)
-            .select_related('restaurant', 'driver')
-            .order_by('-created_at')
-        )
-        ctx['orders_count'] = orders.count()
-        ctx['recent_orders'] = orders[:10]
-        ctx['orders_list_url'] = (
-            f"{reverse('dashboard:orders')}?customer={customer.pk}"
-        )
+        activity = get_customer_panel_activity(customer)
+        ctx['tab'] = tab
+        ctx.update(activity)
         return ctx
 
 

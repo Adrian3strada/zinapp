@@ -1,45 +1,50 @@
 {% extends "dashboard/base.html" %}
-
-{% block page_actions %}
-<a href="{% url 'dashboard:customer-create' %}" class="btn btn-primary btn-sm">
-  <i class="fas fa-plus mr-1"></i> Nuevo cliente
-</a>
-{% endblock %}
+{% load panel_query %}
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
-    <div class="zin-filter-group flex-wrap">
-      <a href="{% url 'dashboard:customers' %}" class="zin-filter {% if not active_filter %}active{% endif %}">Todos</a>
-      <a href="?active=1{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}&amp;sort={{ sort }}" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
-      <a href="?active=0{% if search_query %}&amp;q={{ search_query|urlencode }}{% endif %}&amp;sort={{ sort }}" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Inactivos</a>
+  <div class="card-header zin-toolbar zin-filter-bar">
+    <div class="zin-filter-group">
+      <a href="{% url 'dashboard:customers' %}{% keep_query active='' orders='' %}" class="zin-filter {% if not active_filter and not orders_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'dashboard:customers' %}{% keep_query active='1' orders='' %}" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
+      <a href="{% url 'dashboard:customers' %}{% keep_query active='0' orders='' %}" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Inactivos</a>
+      <a href="{% url 'dashboard:customers' %}{% keep_query orders='1' active='' %}" class="zin-filter {% if orders_filter == '1' %}active{% endif %}">Con pedidos</a>
       <form class="zin-search" method="get">
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
+        {% if orders_filter %}<input type="hidden" name="orders" value="{{ orders_filter }}">{% endif %}
         <input type="hidden" name="sort" value="{{ sort }}">
         {% include "dashboard/includes/list_search_field.html" with placeholder="Nombre, usuario, correo o teléfono…" %}
       </form>
-      <form method="get" class="d-inline-flex align-items-center ml-md-2 mt-2 mt-md-0">
+      <form method="get" class="d-inline-flex align-items-center">
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
+        {% if orders_filter %}<input type="hidden" name="orders" value="{{ orders_filter }}">{% endif %}
         {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-        <label for="sort" class="mb-0 mr-2 text-muted small d-none d-sm-inline">Orden</label>
-        <select name="sort" id="sort" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Ordenar">
+        <select name="sort" class="form-control form-control-sm zin-filter-select" onchange="this.form.submit()" aria-label="Ordenar">
           {% for value, label in sort_choices %}
           <option value="{{ value }}" {% if sort == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </form>
     </div>
+    <div class="zin-toolbar-actions">
+      {% if has_filters %}
+      <a href="{% url 'dashboard:customers' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
+      <a href="{% url 'dashboard:customer-create' %}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus mr-1"></i> Nuevo cliente
+      </a>
+    </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
           <th>Cliente</th>
-          <th class="d-none d-md-table-cell">Correo</th>
           <th class="d-none d-sm-table-cell">Teléfono</th>
-          <th>Pedidos</th>
+          <th class="d-none d-md-table-cell">Correo</th>
+          <th class="text-right">Pedidos</th>
+          <th class="d-none d-lg-table-cell">Último pedido</th>
           <th>Estado</th>
-          <th class="d-none d-lg-table-cell">Registro</th>
           <th class="text-right">Acciones</th>
         </tr>
       </thead>
@@ -47,53 +52,51 @@
         {% for c in customers %}
         <tr>
           <td>
-            <a href="{% url 'dashboard:customer-detail' c.pk %}" class="font-weight-bold">
+            <a href="{% url 'dashboard:customer-detail' c.pk %}" class="zin-link-strong">
               {{ c.get_full_name|default:c.username }}
             </a>
             <div class="text-muted small">@{{ c.username }}</div>
           </td>
-          <td class="d-none d-md-table-cell text-muted">{{ c.email|default:"—" }}</td>
           <td class="d-none d-sm-table-cell">{{ c.phone|default:"—" }}</td>
-          <td><span class="badge badge-light">{{ c.orders_count }}</span></td>
+          <td class="d-none d-md-table-cell text-muted">{{ c.email|default:"—" }}</td>
+          <td class="text-right mono">{{ c.orders_count }}</td>
+          <td class="d-none d-lg-table-cell text-muted small">
+            {% if c.last_order_at %}{{ c.last_order_at|timesince }}{% else %}Sin pedidos{% endif %}
+          </td>
           <td>
             {% if c.is_active %}
-              <span class="badge badge-success">Activo</span>
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Activo" %}
             {% else %}
-              <span class="badge badge-muted">Inactivo</span>
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Inactivo" %}
             {% endif %}
           </td>
-          <td class="d-none d-lg-table-cell text-muted">{{ c.date_joined|date:"d/m/Y" }}</td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'dashboard:customer-detail' c.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Ver" aria-label="Ver cliente">
-                <i class="fas fa-eye" aria-hidden="true"></i>
-              </a>
-              <a href="{% url 'dashboard:customer-edit' c.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar cliente">
-                <i class="fas fa-pen" aria-hidden="true"></i>
-              </a>
-              {% if c.is_active %}
-              <form method="post" action="{% url 'dashboard:customer-deactivate' c.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{% url 'dashboard:customers' %}">
-                <button type="submit" class="btn btn-outline-danger btn-xs zin-row-btn" title="Desactivar" aria-label="Desactivar" onclick="return confirm('¿Desactivar a {{ c.username }}?')">
-                  <i class="fas fa-user-slash" aria-hidden="true"></i>
-                </button>
-              </form>
-              {% else %}
-              <form method="post" action="{% url 'dashboard:customer-activate' c.pk %}" class="d-inline">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{% url 'dashboard:customers' %}">
-                <button type="submit" class="btn btn-outline-success btn-xs zin-row-btn" title="Activar" aria-label="Activar">
-                  <i class="fas fa-user-check" aria-hidden="true"></i>
-                </button>
-              </form>
-              {% endif %}
-            </div>
+            {% url 'dashboard:customer-detail' c.pk as customer_detail_url %}
+            {% url 'dashboard:customer-edit' c.pk as customer_edit_url %}
+            {% url 'dashboard:customer-deactivate' c.pk as customer_deactivate_url %}
+            {% url 'dashboard:customer-activate' c.pk as customer_activate_url %}
+            {% url 'dashboard:customers' as customers_list_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=customer_detail_url label="Ver" icon="fa-eye" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=customer_edit_url label="Editar" icon="fa-pen" %}
+            {% if c.is_active %}
+            {% with confirm_msg="¿Desactivar a "|add:c.username|add:"?" %}
+            {% include "dashboard/includes/action_menu_post.html" with url=customer_deactivate_url next=customers_list_url label="Desactivar" icon="fa-user-slash" danger="1" confirm=confirm_msg %}
+            {% endwith %}
+            {% else %}
+            {% include "dashboard/includes/action_menu_post.html" with url=customer_activate_url next=customers_list_url label="Activar" icon="fa-user-check" %}
+            {% endif %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
+        {% url 'dashboard:customers' as customers_clear_url %}
         {% url 'dashboard:customer-create' as customer_create_url %}
-        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-user" title="No hay clientes" message="Prueba otro filtro o crea un cliente." action_url=customer_create_url action_label="Nuevo cliente" %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-user" title="No hay clientes con estos filtros" message="Prueba otro estado o término de búsqueda." action_url=customers_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-user" title="No hay clientes" message="Los registros de la app aparecen aquí. También puedes crear uno." action_url=customer_create_url action_label="Nuevo cliente" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

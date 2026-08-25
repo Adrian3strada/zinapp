@@ -1,0 +1,7 @@
+<form method="post" action="{{ url }}" class="zin-action-form">
+  {% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <button type="submit" class="dropdown-item{% if danger %} text-danger{% endif %}"{% if confirm %} onclick="return confirm('{{ confirm|escapejs }}')"{% endif %}>
+    {% if icon %}<i class="fas {{ icon }} zin-action-icon" aria-hidden="true"></i>{% endif %}{{ label }}
+  </button>
+</form>

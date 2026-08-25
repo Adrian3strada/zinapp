@@ -1,8 +1,56 @@
 {% extends "dashboard/base.html" %}
+{% load humanize %}
+
+{% block page_heading %}
+<span class="zin-record-title">
+  {{ restaurant.name }}
+  {% if restaurant.is_active %}
+    {% if restaurant.accepting_orders %}
+      {% include "dashboard/includes/status_badge.html" with tone="success" label="Activo" %}
+    {% else %}
+      {% include "dashboard/includes/status_badge.html" with tone="warning" label="Pausado" %}
+    {% endif %}
+  {% else %}
+    {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Pendiente" %}
+  {% endif %}
+  {% if is_open_now %}
+    {% include "dashboard/includes/status_badge.html" with tone="success" label="Abierto" %}
+  {% else %}
+    {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Cerrado" %}
+  {% endif %}
+  {% if restaurant.pos_enabled %}
+    <span class="badge badge-info">POS</span>
+  {% endif %}
+</span>
+{% endblock %}
 
 {% block page_actions %}
+<form method="post" action="{% url 'dashboard:restaurant-toggle-active' restaurant.pk %}">
+  {% csrf_token %}
+  {% if restaurant.is_active %}
+    <button type="submit" class="btn btn-secondary btn-sm">Desactivar local</button>
+  {% else %}
+    <button type="submit" class="btn btn-primary btn-sm" {% if not setup.complete %}disabled title="Completa la checklist primero"{% endif %}>
+      Activar en la app
+    </button>
+  {% endif %}
+</form>
+<form method="post" action="{% url 'dashboard:restaurant-toggle-orders' restaurant.pk %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-default btn-sm" {% if not restaurant.is_active %}disabled{% endif %}>
+    {% if restaurant.accepting_orders %}Pausar pedidos{% else %}Recibir pedidos{% endif %}
+  </button>
+</form>
+<form method="post" action="{% url 'dashboard:restaurant-toggle-pos' restaurant.pk %}">
+  {% csrf_token %}
+  {% if restaurant.pos_enabled %}
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Desactivar POS</button>
+  {% else %}
+    <button type="submit" class="btn btn-outline-primary btn-sm">Activar POS</button>
+  {% endif %}
+</form>
 <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-default btn-sm">
-  <i class="fas fa-edit mr-1"></i> Editar datos
+  <i class="fas fa-edit mr-1"></i> Editar
 </a>
 <a href="{% url 'gestion:restaurant-delete' restaurant.pk %}" class="btn btn-outline-danger btn-sm">
   <i class="fas fa-trash mr-1"></i> Eliminar
@@ -10,37 +58,245 @@
 {% endblock %}
 
 {% block content %}
+<nav class="zin-tabs" aria-label="Secciones del restaurante">
+  <a href="?tab=info" class="{% if tab == 'info' %}active{% endif %}">Información</a>
+  <a href="?tab=menu" class="{% if tab == 'menu' %}active{% endif %}">Menú</a>
+  <a href="?tab=orders" class="{% if tab == 'orders' %}active{% endif %}">Pedidos</a>
+  <a href="?tab=promos" class="{% if tab == 'promos' %}active{% endif %}">Promociones</a>
+  <a href="?tab=stats" class="{% if tab == 'stats' %}active{% endif %}">Estadísticas</a>
+  <a href="?tab=config" class="{% if tab == 'config' %}active{% endif %}">Configuración</a>
+</nav>
+
+{% if tab == 'info' %}
+<div class="card zin-panel-card">
+  <div class="card-body">
+    {% if restaurant.description %}
+    <p class="mb-3">{{ restaurant.description }}</p>
+    {% endif %}
+    <dl class="detail-list">
+      <dt>Dueño</dt>
+      <dd>{{ restaurant.owner.get_full_name|default:restaurant.owner.username }} · {{ restaurant.owner.phone|default:"sin teléfono" }}</dd>
+      <dt>Categoría</dt>
+      <dd>{{ restaurant.get_category_display }}</dd>
+      <dt>Dirección</dt>
+      <dd>{{ restaurant.address }}</dd>
+      <dt>Teléfono</dt>
+      <dd>{{ restaurant.phone|default:"—" }}</dd>
+      <dt>WhatsApp</dt>
+      <dd>{{ restaurant.whatsapp|default:restaurant.phone|default:"—" }}</dd>
+      <dt>Horario</dt>
+      <dd>
+        {% if business_hours %}
+          <ul class="list-unstyled mb-0">
+            {% for hours in business_hours %}
+            <li>
+              {{ hours.get_day_of_week_display }}:
+              {% if hours.is_closed %}Cerrado
+              {% elif hours.opening_time and hours.closing_time %}{{ hours.opening_time|time:"H:i" }} – {{ hours.closing_time|time:"H:i" }}
+              {% else %}Sin horario{% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        {% elif restaurant.opening_time and restaurant.closing_time %}
+          {{ restaurant.opening_time|time:"H:i" }} – {{ restaurant.closing_time|time:"H:i" }}
+        {% else %}
+          Sin horario
+        {% endif %}
+      </dd>
+      <dt>Ubicación</dt>
+      <dd>
+        {% if restaurant.location_pinned and restaurant.latitude and restaurant.longitude %}
+          {{ restaurant.latitude }}, {{ restaurant.longitude }}
+        {% else %}
+          Sin pin en el mapa
+        {% endif %}
+      </dd>
+      <dt>Reseñas</dt>
+      <dd><a href="{% url 'gestion:reviews' %}?restaurant={{ restaurant.pk }}">Ver en reseñas</a></dd>
+    </dl>
+  </div>
+</div>
+
+{% elif tab == 'menu' %}
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Platillos</h3>
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'gestion:products' %}?restaurant={{ restaurant.pk }}" class="btn btn-default btn-sm">Ver en productos</a>
+      <a href="{% url 'gestion:product-create' %}" class="btn btn-primary btn-sm">Nuevo platillo</a>
+    </div>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>Platillo</th>
+          <th class="d-none d-md-table-cell">Sección</th>
+          <th class="text-right">Precio</th>
+          <th>Disponible</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in products %}
+        <tr>
+          <td>{{ product.name }}</td>
+          <td class="d-none d-md-table-cell text-muted">{{ product.get_category_display }}</td>
+          <td class="text-right mono">${{ product.price }}</td>
+          <td>
+            {% if product.is_available %}
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Sí" %}
+            {% else %}
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="No" %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        {% url 'gestion:product-create' as product_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-utensils" title="Sin platillos aún" message="El dueño puede cargarlos en la app o puedes crearlos aquí." action_url=product_create_url action_label="Nuevo platillo" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'orders' %}
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Pedidos recientes</h3>
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'dashboard:orders' %}?restaurant={{ restaurant.pk }}" class="btn btn-default btn-sm">Ver todos</a>
+    </div>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Cliente</th>
+          <th>Estado</th>
+          <th class="text-right">Total</th>
+          <th class="d-none d-sm-table-cell">Hace</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in recent_orders %}
+        <tr>
+          <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">{{ order.display_ref }}</a></td>
+          <td>
+            {% if order.customer %}
+              {{ order.customer.get_full_name|default:order.customer.username }}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
+          <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
+          <td class="d-none d-sm-table-cell text-muted small">{{ order.created_at|timesince }}</td>
+        </tr>
+        {% empty %}
+        {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-bag-shopping" title="Aún no hay pedidos" message="Los pedidos de la app de este local aparecerán aquí." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'promos' %}
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Promociones</h3>
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'gestion:promotions' %}?restaurant={{ restaurant.pk }}" class="btn btn-default btn-sm">Ver en promociones</a>
+      <a href="{% url 'gestion:promotion-create' %}" class="btn btn-primary btn-sm">Nueva promoción</a>
+    </div>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>Platillo</th>
+          <th>Tipo</th>
+          <th>Vigencia</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for promo in promotions %}
+        <tr>
+          <td>{{ promo.product.name }}</td>
+          <td>{{ promo.get_promo_type_display }}{% if promo.label %} · {{ promo.label }}{% endif %}</td>
+          <td class="text-muted small">{{ promo.valid_until|date:"d/m/Y H:i" }}</td>
+          <td>
+            {% if promo.currently_active %}
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Activa" %}
+            {% elif promo.is_active %}
+              {% include "dashboard/includes/status_badge.html" with tone="warning" label="Vencida" %}
+            {% else %}
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Inactiva" %}
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        {% url 'gestion:promotion-create' as promo_create_url %}
+        {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-tag" title="Sin promociones" message="Crea una promoción para un platillo de este local." action_url=promo_create_url action_label="Nueva promoción" %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'stats' %}
+<div class="zin-stat-grid mb-3" role="group" aria-label="Pedidos y ventas">
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Pedidos hoy</span>
+    <strong class="zin-stat-value">{{ stats.orders_today }}</strong>
+    <span class="zin-stat-meta">Creados hoy</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Ventas hoy</span>
+    <strong class="zin-stat-value">${{ stats.sales_today|floatformat:0|intcomma }}</strong>
+    <span class="zin-stat-meta">Entregados y cobrados</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Activos</span>
+    <strong class="zin-stat-value">{{ stats.orders_active }}</strong>
+    <span class="zin-stat-meta">En curso ahora</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Entregados hoy</span>
+    <strong class="zin-stat-value">{{ stats.delivered_today }}</strong>
+    <span class="zin-stat-meta">Completados</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Pedidos del mes</span>
+    <strong class="zin-stat-value">{{ stats.delivered_month }}</strong>
+    <span class="zin-stat-meta">Entregados desde {{ stats.month_start|date:"d/m" }}</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Ventas del mes</span>
+    <strong class="zin-stat-value">${{ stats.sales_month|floatformat:0|intcomma }}</strong>
+    <span class="zin-stat-meta">Entregados y cobrados</span>
+  </article>
+</div>
+<p class="text-muted small mb-0">Las ventas son subtotales de productos en pedidos entregados y pagados, igual que en el dashboard. No incluyen envío ni pedidos POS.</p>
+
+{% elif tab == 'config' %}
 <div class="row">
   <div class="col-lg-6">
     <div class="card zin-panel-card mb-3">
       <div class="card-header">
-        <h3 class="card-title">{{ restaurant.name }}</h3>
+        <h3 class="card-title mb-0">Operación</h3>
       </div>
       <div class="card-body">
-        <p class="text-muted">{{ restaurant.address }}</p>
         <dl class="detail-list">
-          <dt>Dueño</dt>
-          <dd>{{ restaurant.owner.username }} · {{ restaurant.owner.phone|default:"sin teléfono" }}</dd>
-          <dt>Categoría</dt>
-          <dd>{{ restaurant.get_category_display }}</dd>
-          <dt>Horario</dt>
-          <dd>
-            {% if restaurant.opening_time and restaurant.closing_time %}
-              {{ restaurant.opening_time|time:"H:i" }} – {{ restaurant.closing_time|time:"H:i" }}
-            {% else %}
-              Sin horario
-            {% endif %}
-          </dd>
+          <dt>Visible en la app</dt>
+          <dd>{% if restaurant.is_active %}Sí{% else %}No{% endif %}</dd>
+          <dt>Recibe pedidos</dt>
+          <dd>{% if restaurant.accepting_orders %}Sí{% else %}No{% endif %}</dd>
           <dt>ZinApp POS</dt>
-          <dd>
-            {% if restaurant.pos_enabled %}
-              <span class="badge badge-success">Activo</span>
-            {% else %}
-              <span class="badge badge-muted">Inactivo</span>
-            {% endif %}
-          </dd>
+          <dd>{% if restaurant.pos_enabled %}Activo · el dueño entra en /pos/login/{% else %}Inactivo{% endif %}</dd>
         </dl>
-        <div class="action-row">
+        <div class="action-row mt-3">
           <form method="post" action="{% url 'dashboard:restaurant-toggle-active' restaurant.pk %}">
             {% csrf_token %}
             {% if restaurant.is_active %}
@@ -69,7 +325,6 @@
       </div>
     </div>
   </div>
-
   <div class="col-lg-6">
     <div class="card card-outline card-warning mb-3">
       <div class="card-header">
@@ -98,37 +353,5 @@
     </div>
   </div>
 </div>
-
-<div class="card card-outline card-secondary">
-  <div class="card-header">
-    <h3 class="card-title">Menú ({{ products|length }} platillos)</h3>
-    <div class="card-tools">
-      <a href="{% url 'gestion:products' %}?restaurant={{ restaurant.pk }}" class="btn btn-tool btn-sm">Ver en productos</a>
-    </div>
-  </div>
-  <div class="card-body p-0 table-responsive">
-    <table class="table table-hover zin-table mb-0">
-      <thead>
-        <tr>
-          <th>Platillo</th>
-          <th>Precio</th>
-          <th>Disponible</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for product in products %}
-        <tr>
-          <td>{{ product.name }}</td>
-          <td class="mono">${{ product.price }}</td>
-          <td>{% if product.is_available %}<span class="badge badge-success">Sí</span>{% else %}<span class="badge badge-muted">No</span>{% endif %}</td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="3" class="text-muted text-center py-4">Sin platillos aún.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+{% endif %}
 {% endblock %}

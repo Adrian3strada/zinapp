@@ -1,109 +1,180 @@
 <nav class="mt-2">
-  <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+  <ul class="nav nav-pills nav-sidebar flex-column zin-nav" data-widget="treeview" role="menu" data-accordion="true">
 
     <li class="nav-item">
       <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
         <i class="nav-icon fas fa-gauge-high"></i>
-        <p>Inicio</p>
+        <p>Dashboard</p>
       </a>
     </li>
 
-    <li class="nav-header">OPERACIONES</li>
     <li class="nav-item">
-      <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
-        <i class="nav-icon fas fa-bag-shopping"></i>
-        <p>Pedidos</p>
+      <a href="{% url 'dashboard:reports' %}" class="nav-link {% if nav == 'reports' %}active{% endif %}">
+        <i class="nav-icon fas fa-chart-column"></i>
+        <p>Reportes</p>
       </a>
     </li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:disputes' %}" class="nav-link {% if nav == 'disputes' %}active{% endif %}">
-        <i class="nav-icon fas fa-scale-balanced"></i>
+
+    <li class="nav-item {% if nav_group == 'operacion' %}menu-open{% endif %}">
+      <a href="#" class="nav-link {% if nav_group == 'operacion' %}active{% endif %}">
+        <i class="nav-icon fas fa-clipboard-list"></i>
         <p>
-          Disputas
+          Operación
           {% if panel_pending_disputes %}
           <span class="badge badge-danger right">{{ panel_pending_disputes }}</span>
           {% endif %}
+          <i class="right fas fa-angle-left"></i>
         </p>
       </a>
-    </li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:shipments' %}" class="nav-link {% if nav == 'shipments' %}active{% endif %}">
-        <i class="nav-icon fas fa-truck-fast"></i>
-        <p>Envíos / Mandados</p>
-      </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="{% url 'dashboard:orders' %}" class="nav-link {% if nav == 'orders' %}active{% endif %}">
+            <i class="nav-icon fas fa-bag-shopping"></i>
+            <p>Pedidos</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'gestion:shipments' %}" class="nav-link {% if nav == 'shipments' %}active{% endif %}">
+            <i class="nav-icon fas fa-truck-fast"></i>
+            <p>Envíos y mandados</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'gestion:disputes' %}" class="nav-link {% if nav == 'disputes' %}active{% endif %}">
+            <i class="nav-icon fas fa-scale-balanced"></i>
+            <p>
+              Disputas
+              {% if panel_pending_disputes %}
+              <span class="badge badge-danger right">{{ panel_pending_disputes }}</span>
+              {% endif %}
+            </p>
+          </a>
+        </li>
+      </ul>
     </li>
 
-    <li class="nav-header">CATÁLOGO</li>
-    <li class="nav-item">
-      <a href="{% url 'dashboard:restaurants' %}" class="nav-link {% if nav == 'restaurants' %}active{% endif %}">
-        <i class="nav-icon fas fa-utensils"></i>
+    <li class="nav-item {% if nav_group == 'negocios' %}menu-open{% endif %}">
+      <a href="#" class="nav-link {% if nav_group == 'negocios' %}active{% endif %}">
+        <i class="nav-icon fas fa-store"></i>
         <p>
-          Restaurantes
+          Negocios
           {% if panel_pending_restaurants %}
           <span class="badge badge-warning right">{{ panel_pending_restaurants }}</span>
           {% endif %}
+          <i class="right fas fa-angle-left"></i>
         </p>
       </a>
-    </li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:products' %}" class="nav-link {% if nav == 'products' %}active{% endif %}">
-        <i class="nav-icon fas fa-burger"></i>
-        <p>Productos</p>
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:promotions' %}" class="nav-link {% if nav == 'promotions' %}active{% endif %}">
-        <i class="nav-icon fas fa-percent"></i>
-        <p>Promociones</p>
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:local-services' %}" class="nav-link {% if nav == 'local-services' %}active{% endif %}">
-        <i class="nav-icon fas fa-shop"></i>
-        <p>Servicios locales</p>
-      </a>
-    </li>
-
-    <li class="nav-header">PERSONAS</li>
-    <li class="nav-item">
-      <a href="{% url 'dashboard:customers' %}" class="nav-link {% if nav == 'customers' %}active{% endif %}">
-        <i class="nav-icon fas fa-user"></i>
-        <p>Clientes</p>
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
-        <i class="nav-icon fas fa-motorcycle"></i>
-        <p>Repartidores {% if panel_pending_drivers %}<span class="badge badge-warning right">{{ panel_pending_drivers }}</span>{% endif %}</p>
-      </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="{% url 'dashboard:restaurants' %}" class="nav-link {% if nav == 'restaurants' %}active{% endif %}">
+            <i class="nav-icon fas fa-utensils"></i>
+            <p>
+              Restaurantes
+              {% if panel_pending_restaurants %}
+              <span class="badge badge-warning right">{{ panel_pending_restaurants }}</span>
+              {% endif %}
+            </p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'gestion:products' %}" class="nav-link {% if nav == 'products' %}active{% endif %}">
+            <i class="nav-icon fas fa-burger"></i>
+            <p>Productos</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'gestion:local-services' %}" class="nav-link {% if nav == 'local-services' %}active{% endif %}">
+            <i class="nav-icon fas fa-shop"></i>
+            <p>Servicios locales</p>
+          </a>
+        </li>
+      </ul>
     </li>
 
-    <li class="nav-header">MARKETING</li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:coupons' %}" class="nav-link {% if nav == 'coupons' %}active{% endif %}">
-        <i class="nav-icon fas fa-ticket"></i>
-        <p>Cupones</p>
-      </a>
-    </li>
-    <li class="nav-item">
-      <a href="{% url 'gestion:reviews' %}" class="nav-link {% if nav == 'reviews' %}active{% endif %}">
-        <i class="nav-icon fas fa-star"></i>
-        <p>Reseñas</p>
-      </a>
-    </li>
-
-    <li class="nav-header">SISTEMA</li>
-    <li class="nav-item">
-      <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
+    <li class="nav-item {% if nav_group == 'personas' %}menu-open{% endif %}">
+      <a href="#" class="nav-link {% if nav_group == 'personas' %}active{% endif %}">
         <i class="nav-icon fas fa-users"></i>
-        <p>Todos los usuarios (legado)</p>
+        <p>
+          Personas
+          {% if panel_pending_drivers %}
+          <span class="badge badge-warning right">{{ panel_pending_drivers }}</span>
+          {% endif %}
+          <i class="right fas fa-angle-left"></i>
+        </p>
       </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="{% url 'dashboard:customers' %}" class="nav-link {% if nav == 'customers' %}active{% endif %}">
+            <i class="nav-icon fas fa-user"></i>
+            <p>Clientes</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'dashboard:drivers' %}" class="nav-link {% if nav == 'drivers' %}active{% endif %}">
+            <i class="nav-icon fas fa-motorcycle"></i>
+            <p>
+              Repartidores
+              {% if panel_pending_drivers %}
+              <span class="badge badge-warning right">{{ panel_pending_drivers }}</span>
+              {% endif %}
+            </p>
+          </a>
+        </li>
+      </ul>
     </li>
-    <li class="nav-item">
-      <a href="{% url 'admin:index' %}" class="nav-link">
-        <i class="nav-icon fas fa-screwdriver-wrench"></i>
-        <p>Consola técnica</p>
+
+    <li class="nav-item {% if nav_group == 'marketing' %}menu-open{% endif %}">
+      <a href="#" class="nav-link {% if nav_group == 'marketing' %}active{% endif %}">
+        <i class="nav-icon fas fa-bullhorn"></i>
+        <p>
+          Marketing
+          <i class="right fas fa-angle-left"></i>
+        </p>
       </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="{% url 'gestion:promotions' %}" class="nav-link {% if nav == 'promotions' %}active{% endif %}">
+            <i class="nav-icon fas fa-percent"></i>
+            <p>Promociones</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'gestion:coupons' %}" class="nav-link {% if nav == 'coupons' %}active{% endif %}">
+            <i class="nav-icon fas fa-ticket"></i>
+            <p>Cupones</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'gestion:reviews' %}" class="nav-link {% if nav == 'reviews' %}active{% endif %}">
+            <i class="nav-icon fas fa-star"></i>
+            <p>Reseñas</p>
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    <li class="nav-item {% if nav_group == 'sistema' %}menu-open{% endif %}">
+      <a href="#" class="nav-link {% if nav_group == 'sistema' %}active{% endif %}">
+        <i class="nav-icon fas fa-gear"></i>
+        <p>
+          Sistema
+          <i class="right fas fa-angle-left"></i>
+        </p>
+      </a>
+      <ul class="nav nav-treeview">
+        <li class="nav-item">
+          <a href="{% url 'dashboard:users' %}" class="nav-link {% if nav == 'users' %}active{% endif %}">
+            <i class="nav-icon fas fa-user-shield"></i>
+            <p>Cuentas</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{% url 'admin:index' %}" class="nav-link {% if nav == 'gestion' %}active{% endif %}">
+            <i class="nav-icon fas fa-screwdriver-wrench"></i>
+            <p>Consola técnica</p>
+          </a>
+        </li>
+      </ul>
     </li>
   </ul>
 </nav>

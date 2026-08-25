@@ -1,89 +1,108 @@
 {% extends "dashboard/base.html" %}
+{% load panel_query %}
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <div class="zin-filter-group">
-      <a href="{% url 'dashboard:drivers' %}" class="zin-filter {% if available_filter == '' %}active{% endif %}">Todos</a>
-      <a href="?available=1" class="zin-filter {% if available_filter == '1' %}active{% endif %}">Disponibles</a>
-      <a href="?available=0" class="zin-filter {% if available_filter == '0' %}active{% endif %}">No disponibles</a>
-      <a href="?verification=pending" class="zin-filter {% if verification_filter == 'pending' %}active{% endif %}">Pendientes ({{ drivers_pending }})</a>
+      <a href="{% url 'dashboard:drivers' %}{% keep_query status='' available='' verification='' %}" class="zin-filter {% if not status_filter and not available_filter and not verification_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'dashboard:drivers' %}{% keep_query status='available' available='' verification='' %}" class="zin-filter {% if status_filter == 'available' %}active{% endif %}">Disponibles</a>
+      <a href="{% url 'dashboard:drivers' %}{% keep_query status='busy' available='' verification='' %}" class="zin-filter {% if status_filter == 'busy' %}active{% endif %}">Ocupados</a>
+      <a href="{% url 'dashboard:drivers' %}{% keep_query status='offline' available='' verification='' %}" class="zin-filter {% if status_filter == 'offline' %}active{% endif %}">No disponibles</a>
+      <a href="{% url 'dashboard:drivers' %}{% keep_query verification='pending' status='' available='' %}" class="zin-filter {% if verification_filter == 'pending' %}active{% endif %}">Pendientes{% if drivers_pending %} ({{ drivers_pending }}){% endif %}</a>
       <form class="zin-search" method="get">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         {% if available_filter %}<input type="hidden" name="available" value="{{ available_filter }}">{% endif %}
         {% if verification_filter %}<input type="hidden" name="verification" value="{{ verification_filter }}">{% endif %}
-        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar repartidor o placas…" %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Nombre, teléfono o placas…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
+      {% if has_filters %}
+      <a href="{% url 'dashboard:drivers' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
       <a href="{% url 'gestion:user-create' %}?role=driver" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Nuevo repartidor
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
           <th>Repartidor</th>
-          <th>Vehículo</th>
-          <th>Placas</th>
+          <th class="d-none d-md-table-cell">Vehículo</th>
           <th>Validación</th>
-          <th>Disponible</th>
-          <th>Ubicación GPS</th>
-          <th>Actualizado</th>
+          <th>Estado</th>
+          <th>Entrega actual</th>
+          <th class="text-right">Hoy</th>
+          <th class="d-none d-lg-table-cell">Última actividad</th>
           <th class="text-right">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for profile in drivers %}
         <tr>
-          <td><strong>{{ profile.user.username }}</strong></td>
-          <td>{{ profile.get_vehicle_type_display }}</td>
-          <td>{{ profile.license_plate|default:"—" }}</td>
+          <td>
+            <a href="{% url 'dashboard:driver-detail' profile.pk %}" class="zin-link-strong">{{ profile.user.get_full_name|default:profile.user.username }}</a>
+            {% if profile.user.phone %}
+            <div class="text-muted small">{{ profile.user.phone }}</div>
+            {% endif %}
+          </td>
+          <td class="d-none d-md-table-cell">
+            {{ profile.get_vehicle_type_display }}
+            <div class="text-muted small">{{ profile.license_plate|default:"—" }}</div>
+          </td>
           <td>
             {% if profile.verification_status == 'approved' %}
-              <span class="badge badge-success">Aprobado</span>
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Aprobado" %}
             {% elif profile.verification_status == 'rejected' %}
-              <span class="badge badge-danger">Rechazado</span>
+              {% include "dashboard/includes/status_badge.html" with tone="danger" label="Rechazado" %}
             {% else %}
-              <span class="badge badge-warning">Pendiente</span>
+              {% include "dashboard/includes/status_badge.html" with tone="warning" label="Pendiente" %}
             {% endif %}
           </td>
           <td>
-            {% if profile.is_available %}
-              <span class="badge badge-success">Disponible</span>
+            {% if profile.is_busy %}
+              {% include "dashboard/includes/status_badge.html" with tone="warning" label="Ocupado" %}
+            {% elif profile.is_available %}
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Disponible" %}
             {% else %}
-              <span class="badge badge-muted">No disponible</span>
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="No disponible" %}
             {% endif %}
           </td>
-          <td class="mono text-muted">
-            {% if profile.current_latitude %}
-              {{ profile.current_latitude }}, {{ profile.current_longitude }}
+          <td>
+            {% if profile.current_order_id %}
+              <a href="{% url 'dashboard:order-detail' profile.current_order_id %}">{{ profile.current_order_code }}</a>
+            {% elif profile.current_shipment_id %}
+              <a href="{% url 'gestion:shipment-detail' profile.current_shipment_id %}">Envío #{{ profile.current_shipment_id }}</a>
             {% else %}
-              —
+              <span class="text-muted">—</span>
             {% endif %}
           </td>
-          <td class="text-muted">{{ profile.updated_at|date:"d/m/Y H:i" }}</td>
+          <td class="text-right mono">{{ profile.deliveries_today }}</td>
+          <td class="d-none d-lg-table-cell text-muted small">{{ profile.updated_at|timesince }}</td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'dashboard:driver-detail' profile.pk %}" class="btn btn-outline-success btn-xs zin-row-btn" title="Revisar validación" aria-label="Revisar validación de repartidor">
-                <i class="fas fa-check-circle" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Revisar</span>
-              </a>
-              <a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar perfil de repartidor" aria-label="Editar perfil de repartidor">
-                <i class="fas fa-motorcycle" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Perfil</span>
-              </a>
-              <a href="{% url 'gestion:user-edit' profile.user.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar cuenta" aria-label="Editar cuenta de repartidor">
-                <i class="fas fa-user-edit" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Cuenta</span>
-              </a>
-              <a href="{% url 'gestion:user-delete' profile.user.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar cuenta" aria-label="Eliminar cuenta de repartidor">
-                <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
-              </a>
-            </div>
+            {% url 'dashboard:driver-detail' profile.pk as driver_detail_url %}
+            {% url 'gestion:driver-edit' profile.pk as driver_edit_url %}
+            {% url 'gestion:user-edit' profile.user.pk as driver_user_edit_url %}
+            {% url 'gestion:user-delete' profile.user.pk as driver_user_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=driver_detail_url label="Ver" icon="fa-eye" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=driver_edit_url label="Editar perfil" icon="fa-motorcycle" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=driver_user_edit_url label="Editar cuenta" icon="fa-user-edit" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=driver_user_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
+        {% url 'dashboard:drivers' as drivers_clear_url %}
         {% url 'gestion:user-create' as driver_create_url %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-motorcycle" title="No hay repartidores con estos filtros" message="Prueba otro estado o término de búsqueda." action_url=drivers_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
         {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-motorcycle" title="No hay repartidores" message="Da de alta repartidores desde el panel o deja que se registren en la app." action_url=driver_create_url|add:"?role=driver" action_label="Nuevo repartidor" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

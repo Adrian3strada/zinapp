@@ -1,32 +1,45 @@
 {% extends "dashboard/base.html" %}
+{% load panel_query %}
 
 {% block content %}
+{% include "dashboard/includes/marketing_nav.html" %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
-    <form class="zin-filter-group zin-filter-form" method="get">
-      <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante">
+  <div class="card-header zin-toolbar zin-filter-bar">
+    <div class="zin-filter-group">
+      <a href="{% url 'gestion:promotions' %}{% keep_query status='' expired='' active='' %}" class="zin-filter {% if not status_chip %}active{% endif %}">Todas</a>
+      <a href="{% url 'gestion:promotions' %}{% keep_query status='live' expired='' active='' %}" class="zin-filter {% if status_chip == 'live' %}active{% endif %}">Vigentes</a>
+      <a href="{% url 'gestion:promotions' %}{% keep_query expired='1' status='' active='' %}" class="zin-filter {% if status_chip == 'expired' %}active{% endif %}">Vencidas</a>
+      <a href="{% url 'gestion:promotions' %}{% keep_query active='0' status='' expired='' %}" class="zin-filter {% if status_chip == 'off' %}active{% endif %}">Inactivas</a>
+      {% if restaurant_filter %}
+      <span class="zin-filter active">Restaurante #{{ restaurant_filter }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-header zin-toolbar zin-filter-bar border-top">
+    <form class="zin-filter-group zin-filter-form flex-wrap" method="get">
+      {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      {% if expired_filter == '1' %}<input type="hidden" name="expired" value="1">{% endif %}
+      {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
+      <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante" onchange="this.form.submit()">
         <option value="">Todos los restaurantes</option>
         {% for r in restaurants %}
         <option value="{{ r.pk }}" {% if restaurant_filter == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
         {% endfor %}
       </select>
-      <select name="active" class="form-control form-control-sm zin-filter-select" aria-label="Estado">
-        <option value="">Estado</option>
-        <option value="1" {% if active_filter == '1' %}selected{% endif %}>Activas</option>
-        <option value="0" {% if active_filter == '0' %}selected{% endif %}>Inactivas</option>
-      </select>
       <div class="zin-search zin-search-inline">
-        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar promoción…" %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Platillo, restaurante o etiqueta…" %}
       </div>
-      <button type="submit" class="btn btn-default btn-sm" title="Aplicar filtros" aria-label="Aplicar filtros"><i class="fas fa-filter" aria-hidden="true"></i></button>
     </form>
     <div class="zin-toolbar-actions">
+      {% if has_filters %}
+      <a href="{% url 'gestion:promotions' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
       <a href="{% url 'gestion:promotion-create' %}" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Nueva promoción
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
@@ -41,33 +54,46 @@
       <tbody>
         {% for promo in promotions %}
         <tr>
-          <td><strong>{{ promo.product.name }}</strong>{% if promo.label %}<br><span class="text-muted">{{ promo.label }}</span>{% endif %}</td>
-          <td>{{ promo.restaurant.name }}</td>
-          <td>{{ promo.get_promo_type_display }}</td>
-          <td>{{ promo.valid_until|date:"d/m/Y H:i" }}</td>
+          <td>
+            <a href="{% url 'gestion:promotion-edit' promo.pk %}" class="zin-link-strong">{{ promo.product.name }}</a>
+            {% if promo.label %}<div class="text-muted small">{{ promo.label }}</div>{% endif %}
+          </td>
+          <td>
+            <a href="{% url 'dashboard:restaurant-detail' promo.restaurant_id %}?tab=promos">{{ promo.restaurant.name }}</a>
+          </td>
+          <td>
+            {{ promo.get_promo_type_display }}
+            {% if promo.percent_off %}<span class="text-muted">{{ promo.percent_off }}%</span>
+            {% elif promo.special_price %}<span class="text-muted">${{ promo.special_price|floatformat:2 }}</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ promo.valid_until|date:"d/m/Y H:i" }}</td>
           <td>
             {% if promo.is_currently_active %}
-            <span class="badge badge-success">Activa</span>
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Vigente" %}
             {% elif promo.is_active %}
-            <span class="badge badge-warning">Programada/vencida</span>
+              {% include "dashboard/includes/status_badge.html" with tone="warning" label="Vencida" %}
             {% else %}
-            <span class="badge badge-muted">Inactiva</span>
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Inactiva" %}
             {% endif %}
           </td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:promotion-edit' promo.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar promoción">
-                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-              </a>
-              <a href="{% url 'gestion:promotion-delete' promo.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Quitar" aria-label="Eliminar promoción">
-                <i class="fas fa-trash" aria-hidden="true"></i>
-              </a>
-            </div>
+            {% url 'gestion:promotion-edit' promo.pk as promotion_edit_url %}
+            {% url 'gestion:promotion-delete' promo.pk as promotion_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=promotion_edit_url label="Editar" icon="fa-pen" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=promotion_delete_url label="Quitar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
+        {% url 'gestion:promotions' as promotions_clear_url %}
         {% url 'gestion:promotion-create' as promotion_create_url %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-percent" title="No hay promociones con estos filtros" message="Prueba otro estado, restaurante o término de búsqueda." action_url=promotions_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
         {% include "dashboard/includes/empty_state.html" with colspan=6 icon="fa-percent" title="No hay promociones" message="Crea descuentos, 2x1 o precios especiales para productos." action_url=promotion_create_url action_label="Nueva promoción" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

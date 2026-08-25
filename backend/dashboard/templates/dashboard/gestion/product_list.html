@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <form class="zin-filter-group zin-filter-form" method="get">
       <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante">
         <option value="">Todos los restaurantes</option>
@@ -26,7 +26,7 @@
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
@@ -45,14 +45,12 @@
           <td class="mono">${{ p.price|floatformat:2 }}</td>
           <td>{% if p.is_available %}<span class="badge badge-success">Disponible</span>{% else %}<span class="badge badge-muted">Agotado</span>{% endif %}</td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:product-edit' p.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar producto">
-                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-              </a>
-              <a href="{% url 'gestion:product-delete' p.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar producto">
-                <i class="fas fa-trash" aria-hidden="true"></i>
-              </a>
-            </div>
+            {% url 'gestion:product-edit' p.pk as product_edit_url %}
+            {% url 'gestion:product-delete' p.pk as product_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=product_edit_url label="Editar" icon="fa-pen" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=product_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}

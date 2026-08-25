@@ -1,77 +1,99 @@
 {% extends "dashboard/base.html" %}
+{% load humanize panel_query %}
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <div class="zin-filter-group">
-      <a href="{% url 'dashboard:restaurants' %}" class="zin-filter {% if not active_filter %}active{% endif %}">Todos</a>
-      <a href="?active=1" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
-      <a href="?active=0" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Pendientes</a>
+      <a href="{% url 'dashboard:restaurants' %}{% keep_query active='' open='' paused='' %}" class="zin-filter {% if not active_filter and not open_filter and not paused_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'dashboard:restaurants' %}{% keep_query active='1' open='' paused='' %}" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
+      <a href="{% url 'dashboard:restaurants' %}{% keep_query active='0' open='' paused='' %}" class="zin-filter {% if active_filter == '0' %}active{% endif %}">Pendientes{% if restaurants_pending %} ({{ restaurants_pending }}){% endif %}</a>
+      <a href="{% url 'dashboard:restaurants' %}{% keep_query open='1' active='' paused='' %}" class="zin-filter {% if open_filter == '1' %}active{% endif %}">Abiertos</a>
+      <a href="{% url 'dashboard:restaurants' %}{% keep_query paused='1' active='' open='' %}" class="zin-filter {% if paused_filter == '1' %}active{% endif %}">Pausados</a>
       <form class="zin-search" method="get">
         {% if active_filter %}<input type="hidden" name="active" value="{{ active_filter }}">{% endif %}
-        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar local o dueño…" %}
+        {% if open_filter %}<input type="hidden" name="open" value="{{ open_filter }}">{% endif %}
+        {% if paused_filter %}<input type="hidden" name="paused" value="{{ paused_filter }}">{% endif %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Nombre, dueño, teléfono…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
+      {% if has_filters %}
+      <a href="{% url 'dashboard:restaurants' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
       <a href="{% url 'gestion:restaurant-create' %}" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Nuevo restaurante
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
           <th>Nombre</th>
-          <th>Dueño</th>
-          <th>Menú</th>
-          <th>Pedidos</th>
+          <th class="d-none d-md-table-cell">Dueño</th>
           <th>Estado</th>
-          <th>POS</th>
+          <th>Ahora</th>
+          <th class="text-right">Pedidos hoy</th>
+          <th class="text-right d-none d-sm-table-cell">Ventas hoy</th>
+          <th class="d-none d-lg-table-cell">Última actividad</th>
           <th class="text-right">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for restaurant in restaurants %}
         <tr>
-          <td><strong>{{ restaurant.name }}</strong></td>
-          <td>{{ restaurant.owner.username }}</td>
-          <td class="mono">{{ restaurant.available_product_count }}/{{ restaurant.product_count }}</td>
-          <td class="mono">{{ restaurant.order_count }}</td>
+          <td>
+            <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="zin-link-strong">{{ restaurant.name }}</a>
+            {% if restaurant.pos_enabled %}<span class="badge badge-info ml-1">POS</span>{% endif %}
+          </td>
+          <td class="d-none d-md-table-cell">{{ restaurant.owner.get_full_name|default:restaurant.owner.username }}</td>
           <td>
             {% if restaurant.is_active %}
               {% if restaurant.accepting_orders %}
-                <span class="badge badge-success">Activo</span>
+                {% include "dashboard/includes/status_badge.html" with tone="success" label="Activo" %}
               {% else %}
-                <span class="badge badge-warning">Pausado</span>
+                {% include "dashboard/includes/status_badge.html" with tone="warning" label="Pausado" %}
               {% endif %}
             {% else %}
-              <span class="badge badge-muted">Pendiente</span>
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Pendiente" %}
             {% endif %}
           </td>
           <td>
-            {% if restaurant.pos_enabled %}
-              <span class="badge badge-info">POS</span>
+            {% if restaurant.is_open_now_sort %}
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Abierto" %}
             {% else %}
-              <span class="badge badge-muted">—</span>
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Cerrado" %}
+            {% endif %}
+          </td>
+          <td class="text-right mono">{{ restaurant.orders_today }}</td>
+          <td class="text-right mono d-none d-sm-table-cell">${{ restaurant.sales_today|floatformat:0|intcomma }}</td>
+          <td class="d-none d-lg-table-cell text-muted small">
+            {% if restaurant.last_order_at %}
+              {{ restaurant.last_order_at|timesince }}
+            {% else %}
+              Sin pedidos
             {% endif %}
           </td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Gestionar" aria-label="Gestionar restaurante">
-                <i class="fas fa-sliders" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Gestionar</span>
-              </a>
-              <a href="{% url 'gestion:restaurant-edit' restaurant.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar" aria-label="Editar restaurante">
-                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-              </a>
-              <a href="{% url 'gestion:restaurant-delete' restaurant.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar restaurante">
-                <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
-              </a>
-            </div>
+            {% url 'dashboard:restaurant-detail' restaurant.pk as restaurant_detail_url %}
+            {% url 'gestion:restaurant-edit' restaurant.pk as restaurant_edit_url %}
+            {% url 'gestion:restaurant-delete' restaurant.pk as restaurant_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=restaurant_detail_url label="Ver" icon="fa-eye" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=restaurant_edit_url label="Editar" icon="fa-pen" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=restaurant_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
-        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-utensils" title="No hay restaurantes" message="Los dueños se dan de alta desde la app. Cuando lo hagan, aparecerán aquí para activar." %}
+        {% url 'dashboard:restaurants' as restaurants_clear_url %}
+        {% url 'gestion:restaurant-create' as restaurant_create_url %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-utensils" title="No hay restaurantes con estos filtros" message="Prueba otro estado o término de búsqueda." action_url=restaurants_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-utensils" title="No hay restaurantes" message="Los dueños se dan de alta desde la app. Cuando lo hagan, aparecerán aquí para activar." action_url=restaurant_create_url action_label="Nuevo restaurante" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

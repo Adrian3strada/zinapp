@@ -1,18 +1,29 @@
 {% extends "dashboard/base.html" %}
 
+{% block page_heading %}
+<span class="zin-record-title">
+  {{ customer.get_full_name|default:customer.username }}
+  {% if customer.is_active %}
+    {% include "dashboard/includes/status_badge.html" with tone="success" label="Activo" %}
+  {% else %}
+    {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Inactivo" %}
+  {% endif %}
+</span>
+{% endblock %}
+
 {% block page_actions %}
 <a href="{% url 'dashboard:customer-edit' customer.pk %}" class="btn btn-default btn-sm">
   <i class="fas fa-edit mr-1"></i> Editar
 </a>
 {% if customer.is_active %}
-<form method="post" action="{% url 'dashboard:customer-deactivate' customer.pk %}" class="d-inline">
+<form method="post" action="{% url 'dashboard:customer-deactivate' customer.pk %}">
   {% csrf_token %}
   <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Desactivar a {{ customer.username }}?')">
     Desactivar
   </button>
 </form>
 {% else %}
-<form method="post" action="{% url 'dashboard:customer-activate' customer.pk %}" class="d-inline">
+<form method="post" action="{% url 'dashboard:customer-activate' customer.pk %}">
   {% csrf_token %}
   <button type="submit" class="btn btn-outline-success btn-sm">Activar</button>
 </form>
@@ -20,12 +31,16 @@
 {% endblock %}
 
 {% block content %}
+<nav class="zin-tabs" aria-label="Secciones del cliente">
+  <a href="?tab=info" class="{% if tab == 'info' %}active{% endif %}">Información</a>
+  <a href="?tab=orders" class="{% if tab == 'orders' %}active{% endif %}">Pedidos{% if orders_count %} ({{ orders_count }}){% endif %}</a>
+  <a href="?tab=shipments" class="{% if tab == 'shipments' %}active{% endif %}">Envíos{% if shipments_count %} ({{ shipments_count }}){% endif %}</a>
+</nav>
+
+{% if tab == 'info' %}
 <div class="row">
-  <div class="col-lg-6 mb-3">
-    <div class="card zin-panel-card h-100">
-      <div class="card-header">
-        <h3 class="card-title mb-0">Datos del cliente</h3>
-      </div>
+  <div class="col-lg-7">
+    <div class="card zin-panel-card mb-3">
       <div class="card-body">
         <dl class="detail-list mb-0">
           <dt>Nombre</dt>
@@ -42,21 +57,6 @@
           <dd>{{ customer.address|default:"—" }}</dd>
           <dt>Registro</dt>
           <dd>{{ customer.date_joined|date:"d/m/Y H:i" }}</dd>
-          <dt>Estado</dt>
-          <dd>
-            {% if customer.is_active %}
-              <span class="badge badge-success">Activo</span>
-            {% else %}
-              <span class="badge badge-muted">Inactivo</span>
-            {% endif %}
-          </dd>
-          <dt>Pedidos</dt>
-          <dd>
-            <strong>{{ orders_count }}</strong>
-            {% if orders_count %}
-            · <a href="{{ orders_list_url }}">Ver historial</a>
-            {% endif %}
-          </dd>
         </dl>
       </div>
       <div class="card-footer bg-white">
@@ -67,44 +67,99 @@
       </div>
     </div>
   </div>
-
-  <div class="col-lg-6 mb-3">
-    <div class="card zin-panel-card h-100">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <h3 class="card-title mb-0">Últimos pedidos</h3>
-        {% if orders_count %}
-        <a href="{{ orders_list_url }}" class="btn btn-xs btn-default">Ver todos</a>
-        {% endif %}
-      </div>
-      <div class="card-body p-0 table-responsive">
-        <table class="table table-sm zin-table mb-0">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Estado</th>
-              <th>Total</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for order in recent_orders %}
-            <tr>
-              <td>
-                <a href="{% url 'dashboard:order-detail' order.pk %}">{{ order.code|default:order.id }}</a>
-              </td>
-              <td>{{ order.get_status_display }}</td>
-              <td>${{ order.total }}</td>
-              <td class="text-muted">{{ order.created_at|date:"d/m/Y H:i" }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="4" class="text-center text-muted py-4">Este cliente aún no tiene pedidos.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+  <div class="col-lg-5">
+    <div class="zin-stat-grid">
+      <article class="zin-stat-card">
+        <span class="zin-stat-label">Pedidos</span>
+        <strong class="zin-stat-value">{{ orders_count }}</strong>
+        <span class="zin-stat-meta">De la app ZinApp</span>
+      </article>
+      <article class="zin-stat-card">
+        <span class="zin-stat-label">Pedidos hoy</span>
+        <strong class="zin-stat-value">{{ orders_today }}</strong>
+        <span class="zin-stat-meta">{% if orders_active %}{{ orders_active }} en curso{% else %}Ninguno en curso{% endif %}</span>
+      </article>
+      <article class="zin-stat-card">
+        <span class="zin-stat-label">Envíos y mandados</span>
+        <strong class="zin-stat-value">{{ shipments_count }}</strong>
+        <span class="zin-stat-meta">{% if shipments_active %}{{ shipments_active }} en curso{% else %}Ninguno en curso{% endif %}</span>
+      </article>
     </div>
   </div>
 </div>
+
+{% elif tab == 'orders' %}
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Pedidos recientes</h3>
+    <div class="zin-toolbar-actions">
+      {% if orders_count %}
+      <a href="{{ orders_list_url }}" class="btn btn-default btn-sm">Ver todos</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Restaurante</th>
+          <th>Estado</th>
+          <th class="text-right">Total</th>
+          <th class="d-none d-sm-table-cell">Hace</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in recent_orders %}
+        <tr>
+          <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">{{ order.display_ref }}</a></td>
+          <td>{{ order.restaurant.name }}</td>
+          <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
+          <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
+          <td class="d-none d-sm-table-cell text-muted small">{{ order.created_at|timesince }}</td>
+        </tr>
+        {% empty %}
+        {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-bag-shopping" title="Este cliente aún no tiene pedidos" message="Los pedidos de la app aparecerán aquí." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'shipments' %}
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Envíos y mandados</h3>
+    <div class="zin-toolbar-actions">
+      {% if shipments_count %}
+      <a href="{{ shipments_list_url }}" class="btn btn-default btn-sm">Ver en envíos</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th class="d-none d-sm-table-cell">Hace</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shipment in recent_shipments %}
+        <tr>
+          <td><a href="{% url 'gestion:shipment-detail' shipment.pk %}" class="zin-link-strong">#{{ shipment.pk }}</a></td>
+          <td>{{ shipment.get_kind_display }}</td>
+          <td>{% include "dashboard/includes/status_badge.html" with status=shipment.status label=shipment.get_status_display %}</td>
+          <td class="d-none d-sm-table-cell text-muted small">{{ shipment.created_at|timesince }}</td>
+        </tr>
+        {% empty %}
+        {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-box" title="Sin envíos ni mandados" message="Cuando pida un envío o mandado, aparecerá aquí." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

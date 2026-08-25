@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <div class="zin-filter-group">
       <a href="{% url 'gestion:local-services' %}" class="zin-filter {% if not active_filter %}active{% endif %}">Todos</a>
       <a href="?active=1" class="zin-filter {% if active_filter == '1' %}active{% endif %}">Activos</a>
@@ -18,7 +18,7 @@
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
@@ -37,29 +37,19 @@
           <td>{{ s.phone|default:s.whatsapp|default:"—" }}</td>
           <td>{% if s.is_active %}<span class="badge badge-success">Visible</span>{% else %}<span class="badge badge-muted">Oculto</span>{% endif %}</td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:local-service-edit' s.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar servicio">
-                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-              </a>
-              {% if s.is_active %}
-              <form method="post" action="{% url 'gestion:local-service-deactivate' s.pk %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-warning btn-xs zin-row-btn" title="Ocultar" aria-label="Ocultar servicio">
-                  <i class="fas fa-eye-slash" aria-hidden="true"></i>
-                </button>
-              </form>
-              {% else %}
-              <form method="post" action="{% url 'gestion:local-service-activate' s.pk %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-success btn-xs zin-row-btn" title="Mostrar" aria-label="Mostrar servicio">
-                  <i class="fas fa-eye" aria-hidden="true"></i>
-                </button>
-              </form>
-              {% endif %}
-              <a href="{% url 'gestion:local-service-delete' s.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar servicio">
-                <i class="fas fa-trash" aria-hidden="true"></i>
-              </a>
-            </div>
+            {% url 'gestion:local-service-edit' s.pk as service_edit_url %}
+            {% url 'gestion:local-service-deactivate' s.pk as service_deactivate_url %}
+            {% url 'gestion:local-service-activate' s.pk as service_activate_url %}
+            {% url 'gestion:local-service-delete' s.pk as service_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=service_edit_url label="Editar" icon="fa-pen" %}
+            {% if s.is_active %}
+            {% include "dashboard/includes/action_menu_post.html" with url=service_deactivate_url label="Ocultar" icon="fa-eye-slash" %}
+            {% else %}
+            {% include "dashboard/includes/action_menu_post.html" with url=service_activate_url label="Mostrar" icon="fa-eye" %}
+            {% endif %}
+            {% include "dashboard/includes/action_menu_link.html" with url=service_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}

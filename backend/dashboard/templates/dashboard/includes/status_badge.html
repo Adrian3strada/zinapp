@@ -1,1 +1,1 @@
-<span class="badge badge-pill zin-status zin-status-{{ status }}">{{ label }}</span>
+<span class="badge badge-pill zin-status{% if status %} zin-status-{{ status }}{% elif tone %} badge-{{ tone }}{% endif %}">{{ label }}</span>

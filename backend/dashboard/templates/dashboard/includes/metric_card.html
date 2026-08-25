@@ -1,0 +1,11 @@
+{% load humanize %}
+{% if href %}<a href="{{ href }}" class="ops-kpi{% if accent %} ops-kpi-accent{% endif %} ops-kpi-link">{% else %}<article class="ops-kpi{% if accent %} ops-kpi-accent{% endif %}">{% endif %}
+  <span class="ops-kpi-label">{{ label }}</span>
+  <strong class="ops-kpi-value">{% if money %}${% endif %}{% if money %}{{ value|floatformat:0|intcomma }}{% else %}{{ value }}{% endif %}{% if suffix %}<span class="ops-muted">{{ suffix }}</span>{% endif %}</strong>
+  {% if meta %}<span class="ops-kpi-meta">{{ meta }}</span>{% endif %}
+  {% if change %}
+  <span class="ops-kpi-delta ops-kpi-delta-{{ change.direction }}">
+    {% if change.direction == 'up' %}+{% endif %}{{ change.pct }}% vs ayer
+  </span>
+  {% endif %}
+{% if href %}</a>{% else %}</article>{% endif %}

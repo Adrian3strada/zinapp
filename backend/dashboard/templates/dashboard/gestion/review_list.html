@@ -1,31 +1,60 @@
 {% extends "dashboard/base.html" %}
+{% load panel_query %}
 
 {% block content %}
-{% if avg_restaurant %}
-<div class="row mb-3">
-  <div class="col-md-6">
-    <div class="info-box mb-0">
-      <span class="info-box-icon bg-warning"><i class="fas fa-utensils"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Promedio restaurante</span>
-        <span class="info-box-number">{{ avg_restaurant|floatformat:1 }} ★</span>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="info-box mb-0">
-      <span class="info-box-icon bg-info"><i class="fas fa-motorcycle"></i></span>
-      <div class="info-box-content">
-        <span class="info-box-text">Promedio repartidor</span>
-        <span class="info-box-number">{{ avg_driver|floatformat:1|default:"—" }} ★</span>
-      </div>
-    </div>
-  </div>
+{% include "dashboard/includes/marketing_nav.html" %}
+{% if review_total %}
+<div class="zin-stat-grid mb-3" role="group" aria-label="Promedios de reseñas">
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Reseñas</span>
+    <strong class="zin-stat-value">{{ review_total }}</strong>
+    <span class="zin-stat-meta">Total acumulado</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Promedio restaurante</span>
+    <strong class="zin-stat-value">{% if avg_restaurant %}{{ avg_restaurant|floatformat:1 }} ★{% else %}—{% endif %}</strong>
+    <span class="zin-stat-meta">Todas las reseñas</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Promedio repartidor</span>
+    <strong class="zin-stat-value">{% if avg_driver %}{{ avg_driver|floatformat:1 }} ★{% else %}—{% endif %}</strong>
+    <span class="zin-stat-meta">Solo si hubo calificación</span>
+  </article>
 </div>
 {% endif %}
 
 <div class="card zin-panel-card">
-  <div class="card-body p-0 table-responsive">
+  <div class="card-header zin-toolbar zin-filter-bar">
+    <div class="zin-filter-group">
+      <a href="{% url 'gestion:reviews' %}{% keep_query stars='' %}" class="zin-filter {% if not stars_filter %}active{% endif %}">Todas</a>
+      {% for star in star_choices %}
+      <a href="{% url 'gestion:reviews' %}{% keep_query stars=star %}" class="zin-filter {% if stars_filter == star %}active{% endif %}">{{ star }}★</a>
+      {% endfor %}
+      {% if restaurant_filter %}
+      <span class="zin-filter active">Restaurante #{{ restaurant_filter }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card-header zin-toolbar zin-filter-bar border-top">
+    <form class="zin-filter-group zin-filter-form flex-wrap" method="get">
+      {% if stars_filter %}<input type="hidden" name="stars" value="{{ stars_filter }}">{% endif %}
+      <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante" onchange="this.form.submit()">
+        <option value="">Todos los restaurantes</option>
+        {% for r in restaurants %}
+        <option value="{{ r.pk }}" {% if restaurant_filter == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+      <div class="zin-search zin-search-inline">
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Cliente, comentario, pedido…" %}
+      </div>
+    </form>
+    {% if has_filters %}
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'gestion:reviews' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
@@ -34,7 +63,7 @@
           <th>Restaurante</th>
           <th>Local</th>
           <th>Repartidor</th>
-          <th>Comentario</th>
+          <th class="d-none d-md-table-cell">Comentario</th>
           <th>Fecha</th>
           <th class="text-right">Acciones</th>
         </tr>
@@ -42,21 +71,39 @@
       <tbody>
         {% for r in reviews %}
         <tr>
-          <td><a href="{% url 'dashboard:order-detail' r.order_id %}">#{{ r.order_id }}</a></td>
-          <td>{{ r.customer.username }}</td>
-          <td>{{ r.restaurant.name }}</td>
+          <td>
+            <a href="{% url 'dashboard:order-detail' r.order_id %}" class="zin-link-strong">{{ r.order.display_ref }}</a>
+          </td>
+          <td>
+            {% if r.customer_id %}
+            <a href="{% url 'dashboard:customer-detail' r.customer_id %}">{{ r.customer.get_full_name|default:r.customer.username }}</a>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'dashboard:restaurant-detail' r.restaurant_id %}">{{ r.restaurant.name }}</a>
+          </td>
           <td>{{ r.restaurant_rating }} ★</td>
-          <td>{% if r.driver_rating %}{{ r.driver_rating }} ★{% else %}—{% endif %}</td>
-          <td class="text-muted">{{ r.comment|truncatechars:60|default:"—" }}</td>
-          <td class="text-muted">{{ r.created_at|date:"d/m/Y" }}</td>
+          <td>{% if r.driver_rating %}{{ r.driver_rating }} ★{% else %}—{% endif %}{% if r.driver %}<div class="text-muted small">{{ r.driver.get_full_name|default:r.driver.username }}</div>{% endif %}</td>
+          <td class="d-none d-md-table-cell text-muted">{{ r.comment|truncatechars:60|default:"—" }}</td>
+          <td class="text-muted small">{{ r.created_at|timesince }}</td>
           <td class="text-right">
-            <a href="{% url 'gestion:review-delete' r.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar reseña">
-              <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
-            </a>
+            {% url 'dashboard:order-detail' r.order_id as review_order_url %}
+            {% url 'gestion:review-delete' r.pk as review_delete_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=review_order_url label="Ver pedido" icon="fa-eye" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=review_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
+        {% url 'gestion:reviews' as reviews_clear_url %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-star" title="No hay reseñas con estos filtros" message="Prueba otra calificación, restaurante o término de búsqueda." action_url=reviews_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
         {% include "dashboard/includes/empty_state.html" with colspan=8 icon="fa-star" title="No hay reseñas" message="Las calificaciones de clientes aparecerán aquí." %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

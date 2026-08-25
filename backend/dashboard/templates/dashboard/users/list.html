@@ -1,83 +1,86 @@
 {% extends "dashboard/base.html" %}
+{% load panel_query %}
 
 {% block content %}
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <div class="zin-filter-group">
-      <a href="{% url 'dashboard:users' %}" class="zin-filter {% if not role_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'dashboard:users' %}{% keep_query role='' %}" class="zin-filter {% if not role_filter %}active{% endif %}">Equipo</a>
       {% for value, label in role_choices %}
-      <a href="?role={{ value }}" class="zin-filter {% if role_filter == value %}active{% endif %}">{{ label }}</a>
+      <a href="{% url 'dashboard:users' %}{% keep_query role=value %}" class="zin-filter {% if role_filter == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
       <form class="zin-search" method="get">
         {% if role_filter %}<input type="hidden" name="role" value="{{ role_filter }}">{% endif %}
-        {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar usuario…" %}
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Usuario, nombre o correo…" %}
       </form>
     </div>
     <div class="zin-toolbar-actions">
+      {% if has_filters %}
+      <a href="{% url 'dashboard:users' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
       <a href="{% url 'gestion:user-create' %}" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Nuevo usuario
       </a>
     </div>
   </div>
-  <div class="card-body p-0 table-responsive">
+  <div class="card-body p-0 table-responsive zin-table-wrap">
     <table class="table table-hover zin-table mb-0">
       <thead>
         <tr>
           <th>Usuario</th>
           <th>Nombre</th>
-          <th>Email</th>
+          <th class="d-none d-md-table-cell">Email</th>
           <th>Rol</th>
-          <th>Activo</th>
-          <th>Registro</th>
+          <th>Estado</th>
+          <th class="d-none d-lg-table-cell">Registro</th>
           <th class="text-right">Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for u in users %}
         <tr>
-          <td><strong>{{ u.username }}</strong></td>
+          <td>
+            <a href="{% url 'gestion:user-edit' u.pk %}" class="zin-link-strong">{{ u.username }}</a>
+          </td>
           <td>{{ u.get_full_name|default:"—" }}</td>
-          <td class="text-muted">{{ u.email|default:"—" }}</td>
-          <td><span class="badge badge-role">{{ u.get_role_display }}</span></td>
+          <td class="d-none d-md-table-cell text-muted">{{ u.email|default:"—" }}</td>
+          <td>{{ u.get_role_display }}</td>
           <td>
             {% if u.is_active %}
-              <span class="badge badge-success">Sí</span>
+              {% include "dashboard/includes/status_badge.html" with tone="success" label="Activo" %}
             {% else %}
-              <span class="badge badge-muted">No</span>
+              {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Inactivo" %}
             {% endif %}
           </td>
-          <td class="text-muted">{{ u.date_joined|date:"d/m/Y" }}</td>
+          <td class="d-none d-lg-table-cell text-muted">{{ u.date_joined|date:"d/m/Y" }}</td>
           <td class="text-right">
-            <div class="btn-group btn-group-sm zin-row-actions">
-              <a href="{% url 'gestion:user-edit' u.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Editar" aria-label="Editar usuario">
-                <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-              </a>
-              {% if not u.is_superuser %}
-              <a href="{% url 'gestion:user-delete' u.pk %}" class="btn btn-outline-danger btn-xs zin-row-btn" title="Eliminar" aria-label="Eliminar usuario">
-                <i class="fas fa-trash" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Eliminar</span>
-              </a>
-              {% endif %}
-              {% if u.is_active and not u.is_superuser %}
-              <form method="post" action="{% url 'gestion:user-deactivate' u.pk %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger btn-xs zin-row-btn" title="Desactivar" aria-label="Desactivar usuario" onclick="return confirm('¿Desactivar {{ u.username }}?')">
-                  <i class="fas fa-user-slash" aria-hidden="true"></i>
-                </button>
-              </form>
-              {% elif not u.is_active %}
-              <form method="post" action="{% url 'gestion:user-activate' u.pk %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-success btn-xs zin-row-btn" title="Activar" aria-label="Activar usuario">
-                  <i class="fas fa-user-check" aria-hidden="true"></i>
-                </button>
-              </form>
-              {% endif %}
-            </div>
+            {% url 'gestion:user-edit' u.pk as user_edit_url %}
+            {% url 'gestion:user-delete' u.pk as user_delete_url %}
+            {% url 'gestion:user-deactivate' u.pk as user_deactivate_url %}
+            {% url 'gestion:user-activate' u.pk as user_activate_url %}
+            {% include "dashboard/includes/action_menu_start.html" %}
+            {% include "dashboard/includes/action_menu_link.html" with url=user_edit_url label="Editar" icon="fa-pen" %}
+            {% if not u.is_superuser %}
+            {% include "dashboard/includes/action_menu_link.html" with url=user_delete_url label="Eliminar" icon="fa-trash" danger="1" %}
+            {% endif %}
+            {% if u.is_active and not u.is_superuser %}
+            {% with confirm_msg="¿Desactivar "|add:u.username|add:"?" %}
+            {% include "dashboard/includes/action_menu_post.html" with url=user_deactivate_url label="Desactivar" icon="fa-user-slash" danger="1" confirm=confirm_msg %}
+            {% endwith %}
+            {% elif not u.is_active %}
+            {% include "dashboard/includes/action_menu_post.html" with url=user_activate_url label="Activar" icon="fa-user-check" %}
+            {% endif %}
+            {% include "dashboard/includes/action_menu_end.html" %}
           </td>
         </tr>
         {% empty %}
+        {% url 'dashboard:users' as users_clear_url %}
         {% url 'gestion:user-create' as user_create_url %}
-        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-users" title="No hay usuarios" message="Prueba otro filtro o crea una cuenta manualmente." action_url=user_create_url action_label="Nuevo usuario" %}
+        {% if has_filters %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-user-shield" title="No hay cuentas con estos filtros" message="Prueba otro rol o término de búsqueda. Los clientes están en Personas → Clientes." action_url=users_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
+        {% include "dashboard/includes/empty_state.html" with colspan=7 icon="fa-user-shield" title="No hay cuentas de equipo" message="Administradores, dueños y personal aparecen aquí." action_url=user_create_url action_label="Nuevo usuario" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

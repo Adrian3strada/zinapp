@@ -1,0 +1,5 @@
+<nav class="zin-tabs" aria-label="Marketing">
+  <a href="{% url 'gestion:promotions' %}" class="{% if nav == 'promotions' %}active{% endif %}">Promociones</a>
+  <a href="{% url 'gestion:coupons' %}" class="{% if nav == 'coupons' %}active{% endif %}">Cupones</a>
+  <a href="{% url 'gestion:reviews' %}" class="{% if nav == 'reviews' %}active{% endif %}">Reseñas</a>
+</nav>

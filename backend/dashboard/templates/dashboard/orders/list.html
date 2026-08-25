@@ -1,63 +1,139 @@
 {% extends "dashboard/base.html" %}
+{% load panel_query %}
 
 {% block content %}
 <div class="alert alert-info">
   Los <strong>mandados de víveres</strong> no son pedidos de restaurante. Consúltalos en
-  <a href="{% url 'gestion:shipments' %}?kind=mandado" class="alert-link">Operaciones → Envíos / Mandados</a>.
+  <a href="{% url 'gestion:shipments' %}?kind=mandado" class="alert-link">Operación → Envíos y mandados</a>.
 </div>
 <div class="card zin-panel-card">
-  <div class="card-header zin-toolbar">
+  <div class="card-header zin-toolbar zin-filter-bar">
     <div class="zin-filter-group">
-      <a href="{% url 'dashboard:orders' %}" class="zin-filter {% if not status_filter %}active{% endif %}">Todos</a>
+      <a href="{% url 'dashboard:orders' %}{% keep_query status='' %}" class="zin-filter {% if not status_filter %}active{% endif %}">Todos</a>
       {% for value, label in status_choices %}
-      <a href="?status={{ value }}" class="zin-filter {% if status_filter == value %}active{% endif %}">{{ label }}</a>
+      <a href="{% url 'dashboard:orders' %}{% keep_query status=value %}" class="zin-filter {% if status_filter == value %}active{% endif %}">{{ label }}</a>
       {% endfor %}
+      {% if payment_filter == 'failed' %}
+      <a href="{% url 'dashboard:orders' %}{% keep_query payment='failed' %}" class="zin-filter active">Pago fallido</a>
+      {% endif %}
+      {% if customer_filter %}
+      <span class="zin-filter active">Cliente #{{ customer_filter }}</span>
+      {% endif %}
     </div>
-    <form class="zin-search" method="get">
+  </div>
+  <div class="card-header zin-toolbar zin-filter-bar border-top">
+    <form class="zin-filter-group zin-filter-form flex-wrap" method="get">
       {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
-      {% include "dashboard/includes/list_search_field.html" with placeholder="Buscar #, cliente, restaurante…" %}
+      {% if customer_filter %}<input type="hidden" name="customer" value="{{ customer_filter }}">{% endif %}
+      <select name="restaurant" class="form-control form-control-sm zin-filter-select" aria-label="Restaurante" onchange="this.form.submit()">
+        <option value="">Todos los restaurantes</option>
+        {% for r in restaurants %}
+        <option value="{{ r.pk }}" {% if restaurant_filter == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="driver" class="form-control form-control-sm zin-filter-select" aria-label="Repartidor" onchange="this.form.submit()">
+        <option value="">Todos los repartidores</option>
+        <option value="none" {% if driver_filter == 'none' %}selected{% endif %}>Sin asignar</option>
+        {% for d in drivers %}
+        <option value="{{ d.pk }}" {% if driver_filter == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.get_full_name|default:d.username }}</option>
+        {% endfor %}
+      </select>
+      <select name="method" class="form-control form-control-sm zin-filter-select" aria-label="Método de pago" onchange="this.form.submit()">
+        <option value="">Método de pago</option>
+        {% for value, label in method_choices %}
+        <option value="{{ value }}" {% if method_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="payment" class="form-control form-control-sm zin-filter-select" aria-label="Estado de pago" onchange="this.form.submit()">
+        <option value="">Estado de pago</option>
+        {% for value, label in payment_choices %}
+        <option value="{{ value }}" {% if payment_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="when" class="form-control form-control-sm zin-filter-select" aria-label="Programación" onchange="this.form.submit()">
+        <option value="">Entrega</option>
+        <option value="asap" {% if when_filter == 'asap' %}selected{% endif %}>Inmediata</option>
+        <option value="scheduled" {% if when_filter == 'scheduled' %}selected{% endif %}>Programada</option>
+      </select>
+      <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-sm zin-filter-select" aria-label="Desde" onchange="this.form.submit()">
+      <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm zin-filter-select" aria-label="Hasta" onchange="this.form.submit()">
+      <select name="sort" class="form-control form-control-sm zin-filter-select" aria-label="Orden" onchange="this.form.submit()">
+        <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Más recientes</option>
+        <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Más antiguos</option>
+        <option value="total" {% if sort == 'total' %}selected{% endif %}>Mayor total</option>
+      </select>
+      <div class="zin-search zin-search-inline">
+        {% include "dashboard/includes/list_search_field.html" with placeholder="Folio, cliente, teléfono, restaurante…" %}
+      </div>
     </form>
+    {% if has_filters %}
+    <div class="zin-toolbar-actions">
+      <a href="{% url 'dashboard:orders' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+    </div>
+    {% endif %}
   </div>
   <div class="card-body p-0">
-    <div class="table-responsive">
+    <div class="table-responsive zin-table-wrap">
       <table class="table table-hover zin-table mb-0">
         <thead>
           <tr>
-            <th>Pedido</th>
-            <th>Restaurante</th>
+            <th>Folio</th>
             <th>Cliente</th>
-            <th>Repartidor</th>
+            <th>Restaurante</th>
+            <th class="d-none d-md-table-cell">Repartidor</th>
             <th>Estado</th>
-            <th>Pago</th>
+            <th class="d-none d-lg-table-cell">Pago</th>
             <th class="text-right">Total</th>
-            <th>Creado</th>
+            <th class="d-none d-sm-table-cell">Hora</th>
+            <th>Tiempo</th>
             <th class="text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
           {% for order in orders %}
           <tr>
-            <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">#{{ order.id }}</a></td>
+            <td>
+              <a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">{{ order.display_ref }}</a>
+            </td>
+            <td>
+              {% if order.customer %}
+                {{ order.customer.get_full_name|default:order.customer.username }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
             <td>{{ order.restaurant.name }}</td>
-            <td>{% if order.customer %}{{ order.customer.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-            <td>{% if order.driver %}{{ order.driver.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td class="d-none d-md-table-cell">
+              {% if order.driver %}{{ order.driver.username }}{% else %}<span class="text-muted">Sin asignar</span>{% endif %}
+            </td>
             <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
-            <td><span class="text-muted">{{ order.get_payment_method_display }}</span></td>
+            <td class="d-none d-lg-table-cell">
+              <span class="text-muted">{{ order.get_payment_method_display }}</span>
+              {% if order.payment_status == 'failed' %}
+                {% include "dashboard/includes/status_badge.html" with tone="danger" label="Fallido" %}
+              {% elif order.payment_status == 'paid' %}
+                <span class="badge badge-success">Pagado</span>
+              {% endif %}
+            </td>
             <td class="text-right mono font-weight-bold">${{ order.total|floatformat:2 }}</td>
-            <td class="text-muted small">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+            <td class="d-none d-sm-table-cell text-muted small">{{ order.created_at|date:"d/m/Y H:i" }}</td>
+            <td class="text-muted small">{{ order.created_at|timesince }}</td>
             <td class="text-right">
-              <div class="btn-group btn-group-sm zin-row-actions">
-                <a href="{% url 'dashboard:order-detail' order.pk %}" class="btn btn-outline-primary btn-xs zin-row-btn" title="Ver" aria-label="Ver pedido">
-                  <i class="fas fa-eye" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Ver</span>
-                </a>
-                <a href="{% url 'gestion:order-edit' order.pk %}" class="btn btn-outline-secondary btn-xs zin-row-btn" title="Editar" aria-label="Editar pedido">
-                  <i class="fas fa-pen" aria-hidden="true"></i><span class="d-none d-lg-inline ml-1">Editar</span>
-                </a>
-              </div>
+              {% url 'dashboard:order-detail' order.pk as order_detail_url %}
+              {% url 'gestion:order-edit' order.pk as order_edit_url %}
+              {% include "dashboard/includes/action_menu_start.html" %}
+              {% include "dashboard/includes/action_menu_link.html" with url=order_detail_url label="Ver" icon="fa-eye" %}
+              {% include "dashboard/includes/action_menu_link.html" with url=order_edit_url label="Editar" icon="fa-pen" %}
+              {% include "dashboard/includes/action_menu_end.html" %}
             </td>
           </tr>
           {% empty %}
-          {% include "dashboard/includes/empty_state.html" with colspan=9 icon="fa-bag-shopping" title="No se encontraron pedidos" message="Prueba otro filtro o término de búsqueda." %}
+          {% url 'dashboard:orders' as orders_clear_url %}
+          {% if has_filters %}
+          {% include "dashboard/includes/empty_state.html" with colspan=10 icon="fa-bag-shopping" title="No hay pedidos con estos filtros" message="Prueba otra fecha, restaurante o término de búsqueda." action_url=orders_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+          {% else %}
+          {% include "dashboard/includes/empty_state.html" with colspan=10 icon="fa-bag-shopping" title="Aún no hay pedidos" message="Los pedidos de la app ZinApp aparecerán aquí." %}
+          {% endif %}
           {% endfor %}
         </tbody>
       </table>

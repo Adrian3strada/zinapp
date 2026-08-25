@@ -1,65 +1,105 @@
 {% extends "dashboard/base.html" %}
 
+{% block page_heading %}
+<span class="zin-record-title">
+  {% if shipment.kind == 'mandado' %}Mandado{% else %}Envío{% endif %} #{{ shipment.pk }}
+  {% include "dashboard/includes/status_badge.html" with status=shipment.status label=shipment.get_status_display %}
+  {% if shipment.kind == 'mandado' %}
+    {% include "dashboard/includes/status_badge.html" with tone="info" label="Mandado" %}
+  {% else %}
+    {% include "dashboard/includes/status_badge.html" with tone="secondary" label="Envío" %}
+  {% endif %}
+  {% if shipment.payment_status == 'failed' %}
+    {% include "dashboard/includes/status_badge.html" with tone="danger" label="Pago fallido" %}
+  {% elif shipment.payment_status == 'paid' %}
+    <span class="badge badge-success">Pagado</span>
+  {% endif %}
+</span>
+{% endblock %}
+
 {% block content %}
 <div class="row">
-  <div class="col-lg-7">
-    <div class="card card-outline card-primary mb-3">
+  <div class="col-lg-8">
+    <div class="card zin-panel-card mb-3">
       <div class="card-header">
-        <h3 class="card-title">
-          {% if shipment.kind == 'mandado' %}Mandado{% else %}Envío{% endif %} #{{ shipment.id }}
-        </h3>
-        <div class="card-tools">
-          {% if shipment.kind == 'mandado' %}
-          <span class="badge badge-info mr-1">Mandado</span>
-          {% endif %}
-          <span class="badge badge-role">{{ shipment.get_status_display }}</span>
-        </div>
+        <h3 class="card-title mb-0">Seguimiento</h3>
       </div>
-      <div class="card-body p-0 table-responsive">
-        <table class="table table-sm mb-0">
-          <tbody>
-            <tr><td class="text-muted" style="width:35%;">Cliente</td><td>{{ shipment.customer.username }}</td></tr>
-            <tr><td class="text-muted">Descripción</td><td>{{ shipment.description }}</td></tr>
-            {% if shipment.kind == 'mandado' and shipment.mandado_details.items %}
-            <tr>
-              <td class="text-muted align-top">Productos</td>
-              <td>
-                <ul class="mb-0 pl-3">
-                  {% for item in shipment.mandado_details.items %}
-                  <li>
-                    {{ item.name }}
-                    {% if item.quantity %} — {{ item.quantity }}{% if item.unit %} {{ item.unit }}{% endif %}{% endif %}
-                    {% if item.notes %}<br><span class="text-muted small">{{ item.notes }}</span>{% endif %}
-                  </li>
-                  {% endfor %}
-                </ul>
-              </td>
-            </tr>
-            {% if shipment.mandado_details.preferred_stores %}
-            <tr><td class="text-muted">Tienda / local</td><td>{{ shipment.mandado_details.preferred_stores }}</td></tr>
-            {% endif %}
-            {% if shipment.mandado_details.estimated_budget %}
-            <tr><td class="text-muted">Presupuesto productos</td><td>{{ shipment.mandado_details.estimated_budget }}</td></tr>
-            {% endif %}
-            {% endif %}
-            <tr><td class="text-muted">Tamaño</td><td>{{ shipment.get_size_display }}</td></tr>
-            <tr><td class="text-muted">Recoger en</td><td>{{ shipment.pickup_address }}</td></tr>
-            {% if shipment.pickup_notes %}<tr><td class="text-muted">Notas recogida</td><td>{{ shipment.pickup_notes }}</td></tr>{% endif %}
-            <tr><td class="text-muted">Entregar en</td><td>{{ shipment.delivery_address }}</td></tr>
-            {% if shipment.delivery_notes %}<tr><td class="text-muted">Notas entrega</td><td>{{ shipment.delivery_notes }}</td></tr>{% endif %}
-            <tr><td class="text-muted">Repartidor</td><td>{% if shipment.driver %}{{ shipment.driver.username }}{% else %}<span class="text-muted">Sin asignar</span>{% endif %}</td></tr>
-            <tr><td class="text-muted">Pago</td><td>{{ shipment.get_payment_method_display }}</td></tr>
-            <tr><td class="text-muted">Total</td><td class="mono">${{ shipment.total|floatformat:2 }}</td></tr>
-            <tr><td class="text-muted">Creado</td><td>{{ shipment.created_at|date:"d/m/Y H:i" }}</td></tr>
-          </tbody>
-        </table>
+      <div class="card-body">
+        {% if shipment.status == 'cancelled' %}
+          <p class="text-danger font-weight-bold mb-0">Este envío fue cancelado.</p>
+        {% elif timeline_steps %}
+          <div class="timeline">
+            {% for step in timeline_steps %}
+            <div class="timeline-step {{ step.state }}">
+              <div class="timeline-dot">{% if step.state == 'done' %}✓{% endif %}</div>
+              <div>
+                <strong>{{ step.label }}</strong>
+                {% if step.state == 'current' %}<span class="text-muted"> · en curso</span>{% endif %}
+                {% if step.at %}
+                <div class="text-muted small">{{ step.at|date:"d/m/Y H:i" }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header">
+        <h3 class="card-title mb-0">{% if shipment.kind == 'mandado' %}Mandado{% else %}Envío{% endif %}</h3>
+      </div>
+      <div class="card-body">
+        <dl class="detail-list mb-0">
+          <dt>Descripción</dt>
+          <dd>{{ shipment.description }}</dd>
+          <dt>Tamaño</dt>
+          <dd>{{ shipment.get_size_display }}</dd>
+          {% if shipment.kind == 'mandado' and shipment.mandado_details.items %}
+          <dt>Productos</dt>
+          <dd>
+            <ul class="mb-0 pl-3">
+              {% for item in shipment.mandado_details.items %}
+              <li>
+                {{ item.name }}
+                {% if item.quantity %} — {{ item.quantity }}{% if item.unit %} {{ item.unit }}{% endif %}{% endif %}
+                {% if item.notes %}<div class="text-muted small">{{ item.notes }}</div>{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          </dd>
+          {% if shipment.mandado_details.preferred_stores %}
+          <dt>Tienda / local</dt>
+          <dd>{{ shipment.mandado_details.preferred_stores }}</dd>
+          {% endif %}
+          {% if shipment.mandado_details.estimated_budget %}
+          <dt>Presupuesto productos</dt>
+          <dd>{{ shipment.mandado_details.estimated_budget }}</dd>
+          {% endif %}
+          {% endif %}
+          <dt>Recoger en</dt>
+          <dd>
+            {{ shipment.pickup_address }}
+            {% if shipment.pickup_notes %}<div class="text-muted small mt-1">{{ shipment.pickup_notes }}</div>{% endif %}
+          </dd>
+          <dt>Entregar en</dt>
+          <dd>
+            {{ shipment.delivery_address }}
+            {% if shipment.delivery_notes %}<div class="text-muted small mt-1">{{ shipment.delivery_notes }}</div>{% endif %}
+          </dd>
+          <dt>Total</dt>
+          <dd class="mono">${{ shipment.total|floatformat:2 }}</dd>
+        </dl>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-5">
-    <div class="card card-outline card-info">
-      <div class="card-header"><h3 class="card-title">Actualizar {% if shipment.kind == 'mandado' %}mandado{% else %}envío{% endif %}</h3></div>
+  <div class="col-lg-4">
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header">
+        <h3 class="card-title mb-0">Actualizar</h3>
+      </div>
       <div class="card-body">
         <form method="post" class="gestion-form">
           {% csrf_token %}
@@ -74,6 +114,78 @@
         </form>
       </div>
     </div>
+
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title mb-0">Participantes</h3></div>
+      <div class="card-body">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Cliente</label>
+            <p>
+              {% if shipment.customer %}
+                {% if shipment.customer.role == 'customer' %}
+                <a href="{% url 'dashboard:customer-detail' shipment.customer.pk %}">{{ shipment.customer.get_full_name|default:shipment.customer.username }}</a>
+                {% else %}
+                {{ shipment.customer.get_full_name|default:shipment.customer.username }}
+                {% endif %}
+                {% if shipment.customer.phone %}<span class="text-muted d-block font-weight-normal">{{ shipment.customer.phone }}</span>{% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </p>
+          </div>
+          <div class="info-item">
+            <label>Repartidor</label>
+            <p>
+              {% if shipment.driver %}
+                {% if driver_profile %}
+                <a href="{% url 'dashboard:driver-detail' driver_profile.pk %}">{{ shipment.driver.get_full_name|default:shipment.driver.username }}</a>
+                {% else %}
+                {{ shipment.driver.get_full_name|default:shipment.driver.username }}
+                {% endif %}
+              {% else %}
+                <span class="text-muted">Sin asignar</span>
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title mb-0">Pago</h3></div>
+      <div class="card-body">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Método</label>
+            <p>{{ shipment.get_payment_method_display }}</p>
+          </div>
+          <div class="info-item">
+            <label>Estado</label>
+            <p>{{ shipment.get_payment_status_display }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if audit_logs %}
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header"><h3 class="card-title mb-0">Actividad del panel</h3></div>
+      <div class="card-body">
+        <ul class="zin-audit-list">
+          {% for log in audit_logs %}
+          <li>
+            <strong>{{ log.get_action_display }}</strong>
+            <span class="text-muted d-block">
+              {% if log.actor %}{{ log.actor.get_full_name|default:log.actor.username }}{% else %}Sistema{% endif %}
+              · {{ log.created_at|date:"d/m/Y H:i" }}
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,3 @@
+<a class="dropdown-item{% if danger %} text-danger{% endif %}{% if disabled %} disabled{% endif %}" href="{{ url }}"{% if confirm %} onclick="return confirm('{{ confirm|escapejs }}')"{% endif %}>
+  {% if icon %}<i class="fas {{ icon }} zin-action-icon" aria-hidden="true"></i>{% endif %}{{ label }}
+</a>

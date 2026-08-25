@@ -1,39 +1,211 @@
 {% extends "dashboard/base.html" %}
 
+{% block page_heading %}
+<span class="zin-record-title">
+  {{ profile.user.get_full_name|default:profile.user.username }}
+  {% if profile.verification_status == 'approved' %}
+    {% include "dashboard/includes/status_badge.html" with tone="success" label="Aprobado" %}
+  {% elif profile.verification_status == 'rejected' %}
+    {% include "dashboard/includes/status_badge.html" with tone="danger" label="Rechazado" %}
+  {% else %}
+    {% include "dashboard/includes/status_badge.html" with tone="warning" label="Pendiente" %}
+  {% endif %}
+  {% if is_busy %}
+    {% include "dashboard/includes/status_badge.html" with tone="warning" label="Ocupado" %}
+  {% elif profile.is_available %}
+    {% include "dashboard/includes/status_badge.html" with tone="success" label="Disponible" %}
+  {% else %}
+    {% include "dashboard/includes/status_badge.html" with tone="secondary" label="No disponible" %}
+  {% endif %}
+</span>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'gestion:driver-edit' profile.pk %}" class="btn btn-default btn-sm">
+  <i class="fas fa-motorcycle mr-1"></i> Editar perfil
+</a>
+<a href="{% url 'gestion:user-edit' profile.user.pk %}" class="btn btn-default btn-sm">
+  <i class="fas fa-user-edit mr-1"></i> Editar cuenta
+</a>
+{% endblock %}
+
 {% block content %}
+<nav class="zin-tabs" aria-label="Secciones del repartidor">
+  <a href="?tab=info" class="{% if tab == 'info' %}active{% endif %}">Información</a>
+  <a href="?tab=jobs" class="{% if tab == 'jobs' %}active{% endif %}">Entregas</a>
+  <a href="?tab=verify" class="{% if tab == 'verify' %}active{% endif %}">Validación</a>
+</nav>
+
+{% if tab == 'info' %}
+<div class="card zin-panel-card">
+  <div class="card-body">
+    <dl class="detail-list">
+      <dt>Usuario</dt>
+      <dd>{{ profile.user.username }}</dd>
+      <dt>Teléfono</dt>
+      <dd>{{ profile.user.phone|default:"—" }}</dd>
+      <dt>Vehículo</dt>
+      <dd>{{ profile.get_vehicle_type_display }}{% if profile.license_plate %} · {{ profile.license_plate }}{% endif %}</dd>
+      <dt>Disponible para pedidos</dt>
+      <dd>{% if profile.is_available %}Sí{% else %}No{% endif %}</dd>
+      <dt>Ubicación GPS</dt>
+      <dd class="mono">
+        {% if profile.current_latitude and profile.current_longitude %}
+          {{ profile.current_latitude }}, {{ profile.current_longitude }}
+        {% else %}
+          Sin ubicación
+        {% endif %}
+      </dd>
+      <dt>Última actividad</dt>
+      <dd>{{ profile.updated_at|timesince }} · {{ profile.updated_at|date:"d/m/Y H:i" }}</dd>
+      <dt>Entregas hoy</dt>
+      <dd>{{ jobs.delivered_today }} (pedidos y envíos entregados)</dd>
+    </dl>
+  </div>
+</div>
+
+{% elif tab == 'jobs' %}
+{% if current_order or current_shipment %}
+<div class="card zin-panel-card mb-3">
+  <div class="card-header">
+    <h3 class="card-title mb-0">En curso</h3>
+  </div>
+  <div class="card-body">
+    {% if current_order %}
+    <p class="mb-1">
+      Pedido
+      <a href="{% url 'dashboard:order-detail' current_order.pk %}" class="zin-link-strong">{{ current_order.display_ref }}</a>
+      · {{ current_order.restaurant.name }}
+    </p>
+    <p class="text-muted mb-0">{{ current_order.get_status_display }} · {{ current_order.created_at|timesince }}</p>
+    {% endif %}
+    {% if current_shipment %}
+    <p class="mb-1 {% if current_order %}mt-3{% endif %}">
+      {{ current_shipment.get_kind_display }}
+      <a href="{% url 'gestion:shipment-detail' current_shipment.pk %}" class="zin-link-strong">#{{ current_shipment.pk }}</a>
+    </p>
+    <p class="text-muted mb-0">{{ current_shipment.get_status_display }} · {{ current_shipment.updated_at|timesince }}</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div class="zin-stat-grid mb-3" role="group" aria-label="Entregas">
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Entregas hoy</span>
+    <strong class="zin-stat-value">{{ delivered_today }}</strong>
+    <span class="zin-stat-meta">Pedidos {{ orders_delivered_today }} · envíos {{ shipments_delivered_today }}</span>
+  </article>
+  <article class="zin-stat-card">
+    <span class="zin-stat-label">Entregas totales</span>
+    <strong class="zin-stat-value">{{ delivered_total }}</strong>
+    <span class="zin-stat-meta">Completadas en la plataforma</span>
+  </article>
+</div>
+
+<div class="card zin-panel-card mb-3">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Pedidos recientes</h3>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Restaurante</th>
+          <th>Estado</th>
+          <th class="d-none d-sm-table-cell">Hace</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in recent_orders %}
+        <tr>
+          <td><a href="{% url 'dashboard:order-detail' order.pk %}" class="zin-link-strong">{{ order.display_ref }}</a></td>
+          <td>{{ order.restaurant.name }}</td>
+          <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
+          <td class="d-none d-sm-table-cell text-muted small">{{ order.created_at|timesince }}</td>
+        </tr>
+        {% empty %}
+        {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-bag-shopping" title="Sin pedidos asignados" message="Cuando tome un pedido de la app, aparecerá aquí." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card zin-panel-card">
+  <div class="card-header zin-toolbar">
+    <h3 class="card-title mb-0">Envíos y mandados recientes</h3>
+  </div>
+  <div class="card-body p-0 table-responsive zin-table-wrap">
+    <table class="table table-hover zin-table mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tipo</th>
+          <th>Estado</th>
+          <th class="d-none d-sm-table-cell">Hace</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for shipment in recent_shipments %}
+        <tr>
+          <td><a href="{% url 'gestion:shipment-detail' shipment.pk %}" class="zin-link-strong">#{{ shipment.pk }}</a></td>
+          <td>{{ shipment.get_kind_display }}</td>
+          <td>{% include "dashboard/includes/status_badge.html" with status=shipment.status label=shipment.get_status_display %}</td>
+          <td class="d-none d-sm-table-cell text-muted small">{{ shipment.created_at|timesince }}</td>
+        </tr>
+        {% empty %}
+        {% include "dashboard/includes/empty_state.html" with colspan=4 icon="fa-box" title="Sin envíos asignados" message="Los mandados y envíos que tome aparecerán aquí." %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% elif tab == 'verify' %}
 <div class="row">
   <div class="col-lg-7">
-    <div class="card zin-panel-card">
-      <div class="card-header"><strong>Validación de {{ profile.user.username }}</strong></div>
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header">
+        <h3 class="card-title mb-0">Checklist de alta</h3>
+        <div class="card-tools"><span class="badge badge-light">{{ setup.done_count }}/{{ setup.total_count }}</span></div>
+      </div>
       <div class="card-body">
-        <p class="mb-1"><strong>Teléfono:</strong> {{ profile.user.phone|default:"No registrado" }}</p>
-        <p class="mb-1"><strong>Vehículo:</strong> {{ profile.get_vehicle_type_display }}{% if profile.license_plate %} · {{ profile.license_plate }}{% endif %}</p>
-        <p class="mb-3"><strong>Estado:</strong> {{ profile.get_verification_status_display }}</p>
-        <h6>Checklist ({{ setup.done_count }}/{{ setup.total_count }})</h6>
-        <ul class="list-group mb-3">
+        <ul class="checklist">
           {% for step in setup.steps %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              {{ step.label }}
-              {% if step.done %}<span class="badge badge-success">Completo</span>{% else %}<span class="badge badge-warning">Pendiente</span>{% endif %}
-            </li>
+          <li class="{% if step.done %}done{% endif %}">
+            <span>{% if step.done %}✓{% else %}○{% endif %}</span>
+            {{ step.label }}
+          </li>
           {% endfor %}
         </ul>
-        <div class="row">
+        <div class="row mt-3">
           <div class="col-sm-6">
             <strong>Foto de perfil</strong>
-            {% if profile.user.avatar %}<p><a href="{{ profile.user.avatar.url }}" target="_blank" rel="noopener">Ver foto</a></p>{% else %}<p class="text-muted">Pendiente</p>{% endif %}
+            {% if profile.user.avatar %}
+            <p class="mb-0"><a href="{{ profile.user.avatar.url }}" target="_blank" rel="noopener">Ver foto</a></p>
+            {% else %}
+            <p class="text-muted mb-0">Pendiente</p>
+            {% endif %}
           </div>
           <div class="col-sm-6">
             <strong>INE</strong>
-            {% if profile.identity_document %}<p><a href="{{ profile.identity_document.url }}" target="_blank" rel="noopener">Ver INE</a></p>{% else %}<p class="text-muted">Pendiente</p>{% endif %}
+            {% if profile.identity_document %}
+            <p class="mb-0"><a href="{{ profile.identity_document.url }}" target="_blank" rel="noopener">Ver INE</a></p>
+            {% else %}
+            <p class="text-muted mb-0">Pendiente</p>
+            {% endif %}
           </div>
         </div>
       </div>
     </div>
   </div>
   <div class="col-lg-5">
-    <div class="card zin-panel-card">
-      <div class="card-header"><strong>Decisión</strong></div>
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header">
+        <h3 class="card-title mb-0">Decisión</h3>
+      </div>
       <div class="card-body">
         <form method="post" action="{% url 'dashboard:driver-review' profile.pk %}">
           {% csrf_token %}
@@ -42,9 +214,18 @@
           <button class="btn btn-success" name="decision" value="approved" {% if not setup.complete %}disabled{% endif %}>Aprobar repartidor</button>
           <button class="btn btn-outline-danger ml-2" name="decision" value="rejected">Rechazar</button>
         </form>
-        {% if not setup.complete %}<p class="text-muted small mt-3">Completa todos los requisitos antes de aprobar.</p>{% endif %}
+        {% if not setup.complete %}
+        <p class="text-muted small mt-3 mb-0">Completa todos los requisitos antes de aprobar.</p>
+        {% endif %}
+        {% if profile.reviewed_at %}
+        <p class="text-muted small mt-3 mb-0">
+          Última revisión: {{ profile.reviewed_at|date:"d/m/Y H:i" }}
+          {% if profile.reviewed_by %} · {{ profile.reviewed_by.username }}{% endif %}
+        </p>
+        {% endif %}
       </div>
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}
