@@ -2,14 +2,10 @@
 
 {% block form_before %}
 {% if order %}
-<div class="panel-card" style="max-width:640px;margin-bottom:16px;">
-  <div class="panel-card-body padded">
-    <p class="text-muted" style="margin:0;">
-      Cliente: <strong>{{ order.customer.username }}</strong> ·
-      {{ order.restaurant.name }} ·
-      Total: <strong>${{ order.total|floatformat:2 }}</strong>
-    </p>
-  </div>
+<div class="alert alert-info mb-3">
+  Cliente: <strong>{{ order.customer.username }}</strong> ·
+  {{ order.restaurant.name }} ·
+  Total: <strong>${{ order.total|floatformat:2 }}</strong>
 </div>
 {% endif %}
 {% endblock %}

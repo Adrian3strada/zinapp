@@ -1,34 +1,59 @@
 {% extends "dashboard/base.html" %}
 
+{% block page_heading %}
+<span class="zin-record-title">
+  Disputa #{{ dispute.id }}
+  {% include "dashboard/includes/dispute_status_badge.html" with status=dispute.status label=dispute.get_status_display %}
+</span>
+{% endblock %}
+
 {% block content %}
 <div class="row">
   <div class="col-lg-7">
-    <div class="card card-outline card-primary mb-3">
+    <div class="card zin-panel-card mb-3">
       <div class="card-header">
-        <h3 class="card-title">Disputa #{{ dispute.id }}</h3>
-        <div class="card-tools">
-          <span class="badge badge-role">{{ dispute.get_status_display }}</span>
-        </div>
+        <h3 class="card-title mb-0">Solicitud</h3>
       </div>
-      <div class="card-body p-0 table-responsive">
-        <table class="table table-sm mb-0">
-          <tbody>
-            <tr><td class="text-muted" style="width:35%;">Pedido</td><td><a href="{% url 'dashboard:order-detail' dispute.order_id %}">#{{ dispute.order_id }} · {{ dispute.order.code }}</a></td></tr>
-            <tr><td class="text-muted">Cliente</td><td>{{ dispute.customer.username }}</td></tr>
-            <tr><td class="text-muted">Restaurante</td><td>{{ dispute.order.restaurant.name }}</td></tr>
-            <tr><td class="text-muted">Total pedido</td><td class="mono">${{ dispute.order.total|floatformat:2 }}</td></tr>
-            <tr><td class="text-muted">Monto solicitado</td><td class="mono">${{ dispute.requested_amount|floatformat:2 }}</td></tr>
-            <tr><td class="text-muted">Motivo</td><td>{{ dispute.reason|linebreaksbr }}</td></tr>
-            <tr><td class="text-muted">Creada</td><td>{{ dispute.created_at|date:"d/m/Y H:i" }}</td></tr>
-          </tbody>
-        </table>
+      <div class="card-body">
+        <div class="info-list">
+          <div class="info-item">
+            <label>Pedido</label>
+            <p><a href="{% url 'dashboard:order-detail' dispute.order_id %}">#{{ dispute.order_id }} · {{ dispute.order.code }}</a></p>
+          </div>
+          <div class="info-item">
+            <label>Cliente</label>
+            <p>{{ dispute.customer.username }}</p>
+          </div>
+          <div class="info-item">
+            <label>Restaurante</label>
+            <p>{{ dispute.order.restaurant.name }}</p>
+          </div>
+          <div class="info-item">
+            <label>Total pedido</label>
+            <p class="mono">${{ dispute.order.total|floatformat:2 }}</p>
+          </div>
+          <div class="info-item">
+            <label>Monto solicitado</label>
+            <p class="mono">${{ dispute.requested_amount|floatformat:2 }}</p>
+          </div>
+          <div class="info-item">
+            <label>Motivo</label>
+            <p>{{ dispute.reason|linebreaksbr }}</p>
+          </div>
+          <div class="info-item">
+            <label>Creada</label>
+            <p>{{ dispute.created_at|date:"d/m/Y H:i" }}</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="col-lg-5">
-    <div class="card card-outline card-warning">
-      <div class="card-header"><h3 class="card-title">Resolver disputa</h3></div>
+    <div class="card zin-panel-card mb-3">
+      <div class="card-header">
+        <h3 class="card-title mb-0">Resolver disputa</h3>
+      </div>
       <div class="card-body">
         <form method="post" class="gestion-form">
           {% csrf_token %}
@@ -39,8 +64,10 @@
             {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
           </div>
           {% endfor %}
-          <p class="text-muted small">Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: marcas el reembolso como procesado.</p>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Guardar resolución</button>
+          <p class="field-hint mb-3">Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: marcas el reembolso como procesado.</p>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Guardar resolución</button>
+          </div>
         </form>
       </div>
     </div>

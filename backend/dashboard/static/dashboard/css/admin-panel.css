@@ -1,10 +1,23 @@
 /* Gestión de datos — integrada al panel ZinApp */
 
 .panel-admin-body {
+  --bg: var(--zin-bg, #f4f6f9);
+  --surface: var(--zin-surface, #fff);
+  --text: var(--zin-text, #0f172a);
+  --text-secondary: var(--zin-muted, #64748b);
+  --text-muted: var(--zin-muted, #64748b);
+  --primary: var(--zin-primary, #1E5DB8);
+  --primary-dark: var(--zin-primary-dark, #154A94);
+  --primary-light: var(--zin-primary-light, #E8F1FB);
+  --border: var(--zin-border, #e6ebf2);
+  --border-light: var(--zin-border, #e6ebf2);
+  --radius: var(--zin-radius, 12px);
+  --shadow: var(--zin-shadow, 0 1px 2px rgba(15, 23, 42, 0.04));
+  --error: var(--zin-danger, #b91c1c);
   margin: 0;
-  background: var(--bg);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  color: var(--text);
+  background: var(--zin-bg, #f4f6f9);
+  font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+  color: var(--zin-text, #0f172a);
 }
 
 .panel-admin-body.popup {
@@ -78,10 +91,10 @@
 
 .panel-admin-page-title {
   margin: 0 0 8px;
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 1.15rem;
+  font-weight: 650;
   color: var(--text);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.03em;
 }
 
 .panel-admin-subtitle {
@@ -97,13 +110,18 @@
 
 .gestion-hero {
   margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .gestion-hero-title {
   margin: 0 0 6px;
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary-dark);
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .gestion-hero-text {
@@ -123,11 +141,13 @@
 .gestion-modules .module h2,
 .gestion-modules .module caption,
 .gestion-modules caption {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: #fff;
+  background: #fafbfc;
+  color: var(--text);
   padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  border-bottom: 1px solid var(--border);
 }
 
 .gestion-modules table {
@@ -323,8 +343,8 @@ button:focus-visible {
 }
 
 .panel-admin-card .inline-group h2 {
-  background: var(--primary);
-  color: #fff;
+  background: #fafbfc;
+  color: var(--text);
 }
 
 .panel-admin-card fieldset.module {

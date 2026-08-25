@@ -1,13 +1,12 @@
 {% extends "dashboard/base.html" %}
 {% load humanize %}
 
-{% block page_heading %}{% endblock %}
 {% block breadcrumb %}{% endblock %}
 
 {% block extra_head %}
 <style>
   .content-wrapper > .content-header { display: none; }
-  .content-wrapper > .content { padding-top: 0.75rem; }
+  .content-wrapper > .content { padding-top: 0.85rem; }
 </style>
 {% endblock %}
 
@@ -16,91 +15,137 @@
 
   <header class="ops-page-head">
     <div>
-      <h1 class="ops-page-title">Hoy</h1>
       <p class="ops-page-sub">{{ today|date:"l j \d\e F Y" }} · Zinapécuaro</p>
     </div>
   </header>
 
+  {% url 'dashboard:orders' as orders_url %}
+  {% url 'dashboard:drivers' as drivers_url %}
+  {% url 'dashboard:restaurants' as restaurants_url %}
+  {% url 'dashboard:customers' as customers_url %}
+  {% url 'gestion:shipments' as shipments_url %}
+  {% url 'dashboard:reports' as reports_url %}
+
   <div class="ops-kpi-grid ops-kpi-grid-primary" role="group" aria-label="Indicadores de hoy">
-    {% url 'dashboard:orders' as orders_url %}
-    {% url 'dashboard:drivers' as drivers_url %}
-    {% url 'dashboard:restaurants' as restaurants_url %}
-    {% url 'dashboard:customers' as customers_url %}
-    {% url 'gestion:shipments' as shipments_url %}
-    {% include "dashboard/includes/metric_card.html" with label="Pedidos hoy" value=orders_today meta="Creados hoy" change=kpi_orders_today_change href=orders_url accent="1" %}
-    {% include "dashboard/includes/metric_card.html" with label="Ventas" value=sales_today money="1" meta="Entregados y cobrados" change=kpi_sales_today_change %}
-    {% include "dashboard/includes/metric_card.html" with label="Pedidos activos" value=orders_active meta="En curso ahora" href=orders_url %}
-    {% include "dashboard/includes/metric_card.html" with label="Repartidores disponibles" value=drivers_available meta=kpi_drivers_meta href=drivers_url %}
+    {% include "dashboard/includes/metric_card.html" with label="Ventas hoy" value=sales_today money="1" meta="Entregados y cobrados" change=kpi_sales_today_change icon="fa-dollar-sign" %}
+    {% include "dashboard/includes/metric_card.html" with label="Pedidos hoy" value=orders_today meta="Creados hoy" change=kpi_orders_today_change href=orders_url icon="fa-bag-shopping" %}
+    {% include "dashboard/includes/metric_card.html" with label="Pedidos activos" value=orders_active meta="En curso ahora" href=orders_url icon="fa-bolt" %}
+    {% include "dashboard/includes/metric_card.html" with label="Repartidores disponibles" value=drivers_available meta=kpi_drivers_meta href=drivers_url icon="fa-motorcycle" %}
   </div>
 
   <div class="ops-kpi-grid ops-kpi-grid-secondary" role="group" aria-label="Operación complementaria">
-    {% include "dashboard/includes/metric_card.html" with label="Pendientes" value=orders_pending meta="Sin aceptar" href=orders_url|add:"?status=pending" %}
-    {% include "dashboard/includes/metric_card.html" with label="Entregados hoy" value=orders_delivered_today meta="Completados" %}
-    {% include "dashboard/includes/metric_card.html" with label="Restaurantes abiertos" value=restaurants_open meta=kpi_restaurants_meta href=restaurants_url %}
-    {% include "dashboard/includes/metric_card.html" with label="Mandados activos" value=mandados_active meta="En curso" href=shipments_url|add:"?kind=mandado" %}
-    {% include "dashboard/includes/metric_card.html" with label="Envíos activos" value=envios_active meta="En curso" href=shipments_url|add:"?kind=courier" %}
-    {% include "dashboard/includes/metric_card.html" with label="Clientes nuevos" value=customers_today meta="Registros de hoy" change=kpi_customers_today_change href=customers_url %}
+    {% include "dashboard/includes/metric_card.html" with label="Pendientes" value=orders_pending meta="Sin aceptar" href=orders_url|add:"?status=pending" compact="1" icon="fa-clock" %}
+    {% include "dashboard/includes/metric_card.html" with label="Entregados hoy" value=orders_delivered_today meta="Completados" compact="1" icon="fa-circle-check" %}
+    {% include "dashboard/includes/metric_card.html" with label="Restaurantes abiertos" value=restaurants_open meta=kpi_restaurants_meta href=restaurants_url compact="1" icon="fa-store" %}
+    {% include "dashboard/includes/metric_card.html" with label="Mandados activos" value=mandados_active meta="En curso" href=shipments_url|add:"?kind=mandado" compact="1" icon="fa-basket-shopping" %}
+    {% include "dashboard/includes/metric_card.html" with label="Envíos activos" value=envios_active meta="En curso" href=shipments_url|add:"?kind=courier" compact="1" icon="fa-truck-fast" %}
+    {% include "dashboard/includes/metric_card.html" with label="Clientes nuevos" value=customers_today meta="Registros de hoy" change=kpi_customers_today_change href=customers_url compact="1" icon="fa-user-plus" %}
   </div>
 
   <section class="ops-block ops-block-attention">
-    <header class="ops-block-head">
-      <h2>Requiere atención</h2>
-      <p>Pendientes accionables</p>
-    </header>
-    {% if attention_items %}
-    <div class="ops-alerts" role="status">
+    {% include "dashboard/includes/section_header.html" with title="Requiere atención" subtitle="Pendientes accionables" %}
+    <div class="ops-attn-list">
       {% for item in attention_items %}
-      <a class="ops-alert ops-alert-{{ item.tone }}" href="{{ item.url }}">
-        {{ item.title }}
-        <span aria-hidden="true">→</span>
+        {% include "dashboard/includes/attention_row.html" with title=item.title url=item.url tone=item.tone %}
+      {% endfor %}
+      {% for order in pending_orders %}
+      <a href="{% url 'dashboard:order-detail' order.pk %}" class="ops-attn ops-attn-danger">
+        <span class="ops-attn-dot" aria-hidden="true"></span>
+        <span class="ops-attn-body">
+          <span class="ops-attn-title">{{ order.display_ref }} · {{ order.restaurant.name }}</span>
+          <span class="ops-attn-meta">{{ order.created_at|timesince }}</span>
+        </span>
       </a>
       {% endfor %}
-    </div>
-    {% endif %}
-    <ul class="ops-queue">
-      {% for order in pending_orders %}
-      <li>
-        <a href="{% url 'dashboard:order-detail' order.pk %}">
-          <span class="ops-tag ops-tag-red">Pedido</span>
-          <span class="ops-queue-title">{{ order.display_ref }} · {{ order.restaurant.name }}</span>
-          <span class="ops-queue-meta">{{ order.created_at|timesince }}</span>
-        </a>
-      </li>
-      {% endfor %}
       {% for order in failed_payments %}
-      <li>
-        <a href="{% url 'dashboard:order-detail' order.pk %}">
-          <span class="ops-tag ops-tag-red">Pago</span>
-          <span class="ops-queue-title">{{ order.display_ref }} · cobro fallido</span>
-          <span class="ops-queue-meta">{{ order.get_payment_method_display }}</span>
-        </a>
-      </li>
+      <a href="{% url 'dashboard:order-detail' order.pk %}" class="ops-attn ops-attn-danger">
+        <span class="ops-attn-dot" aria-hidden="true"></span>
+        <span class="ops-attn-body">
+          <span class="ops-attn-title">{{ order.display_ref }} · cobro fallido</span>
+          <span class="ops-attn-meta">{{ order.get_payment_method_display }}</span>
+        </span>
+      </a>
       {% endfor %}
       {% for promo in expired_promos %}
-      <li>
-        <a href="{% url 'gestion:promotion-edit' promo.pk %}">
-          <span class="ops-tag ops-tag-amber">Promo</span>
-          <span class="ops-queue-title">{{ promo.product.name }} · {{ promo.restaurant.name }}</span>
-          <span class="ops-queue-meta">Venció {{ promo.valid_until|date:"d/m" }}</span>
-        </a>
-      </li>
+      <a href="{% url 'gestion:promotion-edit' promo.pk %}" class="ops-attn ops-attn-warn">
+        <span class="ops-attn-dot" aria-hidden="true"></span>
+        <span class="ops-attn-body">
+          <span class="ops-attn-title">{{ promo.product.name }} · {{ promo.restaurant.name }}</span>
+          <span class="ops-attn-meta">Venció {{ promo.valid_until|date:"d/m" }}</span>
+        </span>
+      </a>
       {% endfor %}
-      {% if pending_restaurants %}
-        {% for restaurant in pending_restaurants %}
-        <li>
-          <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}">
-            <span class="ops-tag ops-tag-amber">Local</span>
-            <span class="ops-queue-title">{{ restaurant.name }}</span>
-            <span class="ops-queue-meta">Por activar</span>
-          </a>
-        </li>
-        {% endfor %}
-      {% endif %}
+      {% for restaurant in pending_restaurants %}
+      <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="ops-attn ops-attn-warn">
+        <span class="ops-attn-dot" aria-hidden="true"></span>
+        <span class="ops-attn-body">
+          <span class="ops-attn-title">{{ restaurant.name }}</span>
+          <span class="ops-attn-meta">Por activar</span>
+        </span>
+      </a>
+      {% endfor %}
       {% if not attention_items and not pending_orders and not failed_payments and not expired_promos and not pending_restaurants %}
-      <li class="ops-queue-ok">Todo al día. Sin pendientes operativos.</li>
+      <p class="ops-queue-ok">Todo al día. Sin pendientes operativos.</p>
       {% endif %}
-    </ul>
+    </div>
   </section>
+
+  <div class="ops-split ops-split-main">
+    <section class="ops-block ops-block-chart">
+      {% include "dashboard/includes/section_header.html" with title="Ventas del periodo" subtitle="Productos cobrados · comisión 10%" action_url=reports_url action_label="Ver reportes" %}
+      {% if financial_report.by_day_chart %}
+      <div class="ops-bars ops-bars-wide" role="img" aria-label="Gráfica de ventas diarias">
+        {% for row in financial_report.by_day_chart %}
+        <div class="ops-bar-col" title="{{ row.day|date:'d/m/Y' }}: ${{ row.product_sales|floatformat:2 }} · {{ row.orders_count }} pedido{{ row.orders_count|pluralize:'s' }}">
+          <div class="ops-bar-track">
+            <div class="ops-bar-fill" style="height: {% widthratio row.product_sales financial_report.by_day_max 100 %}%;"></div>
+          </div>
+          <span class="ops-bar-label">{{ row.day|date:"j" }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ops-empty">Sin ventas cobradas en este periodo.</div>
+      {% endif %}
+      <div class="ops-inline-stats" role="group" aria-label="Métricas del periodo">
+        <div>
+          <span>Ventas del periodo</span>
+          <strong>${{ financial_report.total_ventas_productos|floatformat:0|intcomma }}</strong>
+        </div>
+        <div>
+          <span>Comisión 10%</span>
+          <strong>${{ financial_report.ganancia_10_por_ciento|floatformat:0|intcomma }}</strong>
+        </div>
+        <div>
+          <span>Ganancia por envíos</span>
+          <strong>${{ financial_report.ganancias_envios|floatformat:0|intcomma }}</strong>
+        </div>
+        <div>
+          <span>Pedidos cobrados</span>
+          <strong>{{ financial_report.cantidad_pedidos_completados }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="ops-block">
+      {% include "dashboard/includes/section_header.html" with title="Pedidos por estado" subtitle="Histórico de la plataforma" action_url=orders_url action_label="Ver pedidos" %}
+      {% if has_order_status_data %}
+      <div class="ops-status-bars">
+        {% for row in status_breakdown %}
+        <div class="ops-status-row">
+          <a href="{% url 'dashboard:orders' %}?status={{ row.status }}">{{ row.label }}</a>
+          <div class="ops-status-track" aria-hidden="true">
+            <div class="ops-status-fill {{ row.status }}" style="width: {% widthratio row.count status_breakdown_max 100 %}%;"></div>
+          </div>
+          <span class="mono">{{ row.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ops-empty">Aún no hay pedidos para mostrar estados.</div>
+      {% endif %}
+    </section>
+  </div>
 
   <section class="ops-block">
     <header class="ops-block-head ops-block-head-row">
@@ -146,43 +191,21 @@
     </div>
   </section>
 
-  <header class="ops-section-head">
-    <div>
-      <h2 class="ops-section-title">Ventas del periodo</h2>
-      <p class="ops-page-sub">
-        {% if financial_report.period == 'day' %}Hoy
-        {% elif financial_report.period == 'week' %}Esta semana
-        {% elif financial_report.period == 'all' %}Histórico
-        {% elif financial_report.period == 'range' %}Rango elegido
-        {% else %}Mes en curso{% endif %}
-        · pedidos entregados y cobrados · comisión 10%
-      </p>
+  <section class="ops-block">
+    {% include "dashboard/includes/section_header.html" with title="Actividad reciente" subtitle="Últimos pedidos de la plataforma" action_url=orders_url action_label="Ver pedidos" %}
+    <div class="ops-activity">
+      {% for order in recent_orders %}
+      <a class="ops-activity-row" href="{% url 'dashboard:order-detail' order.pk %}">
+        <span class="ops-activity-ref">{{ order.display_ref }}</span>
+        <span class="ops-activity-title">{{ order.restaurant.name }}</span>
+        <span class="ops-activity-meta">{{ order.created_at|timesince }}</span>
+        {% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}
+      </a>
+      {% empty %}
+      <div class="ops-empty">Sin actividad reciente.</div>
+      {% endfor %}
     </div>
-    <a href="{% url 'dashboard:reports' %}" class="ops-text-link">Ver reportes</a>
-  </header>
-
-  <div class="ops-kpi-grid ops-kpi-grid-finance" role="group" aria-label="Métricas del periodo">
-    <article class="ops-kpi">
-      <span class="ops-kpi-label">Ventas del periodo</span>
-      <strong class="ops-kpi-value">${{ financial_report.total_ventas_productos|floatformat:0|intcomma }}</strong>
-      <span class="ops-kpi-meta">Productos cobrados</span>
-    </article>
-    <article class="ops-kpi">
-      <span class="ops-kpi-label">Comisión 10%</span>
-      <strong class="ops-kpi-value">${{ financial_report.ganancia_10_por_ciento|floatformat:0|intcomma }}</strong>
-      <span class="ops-kpi-meta">Sobre ventas</span>
-    </article>
-    <article class="ops-kpi">
-      <span class="ops-kpi-label">Ganancia por envíos</span>
-      <strong class="ops-kpi-value">${{ financial_report.ganancias_envios|floatformat:0|intcomma }}</strong>
-      <span class="ops-kpi-meta">Del periodo</span>
-    </article>
-    <article class="ops-kpi">
-      <span class="ops-kpi-label">Pedidos cobrados</span>
-      <strong class="ops-kpi-value">{{ financial_report.cantidad_pedidos_completados }}</strong>
-      <span class="ops-kpi-meta">Entregados y pagados</span>
-    </article>
-  </div>
+  </section>
 
   <nav class="ops-shortcuts" aria-label="Accesos">
     <a href="{% url 'dashboard:reports' %}">Reportes</a>

@@ -1,17 +1,10 @@
-<nav class="mt-2">
+<nav class="zin-sidebar-nav">
   <ul class="nav nav-pills nav-sidebar flex-column zin-nav" data-widget="treeview" role="menu" data-accordion="true">
 
     <li class="nav-item">
       <a href="{% url 'dashboard:home' %}" class="nav-link {% if nav == 'home' %}active{% endif %}">
         <i class="nav-icon fas fa-gauge-high"></i>
         <p>Dashboard</p>
-      </a>
-    </li>
-
-    <li class="nav-item">
-      <a href="{% url 'dashboard:reports' %}" class="nav-link {% if nav == 'reports' %}active{% endif %}">
-        <i class="nav-icon fas fa-chart-column"></i>
-        <p>Reportes</p>
       </a>
     </li>
 
@@ -151,6 +144,13 @@
           </a>
         </li>
       </ul>
+    </li>
+
+    <li class="nav-item">
+      <a href="{% url 'dashboard:reports' %}" class="nav-link {% if nav == 'reports' %}active{% endif %}">
+        <i class="nav-icon fas fa-chart-column"></i>
+        <p>Reportes</p>
+      </a>
     </li>
 
     <li class="nav-item {% if nav_group == 'sistema' %}menu-open{% endif %}">

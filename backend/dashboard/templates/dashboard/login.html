@@ -6,12 +6,13 @@
   {% include "dashboard/includes/adminlte_head.html" %}
 </head>
 <body class="hold-transition login-page">
-<div class="login-box">
-  <div class="login-logo">
+<div class="login-box zin-login">
+  <div class="login-logo zin-login-brand">
     <img src="{% static 'dashboard/img/logo-on-white.png' %}" alt="ZinApp" class="zin-login-logo">
-    <small class="d-block zin-login-subtitle mt-2">Panel de administración · Zinapécuaro</small>
+    <span class="zin-login-name">ZinApp</span>
+    <small class="d-block zin-login-subtitle">Panel · Zinapécuaro</small>
   </div>
-  <div class="card card-outline card-primary">
+  <div class="card zin-panel-card zin-login-card">
     <div class="card-body login-card-body">
       <p class="login-box-msg">Inicia sesión para continuar</p>
 
@@ -27,32 +28,22 @@
       </div>
       {% endif %}
 
-      <form method="post">
+      <form method="post" class="gestion-form zin-login-form">
         {% csrf_token %}
         {% if request.GET.next %}
         <input type="hidden" name="next" value="{{ request.GET.next }}">
         {% endif %}
-        <div class="input-group mb-3">
-          <label class="sr-only" for="id_username">Usuario</label>
+        <div class="form-group">
+          <label for="id_username">Usuario</label>
           <input type="text" name="username" id="id_username" class="form-control" placeholder="Usuario" autocomplete="username" autofocus required aria-required="true">
-          <div class="input-group-append">
-            <div class="input-group-text" aria-hidden="true"><span class="fas fa-user"></span></div>
-          </div>
         </div>
-        <div class="input-group mb-3">
-          <label class="sr-only" for="id_password">Contraseña</label>
+        <div class="form-group">
+          <label for="id_password">Contraseña</label>
           <input type="password" name="password" id="id_password" class="form-control" placeholder="Contraseña" autocomplete="current-password" required aria-required="true">
-          <div class="input-group-append">
-            <div class="input-group-text" aria-hidden="true"><span class="fas fa-lock"></span></div>
-          </div>
         </div>
-        <div class="row">
-          <div class="col-12">
-            <button type="submit" class="btn btn-primary btn-block">
-              <i class="fas fa-sign-in-alt mr-1"></i> Entrar al panel
-            </button>
-          </div>
-        </div>
+        <button type="submit" class="btn btn-primary btn-block">
+          <i class="fas fa-sign-in-alt mr-1"></i> Entrar al panel
+        </button>
       </form>
     </div>
   </div>

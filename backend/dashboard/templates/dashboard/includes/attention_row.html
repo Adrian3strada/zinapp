@@ -1,0 +1,7 @@
+{% if url %}<a href="{{ url }}" class="ops-attn ops-attn-{{ tone|default:'warn' }}">{% else %}<div class="ops-attn ops-attn-{{ tone|default:'warn' }}">{% endif %}
+  <span class="ops-attn-dot" aria-hidden="true"></span>
+  <span class="ops-attn-body">
+    <span class="ops-attn-title">{{ title }}</span>
+    {% if meta %}<span class="ops-attn-meta">{{ meta }}</span>{% endif %}
+  </span>
+{% if url %}</a>{% else %}</div>{% endif %}

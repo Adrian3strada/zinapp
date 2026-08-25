@@ -1,0 +1,9 @@
+<header class="ops-block-head{% if action_url %} ops-block-head-row{% endif %}">
+  <div>
+    <h2>{{ title }}</h2>
+    {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if action_url %}
+  <a href="{{ action_url }}" class="ops-text-link">{{ action_label }}</a>
+  {% endif %}
+</header>

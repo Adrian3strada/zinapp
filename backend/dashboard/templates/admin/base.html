@@ -25,25 +25,7 @@
 {% if not is_popup %}
 <a class="skip-link" href="#content-start">Saltar al contenido</a>
 <div class="wrapper">
-  <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
-    <ul class="navbar-nav">
-      <li class="nav-item">
-        <a class="nav-link" data-widget="pushmenu" href="#" role="button" aria-label="Abrir o cerrar menú lateral">
-          <i class="fas fa-bars" aria-hidden="true"></i>
-        </a>
-      </li>
-      <li class="nav-item d-none d-sm-inline-block">
-        <span class="nav-link text-muted">{{ page_title|default:"Consola técnica" }}</span>
-      </li>
-    </ul>
-    <ul class="navbar-nav ml-auto">
-      <li class="nav-item">
-        <a class="nav-link" href="{% url 'dashboard:home' %}">
-          <i class="fas fa-arrow-left mr-1"></i> Panel
-        </a>
-      </li>
-    </ul>
-  </nav>
+  {% include "dashboard/includes/topbar.html" with show_panel_link="1" topbar_title=page_title|default:"Consola técnica" %}
 
   <aside class="main-sidebar sidebar-dark-primary">
     {% include "dashboard/includes/brand.html" %}
@@ -53,15 +35,6 @@
   </aside>
 
   <div class="content-wrapper">
-    <div class="content-header">
-      <div class="container-fluid">
-        <div class="row mb-2">
-          <div class="col-sm-6">
-            <h1 class="m-0">{% block content_title_header %}{{ page_title|default:"Consola técnica" }}{% endblock %}</h1>
-          </div>
-        </div>
-      </div>
-    </div>
     <section class="content">
       <div class="container-fluid panel-admin-content">
 {% endif %}

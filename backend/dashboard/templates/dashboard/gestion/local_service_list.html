@@ -13,6 +13,9 @@
       </form>
     </div>
     <div class="zin-toolbar-actions">
+      {% if active_filter or search_query %}
+      <a href="{% url 'gestion:local-services' %}" class="btn btn-default btn-sm">Quitar filtros</a>
+      {% endif %}
       <a href="{% url 'gestion:local-service-create' %}" class="btn btn-primary btn-sm">
         <i class="fas fa-plus mr-1"></i> Nuevo servicio
       </a>
@@ -35,7 +38,7 @@
           <td><strong>{{ s.name }}</strong></td>
           <td>{{ s.get_category_display }}</td>
           <td>{{ s.phone|default:s.whatsapp|default:"—" }}</td>
-          <td>{% if s.is_active %}<span class="badge badge-success">Visible</span>{% else %}<span class="badge badge-muted">Oculto</span>{% endif %}</td>
+          <td>{% if s.is_active %}{% include "dashboard/includes/status_badge.html" with tone="success" label="Visible" %}{% else %}{% include "dashboard/includes/status_badge.html" with tone="secondary" label="Oculto" %}{% endif %}</td>
           <td class="text-right">
             {% url 'gestion:local-service-edit' s.pk as service_edit_url %}
             {% url 'gestion:local-service-deactivate' s.pk as service_deactivate_url %}
@@ -53,8 +56,13 @@
           </td>
         </tr>
         {% empty %}
+        {% url 'gestion:local-services' as services_clear_url %}
         {% url 'gestion:local-service-create' as service_create_url %}
+        {% if active_filter or search_query %}
+        {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-shop" title="No hay servicios con estos filtros" message="Prueba otro estado o término de búsqueda." action_url=services_clear_url action_label="Quitar filtros" action_icon="fa-filter" %}
+        {% else %}
         {% include "dashboard/includes/empty_state.html" with colspan=5 icon="fa-shop" title="No hay servicios publicados" message="Agrega barberías, talleres y otros negocios locales." action_url=service_create_url action_label="Nuevo servicio" %}
+        {% endif %}
         {% endfor %}
       </tbody>
     </table>

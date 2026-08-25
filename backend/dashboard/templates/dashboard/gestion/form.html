@@ -4,7 +4,7 @@
 <div class="row justify-content-center">
   <div class="col-lg-6">
     <div class="card zin-panel-card">
-      <div class="card-header"><h3 class="card-title">{{ form_title }}</h3></div>
+      <div class="card-header"><h3 class="card-title mb-0">{{ form_title }}</h3></div>
       <div class="card-body">
         {% block form_before %}{% endblock %}
         <form method="post" class="gestion-form"{% if form_is_multipart %} enctype="multipart/form-data"{% endif %}>

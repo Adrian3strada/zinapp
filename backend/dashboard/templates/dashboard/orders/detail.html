@@ -7,7 +7,7 @@
   {% if order.payment_status == 'failed' %}
     {% include "dashboard/includes/status_badge.html" with tone="danger" label="Pago fallido" %}
   {% elif order.payment_status == 'paid' %}
-    <span class="badge badge-success">Pagado</span>
+    {% include "dashboard/includes/status_badge.html" with tone="success" label="Pagado" %}
   {% endif %}
 </span>
 {% endblock %}
@@ -241,7 +241,15 @@
           </div>
           <div class="info-item">
             <label>Estado</label>
-            <p>{{ order.get_payment_status_display }}</p>
+            <p>
+              {% if order.payment_status == 'failed' %}
+                {% include "dashboard/includes/status_badge.html" with tone="danger" label=order.get_payment_status_display %}
+              {% elif order.payment_status == 'paid' %}
+                {% include "dashboard/includes/status_badge.html" with tone="success" label=order.get_payment_status_display %}
+              {% else %}
+                {{ order.get_payment_status_display }}
+              {% endif %}
+            </p>
           </div>
         </div>
       </div>

@@ -1,6 +1,5 @@
-<div class="input-group input-group-sm">
+<div class="zin-search-field">
+  <i class="fas fa-search" aria-hidden="true"></i>
   <input type="search" name="q" value="{{ search_query|default:'' }}" class="form-control" placeholder="{{ placeholder|default:'Buscar…' }}" aria-label="{{ placeholder|default:'Buscar' }}">
-  <div class="input-group-append">
-    <button type="submit" class="btn btn-primary" aria-label="Buscar"><i class="fas fa-search"></i></button>
-  </div>
+  <button type="submit" class="zin-search-go" aria-label="Buscar">Buscar</button>
 </div>
