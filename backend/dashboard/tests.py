@@ -954,8 +954,12 @@ class DashboardHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Pedidos hoy')
         self.assertContains(response, 'Requiere atención')
-        self.assertContains(response, 'Operación actual')
+        self.assertContains(response, 'Pedidos recientes')
+        self.assertContains(response, 'Ventas y pedidos')
         self.assertContains(response, 'Todo al día')
+        self.assertContains(response, 'Repartidores por verificar')
+        self.assertContains(response, 'Locales pendientes de aprobación')
+        self.assertContains(response, 'Promociones vencidas')
         self.assertNotContains(response, '% vs ayer')
 
         stats = get_dashboard_stats()
@@ -966,9 +970,10 @@ class DashboardHomeTests(TestCase):
     def test_orders_today_kpi_and_live_table(self):
         order = self._make_order()
         response = self.client.get('/panel/')
-        self.assertContains(response, 'Operación actual')
+        self.assertContains(response, 'Pedidos recientes')
         self.assertContains(response, order.display_ref)
         self.assertContains(response, 'Pendiente')
+        self.assertContains(response, 'Ver todos')
 
         from dashboard.services import get_dashboard_stats
         stats = get_dashboard_stats()
@@ -1004,7 +1009,7 @@ class DashboardHomeTests(TestCase):
         response = self.client.get('/panel/')
         self.assertContains(response, '% vs ayer')
 
-    def test_stale_pending_and_failed_payment_alerts(self):
+    def test_stale_pending_and_failed_payment_stay_off_home_attention(self):
         from datetime import timedelta
 
         from django.utils import timezone
@@ -1019,12 +1024,19 @@ class DashboardHomeTests(TestCase):
         failed = self._make_order(payment_status=PaymentStatus.FAILED, status=OrderStatus.ACCEPTED)
         stats = get_dashboard_stats()
         titles = [item['title'] for item in stats['attention_items']]
-        self.assertTrue(any('pendiente' in title for title in titles))
-        self.assertTrue(any('pago' in title.lower() for title in titles))
+        self.assertEqual(
+            titles,
+            [
+                'Repartidores por verificar',
+                'Locales pendientes de aprobación',
+                'Promociones vencidas',
+            ],
+        )
+        self.assertFalse(stats['has_attention'])
 
         response = self.client.get('/panel/')
-        self.assertContains(response, 'cobro fallido')
-        self.assertContains(response, f'payment={PaymentStatus.FAILED}')
+        self.assertNotContains(response, 'cobro fallido')
+        self.assertNotContains(response, f'payment={PaymentStatus.FAILED}')
 
         listed = self.client.get(f'/panel/pedidos/?payment={PaymentStatus.FAILED}')
         self.assertEqual(listed.status_code, 200)
@@ -1053,14 +1065,58 @@ class DashboardHomeTests(TestCase):
             is_active=True,
         )
         stats = get_dashboard_stats()
-        self.assertTrue(
-            any('promoción' in item['title'] for item in stats['attention_items'])
-        )
+        promo_item = next(item for item in stats['attention_items'] if item['key'] == 'promos')
+        self.assertEqual(promo_item['count'], 1)
+        self.assertIn('expired=1', promo_item['url'])
         response = self.client.get('/panel/')
-        self.assertContains(response, 'Torta')
+        self.assertContains(response, 'Promociones vencidas')
+        self.assertContains(response, '/panel/gestion/promociones/?expired=1')
+        self.assertNotContains(response, 'Torta')
         expired_list = self.client.get('/panel/gestion/promociones/?expired=1')
         self.assertEqual(expired_list.status_code, 200)
         self.assertContains(expired_list, 'Torta')
+
+    def test_attention_rows_link_to_existing_filtered_lists(self):
+        from accounts.models import DeliveryProfile
+        from restaurants.models import Restaurant
+
+        from dashboard.services import get_dashboard_stats
+
+        driver = User.objects.create_user(
+            username='dash_pending_driver',
+            password='pass123',
+            role=UserRole.DRIVER,
+        )
+        DeliveryProfile.objects.create(
+            user=driver,
+            verification_status=DeliveryProfile.VerificationStatus.PENDING,
+        )
+        Restaurant.objects.create(
+            owner=self.owner,
+            name='Local Pendiente Dash',
+            address='Norte',
+            is_active=False,
+        )
+
+        stats = get_dashboard_stats()
+        by_key = {item['key']: item for item in stats['attention_items']}
+        self.assertEqual(by_key['drivers']['count'], 1)
+        self.assertIn('verification=pending', by_key['drivers']['url'])
+        self.assertEqual(by_key['restaurants']['count'], 1)
+        self.assertIn('active=0', by_key['restaurants']['url'])
+        self.assertTrue(stats['has_attention'])
+
+        response = self.client.get('/panel/')
+        self.assertNotContains(response, 'Todo al día')
+        self.assertNotContains(response, 'Local Pendiente Dash')
+        self.assertContains(response, '/panel/repartidores/?verification=pending')
+        self.assertContains(response, '/panel/restaurantes/?active=0')
+
+        drivers = self.client.get('/panel/repartidores/?verification=pending')
+        self.assertEqual(drivers.status_code, 200)
+        restaurants = self.client.get('/panel/restaurantes/?active=0')
+        self.assertEqual(restaurants.status_code, 200)
+        self.assertContains(restaurants, 'Local Pendiente Dash')
 
     def test_active_shipments_kpi(self):
         from orders.models import Shipment, ShipmentKind, ShipmentStatus

@@ -733,59 +733,34 @@ def _restaurants_open_now_count():
     ).filter(is_open_now_sort=True).count()
 
 
-def _attention_items(*, stale_pending_count, unanswered_restaurants, restaurants_pending,
-                     drivers_pending, disputes_pending, failed_payments_count,
-                     expired_promos_count, cancelled_today):
-    items = []
-    if stale_pending_count:
-        items.append({
-            'tone': 'danger',
-            'title': f'{stale_pending_count} pedido{"" if stale_pending_count == 1 else "s"} pendiente{"" if stale_pending_count == 1 else "s"} más de {PENDING_STALE_MINUTES} min',
-            'url': reverse('dashboard:orders') + '?status=pending',
-        })
-    if unanswered_restaurants > 1:
-        items.append({
-            'tone': 'danger',
-            'title': f'{unanswered_restaurants} restaurante{"" if unanswered_restaurants == 1 else "s"} con pedidos sin responder',
-            'url': reverse('dashboard:orders') + '?status=pending',
-        })
-    if disputes_pending:
-        items.append({
-            'tone': 'warn',
-            'title': f'{disputes_pending} disputa{"" if disputes_pending == 1 else "s"} abierta{"" if disputes_pending == 1 else "s"}',
-            'url': reverse('gestion:disputes') + '?status=pending',
-        })
-    if drivers_pending:
-        items.append({
-            'tone': 'warn',
-            'title': f'{drivers_pending} repartidor{"" if drivers_pending == 1 else "es"} por verificar',
+def _attention_items(*, drivers_pending, restaurants_pending, expired_promos_count):
+    """Three compact queues for the home dashboard. Counts only; no per-record rows."""
+    return [
+        {
+            'key': 'drivers',
+            'title': 'Repartidores por verificar',
+            'count': drivers_pending,
             'url': reverse('dashboard:drivers') + '?verification=pending',
-        })
-    if failed_payments_count:
-        items.append({
-            'tone': 'danger',
-            'title': f'{failed_payments_count} pago{"" if failed_payments_count == 1 else "s"} con error',
-            'url': reverse('dashboard:orders') + f'?payment={PaymentStatus.FAILED}',
-        })
-    if restaurants_pending:
-        items.append({
-            'tone': 'warn',
-            'title': f'{restaurants_pending} local{"" if restaurants_pending == 1 else "es"} pendiente{"" if restaurants_pending == 1 else "s"} de aprobación',
+            'icon': 'fa-motorcycle',
+            'tone': 'warn' if drivers_pending else 'ok',
+        },
+        {
+            'key': 'restaurants',
+            'title': 'Locales pendientes de aprobación',
+            'count': restaurants_pending,
             'url': reverse('dashboard:restaurants') + '?active=0',
-        })
-    if expired_promos_count:
-        items.append({
-            'tone': 'warn',
-            'title': f'{expired_promos_count} promoción{"" if expired_promos_count == 1 else "es"} vencida{"" if expired_promos_count == 1 else "s"} aún marcada{"" if expired_promos_count == 1 else "s"} como activa',
+            'icon': 'fa-store',
+            'tone': 'warn' if restaurants_pending else 'ok',
+        },
+        {
+            'key': 'promos',
+            'title': 'Promociones vencidas',
+            'count': expired_promos_count,
             'url': reverse('gestion:promotions') + '?expired=1',
-        })
-    if cancelled_today:
-        items.append({
-            'tone': 'warn',
-            'title': f'{cancelled_today} pedido{"" if cancelled_today == 1 else "s"} cancelado{"" if cancelled_today == 1 else "s"} hoy',
-            'url': reverse('dashboard:orders') + '?status=cancelled',
-        })
-    return items
+            'icon': 'fa-tags',
+            'tone': 'warn' if expired_promos_count else 'ok',
+        },
+    ]
 
 
 def get_dashboard_stats(params=None):
@@ -813,9 +788,7 @@ def get_dashboard_stats(params=None):
     orders_total = sum(status_counts.values())
 
     pending_qs = orders_qs.filter(status=OrderStatus.PENDING)
-    stale_pending_qs = pending_qs.filter(created_at__lte=stale_cutoff)
-    stale_pending_count = stale_pending_qs.count()
-    unanswered_restaurants = stale_pending_qs.values('restaurant_id').distinct().count()
+    stale_pending_count = pending_qs.filter(created_at__lte=stale_cutoff).count()
 
     restaurants_total = Restaurant.objects.count()
     restaurants_active = Restaurant.objects.filter(is_active=True).count()
@@ -829,20 +802,13 @@ def get_dashboard_stats(params=None):
     ).count()
     disputes_pending = OrderDispute.objects.filter(status=DisputeStatus.PENDING).count()
 
-    failed_payments_qs = orders_qs.filter(payment_status=PaymentStatus.FAILED).exclude(
+    failed_payments_count = orders_qs.filter(payment_status=PaymentStatus.FAILED).exclude(
         status=OrderStatus.CANCELLED,
-    )
-    failed_payments_count = failed_payments_qs.count()
+    ).count()
 
-    expired_promos_qs = ProductPromotion.objects.filter(
+    expired_promos_count = ProductPromotion.objects.filter(
         is_active=True,
         valid_until__lt=now,
-    )
-    expired_promos_count = expired_promos_qs.count()
-
-    cancelled_today = orders_qs.filter(
-        status=OrderStatus.CANCELLED,
-        updated_at__date=today,
     ).count()
 
     active_shipments = Shipment.objects.filter(status__in=SHIPMENT_ACTIVE_STATUSES)
@@ -864,11 +830,10 @@ def get_dashboard_stats(params=None):
     ).count()
     orders_pending = pending_qs.count()
     orders_active = orders_qs.filter(status__in=ORDER_ACTIVE_STATUSES).count()
-
-    live_orders = (
-        orders_qs.filter(status__in=ORDER_ACTIVE_STATUSES)
-        .select_related('customer', 'restaurant', 'driver')
-        .order_by('created_at')[:12]
+    attention_items = _attention_items(
+        drivers_pending=drivers_pending,
+        restaurants_pending=restaurants_pending,
+        expired_promos_count=expired_promos_count,
     )
 
     return {
@@ -877,9 +842,6 @@ def get_dashboard_stats(params=None):
         'restaurants_total': restaurants_total,
         'restaurants_pending': restaurants_pending,
         'restaurants_open': restaurants_open,
-        'pending_restaurants': Restaurant.objects.filter(is_active=False).select_related(
-            'owner',
-        ).order_by('-created_at')[:8],
         'orders_total': orders_total,
         'orders_today': orders_today,
         'orders_pending': orders_pending,
@@ -896,34 +858,18 @@ def get_dashboard_stats(params=None):
         'status_breakdown_max': max((s['count'] for s in status_breakdown), default=1),
         'has_order_status_data': orders_total > 0,
         'recent_orders': orders_qs.select_related(
-            'customer', 'restaurant', 'driver',
-        )[:8],
-        'pending_orders': pending_qs.select_related(
             'customer', 'restaurant',
-        ).order_by('created_at')[:8],
-        'active_pipeline_orders': live_orders,
+        ).order_by('-created_at')[:8],
         'drivers_pending': drivers_pending,
         'disputes_pending': disputes_pending,
         'stale_pending_count': stale_pending_count,
-        'attention_items': _attention_items(
-            stale_pending_count=stale_pending_count,
-            unanswered_restaurants=unanswered_restaurants,
-            restaurants_pending=restaurants_pending,
-            drivers_pending=drivers_pending,
-            disputes_pending=disputes_pending,
-            failed_payments_count=failed_payments_count,
-            expired_promos_count=expired_promos_count,
-            cancelled_today=cancelled_today,
-        ),
+        'failed_payments_count': failed_payments_count,
+        'expired_promos_count': expired_promos_count,
+        'attention_items': attention_items,
+        'has_attention': any(item['count'] for item in attention_items),
         'kpi_orders_today_change': _kpi_change(orders_today, orders_yesterday),
         'kpi_sales_today_change': _kpi_change(sales_today, sales_yesterday),
         'kpi_customers_today_change': _kpi_change(customers_today, customers_yesterday),
         'kpi_drivers_meta': f'de {drivers_total} en el padrón',
         'kpi_restaurants_meta': f'de {restaurants_active} activos',
-        'failed_payments': failed_payments_qs.select_related(
-            'customer', 'restaurant',
-        ).order_by('-created_at')[:5],
-        'expired_promos': expired_promos_qs.select_related(
-            'product', 'restaurant',
-        ).order_by('valid_until')[:5],
     }

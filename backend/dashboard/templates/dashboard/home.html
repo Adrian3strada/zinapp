@@ -42,59 +42,11 @@
     {% include "dashboard/includes/metric_card.html" with label="Clientes nuevos" value=customers_today meta="Registros de hoy" change=kpi_customers_today_change href=customers_url compact="1" icon="fa-user-plus" %}
   </div>
 
-  <section class="ops-block ops-block-attention">
-    {% include "dashboard/includes/section_header.html" with title="Requiere atención" subtitle="Pendientes accionables" %}
-    <div class="ops-attn-list">
-      {% for item in attention_items %}
-        {% include "dashboard/includes/attention_row.html" with title=item.title url=item.url tone=item.tone %}
-      {% endfor %}
-      {% for order in pending_orders %}
-      <a href="{% url 'dashboard:order-detail' order.pk %}" class="ops-attn ops-attn-danger">
-        <span class="ops-attn-dot" aria-hidden="true"></span>
-        <span class="ops-attn-body">
-          <span class="ops-attn-title">{{ order.display_ref }} · {{ order.restaurant.name }}</span>
-          <span class="ops-attn-meta">{{ order.created_at|timesince }}</span>
-        </span>
-      </a>
-      {% endfor %}
-      {% for order in failed_payments %}
-      <a href="{% url 'dashboard:order-detail' order.pk %}" class="ops-attn ops-attn-danger">
-        <span class="ops-attn-dot" aria-hidden="true"></span>
-        <span class="ops-attn-body">
-          <span class="ops-attn-title">{{ order.display_ref }} · cobro fallido</span>
-          <span class="ops-attn-meta">{{ order.get_payment_method_display }}</span>
-        </span>
-      </a>
-      {% endfor %}
-      {% for promo in expired_promos %}
-      <a href="{% url 'gestion:promotion-edit' promo.pk %}" class="ops-attn ops-attn-warn">
-        <span class="ops-attn-dot" aria-hidden="true"></span>
-        <span class="ops-attn-body">
-          <span class="ops-attn-title">{{ promo.product.name }} · {{ promo.restaurant.name }}</span>
-          <span class="ops-attn-meta">Venció {{ promo.valid_until|date:"d/m" }}</span>
-        </span>
-      </a>
-      {% endfor %}
-      {% for restaurant in pending_restaurants %}
-      <a href="{% url 'dashboard:restaurant-detail' restaurant.pk %}" class="ops-attn ops-attn-warn">
-        <span class="ops-attn-dot" aria-hidden="true"></span>
-        <span class="ops-attn-body">
-          <span class="ops-attn-title">{{ restaurant.name }}</span>
-          <span class="ops-attn-meta">Por activar</span>
-        </span>
-      </a>
-      {% endfor %}
-      {% if not attention_items and not pending_orders and not failed_payments and not expired_promos and not pending_restaurants %}
-      <p class="ops-queue-ok">Todo al día. Sin pendientes operativos.</p>
-      {% endif %}
-    </div>
-  </section>
-
-  <div class="ops-split ops-split-main">
+  <div class="ops-split ops-split-analytics">
     <section class="ops-block ops-block-chart">
-      {% include "dashboard/includes/section_header.html" with title="Ventas del periodo" subtitle="Productos cobrados · comisión 10%" action_url=reports_url action_label="Ver reportes" %}
+      {% include "dashboard/includes/section_header.html" with title="Ventas y pedidos" subtitle="Ventas cobradas del periodo · comisión 10%" action_url=reports_url action_label="Ver reportes" %}
       {% if financial_report.by_day_chart %}
-      <div class="ops-bars ops-bars-wide" role="img" aria-label="Gráfica de ventas diarias">
+      <div class="ops-bars ops-bars-wide" role="img" aria-label="Gráfica de ventas y pedidos diarios">
         {% for row in financial_report.by_day_chart %}
         <div class="ops-bar-col" title="{{ row.day|date:'d/m/Y' }}: ${{ row.product_sales|floatformat:2 }} · {{ row.orders_count }} pedido{{ row.orders_count|pluralize:'s' }}">
           <div class="ops-bar-track">
@@ -127,83 +79,48 @@
       </div>
     </section>
 
-    <section class="ops-block">
-      {% include "dashboard/includes/section_header.html" with title="Pedidos por estado" subtitle="Histórico de la plataforma" action_url=orders_url action_label="Ver pedidos" %}
-      {% if has_order_status_data %}
-      <div class="ops-status-bars">
-        {% for row in status_breakdown %}
-        <div class="ops-status-row">
-          <a href="{% url 'dashboard:orders' %}?status={{ row.status }}">{{ row.label }}</a>
-          <div class="ops-status-track" aria-hidden="true">
-            <div class="ops-status-fill {{ row.status }}" style="width: {% widthratio row.count status_breakdown_max 100 %}%;"></div>
-          </div>
-          <span class="mono">{{ row.count }}</span>
-        </div>
+    <section class="ops-block ops-block-attention">
+      {% include "dashboard/includes/section_header.html" with title="Requiere atención" subtitle="Colas de revisión" %}
+      {% if not has_attention %}
+      <p class="ops-queue-ok">Todo al día. Sin pendientes operativos.</p>
+      {% endif %}
+      <div class="ops-attn-list">
+        {% for item in attention_items %}
+          {% include "dashboard/includes/attention_row.html" %}
         {% endfor %}
       </div>
-      {% else %}
-      <div class="ops-empty">Aún no hay pedidos para mostrar estados.</div>
-      {% endif %}
     </section>
   </div>
 
   <section class="ops-block">
-    <header class="ops-block-head ops-block-head-row">
-      <div>
-        <h2>Operación actual</h2>
-        <p>{% if orders_active %}{{ orders_active }} pedido{{ orders_active|pluralize:"s" }} en curso{% else %}Sin pedidos activos{% endif %}</p>
-      </div>
-      <a href="{% url 'dashboard:orders' %}" class="ops-text-link">Ver todos</a>
-    </header>
+    {% include "dashboard/includes/section_header.html" with title="Pedidos recientes" subtitle="Últimos pedidos de la plataforma" action_url=orders_url action_label="Ver todos" %}
     <div class="table-responsive zin-table-wrap">
       <table class="ops-table ops-table-compact">
         <thead>
           <tr>
-            <th>Folio</th>
+            <th>Pedido</th>
             <th>Cliente</th>
-            <th>Restaurante</th>
-            <th class="d-none d-md-table-cell">Repartidor</th>
+            <th>Restaurante/comercio</th>
             <th class="text-right">Total</th>
             <th>Estado</th>
-            <th class="d-none d-lg-table-cell">Pago</th>
-            <th class="d-none d-sm-table-cell">Hora</th>
-            <th>Tiempo</th>
+            <th>Hora</th>
           </tr>
         </thead>
         <tbody>
-          {% for order in active_pipeline_orders %}
+          {% for order in recent_orders %}
           <tr>
             <td><a class="ops-text-link" href="{% url 'dashboard:order-detail' order.pk %}">{{ order.display_ref }}</a></td>
             <td>{% if order.customer %}{{ order.customer.get_full_name|default:order.customer.username }}{% else %}—{% endif %}</td>
             <td>{{ order.restaurant.name }}</td>
-            <td class="d-none d-md-table-cell">{% if order.driver %}{{ order.driver.username }}{% else %}<span class="ops-dim">Sin asignar</span>{% endif %}</td>
             <td class="text-right mono">${{ order.total|floatformat:2 }}</td>
             <td>{% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}</td>
-            <td class="d-none d-lg-table-cell ops-dim">{{ order.get_payment_method_display }}</td>
-            <td class="d-none d-sm-table-cell ops-dim">{{ order.created_at|date:"H:i" }}</td>
-            <td class="ops-dim">{{ order.created_at|timesince }}</td>
+            <td class="ops-dim">{{ order.created_at|date:"H:i" }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="9" class="ops-table-empty">No hay pedidos en curso. <a href="{% url 'dashboard:orders' %}">Ver pedidos recientes</a></td></tr>
+          <tr><td colspan="6" class="ops-table-empty">Sin pedidos recientes. <a href="{% url 'dashboard:orders' %}">Ver pedidos</a></td></tr>
           {% endfor %}
         </tbody>
       </table>
-    </div>
-  </section>
-
-  <section class="ops-block">
-    {% include "dashboard/includes/section_header.html" with title="Actividad reciente" subtitle="Últimos pedidos de la plataforma" action_url=orders_url action_label="Ver pedidos" %}
-    <div class="ops-activity">
-      {% for order in recent_orders %}
-      <a class="ops-activity-row" href="{% url 'dashboard:order-detail' order.pk %}">
-        <span class="ops-activity-ref">{{ order.display_ref }}</span>
-        <span class="ops-activity-title">{{ order.restaurant.name }}</span>
-        <span class="ops-activity-meta">{{ order.created_at|timesince }}</span>
-        {% include "dashboard/includes/status_badge.html" with status=order.status label=order.get_status_display %}
-      </a>
-      {% empty %}
-      <div class="ops-empty">Sin actividad reciente.</div>
-      {% endfor %}
     </div>
   </section>
 

@@ -1,7 +1,11 @@
-{% if url %}<a href="{{ url }}" class="ops-attn ops-attn-{{ tone|default:'warn' }}">{% else %}<div class="ops-attn ops-attn-{{ tone|default:'warn' }}">{% endif %}
+{% if item.url %}<a href="{{ item.url }}" class="ops-attn ops-attn-{{ item.tone|default:'warn' }}">{% else %}<div class="ops-attn ops-attn-{{ item.tone|default:'warn' }}">{% endif %}
+  {% if item.icon %}
+  <span class="ops-attn-icon" aria-hidden="true"><i class="fas {{ item.icon }}"></i></span>
+  {% else %}
   <span class="ops-attn-dot" aria-hidden="true"></span>
-  <span class="ops-attn-body">
-    <span class="ops-attn-title">{{ title }}</span>
-    {% if meta %}<span class="ops-attn-meta">{{ meta }}</span>{% endif %}
-  </span>
-{% if url %}</a>{% else %}</div>{% endif %}
+  {% endif %}
+  <span class="ops-attn-title">{{ item.title }}</span>
+  <span class="ops-attn-count">{{ item.count }}</span>
+  {% if item.meta %}<span class="ops-attn-meta">{{ item.meta }}</span>{% endif %}
+  {% if item.url %}<span class="ops-attn-arrow" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>{% endif %}
+{% if item.url %}</a>{% else %}</div>{% endif %}
