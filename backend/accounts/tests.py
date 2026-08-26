@@ -427,6 +427,7 @@ class DriverAvatarUploadTests(TestCase):
         self.assertEqual(refetch.status_code, 200)
         self.assertEqual(refetch.data.get('avatar_url'), avatar_url)
         self.assertIn('/media/avatars/', refetch.data['avatar_url'])
+        self.assertNotIn('expo_push_token', refetch.data)
 
     def test_profile_update_without_avatar_keeps_existing(self):
         self.driver.avatar.save('keep.jpg', _tiny_jpeg('keep.jpg'), save=True)

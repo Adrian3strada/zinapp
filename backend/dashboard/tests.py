@@ -957,6 +957,7 @@ class DashboardHomeTests(TestCase):
         self.assertContains(response, 'Pedidos recientes')
         self.assertContains(response, 'Ventas y pedidos')
         self.assertContains(response, 'Todo al día')
+        self.assertContains(response, 'data-panel-refresh-ms="120000"')
         self.assertContains(response, 'Repartidores por verificar')
         self.assertContains(response, 'Locales pendientes de aprobación')
         self.assertContains(response, 'Promociones vencidas')

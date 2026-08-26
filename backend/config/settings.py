@@ -315,7 +315,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '120/min',
+        'anon': '40/min',
         'user': '400/min',
         'login': '10/min',
         'register': config('THROTTLE_REGISTER_RATE', default='5/hour'),

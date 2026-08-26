@@ -42,6 +42,7 @@ class OrderApiTests(TestCase):
             owner=self.owner,
             name='Test Rest',
             address='Centro, Zinapécuaro',
+            phone='4511112222',
             latitude=Decimal('19.860273'),
             longitude=Decimal('-100.828562'),
             is_active=True,
@@ -202,6 +203,8 @@ class OrderApiTests(TestCase):
         self.assertEqual(response.data['customer_detail']['username'], self.customer.username)
         self.assertNotIn('email', response.data['customer_detail'])
         self.assertNotIn('expo_push_token', response.data['customer_detail'])
+        self.assertEqual(response.data['restaurant_detail']['phone'], self.restaurant.phone)
+        self.assertIn('latitude', response.data['restaurant_detail'])
 
     def test_customer_sees_driver_profile_on_assigned_order(self):
         from accounts.models import DeliveryProfile

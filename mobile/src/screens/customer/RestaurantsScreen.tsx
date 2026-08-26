@@ -240,7 +240,11 @@ export default function RestaurantsScreen({ navigation, route }: RestaurantsScre
             height={mapHeight()}
             showsUserLocation
             onMarkerPress={handleMarkerPress}
-            emptyMessage="Los restaurantes no tienen ubicación en el mapa todavía."
+            emptyMessage={
+              user
+                ? 'Los restaurantes no tienen ubicación en el mapa todavía.'
+                : 'Inicia sesión para ver los locales en el mapa.'
+            }
           />
         </Suspense>
         <Text style={styles.mapHint}>
@@ -252,7 +256,7 @@ export default function RestaurantsScreen({ navigation, route }: RestaurantsScre
         <Text style={styles.mapSubhint}>Toca un pin 🍽️ para ver el menú</Text>
       </>
     ),
-    [header, mapMarkers, mapRegion, handleMarkerPress, category],
+    [header, mapMarkers, mapRegion, handleMarkerPress, category, user],
   );
 
   const listFooter = useMemo(

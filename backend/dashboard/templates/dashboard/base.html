@@ -6,7 +6,7 @@
   {% include "dashboard/includes/adminlte_head.html" %}
   {% block extra_head %}{% endblock %}
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="hold-transition sidebar-mini layout-fixed" data-panel-refresh-ms="{% block panel_refresh_ms %}120000{% endblock %}">
 <a class="skip-link" href="#main-content">Saltar al contenido</a>
 <div class="wrapper">
 
@@ -108,5 +108,27 @@
 </div>
 {% include "dashboard/includes/adminlte_scripts.html" %}
 {% block extra_scripts %}{% endblock %}
+<script>
+(function () {
+  var ms = parseInt(document.body.getAttribute('data-panel-refresh-ms') || '0', 10);
+  if (!ms || ms < 15000) return;
+  var started = Date.now();
+  var dirty = false;
+  function markDirty(event) {
+    var target = event.target;
+    if (target && target.closest && target.closest('form')) dirty = true;
+  }
+  document.addEventListener('input', markDirty, true);
+  document.addEventListener('change', markDirty, true);
+  function maybeReload() {
+    if (dirty || document.hidden) return;
+    if (Date.now() - started < ms) return;
+    if (document.querySelector('input:focus, textarea:focus, select:focus')) return;
+    window.location.reload();
+  }
+  setInterval(maybeReload, Math.min(ms, 30000));
+  document.addEventListener('visibilitychange', maybeReload);
+})();
+</script>
 </body>
 </html>

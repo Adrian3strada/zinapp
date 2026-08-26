@@ -47,11 +47,11 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'phone', 'address', 'avatar', 'avatar_url',
-            'date_joined', 'expo_push_token',
+            'date_joined',
             'has_usable_password', 'auth_provider',
         )
         read_only_fields = (
-            'id', 'role', 'date_joined', 'expo_push_token',
+            'id', 'role', 'date_joined',
             'avatar_url', 'has_usable_password', 'auth_provider',
         )
 

@@ -12,7 +12,7 @@ from accounts.serializers import (
 from accounts.models import User
 from restaurants.fields import CoordinateField
 from restaurants.geo import is_in_coverage, round_coordinate
-from restaurants.serializers import ProductSerializer, RestaurantPublicSerializer
+from restaurants.serializers import ProductSerializer, RestaurantOrderSerializer
 
 from .models import (
     Coupon,
@@ -137,7 +137,7 @@ class OrderSerializer(serializers.ModelSerializer):
     customer_detail = OrderParticipantUserSerializer(source='customer', read_only=True)
     # Orders can be read by drivers; never embed restaurant banking data.
     # Transferencia usa siempre los datos bancarios de ZinApp (app / plataforma).
-    restaurant_detail = RestaurantPublicSerializer(source='restaurant', read_only=True)
+    restaurant_detail = RestaurantOrderSerializer(source='restaurant', read_only=True)
     driver_detail = OrderParticipantUserSerializer(source='driver', read_only=True)
     driver_delivery_profile = serializers.SerializerMethodField()
     items = OrderItemSerializer(many=True, read_only=True)

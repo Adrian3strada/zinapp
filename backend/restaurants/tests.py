@@ -169,6 +169,9 @@ class PublicCatalogTests(TestCase):
             name='Public Tacos',
             address='Centro',
             phone='4511111111',
+            whatsapp='4511111111',
+            latitude='19.860000',
+            longitude='-100.825000',
             is_active=True,
             accepting_orders=True,
         )
@@ -189,8 +192,10 @@ class PublicCatalogTests(TestCase):
         names = [r['name'] for r in response.data['results']]
         self.assertIn('Public Tacos', names)
         restaurant = next(item for item in response.data['results'] if item['name'] == 'Public Tacos')
+        self.assertEqual(restaurant['address'], 'Centro')
         for private_field in (
             'owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
+            'phone', 'whatsapp', 'latitude', 'longitude',
         ):
             self.assertNotIn(private_field, restaurant)
 
@@ -202,8 +207,33 @@ class PublicCatalogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         for private_field in (
             'owner', 'owner_detail', 'bank_name', 'account_holder', 'clabe', 'has_transfer_info',
+            'phone', 'whatsapp', 'latitude', 'longitude',
         ):
             self.assertNotIn(private_field, response.data)
+
+    def test_authenticated_catalog_includes_coords_not_phone(self):
+        from rest_framework.test import APIClient
+
+        customer = User.objects.create_user(
+            username='catalog_customer',
+            password='test1234',
+            role='customer',
+        )
+        client = APIClient()
+        client.force_authenticate(customer)
+        listed = client.get('/api/restaurants/')
+        restaurant = next(
+            item for item in listed.data['results'] if item['name'] == 'Public Tacos'
+        )
+        self.assertIn('latitude', restaurant)
+        self.assertIn('longitude', restaurant)
+        self.assertNotIn('phone', restaurant)
+        self.assertNotIn('whatsapp', restaurant)
+
+        detail = client.get(f'/api/restaurants/{self.restaurant.id}/')
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(str(detail.data['latitude']), '19.860000')
+        self.assertNotIn('phone', detail.data)
 
     def test_transfer_info_endpoint_removed(self):
         from rest_framework.test import APIClient

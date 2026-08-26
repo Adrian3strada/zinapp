@@ -93,12 +93,12 @@ export interface Restaurant {
   category?: string;
   description: string;
   address: string;
-  phone: string;
+  phone?: string;
   whatsapp?: string;
   image: string | null;
   image_url?: string | null;
-  latitude: string | null;
-  longitude: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
   is_active: boolean;
   accepting_orders?: boolean;
   is_open?: boolean;

@@ -407,7 +407,7 @@ class RestaurantDetailSerializer(RestaurantSerializer):
 
 
 class RestaurantPublicSerializer(serializers.ModelSerializer):
-    """Fields safe to expose through the unauthenticated restaurant catalog."""
+    """Catálogo anónimo: ficha del negocio, sin teléfono, WhatsApp ni GPS."""
 
     products_count = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
@@ -420,8 +420,8 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Restaurant
         fields = (
-            'id', 'name', 'category', 'description', 'address', 'phone', 'whatsapp',
-            'image', 'image_url', 'latitude', 'longitude', 'is_active',
+            'id', 'name', 'category', 'description', 'address',
+            'image', 'image_url', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'business_hours', 'is_open',
             'is_favorited', 'rating_average', 'reviews_count', 'products_count',
             'created_at',
@@ -461,14 +461,29 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
 
 
 class RestaurantPublicDetailSerializer(RestaurantPublicSerializer):
-    """Detalle público liviano: el menú se carga por /api/products/ (paginado).
-
-    Evita serializar todos los productos + option_groups al abrir el restaurante,
-    que en Android duplicaba trabajo con la lista paginada y hacía trabar el menú.
-    """
+    """Detalle anónimo liviano: el menú se carga por /api/products/ (paginado)."""
 
     class Meta(RestaurantPublicSerializer.Meta):
         fields = RestaurantPublicSerializer.Meta.fields
+
+
+class RestaurantLocatedSerializer(RestaurantPublicSerializer):
+    """Catálogo con sesión: coordenadas para el mapa, sin contacto directo."""
+
+    class Meta(RestaurantPublicSerializer.Meta):
+        fields = RestaurantPublicSerializer.Meta.fields + ('latitude', 'longitude')
+
+
+class RestaurantLocatedDetailSerializer(RestaurantLocatedSerializer):
+    class Meta(RestaurantLocatedSerializer.Meta):
+        fields = RestaurantLocatedSerializer.Meta.fields
+
+
+class RestaurantOrderSerializer(RestaurantLocatedSerializer):
+    """Pedido: el participante ya puede ver teléfono y pin del local."""
+
+    class Meta(RestaurantLocatedSerializer.Meta):
+        fields = RestaurantLocatedSerializer.Meta.fields + ('phone', 'whatsapp')
 
 
 class HomeRestaurantSerializer(serializers.ModelSerializer):

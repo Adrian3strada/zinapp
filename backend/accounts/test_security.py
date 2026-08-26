@@ -11,7 +11,7 @@ THROTTLE_SETTINGS = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '120/min',
+        'anon': '40/min',
         'user': '400/min',
         'login': '3/min',
         'register': '5/hour',

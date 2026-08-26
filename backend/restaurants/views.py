@@ -19,6 +19,8 @@ from .serializers import (
     ProductPromotionSerializer,
     ProductSerializer,
     RestaurantDetailSerializer,
+    RestaurantLocatedDetailSerializer,
+    RestaurantLocatedSerializer,
     RestaurantPublicDetailSerializer,
     RestaurantPublicSerializer,
     RestaurantSerializer,
@@ -158,12 +160,18 @@ class RestaurantViewSet(viewsets.ModelViewSet):
         # regular catalog public serializer prevents one owner from reading
         # another owner's banking data.
         can_view_private_data = user.is_authenticated and getattr(user, 'is_admin_user', False)
-        if not can_view_private_data and self.action == 'retrieve':
-            return RestaurantPublicDetailSerializer
-        if not can_view_private_data and self.action == 'list':
-            return RestaurantPublicSerializer
+        if can_view_private_data:
+            if self.action == 'retrieve':
+                return RestaurantDetailSerializer
+            return RestaurantSerializer
         if self.action == 'retrieve':
-            return RestaurantDetailSerializer
+            if user.is_authenticated:
+                return RestaurantLocatedDetailSerializer
+            return RestaurantPublicDetailSerializer
+        if self.action == 'list':
+            if user.is_authenticated:
+                return RestaurantLocatedSerializer
+            return RestaurantPublicSerializer
         return RestaurantSerializer
 
     def get_permissions(self):
