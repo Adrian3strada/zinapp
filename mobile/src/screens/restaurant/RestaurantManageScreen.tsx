@@ -263,7 +263,12 @@ const ProductManageRow = React.memo(function ProductManageRow({
 export default function RestaurantManageScreen() {
   const { isDesktopWeb } = useResponsiveLayout();
   const { insets, tabBottomPadding } = useTabScreenInsets();
-  const { refresh: refreshRestaurant } = useRestaurantContext();
+  const {
+    restaurant: ctxRestaurant,
+    refresh: refreshRestaurant,
+    canSwitch,
+    openSwitcher,
+  } = useRestaurantContext();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -305,7 +310,7 @@ export default function RestaurantManageScreen() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, ctxRestaurant?.id]);
 
   const toggleProduct = useCallback(async (product: Product, available: boolean) => {
     if (togglingIdRef.current === product.id) return;
@@ -629,6 +634,8 @@ export default function RestaurantManageScreen() {
           actionIcon="add"
           actionLabel="Agregar producto"
           onActionPress={openNewProduct}
+          canSwitch={canSwitch}
+          onTitlePress={openSwitcher}
         />
 
         {restaurant?.setup_status ? (
@@ -782,6 +789,8 @@ export default function RestaurantManageScreen() {
       products.length,
       restaurant,
       search,
+      canSwitch,
+      openSwitcher,
     ],
   );
 
@@ -802,13 +811,14 @@ export default function RestaurantManageScreen() {
     () => (
       <RestaurantPromotionsSection
         products={products}
+        restaurantId={restaurant?.id}
         onChanged={() => {
           void load();
           void refreshRestaurant();
         }}
       />
     ),
-    [load, products, refreshRestaurant],
+    [load, products, refreshRestaurant, restaurant?.id],
   );
 
   if (loading) {

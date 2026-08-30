@@ -239,6 +239,13 @@ export default function ProfileScreen() {
     setDriverProfile(driverCtx.profile);
   }, [driverCtx?.profile, driverCtx?.isAvailable]);
 
+  useEffect(() => {
+    if (user?.role !== 'restaurant') return;
+    const activeId = restaurantCtx?.restaurant?.id;
+    if (!activeId || restaurant?.id === activeId) return;
+    void loadRoleData();
+  }, [restaurantCtx?.restaurant?.id, restaurant?.id, user?.role, loadRoleData]);
+
   const update = (key: keyof typeof form, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
   const handlePickAvatar = async () => {
@@ -622,9 +629,20 @@ export default function ProfileScreen() {
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.username}>@{user.username}</Text>
             {isRestaurant && restaurant ? (
-              <Text style={styles.restaurantSubtitle} numberOfLines={1}>
-                {restaurant.name}
-              </Text>
+              <Pressable
+                style={styles.restaurantSubtitleRow}
+                onPress={restaurantCtx?.canSwitch ? restaurantCtx.openSwitcher : undefined}
+                disabled={!restaurantCtx?.canSwitch}
+                accessibilityRole={restaurantCtx?.canSwitch ? 'button' : undefined}
+                accessibilityLabel={restaurantCtx?.canSwitch ? 'Cambiar de local' : undefined}
+              >
+                <Text style={styles.restaurantSubtitle} numberOfLines={1}>
+                  {restaurant.name}
+                </Text>
+                {restaurantCtx?.canSwitch ? (
+                  <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.85)" />
+                ) : null}
+              </Pressable>
             ) : null}
             <View style={styles.roleBadge}>
               <Text style={styles.role}>{ROLE_LABELS[user.role] ?? user.role}</Text>
@@ -640,6 +658,10 @@ export default function ProfileScreen() {
                   : acceptingOrders
               }
               overlap
+              canSwitch={restaurantCtx?.canSwitch}
+              onPressSwitch={restaurantCtx?.openSwitcher}
+              canAdd={restaurantCtx?.canAdd}
+              onPressAdd={restaurantCtx?.openCreate}
             />
           ) : null}
 
@@ -1036,12 +1058,18 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 22, fontWeight: '800', color: '#FFF', marginTop: spacing.md },
   username: { color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  restaurantSubtitleRow: {
+    marginTop: 6,
+    maxWidth: '90%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   restaurantSubtitle: {
     color: 'rgba(255,255,255,0.92)',
-    marginTop: 6,
     fontSize: 15,
     fontWeight: '700',
-    maxWidth: '90%',
+    flexShrink: 1,
     textAlign: 'center',
   },
   roleBadge: {

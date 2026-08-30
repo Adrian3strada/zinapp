@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { appAlert } from '../../utils/appAlert';
@@ -27,6 +27,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
   const [submitted, setSubmitted] = useState(false);
   const [viaWhatsApp, setViaWhatsApp] = useState(false);
   const [submitHint, setSubmitHint] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   const supportPhone = config.support_whatsapp?.trim();
   const configWhatsAppHelp = !__DEV__ && config.password_reset_via_whatsapp && Boolean(supportPhone);
@@ -38,6 +39,8 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
       appAlert('Dato requerido', 'Ingresa tu usuario o correo.');
       return;
     }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       const { data } = await authApi.forgotPassword(value);
@@ -51,6 +54,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo procesar la solicitud.'));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };

@@ -1,10 +1,12 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import SlideAction from '../driver/SlideAction';
 import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { cardShadow } from '../../theme/shadows';
+import { HIT_SLOP } from '../../theme/spacing';
 import type { Restaurant } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -25,6 +27,10 @@ interface Props {
   deliveryCount: number;
   toggling: boolean;
   onToggleOpen: (open: boolean) => void | Promise<void>;
+  canSwitch?: boolean;
+  onPressRestaurant?: () => void;
+  canAdd?: boolean;
+  onPressAdd?: () => void;
 }
 
 /** Home del negocio: abrir/cerrar + resumen del día. */
@@ -37,6 +43,10 @@ export default function StoreHomeHeader({
   deliveryCount,
   toggling,
   onToggleOpen,
+  canSwitch,
+  onPressRestaurant,
+  canAdd,
+  onPressAdd,
 }: Props) {
   const isActive = !!restaurant?.is_active;
   const isOpen = isActive && restaurant?.accepting_orders !== false;
@@ -46,10 +56,32 @@ export default function StoreHomeHeader({
     <View style={[styles.wrap, { paddingTop: topInset + 12 }]}>
       <View style={styles.titleRow}>
         <View style={styles.titleBlock}>
-          <Text style={styles.eyebrow}>Tu negocio</Text>
-          <Text style={styles.title} numberOfLines={1}>
-            {restaurant?.name?.trim() || 'Pedidos'}
-          </Text>
+          <Text style={styles.eyebrow}>{canSwitch ? 'Tu local' : 'Tu negocio'}</Text>
+          <Pressable
+            style={styles.titleLine}
+            onPress={canSwitch ? onPressRestaurant : undefined}
+            disabled={!canSwitch}
+            hitSlop={HIT_SLOP}
+            accessibilityRole={canSwitch ? 'button' : undefined}
+            accessibilityLabel={canSwitch ? 'Cambiar de local' : undefined}
+          >
+            <Text style={styles.title} numberOfLines={1}>
+              {restaurant?.name?.trim() || 'Pedidos'}
+            </Text>
+            {canSwitch ? (
+              <Ionicons name="chevron-down" size={20} color={colors.text} />
+            ) : null}
+          </Pressable>
+          {canAdd && onPressAdd ? (
+            <Pressable
+              onPress={onPressAdd}
+              hitSlop={HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel="Agregar otro local"
+            >
+              <Text style={styles.addLink}>Agregar otro local</Text>
+            </Pressable>
+          ) : null}
         </View>
         <View style={[styles.statusPill, isOpen ? styles.statusOn : styles.statusOff]}>
           <View
@@ -130,6 +162,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   titleBlock: { flex: 1, minWidth: 0, gap: 2 },
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0 },
   eyebrow: {
     fontSize: 12,
     fontWeight: '600',
@@ -137,7 +170,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.4 },
+  title: { flexShrink: 1, fontSize: 24, fontWeight: '700', color: colors.text, letterSpacing: -0.4 },
+  addLink: { fontSize: 13, fontWeight: '700', color: colors.primary, marginTop: 2 },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',

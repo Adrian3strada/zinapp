@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { useOnAppActive } from './useOnAppActive';
 import { useRealtimeEvent } from './useRealtime';
 import { orderApi, shipmentApi } from '../services/api';
 import type { Order, Shipment } from '../types';
@@ -63,6 +64,17 @@ export function useDriverActiveDeliveries(pollMs = 20000) {
     const interval = setInterval(check, pollMs);
     return () => clearInterval(interval);
   }, [check, pollMs]);
+
+  useOnAppActive(() => {
+    void check();
+  });
+
+  useRealtimeEvent(
+    'connected',
+    useCallback(() => {
+      void check();
+    }, [check]),
+  );
 
   useRealtimeEvent(
     'order.updated',

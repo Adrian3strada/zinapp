@@ -570,9 +570,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         from django.db.models import Sum
 
         week_start = timezone.now() - timedelta(days=7)
-        from restaurants.models import Restaurant
+        from restaurants.owned import get_active_restaurant
 
-        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        restaurant = get_active_restaurant(request.user)
         if not restaurant:
             return Response({'detail': 'No tienes restaurante.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -631,8 +631,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='restaurant-pending')
     def restaurant_pending(self, request):
         """Pedidos activos del restaurante (solo cobrados si son en línea)."""
+        from restaurants.owned import get_active_restaurant
+
+        restaurant = get_active_restaurant(request.user)
+        if not restaurant:
+            return Response([])
         orders = self.queryset.filter(
-            restaurant__owner=request.user,
+            restaurant=restaurant,
         ).exclude(status__in=[OrderStatus.DELIVERED, OrderStatus.CANCELLED]).exclude(
             Q(payment_method=PaymentMethod.ONLINE)
             & ~Q(payment_status=PaymentStatus.PAID),
@@ -645,9 +650,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         """Resumen del día para el panel del restaurante."""
         from django.db.models import Sum
 
-        from restaurants.models import Restaurant
+        from restaurants.owned import get_active_restaurant
 
-        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        restaurant = get_active_restaurant(request.user)
         if not restaurant:
             return Response({'detail': 'No tienes restaurante.'}, status=status.HTTP_404_NOT_FOUND)
 

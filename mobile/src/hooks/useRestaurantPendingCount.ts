@@ -22,7 +22,7 @@ export function useRestaurantPendingCount(pollMs = 45000) {
     refresh();
     const interval = setInterval(refresh, pollMs);
     return () => clearInterval(interval);
-  }, [refresh, pollMs]);
+  }, [refresh, pollMs, restaurantId]);
 
   useRealtimeRestaurant(restaurantId, !!restaurantId);
   useRealtimeEvent(

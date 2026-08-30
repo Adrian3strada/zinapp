@@ -211,6 +211,9 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['owner'].queryset = User.objects.filter(role=UserRole.RESTAURANT).order_by('username')
+        self.fields['owner'].help_text = (
+            'El mismo dueño puede tener varios locales. En la app elige cuál opera.'
+        )
         self.fields['pos_enabled'].label = 'ZinApp POS'
         self.fields['pos_enabled'].help_text = (
             'Permite al dueño y al personal POS entrar en /pos/login/.'
@@ -229,6 +232,10 @@ class RestaurantForm(PanelFormMixin, forms.ModelForm):
             instance.location_pinned = True
         if commit:
             instance.save()
+            owner = instance.owner
+            if owner and not owner.active_restaurant_id:
+                owner.active_restaurant = instance
+                owner.save(update_fields=['active_restaurant'])
         return instance
 
 
@@ -441,7 +448,7 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
                 name = self.cleaned_data.get('restaurant_name', '').strip()
                 address = self.cleaned_data.get('restaurant_address', '').strip()
                 if name and address and not Restaurant.objects.filter(owner=user).exists():
-                    Restaurant.objects.create(
+                    restaurant = Restaurant.objects.create(
                         owner=user,
                         name=name,
                         address=address,
@@ -449,6 +456,9 @@ class UserCreateForm(PanelFormMixin, UserCreationForm):
                         is_active=False,
                         accepting_orders=False,
                     )
+                    if not user.active_restaurant_id:
+                        user.active_restaurant = restaurant
+                        user.save(update_fields=['active_restaurant'])
         return user
 
 

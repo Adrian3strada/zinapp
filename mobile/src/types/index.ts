@@ -87,6 +87,17 @@ export interface RestaurantBusinessHour {
   closing_time: string | null;
 }
 
+export interface OwnedRestaurant {
+  id: number;
+  name: string;
+  address: string;
+  category?: string;
+  is_active: boolean;
+  accepting_orders?: boolean;
+  image_url?: string | null;
+  is_selected?: boolean;
+}
+
 export interface Restaurant {
   id: number;
   name: string;

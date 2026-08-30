@@ -24,6 +24,7 @@ import HeroBackground from '../../components/HeroBackground';
 import { useAuth } from '../../context/AuthContext';
 import { useDriverProfileContext } from '../../context/DriverProfileContext';
 import { useDriverActiveDeliveries } from '../../hooks/useDriverHasActiveDelivery';
+import { useOnAppActive } from '../../hooks/useOnAppActive';
 import { useRealtimeEvent } from '../../hooks/useRealtime';
 import { useStreetRoutes } from '../../hooks/useStreetRoutes';
 import type { AvailableOrdersScreenProps } from '../../navigation/types';
@@ -104,9 +105,14 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
 
   useEffect(() => {
     loadOrders();
-    const interval = setInterval(() => loadOrders(true), 45000);
+    const interval = setInterval(() => loadOrders(true), isAvailable ? 8000 : 20000);
     return () => clearInterval(interval);
-  }, [loadOrders]);
+  }, [loadOrders, isAvailable]);
+
+  useOnAppActive(() => {
+    void loadOrders(true);
+    void refreshActive();
+  });
 
   useRealtimeEvent(
     'drivers.job',
@@ -117,6 +123,13 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
   );
   useRealtimeEvent(
     'order.updated',
+    useCallback(() => {
+      void loadOrders(true);
+      void refreshActive();
+    }, [loadOrders, refreshActive]),
+  );
+  useRealtimeEvent(
+    'connected',
     useCallback(() => {
       void loadOrders(true);
       void refreshActive();
@@ -580,7 +593,9 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       return;
     }
     await toggleAvailability(!isAvailable);
-  }, [isApproved, isAvailable, navigation, toggleAvailability]);
+    void loadOrders(true);
+    void refreshActive();
+  }, [isApproved, isAvailable, loadOrders, navigation, refreshActive, toggleAvailability]);
 
   const handleAccept = useCallback(async () => {
     if (!offerJob || acceptingRef.current || hasActiveDelivery) {
@@ -614,6 +629,10 @@ export default function DriverHomeScreen({ navigation }: AvailableOrdersScreenPr
       setSkippedIds(new Set());
       await loadOrders(true);
       await refreshActive();
+      setTimeout(() => {
+        void refreshActive();
+        void loadOrders(true);
+      }, 600);
     } catch (err) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo aceptar el trabajo'));
     } finally {

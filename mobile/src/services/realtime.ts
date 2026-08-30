@@ -57,6 +57,9 @@ export class RealtimeClient {
   private ticketAbort: AbortController | null = null;
   /** Tickets ya consumidos en esta instancia (defensa: nunca reutilizar). */
   private usedTickets = new Set<string>();
+  /** Última disponibilidad pedida por la app; se reenvía al reconectar. */
+  private lastDriverAvailable: boolean | null = null;
+  private lastMessageAt = 0;
 
   isConnected(): boolean {
     return this.socket?.readyState === WebSocket.OPEN;
@@ -117,6 +120,7 @@ export class RealtimeClient {
     this.connectPromise = null;
     this.desiredSubs.clear();
     this.usedTickets.clear();
+    this.lastDriverAvailable = null;
     this.reconnectAttempt = 0;
   }
 
@@ -137,18 +141,20 @@ export class RealtimeClient {
   }
 
   setDriverAvailable(available: boolean): void {
-    // Si el socket aún no está listo, al conectar el backend ya une al grupo
-    // según delivery_profile.is_available. Reintenta cuando abra.
+    this.lastDriverAvailable = available;
+    this.sendDriverAvailable(available);
+  }
+
+  private sendDriverAvailable(available: boolean): void {
     if (this.isConnected()) {
       this.socket?.send(JSON.stringify({ action: 'set_driver_available', available }));
       return;
     }
     const trySend = () => {
-      if (this.isConnected()) {
+      if (this.isConnected() && this.lastDriverAvailable === available) {
         this.socket?.send(JSON.stringify({ action: 'set_driver_available', available }));
       }
     };
-    // Un intento corto tras reconectar (p. ej. toggle mientras despertaba el WS).
     setTimeout(trySend, 800);
   }
 
@@ -330,21 +336,32 @@ export class RealtimeClient {
           return;
         }
         this.reconnectAttempt = 0;
+        this.lastMessageAt = Date.now();
         for (const key of this.desiredSubs) {
           const target = this.parseTarget(key);
           if (target) {
             socket.send(JSON.stringify({ action: 'subscribe', ...target }));
           }
         }
+        if (this.lastDriverAvailable != null) {
+          socket.send(JSON.stringify({
+            action: 'set_driver_available',
+            available: this.lastDriverAvailable,
+          }));
+        }
         this.pingTimer = setInterval(() => {
-          if (socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ action: 'ping' }));
+          if (socket.readyState !== WebSocket.OPEN) return;
+          if (Date.now() - this.lastMessageAt > 45000) {
+            void this.resume();
+            return;
           }
+          socket.send(JSON.stringify({ action: 'ping' }));
         }, 25000);
       };
 
       socket.onmessage = (event) => {
         if (this.socket !== socket) return;
+        this.lastMessageAt = Date.now();
         try {
           const payload = JSON.parse(String(event.data)) as {
             type?: string;

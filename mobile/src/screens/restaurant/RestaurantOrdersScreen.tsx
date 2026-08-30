@@ -61,6 +61,10 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     refresh: refreshRestaurant,
     togglingOrders,
     toggleAcceptingOrders,
+    canSwitch,
+    canAdd,
+    openSwitcher,
+    openCreate,
   } = useRestaurantContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [today, setToday] = useState<RestaurantTodaySummary | null>(null);
@@ -103,7 +107,7 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     load();
     const interval = setInterval(load, 45000);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [load, restaurant?.id]);
 
   useRealtimeRestaurant(restaurant?.id, !!restaurant?.id);
   useRealtimeEvent(
@@ -265,6 +269,10 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
               deliveryCount={counts.delivery}
               toggling={togglingOrders}
               onToggleOpen={(open) => toggleAcceptingOrders(open)}
+              canSwitch={canSwitch}
+              onPressRestaurant={openSwitcher}
+              canAdd={canAdd}
+              onPressAdd={openCreate}
             />
 
             {restaurant?.setup_status ? (

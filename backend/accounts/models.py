@@ -27,6 +27,14 @@ class User(AbstractUser):
         unique=True,
         help_text='ID estable de la cuenta Google (sub del id_token).',
     )
+    active_restaurant = models.ForeignKey(
+        'restaurants.Restaurant',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        help_text='Local que el dueño opera ahora en la app.',
+    )
 
     class Meta:
         verbose_name = 'Usuario'

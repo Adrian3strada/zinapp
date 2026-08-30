@@ -46,6 +46,15 @@ interface BuildOsmMapHtmlOptions {
   followMarkerId?: string | null;
 }
 
+/** Carto Voyager ahora marca “API KEY REQUIRED” sin key. OSM no pide clave. */
+function osmRasterTileUrl(): string {
+  const cartoKey = (process.env.EXPO_PUBLIC_CARTO_KEY ?? '').trim();
+  if (cartoKey) {
+    return `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`;
+  }
+  return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+}
+
 export function buildOsmMapLivePayload(data: OsmMapLiveData): string {
   return JSON.stringify({
     markers: data.markers ?? [],
@@ -130,10 +139,9 @@ export function buildOsmMapHtml(options: BuildOsmMapHtmlOptions): string {
       [shell.center.latitude, shell.center.longitude],
       shell.zoom
     );
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      subdomains: 'abcd',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    L.tileLayer(${JSON.stringify(osmRasterTileUrl())}, {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
     map.createPane('zinRoute');

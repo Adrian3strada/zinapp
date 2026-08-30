@@ -26,6 +26,8 @@ interface Props {
   actionIcon?: keyof typeof Ionicons.glyphMap;
   actionLabel?: string;
   onActionPress?: () => void;
+  canSwitch?: boolean;
+  onTitlePress?: () => void;
   children?: React.ReactNode;
 }
 
@@ -56,6 +58,8 @@ export default function RestaurantHeroHeader({
   actionIcon = 'add',
   actionLabel = 'Acción principal',
   onActionPress,
+  canSwitch,
+  onTitlePress,
   children,
 }: Props) {
   const status = storeStatus(restaurant);
@@ -90,9 +94,20 @@ export default function RestaurantHeroHeader({
         </View>
 
         <View style={styles.textBlock}>
-          <Text style={styles.title} numberOfLines={2}>
-            {displayTitle}
-          </Text>
+          <Pressable
+            style={styles.titlePress}
+            onPress={canSwitch ? onTitlePress : undefined}
+            disabled={!canSwitch}
+            accessibilityRole={canSwitch ? 'button' : undefined}
+            accessibilityLabel={canSwitch ? 'Cambiar de local' : undefined}
+          >
+            <Text style={styles.title} numberOfLines={2}>
+              {displayTitle}
+            </Text>
+            {canSwitch ? (
+              <Ionicons name="chevron-down" size={18} color="#FFF" />
+            ) : null}
+          </Pressable>
           {subtitle ? (
             <Text style={styles.subtitle} numberOfLines={2}>
               {subtitle}
@@ -174,7 +189,9 @@ const styles = StyleSheet.create({
   logoImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   logoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   textBlock: { flex: 1, minWidth: 0, gap: 4 },
+  titlePress: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, minWidth: 0 },
   title: {
+    flex: 1,
     fontSize: 22,
     fontWeight: '700',
     color: '#FFF',

@@ -3,7 +3,8 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -215,14 +216,17 @@ class ForgotPasswordView(APIView):
             logger.error('Forgot-password: no se pudo generar código único user_id=%s', user.pk)
             return Response(response)
 
-        def activate_latest_token():
-            PasswordResetToken.objects.filter(user=user, used=False).exclude(
-                pk=reset_token.pk,
+        def invalidate_older_tokens():
+            # Solo códigos anteriores. exclude(pk=) en un envío paralelo
+            # marcaba el código del otro correo (el que acaba de llegar) como usado.
+            PasswordResetToken.objects.filter(user=user, used=False).filter(
+                Q(created_at__lt=reset_token.created_at)
+                | Q(created_at=reset_token.created_at, pk__lt=reset_token.pk),
             ).update(used=True)
 
         if not user.email:
             logger.info('Forgot-password: usuario sin correo user_id=%s', user.pk)
-            activate_latest_token()
+            invalidate_older_tokens()
             if settings.DEBUG:
                 response['reset_token'] = reset_token.token
                 response['hint'] = 'En desarrollo: usa este código (cuenta sin correo).'
@@ -239,7 +243,7 @@ class ForgotPasswordView(APIView):
                 'No se envió correo user_id=%s',
                 user.pk,
             )
-            activate_latest_token()
+            invalidate_older_tokens()
             if settings.DEBUG:
                 response['reset_token'] = reset_token.token
                 response['hint'] = (
@@ -267,7 +271,7 @@ class ForgotPasswordView(APIView):
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
             )
-            activate_latest_token()
+            invalidate_older_tokens()
             logger.info(
                 'Forgot-password: correo enviado user_id=%s to=%s delivery=%s from=%s',
                 user.pk,
@@ -322,17 +326,38 @@ class ResetPasswordView(APIView):
             return Response(
                 {
                     'token': (
-                        'Este código ya se usó. Si acabas de restablecer, inicia sesión '
-                        'con la nueva contraseña. Si no, solicita un código nuevo.'
+                        'Este código ya no sirve. Pide uno nuevo y usa solo el del '
+                        'correo más reciente (cierra los correos viejos).'
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        token.user.set_password(new_password)
-        token.user.save(update_fields=['password'])
-        token.used = True
-        token.save(update_fields=['used'])
+        with transaction.atomic():
+            locked = (
+                PasswordResetToken.objects.select_for_update()
+                .select_related('user')
+                .filter(pk=token.pk, used=False)
+                .first()
+            )
+            if locked is None:
+                token.user.refresh_from_db()
+                if token.user.check_password(new_password):
+                    return Response(
+                        {'detail': 'Contraseña ya actualizada. Ya puedes iniciar sesión.'}
+                    )
+                return Response(
+                    {
+                        'token': (
+                            'Este código ya no sirve. Pide uno nuevo y usa solo el del '
+                            'correo más reciente.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            locked.user.set_password(new_password)
+            locked.user.save(update_fields=['password'])
+            PasswordResetToken.objects.filter(user=locked.user, used=False).update(used=True)
         return Response({'detail': 'Contraseña restablecida. Ya puedes iniciar sesión.'})
 
 

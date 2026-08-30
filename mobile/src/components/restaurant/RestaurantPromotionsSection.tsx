@@ -33,6 +33,7 @@ import PromoExpiryPicker from './PromoExpiryPicker';
 
 interface Props {
   products: Product[];
+  restaurantId?: number;
   onChanged?: () => void;
 }
 
@@ -106,7 +107,7 @@ function PromoRow({
   );
 }
 
-export default function RestaurantPromotionsSection({ products, onChanged }: Props) {
+export default function RestaurantPromotionsSection({ products, restaurantId, onChanged }: Props) {
   const { isDesktopWeb } = useResponsiveLayout();
   const { insets } = useTabScreenInsets();
   const [promotions, setPromotions] = useState<ProductPromotion[]>([]);
@@ -130,7 +131,7 @@ export default function RestaurantPromotionsSection({ products, onChanged }: Pro
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, restaurantId]);
 
   const openEditor = () => {
     setDraft({

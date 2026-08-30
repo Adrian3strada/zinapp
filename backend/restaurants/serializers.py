@@ -15,6 +15,7 @@ from .models import (
     PromoType,
     Restaurant,
     RestaurantBusinessHour,
+    RestaurantCategory,
 )
 from .promotions import get_active_promotion, promo_label
 from .setup import restaurant_setup_status
@@ -566,3 +567,55 @@ class HomePromotionSerializer(serializers.ModelSerializer):
 
     def get_product_image_url(self, obj):
         return build_image_url(obj.product, self.context.get('request'))
+
+
+class RestaurantOwnedCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=150)
+    address = serializers.CharField()
+    phone = serializers.CharField(required=False, allow_blank=True, default='')
+    category = serializers.ChoiceField(
+        choices=RestaurantCategory.choices,
+        required=False,
+    )
+
+    def validate_name(self, value):
+        name = (value or '').strip()
+        if len(name) < 2:
+            raise serializers.ValidationError('Escribe el nombre del local.')
+        return name
+
+    def validate_address(self, value):
+        address = (value or '').strip()
+        if len(address) < 5:
+            raise serializers.ValidationError('Escribe la dirección del local.')
+        return address
+
+    def validate_phone(self, value):
+        from accounts.phone import validate_optional_mx_phone
+        try:
+            return validate_optional_mx_phone(value)
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+
+class RestaurantOwnedSerializer(serializers.ModelSerializer):
+    """Lista de locales del dueño (selector). Sin datos bancarios."""
+
+    image_url = serializers.SerializerMethodField()
+    is_selected = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Restaurant
+        fields = (
+            'id', 'name', 'address', 'category', 'is_active',
+            'accepting_orders', 'image_url', 'is_selected',
+        )
+
+    def get_image_url(self, obj):
+        return build_image_url(obj, self.context.get('request'))
+
+    def get_is_selected(self, obj):
+        active = self.context.get('active_restaurant')
+        if active is not None:
+            return obj.id == active.id
+        return False

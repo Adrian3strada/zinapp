@@ -14,6 +14,12 @@ from accounts.permissions import IsAdmin, IsRestaurantOwner
 from .geo import ZINAPECUARO_BOUNDS, geocode_address, is_in_coverage, driving_route
 from .models import Product, ProductFavorite, ProductOption, ProductOptionGroup, ProductPromotion, Restaurant, RestaurantBusinessHour, RestaurantFavorite
 from .options import replace_product_option_groups
+from .owned import (
+    get_active_restaurant,
+    owner_can_add_restaurant,
+    owned_restaurants_qs,
+    set_active_restaurant,
+)
 from .serializers import (
     ProductOptionGroupsReplaceSerializer,
     ProductPromotionSerializer,
@@ -21,6 +27,8 @@ from .serializers import (
     RestaurantDetailSerializer,
     RestaurantLocatedDetailSerializer,
     RestaurantLocatedSerializer,
+    RestaurantOwnedCreateSerializer,
+    RestaurantOwnedSerializer,
     RestaurantPublicDetailSerializer,
     RestaurantPublicSerializer,
     RestaurantSerializer,
@@ -177,6 +185,8 @@ class RestaurantViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ('list', 'retrieve'):
             return [AllowAny()]
+        if self.action in ('mine', 'owned', 'select_mine'):
+            return [IsRestaurantOwner()]
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
             if getattr(self.request.user, 'is_admin_user', False):
                 return [IsAdmin()]
@@ -246,9 +256,18 @@ class RestaurantViewSet(viewsets.ModelViewSet):
             self.request.user.is_restaurant_owner
             and not getattr(self.request.user, 'is_admin_user', False)
         ):
-            serializer.save(owner=self.request.user)
-        else:
-            serializer.save()
+            allowed, detail = owner_can_add_restaurant(self.request.user)
+            if not allowed:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'detail': detail})
+            restaurant = serializer.save(
+                owner=self.request.user,
+                is_active=False,
+                accepting_orders=False,
+            )
+            set_active_restaurant(self.request.user, restaurant)
+            return
+        serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         """Desactiva el local en lugar de borrar (CASCADE borraría pedidos históricos)."""
@@ -266,38 +285,92 @@ class RestaurantViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
         now = timezone.now()
-        restaurant = (
-            Restaurant.objects.filter(owner=request.user)
-            .prefetch_related(
-                Prefetch(
-                    'products',
-                    queryset=Product.objects.order_by('name').prefetch_related(
-                        Prefetch(
-                            'promotions',
-                            queryset=ProductPromotion.objects.filter(
-                                is_active=True,
-                                valid_until__gte=now,
-                            ).order_by('-valid_until', '-id'),
-                            to_attr='active_promotions',
-                        ),
-                        Prefetch(
-                            'option_groups',
-                            queryset=ProductOptionGroup.objects.prefetch_related(
-                                Prefetch(
-                                    'options',
-                                    queryset=ProductOption.objects.order_by('sort_order', 'id'),
-                                )
-                            ).order_by('sort_order', 'id'),
-                        ),
+        qs = Restaurant.objects.filter(owner=request.user).prefetch_related(
+            Prefetch(
+                'products',
+                queryset=Product.objects.order_by('name').prefetch_related(
+                    Prefetch(
+                        'promotions',
+                        queryset=ProductPromotion.objects.filter(
+                            is_active=True,
+                            valid_until__gte=now,
+                        ).order_by('-valid_until', '-id'),
+                        to_attr='active_promotions',
+                    ),
+                    Prefetch(
+                        'option_groups',
+                        queryset=ProductOptionGroup.objects.prefetch_related(
+                            Prefetch(
+                                'options',
+                                queryset=ProductOption.objects.order_by('sort_order', 'id'),
+                            )
+                        ).order_by('sort_order', 'id'),
                     ),
                 ),
-            )
-            .first()
+            ),
         )
+        restaurant = get_active_restaurant(request.user, queryset=qs)
         if not restaurant:
             return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
         serializer = RestaurantDetailSerializer(restaurant, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get', 'post'], url_path='owned')
+    def owned(self, request):
+        if request.method == 'POST':
+            return self._create_owned(request)
+        restaurants = list(owned_restaurants_qs(request.user))
+        active = get_active_restaurant(request.user)
+        serializer = RestaurantOwnedSerializer(
+            restaurants,
+            many=True,
+            context={'request': request, 'active_restaurant': active},
+        )
+        return Response(serializer.data)
+
+    def _create_owned(self, request):
+        allowed, detail = owner_can_add_restaurant(request.user)
+        if not allowed:
+            return Response({'detail': detail}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = RestaurantOwnedCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        restaurant = Restaurant.objects.create(
+            owner=request.user,
+            name=data['name'],
+            address=data['address'],
+            phone=data.get('phone') or request.user.phone or '',
+            category=data.get('category') or 'general',
+            is_active=False,
+            accepting_orders=False,
+        )
+        set_active_restaurant(request.user, restaurant)
+        active = restaurant
+        return Response(
+            RestaurantOwnedSerializer(
+                restaurant,
+                context={'request': request, 'active_restaurant': active},
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=['post'], url_path='mine/select')
+    def select_mine(self, request):
+        try:
+            restaurant_id = int(request.data.get('restaurant_id'))
+        except (TypeError, ValueError):
+            return Response(
+                {'detail': 'Indica un restaurante.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        restaurant = owned_restaurants_qs(request.user).filter(pk=restaurant_id).first()
+        if not restaurant:
+            return Response(
+                {'detail': 'No es uno de tus locales.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        set_active_restaurant(request.user, restaurant)
+        return Response({'id': restaurant.id, 'name': restaurant.name})
 
     @action(detail=True, methods=['post'], url_path='toggle-favorite')
     def toggle_favorite(self, request, pk=None):
@@ -504,7 +577,7 @@ class ProductPromotionViewSet(viewsets.ModelViewSet):
                 {'detail': 'Solo para dueños de restaurante.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        restaurant = Restaurant.objects.filter(owner=request.user).first()
+        restaurant = get_active_restaurant(request.user)
         if not restaurant:
             return Response({'detail': 'No tienes restaurante registrado.'}, status=404)
         promos = self.get_queryset().filter(restaurant=restaurant)

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { appAlert } from '../utils/appAlert';
 
+import { useOnAppActive } from '../hooks/useOnAppActive';
 import { deliveryApi } from '../services/api';
 import { realtimeClient } from '../services/realtime';
 import { getApiErrorMessage } from '../utils/apiErrors';
@@ -28,6 +29,7 @@ export function DriverProfileProvider({ children }: { children: React.ReactNode 
       const { data } = await deliveryApi.getProfile();
       setProfile(data);
       setIsAvailable(data.is_available);
+      realtimeClient.setDriverAvailable(data.is_available);
     } catch {
       setProfile(null);
       setIsAvailable(false);
@@ -39,6 +41,10 @@ export function DriverProfileProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useOnAppActive(() => {
+    void refresh();
+  });
 
   const toggleAvailability = useCallback(async (value: boolean) => {
     if (updating) return;

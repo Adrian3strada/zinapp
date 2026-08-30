@@ -14,6 +14,7 @@ import type {
   Order,
   OrderActiveSummary,
   OrderDispute,
+  OwnedRestaurant,
   PaginatedResponse,
   Product,
   ProductPromotion,
@@ -355,6 +356,11 @@ export const restaurantApi = {
   toggleFavorite: (id: number) =>
     api.post<{ is_favorited: boolean }>(`/restaurants/${id}/toggle-favorite/`),
   mine: () => api.get<Restaurant & { products: Product[] }>('/restaurants/mine/'),
+  owned: () => api.get<OwnedRestaurant[]>('/restaurants/owned/'),
+  createOwned: (data: { name: string; address: string; phone?: string; category?: string }) =>
+    api.post<OwnedRestaurant>('/restaurants/owned/', data),
+  select: (restaurant_id: number) =>
+    api.post<{ id: number; name: string }>('/restaurants/mine/select/', { restaurant_id }),
   patch: (id: number, data: Partial<Pick<Restaurant, 'accepting_orders' | 'name' | 'phone' | 'address'>>) =>
     api.patch<Restaurant>(`/restaurants/${id}/`, data),
   update: (id: number, data: FormData) => api.patch<Restaurant>(`/restaurants/${id}/`, data),

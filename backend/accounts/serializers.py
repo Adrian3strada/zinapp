@@ -292,7 +292,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 )
 
             if user.role == UserRole.RESTAURANT:
-                Restaurant.objects.create(
+                restaurant = Restaurant.objects.create(
                     owner=user,
                     name=restaurant_name,
                     address=restaurant_address,
@@ -303,6 +303,8 @@ class RegisterSerializer(serializers.ModelSerializer):
                     is_active=False,
                     accepting_orders=False,
                 )
+                user.active_restaurant = restaurant
+                user.save(update_fields=['active_restaurant'])
 
         return user
 

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -14,12 +14,20 @@ interface Props {
   restaurant: Restaurant;
   acceptingOrders: boolean;
   overlap?: boolean;
+  canSwitch?: boolean;
+  onPressSwitch?: () => void;
+  canAdd?: boolean;
+  onPressAdd?: () => void;
 }
 
 export default function RestaurantProfileDashboard({
   restaurant,
   acceptingOrders,
   overlap,
+  canSwitch,
+  onPressSwitch,
+  canAdd,
+  onPressAdd,
 }: Props) {
   const imageUri = resolveMediaUrl(restaurant.image_url ?? restaurant.image);
   const categoryLabel = restaurant.category
@@ -41,9 +49,20 @@ export default function RestaurantProfileDashboard({
           )}
         </View>
         <View style={styles.titleBlock}>
-          <Text style={styles.name} numberOfLines={2}>
-            {restaurant.name}
-          </Text>
+          <Pressable
+            style={styles.nameRow}
+            onPress={canSwitch ? onPressSwitch : undefined}
+            disabled={!canSwitch}
+            accessibilityRole={canSwitch ? 'button' : undefined}
+            accessibilityLabel={canSwitch ? 'Cambiar de local' : undefined}
+          >
+            <Text style={styles.name} numberOfLines={2}>
+              {restaurant.name}
+            </Text>
+            {canSwitch ? (
+              <Ionicons name="chevron-down" size={18} color={colors.text} />
+            ) : null}
+          </Pressable>
           {categoryLabel ? <Text style={styles.meta}>{categoryLabel}</Text> : null}
           {hours ? (
             <View style={styles.hoursRow}>
@@ -99,6 +118,17 @@ export default function RestaurantProfileDashboard({
           {!restaurant.is_active ? 'Pendiente' : acceptingOrders ? 'Abierto' : 'Cerrado'}
         </Text>
       </View>
+      {canAdd && onPressAdd ? (
+        <Pressable
+          style={styles.addBtn}
+          onPress={onPressAdd}
+          accessibilityRole="button"
+          accessibilityLabel="Agregar otro local"
+        >
+          <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+          <Text style={styles.addBtnText}>Agregar otro local</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -130,7 +160,8 @@ const styles = StyleSheet.create({
   logo: { width: '100%', height: '100%' },
   logoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   titleBlock: { flex: 1, minWidth: 0, gap: 4 },
-  name: { fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  name: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.text, letterSpacing: -0.2 },
   meta: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   hoursRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   hoursText: { flex: 1, fontSize: 12, color: colors.textMuted, fontWeight: '500' },
@@ -160,4 +191,15 @@ const styles = StyleSheet.create({
   toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.text },
   toggleHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
   statusHintText: { fontSize: 13, fontWeight: '700' },
+  addBtn: {
+    marginTop: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderLight,
+  },
+  addBtnText: { fontSize: 14, fontWeight: '700', color: colors.primary },
 });

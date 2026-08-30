@@ -1,9 +1,11 @@
 import json
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 
 from accounts.models import DeliveryProfile, PasswordResetToken, UserRole
@@ -67,9 +69,6 @@ class ForgotPasswordEmailTests(APITestCase):
         self.assertIn(token.token, body['text'])
 
     def test_reset_password_idempotent_on_retry(self):
-        from django.utils import timezone
-        from datetime import timedelta
-
         token = PasswordResetToken.objects.create(
             user=self.user,
             token='ABCD2345',
@@ -98,6 +97,82 @@ class ForgotPasswordEmailTests(APITestCase):
             {'token': 'ABCD2345', 'new_password': 'OtraClave88'},
         )
         self.assertEqual(third.status_code, 400)
+
+    @override_settings(
+        RESEND_API_KEY='re_test_key',
+        DEFAULT_FROM_EMAIL='ZinApp <onboarding@resend.dev>',
+        EMAIL_HOST='',
+        EMAIL_HOST_USER='',
+        EMAIL_HOST_PASSWORD='',
+    )
+    @patch('config.email_utils.urllib.request.urlopen')
+    def test_second_forgot_keeps_latest_code_usable(self, mock_urlopen):
+        mock_urlopen.return_value = _FakeResendResponse({'id': 'msg_1'})
+        first = self.client.post(
+            '/api/auth/forgot-password/',
+            {'identifier': self.user.email},
+        )
+        self.assertEqual(first.status_code, 200)
+        first_token = PasswordResetToken.objects.filter(user=self.user, used=False).latest('created_at')
+
+        mock_urlopen.return_value = _FakeResendResponse({'id': 'msg_2'})
+        second = self.client.post(
+            '/api/auth/forgot-password/',
+            {'identifier': self.user.email},
+        )
+        self.assertEqual(second.status_code, 200)
+        latest = PasswordResetToken.objects.filter(user=self.user).latest('created_at')
+        first_token.refresh_from_db()
+        self.assertTrue(first_token.used)
+        self.assertFalse(latest.used)
+
+        reset = self.client.post(
+            '/api/auth/reset-password/',
+            {'token': latest.token, 'new_password': 'ClaveNueva55'},
+        )
+        self.assertEqual(reset.status_code, 200, reset.data)
+
+    @override_settings(
+        RESEND_API_KEY='re_test_key',
+        DEFAULT_FROM_EMAIL='ZinApp <onboarding@resend.dev>',
+        EMAIL_HOST='',
+        EMAIL_HOST_USER='',
+        EMAIL_HOST_PASSWORD='',
+    )
+    @patch('config.email_utils.urllib.request.urlopen')
+    def test_concurrent_forgot_does_not_burn_newer_code(self, mock_urlopen):
+        mock_urlopen.return_value = _FakeResendResponse({'id': 'msg_race'})
+        older = PasswordResetToken.objects.create(
+            user=self.user,
+            token='OLDER234',
+            expires_at=timezone.now() + timedelta(hours=2),
+        )
+        newer = PasswordResetToken.objects.create(
+            user=self.user,
+            token='NEWER567',
+            expires_at=timezone.now() + timedelta(hours=2),
+        )
+        from django.db.models import Q
+
+        # El activate del request viejo no debe quemar el código más nuevo
+        # aunque ambos tengan el mismo created_at (SQLite).
+        PasswordResetToken.objects.filter(user=self.user, used=False).filter(
+            Q(created_at__lt=older.created_at)
+            | Q(created_at=older.created_at, pk__lt=older.pk),
+        ).update(used=True)
+        older.refresh_from_db()
+        newer.refresh_from_db()
+        self.assertFalse(older.used)
+        self.assertFalse(newer.used)
+
+        PasswordResetToken.objects.filter(user=self.user, used=False).filter(
+            Q(created_at__lt=newer.created_at)
+            | Q(created_at=newer.created_at, pk__lt=newer.pk),
+        ).update(used=True)
+        older.refresh_from_db()
+        newer.refresh_from_db()
+        self.assertTrue(older.used)
+        self.assertFalse(newer.used)
 
 
 class HardeningApiTests(APITestCase):
