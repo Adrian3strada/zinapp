@@ -18,6 +18,7 @@ import HomeRestaurantCard from '../../components/HomeRestaurantCard';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import SearchField from '../../components/SearchField';
+import SeasonalHomeBanner from '../../components/seasonal/SeasonalHomeBanner';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import type { ActiveDeliveryItem } from '../../context/CustomerActiveDeliveriesContext';
@@ -44,6 +45,7 @@ import { formatCurrency, formatTimeAgo } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
 import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { getSeasonalCopy } from '../../config/seasonalTheme';
 import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
 const EMPTY_HOME: HomePayload = {
@@ -325,6 +327,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const showReorder = canFavorite && home.recent_orders.length > 0;
   const showPromos = home.promotions.length > 0 || (canFavorite && home.coupons.length > 0);
   const showNew = home.new_restaurants.length > 0;
+  const seasonalCopy = getSeasonalCopy();
 
   return (
     <ScreenContainer
@@ -359,11 +362,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         }
         keyboardShouldPersistTaps="handled"
       >
+        <SeasonalHomeBanner />
+
         <View style={styles.searchBlock}>
           <SearchField
             value={search}
             onChangeText={setSearch}
-            placeholder="Tacos, pizza, veterinario…"
+            placeholder={seasonalCopy?.searchPlaceholder ?? 'Tacos, pizza, veterinario…'}
             onSubmitEditing={() => goSearch()}
           />
           {search.trim().length >= 2 ? (
@@ -430,7 +435,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
         {home.categories.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.heroTitle}>¿Qué quieres comer hoy?</Text>
+            <View>
+              <Text style={styles.heroTitle}>{seasonalCopy?.categoriesTitle ?? '¿Qué quieres comer hoy?'}</Text>
+              {seasonalCopy ? (
+                <Text style={styles.seasonalCaption}>{seasonalCopy.categoriesCaption}</Text>
+              ) : null}
+            </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -443,6 +453,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   emoji={categoryEmoji(cat.key)}
                   label={cat.label}
                   tint={categoryTint(cat.key)}
+                  categoryKey={cat.key}
                   onPress={() => {
                     trackEvent('home_category_clicked', { category: cat.key });
                     navigation.navigate('Comida', { category: cat.key });
@@ -837,6 +848,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: colors.text,
     letterSpacing: -0.4,
+  },
+  seasonalCaption: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
   },
   sectionHead: {
     flexDirection: 'row',

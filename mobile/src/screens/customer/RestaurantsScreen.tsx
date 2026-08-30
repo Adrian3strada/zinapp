@@ -23,6 +23,7 @@ import { usePaginatedList } from '../../hooks/usePaginatedList';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
 import type { RestaurantsScreenProps } from '../../navigation/types';
+import { getSeasonalCopy, seasonalMexicanChipStyle } from '../../config/seasonalTheme';
 import { restaurantApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -190,7 +191,11 @@ export default function RestaurantsScreen({ navigation, route }: RestaurantsScre
           {CATEGORIES.map((cat) => (
             <Pressable
               key={cat.label}
-              style={[styles.chip, category === cat.key && styles.chipActive]}
+              style={[
+                styles.chip,
+                seasonalMexicanChipStyle(cat.key),
+                category === cat.key && styles.chipActive,
+              ]}
               onPress={() => setCategory(cat.key)}
             >
               <Text style={styles.chipEmoji}>{cat.emoji}</Text>
@@ -297,7 +302,7 @@ export default function RestaurantsScreen({ navigation, route }: RestaurantsScre
               <EmptyState
                 emoji="🍽️"
                 title="Sin resultados"
-                subtitle="Prueba otra búsqueda o categoría"
+                subtitle={getSeasonalCopy()?.emptySubtitle ?? 'Prueba otra búsqueda o categoría'}
               />
             ) : null
           }
@@ -337,7 +342,7 @@ export default function RestaurantsScreen({ navigation, route }: RestaurantsScre
             <EmptyState
               emoji="🍽️"
               title="Sin resultados"
-              subtitle="Prueba otra búsqueda o categoría"
+              subtitle={getSeasonalCopy()?.emptySubtitle ?? 'Prueba otra búsqueda o categoría'}
             />
           ) : null
         }

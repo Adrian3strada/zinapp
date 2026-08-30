@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { BrandMark } from './BrandLogo';
 import HeroBackground from './HeroBackground';
 import ProfileAvatarDisplay from './ProfileAvatarDisplay';
+import SeasonalHeaderDecor from './seasonal/SeasonalHeaderDecor';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
@@ -43,6 +44,7 @@ export default function HomeHero({
     >
       <View style={styles.decorA} pointerEvents="none" />
       <View style={styles.decorB} pointerEvents="none" />
+      <SeasonalHeaderDecor />
 
       <View style={styles.row}>
         <View style={styles.textBlock}>

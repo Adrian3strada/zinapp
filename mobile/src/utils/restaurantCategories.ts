@@ -1,3 +1,4 @@
+import { seasonalCategoryWash } from '../config/seasonalTheme';
 import type { Restaurant } from '../types';
 
 /** Categorías visibles en filtros del inicio / comida (sin `general`). */
@@ -156,7 +157,7 @@ const CATEGORY_TINTS: Record<string, string> = {
 
 export function categoryTint(key: string | null | undefined): string {
   if (!key) return '#E8F1FB';
-  return CATEGORY_TINTS[key] ?? '#E8F1FB';
+  return seasonalCategoryWash(key, CATEGORY_TINTS[key] ?? '#E8F1FB');
 }
 
 export const RESTAURANT_CATEGORY_LABELS: Record<string, string> = {

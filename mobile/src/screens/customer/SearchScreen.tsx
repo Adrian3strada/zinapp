@@ -177,6 +177,7 @@ export default function SearchScreen({ navigation, route }: SearchScreenProps) {
                   emoji={categoryEmoji(cat.key)}
                   label={cat.label}
                   tint={categoryTint(cat.key)}
+                  categoryKey={cat.key}
                   onPress={() => navigation.navigate('Comida', { category: cat.key })}
                 />
               ))}

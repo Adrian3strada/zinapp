@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { getSeasonalCopy } from '../config/seasonalTheme';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 
@@ -25,7 +26,9 @@ export default function ScreenContainer({ children, loading, loadingSkeleton, er
         <View style={styles.loadingCard}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Cargando…</Text>
-          <Text style={styles.loadingHint}>Si tarda, el servidor puede estar despertando</Text>
+          <Text style={styles.loadingHint}>
+            {getSeasonalCopy()?.loadingHint ?? 'Si tarda, el servidor puede estar despertando'}
+          </Text>
         </View>
       </View>
     );
