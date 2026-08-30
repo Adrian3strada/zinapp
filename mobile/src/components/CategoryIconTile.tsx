@@ -30,7 +30,10 @@ export default function CategoryIconTile({ emoji, label, tint, categoryKey, sele
           styles.circle,
           { backgroundColor: tint || colors.primaryLight },
           selected && styles.circleSelected,
-          festive && !selected && { borderWidth: 1.5, borderColor: SEASONAL_THEME.colors.green },
+          festive && !selected && {
+            borderWidth: 3,
+            borderColor: SEASONAL_THEME.colors.green,
+          },
         ]}
       >
         <Text style={styles.emoji}>{emoji}</Text>

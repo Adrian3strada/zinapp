@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
 import FavoriteHeart from '../../components/FavoriteHeart';
+import SeasonalStripe from '../../components/seasonal/SeasonalStripe';
 import FoodImage from '../../components/FoodImage';
 import FormField from '../../components/FormField';
 import KeyboardForm from '../../components/KeyboardForm';
@@ -218,6 +219,7 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
           accessibilityRole={canOpenImage ? 'imagebutton' : undefined}
           accessibilityLabel={canOpenImage ? 'Ver foto del platillo' : undefined}
         >
+          <SeasonalStripe height={5} />
           <FoodImage
             emoji={emoji}
             color={colors.primary}

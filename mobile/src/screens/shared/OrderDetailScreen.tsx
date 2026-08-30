@@ -11,6 +11,7 @@ import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import DeliveryEtaBanner from '../../components/DeliveryEtaBanner';
 import DriverNearbyBanner from '../../components/DriverNearbyBanner';
 import HeroBackground from '../../components/HeroBackground';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import KeyboardForm from '../../components/KeyboardForm';
 import LiveBadge from '../../components/LiveBadge';
 import OrderMap from '../../components/OrderMap';
@@ -368,6 +369,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
           keyboardVerticalOffset={keyboardOffsetWithHeader(insets)}
         >
           <HeroBackground colors={[colors.gradientStart, colors.gradientEnd]} style={styles.hero}>
+            <SeasonalHeroAccent />
             <Text style={styles.heroRestaurant}>{order.restaurant_detail?.name}</Text>
             <View style={styles.heroOrderRef}>
               <Text style={styles.heroLabel}>Pedido</Text>
@@ -751,7 +753,7 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 32 },
-  hero: { padding: 24, gap: 10 },
+  hero: { padding: 24, gap: 10, overflow: 'hidden', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   heroRestaurant: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
   heroOrderRef: { gap: 2 },
   heroLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: 1 },

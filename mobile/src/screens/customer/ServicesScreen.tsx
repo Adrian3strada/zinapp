@@ -13,6 +13,7 @@ import { appAlert } from '../../utils/appAlert';
 
 import EmptyState from '../../components/EmptyState';
 import HeroBackground from '../../components/HeroBackground';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import SearchField from '../../components/SearchField';
@@ -135,6 +136,7 @@ export default function ServicesScreen({ route }: ServicesScreenProps) {
             { marginHorizontal: -pagePadding, paddingTop: insets.top + spacing.sm },
           ]}
         >
+          <SeasonalHeroAccent />
           <Text style={styles.heroEyebrow}>Zinapécuaro</Text>
           <Text style={styles.heroTitle}>Servicios</Text>
           <Text style={styles.heroSubtitle}>Negocios locales — contacta directo</Text>

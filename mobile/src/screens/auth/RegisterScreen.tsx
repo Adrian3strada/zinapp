@@ -12,6 +12,7 @@ import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BrandLogo from '../../components/BrandLogo';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
@@ -194,6 +195,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 24 }]}
         >
+          <SeasonalHeroAccent />
           <BrandLogo variant="light" width={220} compact />
           <Text style={styles.title}>Crear cuenta</Text>
           <Text style={styles.subtitle}>Elige cómo usarás ZinApp en Zinapécuaro</Text>
@@ -405,6 +407,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: 'hidden',
   },
   formArea: {
     backgroundColor: colors.surface,

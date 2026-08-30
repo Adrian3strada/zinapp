@@ -1,55 +1,136 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import { SEASONAL_THEME } from '../../config/seasonalTheme';
 import { useSeasonalTheme } from '../../hooks/useSeasonalTheme';
 
-const PICADO = Array.from({ length: 18 }, (_, i) => SEASONAL_THEME.colors.stripe[i % 3]);
+const PICADO = Array.from({ length: 16 }, (_, i) => SEASONAL_THEME.colors.stripe[i % 3]);
 
-const CONFETTI: {
-  top?: number;
-  right?: number;
-  left?: number;
-  bottom?: number;
-  size: number;
+const CONFETTI = [
+  { left: '8%', delay: 0, color: SEASONAL_THEME.colors.green, emoji: '🎉' },
+  { left: '22%', delay: 400, color: SEASONAL_THEME.colors.red, emoji: '✨' },
+  { left: '38%', delay: 180, color: SEASONAL_THEME.colors.white, emoji: '🎊' },
+  { left: '58%', delay: 720, color: SEASONAL_THEME.colors.green, emoji: '⭐' },
+  { left: '74%', delay: 260, color: SEASONAL_THEME.colors.red, emoji: '🎉' },
+  { left: '88%', delay: 540, color: SEASONAL_THEME.colors.white, emoji: '✨' },
+] as const;
+
+function FallingBit({
+  left,
+  delay,
+  color,
+  emoji,
+}: {
+  left: string;
+  delay: number;
   color: string;
-  rotate: string;
-}[] = [
-  { top: 18, right: 72, size: 5, color: SEASONAL_THEME.colors.green, rotate: '18deg' },
-  { top: 36, right: 28, size: 4, color: SEASONAL_THEME.colors.white, rotate: '-12deg' },
-  { top: 58, right: 54, size: 4, color: SEASONAL_THEME.colors.red, rotate: '28deg' },
-  { top: 22, left: 18, size: 4, color: 'rgba(255,255,255,0.55)', rotate: '-24deg' },
-  { bottom: 28, left: 46, size: 5, color: SEASONAL_THEME.colors.green, rotate: '8deg' },
-];
+  emoji: string;
+}) {
+  const y = useRef(new Animated.Value(-8)).current;
+  const spin = useRef(new Animated.Value(0)).current;
 
-/** Papel picado y confeti. pointerEvents none: no tapa botones ni el avatar. */
+  useEffect(() => {
+    const fall = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(y, {
+          toValue: 168,
+          duration: 3800,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(y, { toValue: -8, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+    const twist = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 2200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    fall.start();
+    twist.start();
+    return () => {
+      fall.stop();
+      twist.stop();
+    };
+  }, [delay, spin, y]);
+
+  const rotate = spin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <Animated.Text
+      style={[
+        styles.confetti,
+        { left, color, transform: [{ translateY: y }, { rotate }] },
+      ]}
+    >
+      {emoji}
+    </Animated.Text>
+  );
+}
+
+function PicadoFlag({ color, index }: { color: string; index: number }) {
+  const sway = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(sway, {
+          toValue: 1,
+          duration: 900 + (index % 4) * 80,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sway, {
+          toValue: 0,
+          duration: 900 + (index % 4) * 80,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [index, sway]);
+
+  const rotate = sway.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-12deg', '12deg'],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate }] }}>
+      <View style={[styles.flag, { borderTopColor: color }]} />
+    </Animated.View>
+  );
+}
+
+/** Papel picado, franja tricolor y confeti animado. No tapa botones. */
 export default function SeasonalHeaderDecor() {
   const { active } = useSeasonalTheme();
   if (!active) return null;
 
   return (
     <View pointerEvents="none" style={styles.layer} accessible={false} importantForAccessibility="no">
-      {CONFETTI.map((dot, index) => (
-        <View
-          key={`dot-${index}`}
-          style={[
-            styles.dot,
-            {
-              width: dot.size,
-              height: dot.size,
-              backgroundColor: dot.color,
-              transform: [{ rotate: dot.rotate }],
-              top: dot.top,
-              right: dot.right,
-              left: dot.left,
-              bottom: dot.bottom,
-            },
-          ]}
-        />
+      <View style={styles.topStripe}>
+        {SEASONAL_THEME.colors.stripe.map((tone, index) => (
+          <View key={`top-${tone}-${index}`} style={[styles.stripeBand, { backgroundColor: tone }]} />
+        ))}
+      </View>
+
+      {CONFETTI.map((bit) => (
+        <FallingBit key={bit.left} {...bit} />
       ))}
+
       <View style={styles.picadoRow}>
         {PICADO.map((color, index) => (
-          <View key={`flag-${index}`} style={[styles.flag, { borderTopColor: color }]} />
+          <PicadoFlag key={`flag-${index}`} color={color} index={index} />
         ))}
       </View>
     </View>
@@ -61,27 +142,35 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
   },
-  dot: {
+  topStripe: {
     position: 'absolute',
-    borderRadius: 2,
-    opacity: 0.55,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 7,
+    flexDirection: 'row',
+  },
+  stripeBand: { flex: 1 },
+  confetti: {
+    position: 'absolute',
+    top: 8,
+    fontSize: 13,
   },
   picadoRow: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -1,
+    bottom: 0,
     flexDirection: 'row',
-    justifyContent: 'center',
-    opacity: 0.42,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   flag: {
     width: 0,
     height: 0,
-    marginHorizontal: 1,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderTopWidth: 8,
+    borderLeftWidth: 11,
+    borderRightWidth: 11,
+    borderTopWidth: 18,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },

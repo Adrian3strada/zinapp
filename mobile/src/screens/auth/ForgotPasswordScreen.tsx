@@ -5,6 +5,7 @@ import { appAlert } from '../../utils/appAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BrandLogo from '../../components/BrandLogo';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import Button from '../../components/Button';
 import ContactWhatsAppButton from '../../components/ContactWhatsAppButton';
 import FormField from '../../components/FormField';
@@ -65,6 +66,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 28 }]}
         >
+          <SeasonalHeroAccent />
           <BrandLogo variant="light" width={200} compact showTagline={false} />
           <Text style={styles.title}>Recuperar contraseña</Text>
           <Text style={styles.heroSub}>
@@ -153,6 +155,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: 'hidden',
   },
   title: { fontSize: 22, fontWeight: '800', color: '#FFF', letterSpacing: -0.3, marginTop: 12 },
   heroSub: {

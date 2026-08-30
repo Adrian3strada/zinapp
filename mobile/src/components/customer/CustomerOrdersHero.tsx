@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import SeasonalHeroAccent from '../seasonal/SeasonalHeroAccent';
 import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { spacing } from '../../theme/spacing';
@@ -20,6 +21,7 @@ export default function CustomerOrdersHero({ topInset, activeCount, totalLoaded 
       end={{ x: 1, y: 1 }}
       style={[styles.hero, { paddingTop: topInset + spacing.md }]}
     >
+      <SeasonalHeroAccent />
       <Text style={styles.eyebrow}>Tus pedidos</Text>
       <Text style={styles.title}>Historial y seguimiento</Text>
       <Text style={styles.sub}>

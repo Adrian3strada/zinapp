@@ -96,7 +96,8 @@ export function useGoogleIdTokenRequest() {
   const redirectUri = getGoogleRedirectUri();
 
   return Google.useIdTokenAuthRequest({
-    webClientId: webClientId || undefined,
+    // El hook de Expo truena si webClientId viene vacío (web local sin .env).
+    webClientId: webClientId || 'unconfigured.apps.googleusercontent.com',
     iosClientId: iosClientId || undefined,
     androidClientId: androidClientId || undefined,
     ...(redirectUri ? { redirectUri } : {}),

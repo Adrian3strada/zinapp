@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ListSkeleton from '../../components/ListSkeleton';
 import EmptyState from '../../components/EmptyState';
+import SeasonalStripe from '../../components/seasonal/SeasonalStripe';
 import FavoriteHeart from '../../components/FavoriteHeart';
 import FloatingCartBar from '../../components/FloatingCartBar';
 import ListFooter from '../../components/ListFooter';
@@ -250,6 +251,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
     () => (
       <View>
         <View style={styles.bannerWrap}>
+          <SeasonalStripe height={5} />
           <View style={styles.bannerImageWrap}>
             <FoodImage
               emoji={visual.emoji}

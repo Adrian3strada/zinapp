@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Image,
@@ -620,6 +621,7 @@ export default function ProfileScreen() {
               { paddingTop: insets.top + spacing.md },
             ]}
           >
+            <SeasonalHeroAccent />
             <ProfileAvatarPicker
               imageUri={avatarUri}
               remoteUrl={resolveMediaUrl(user.avatar_url ?? user.avatar)}
@@ -1048,6 +1050,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: 'hidden',
     zIndex: 1,
   },
   headerRestaurant: {

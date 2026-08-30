@@ -263,6 +263,10 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:8081,http://127.0.0.1:8081',
     cast=Csv(),
 )
+# Preview local (Expo web) contra la API de producción: JWT, sin cookies.
+for _origin in ('http://localhost:8081', 'http://127.0.0.1:8081'):
+    if _origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(_origin)
 
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True

@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Button from '../../components/Button';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import CategoryIconTile from '../../components/CategoryIconTile';
 import KeyboardForm from '../../components/KeyboardForm';
 import ScreenContainer from '../../components/ScreenContainer';
@@ -330,6 +331,7 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
+          <SeasonalHeroAccent />
           <View style={styles.heroIcon}>
             <Ionicons name="basket-outline" size={28} color={colors.primary} />
           </View>
@@ -762,6 +764,7 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: radii.xl,
     padding: spacing.lg,
+    overflow: 'hidden',
   },
   heroIcon: {
     width: 52,

@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BrandLogo from '../../components/BrandLogo';
 import HeroBackground from '../../components/HeroBackground';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import Button from '../../components/Button';
 import FormField from '../../components/FormField';
 import FormSection from '../../components/FormSection';
@@ -187,6 +188,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={styles.desktopHero}
         >
+          <SeasonalHeroAccent />
           <View style={styles.desktopHeroContent}>
             <BrandLogo variant="light" width={320} showTagline={false} />
             <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
@@ -223,6 +225,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           colors={[colors.gradientStart, colors.gradientEnd]}
           style={[styles.hero, { paddingTop: insets.top + 32 }]}
         >
+          <SeasonalHeroAccent />
           <BrandLogo variant="light" width={Math.min(260, contentWidth() - 48)} showTagline={false} />
           <Text style={styles.subtitle}>Zinapécuaro, Mich.</Text>
           <View style={styles.heroPills}>
@@ -257,6 +260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 48,
     paddingVertical: 40,
     minWidth: 320,
+    overflow: 'hidden',
   },
   desktopHeroContent: {
     alignItems: 'center',
@@ -288,6 +292,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
+    overflow: 'hidden',
   },
   subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
   heroPills: { flexDirection: 'row', gap: 10, marginTop: 4 },

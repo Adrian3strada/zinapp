@@ -18,6 +18,7 @@ import HomeRestaurantCard from '../../components/HomeRestaurantCard';
 import ListSkeleton from '../../components/ListSkeleton';
 import ScreenContainer from '../../components/ScreenContainer';
 import SearchField from '../../components/SearchField';
+import SeasonalConfetti from '../../components/seasonal/SeasonalConfetti';
 import SeasonalHomeBanner from '../../components/seasonal/SeasonalHomeBanner';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -45,7 +46,7 @@ import { formatCurrency, formatTimeAgo } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
 import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
-import { getSeasonalCopy } from '../../config/seasonalTheme';
+import { getSeasonalCopy, isMexicanCategory } from '../../config/seasonalTheme';
 import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
 const EMPTY_HOME: HomePayload = {
@@ -328,6 +329,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const showPromos = home.promotions.length > 0 || (canFavorite && home.coupons.length > 0);
   const showNew = home.new_restaurants.length > 0;
   const seasonalCopy = getSeasonalCopy();
+  const mexicanFlavors = useMemo(() => {
+    if (!seasonalCopy) return [];
+    const seen = new Set<number>();
+    return [...home.open_restaurants, ...home.new_restaurants].filter((row) => {
+      if (!isMexicanCategory(row.category) || seen.has(row.id)) return false;
+      seen.add(row.id);
+      return true;
+    });
+  }, [home.new_restaurants, home.open_restaurants, seasonalCopy]);
 
   return (
     <ScreenContainer
@@ -351,6 +361,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onProfilePress={() => navigation.navigate('Perfil')}
       />
 
+      <View style={styles.homeBody}>
+      <SeasonalConfetti />
       <ScrollView
         contentContainerStyle={[
           styles.list,
@@ -387,7 +399,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
         <View style={styles.quickRow}>
           <QuickAction
-            emoji="🍔"
+            emoji={seasonalCopy ? '🌮' : '🍔'}
             label="Pedir comida"
             color={FOOD_COLOR}
             onPress={() => navigation.navigate('Comida')}
@@ -462,6 +474,17 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               ))}
             </ScrollView>
           </View>
+        ) : null}
+
+        {mexicanFlavors.length > 0 ? (
+          <RestaurantRail
+            title={seasonalCopy?.flavorsTitle ?? 'Sabores de septiembre'}
+            restaurants={mexicanFlavors}
+            showFavorite={canFavorite}
+            onPress={(item) => openRestaurant(item, 'september')}
+            onToggleFavorite={toggleRestaurantFavorite}
+            onSeeAll={() => navigation.navigate('Comida', { category: 'mexicana' })}
+          />
         ) : null}
 
         {openRestaurants.length > 0 ? (
@@ -601,6 +624,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           />
         ) : null}
       </ScrollView>
+      </View>
     </ScreenContainer>
   );
 }
@@ -777,6 +801,7 @@ function CouponCard({ coupon, onPress }: { coupon: PublicCoupon; onPress: () => 
 }
 
 const styles = StyleSheet.create({
+  homeBody: { flex: 1 },
   list: { flexGrow: 1, backgroundColor: colors.background, paddingTop: spacing.md, gap: spacing.md },
   skeleton: { flex: 1, paddingHorizontal: spacing.screen },
   searchBlock: { gap: 8 },

@@ -5,6 +5,8 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandMark } from './BrandLogo';
+import SeasonalStripe from './seasonal/SeasonalStripe';
+import { getSeasonalCopy } from '../config/seasonalTheme';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import type { CustomerTabParamList } from '../navigation/types';
@@ -45,11 +47,16 @@ export default function WebSidebar({ navigation, orderBadge = 0, cartBadge = 0 }
 
   return (
     <View style={styles.sidebar}>
+      <View style={styles.stripeWrap}>
+        <SeasonalStripe height={5} />
+      </View>
       <View style={styles.brand}>
         <BrandMark size={36} variant="dark" />
         <Text style={styles.brandText}>ZinApp</Text>
       </View>
-      <Text style={styles.brandSub}>Zinapécuaro, Mich.</Text>
+      <Text style={styles.brandSub}>
+        {getSeasonalCopy() ? 'Zinapécuaro · Mes patrio' : 'Zinapécuaro, Mich.'}
+      </Text>
 
       <View style={styles.nav}>
         {ITEMS.map((item) => {
@@ -93,6 +100,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
+  },
+  stripeWrap: {
+    marginHorizontal: -spacing.md,
+    marginTop: -spacing.xl,
+    marginBottom: spacing.md,
   },
   brand: {
     flexDirection: 'row',

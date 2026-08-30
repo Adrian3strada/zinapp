@@ -32,6 +32,7 @@ import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
+import { getSeasonalCopy } from '../../config/seasonalTheme';
 import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
 const EMPTY: SearchPayload = {
@@ -148,7 +149,7 @@ export default function SearchScreen({ navigation, route }: SearchScreenProps) {
         <SearchField
           value={query}
           onChangeText={setQuery}
-          placeholder="Tacos, pizza, veterinario…"
+          placeholder={getSeasonalCopy()?.searchPlaceholder ?? 'Tacos, pizza, veterinario…'}
           onSubmitEditing={() => setDebounced(query.trim())}
         />
 

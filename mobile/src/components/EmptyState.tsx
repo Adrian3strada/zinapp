@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { getSeasonalCopy, isSeasonalActive, SEASONAL_THEME } from '../config/seasonalTheme';
 import { colors } from '../theme/colors';
 import { radii } from '../theme/radii';
 import { spacing } from '../theme/spacing';
@@ -16,13 +17,19 @@ interface Props {
 }
 
 export default function EmptyState({ emoji, title, subtitle, actionLabel, onAction }: Props) {
+  const seasonal = isSeasonalActive();
+  const seasonalLine = getSeasonalCopy()?.emptySubtitle;
   return (
     <View
       style={styles.container}
       accessibilityRole="summary"
       accessibilityLabel={`${title}${subtitle ? `. ${subtitle}` : ''}`}
     >
-      <View style={styles.emojiCircle} accessible={false} importantForAccessibility="no">
+      <View
+        style={[styles.emojiCircle, seasonal && styles.emojiCircleFestive]}
+        accessible={false}
+        importantForAccessibility="no"
+      >
         <Text style={styles.emoji} accessible={false}>
           {emoji}
         </Text>
@@ -31,6 +38,9 @@ export default function EmptyState({ emoji, title, subtitle, actionLabel, onActi
         {title}
       </Text>
       {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      {seasonal && seasonalLine && seasonalLine !== subtitle ? (
+        <Text style={styles.seasonalLine}>{seasonalLine}</Text>
+      ) : null}
       {actionLabel && onAction && (
         <Button title={actionLabel} onPress={onAction} style={styles.btn} />
       )}
@@ -56,6 +66,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.md,
   },
+  emojiCircleFestive: {
+    borderWidth: 3,
+    borderColor: SEASONAL_THEME.colors.green,
+    backgroundColor: SEASONAL_THEME.colors.categoryWash,
+  },
   emoji: { fontSize: 28 },
   title: {
     ...typography.title,
@@ -67,6 +82,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginTop: spacing.sm,
+    maxWidth: 260,
+  },
+  seasonalLine: {
+    ...typography.subtitle,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    color: colors.primary,
+    fontWeight: '700',
     maxWidth: 260,
   },
   btn: { marginTop: spacing.lg, minWidth: 180, alignSelf: 'center' },

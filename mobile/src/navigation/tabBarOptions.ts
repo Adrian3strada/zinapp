@@ -1,6 +1,7 @@
 import type { EdgeInsets } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
 
+import { isSeasonalActive, SEASONAL_THEME } from '../config/seasonalTheme';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { webTabBarStyle } from '../utils/webPlatform';
@@ -8,6 +9,7 @@ import { webTabBarStyle } from '../utils/webPlatform';
 export function tabBarScreenOptions(insets: EdgeInsets, isDesktopWeb = false) {
   const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 0);
   const tabBarHeight = spacing.tabBar + bottomInset;
+  const festive = isSeasonalActive();
 
   return {
     tabBarActiveTintColor: colors.primary,
@@ -15,8 +17,8 @@ export function tabBarScreenOptions(insets: EdgeInsets, isDesktopWeb = false) {
     tabBarHideOnKeyboard: Platform.OS === 'android',
     tabBarStyle: {
       backgroundColor: colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: colors.borderLight,
+      borderTopWidth: festive ? 3 : 1,
+      borderTopColor: festive ? SEASONAL_THEME.colors.green : colors.borderLight,
       elevation: 8,
       shadowOpacity: 0,
       paddingTop: 4,

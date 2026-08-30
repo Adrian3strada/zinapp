@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
+import SeasonalHeroAccent from '../../components/seasonal/SeasonalHeroAccent';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -210,6 +211,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
             colors={shipment.kind === 'mandado' ? ['#16A34A', '#15803D'] : ['#2A9D8F', '#264653']}
             style={styles.hero}
           >
+            <SeasonalHeroAccent />
             <Text style={styles.heroSize}>
               {shipment.kind === 'mandado' ? 'Mandado' : shipment.size_display}
             </Text>
@@ -439,7 +441,7 @@ export default function ShipmentDetailScreen({ route, navigation }: ShipmentDeta
 
 const styles = StyleSheet.create({
   container: { paddingBottom: 32 },
-  hero: { padding: 24, gap: 8 },
+  hero: { padding: 24, gap: 8, overflow: 'hidden', borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   heroSize: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase' },
   heroTitle: { fontSize: 26, fontWeight: '800', color: '#FFF' },
   heroDesc: { fontSize: 15, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },

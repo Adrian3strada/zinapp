@@ -32,11 +32,11 @@ describe('seasonalTheme', () => {
     expect(calendarDateInZone(new Date('2026-09-01T05:30:00Z'))).toBe('2026-08-31');
   });
 
-  it('se activa el 1 y se apaga el 18 de septiembre', () => {
+  it('se activa el 30 de agosto y se apaga el 18 de septiembre', () => {
     SEASONAL_THEME.forceActive = false;
     SEASONAL_THEME.enabled = true;
-    expect(isSeasonalActive(atMexico('2026-08-31T23:59:00'))).toBe(false);
-    expect(isSeasonalActive(atMexico('2026-09-01T00:00:00'))).toBe(true);
+    expect(isSeasonalActive(atMexico('2026-08-29T23:59:00'))).toBe(false);
+    expect(isSeasonalActive(atMexico('2026-08-30T00:00:00'))).toBe(true);
     expect(isSeasonalActive(atMexico('2026-09-17T23:30:00'))).toBe(true);
     expect(isSeasonalActive(atMexico('2026-09-18T00:00:00'))).toBe(false);
   });
