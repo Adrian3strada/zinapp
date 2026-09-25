@@ -9,7 +9,7 @@ from dashboard.panel_admin import panel_admin
 
 from .cron_views import order_reminders_cron, restaurant_opens_cron, run_all_cron
 from .health import app_config, health
-from .landing_views import LandingView, robots_txt, sitemap_xml
+from .landing_views import LandingView, landing_api, robots_txt, sitemap_xml
 from .legal_views import PrivacyPolicyView
 from .webapp_views import webapp_serve
 
@@ -40,6 +40,7 @@ urlpatterns = [
     path('privacidad/', PrivacyPolicyView.as_view(), name='privacy-policy'),
     path('api/health/', health, name='health'),
     path('api/config/', app_config, name='app-config'),
+    path('api/landing/', landing_api, name='landing-api'),
     path('api/cron/restaurant-opens/', restaurant_opens_cron, name='cron-restaurant-opens'),
     path('api/cron/order-reminders/', order_reminders_cron, name='cron-order-reminders'),
     path('api/cron/run/', run_all_cron, name='cron-run-all'),
@@ -48,6 +49,7 @@ urlpatterns = [
     path('api/', include('restaurants.urls')),
     path('api/', include('local_services.urls')),
     path('api/', include('orders.urls')),
+    path('api/', include('rewards.urls')),
     # App web solo bajo /app/ (evita URLs delgadas duplicadas fuera de /app/).
     path('app/', webapp_serve, name='webapp-root'),
     re_path(r'^app/(?P<path>.*)$', webapp_serve, name='webapp'),

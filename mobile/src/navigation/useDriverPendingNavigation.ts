@@ -12,6 +12,10 @@ export function useDriverPendingNavigation() {
 
   useEffect(() => {
     return subscribePendingNavigation((nav) => {
+      if (nav.type === 'profile') {
+        navigation.navigate('Main', { screen: 'Perfil' });
+        return;
+      }
       if (nav.type === 'order') {
         navigation.navigate('OrderDetail', { orderId: nav.orderId });
         return;

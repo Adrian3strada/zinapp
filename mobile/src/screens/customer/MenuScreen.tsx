@@ -313,7 +313,11 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
             ) : null}
             {restaurant?.is_open === false && (
               <View style={styles.closedBanner}>
-                <Text style={styles.closedBannerText}>Cerrado — no recibe pedidos ahora</Text>
+                <Text style={styles.closedBannerText}>
+                  {restaurant.next_open_label
+                    ? `${restaurant.next_open_label} — no recibe pedidos ahora`
+                    : 'Cerrado — no recibe pedidos ahora'}
+                </Text>
               </View>
             )}
             {isCustomer && restaurant?.is_open === false && (

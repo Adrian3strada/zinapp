@@ -16,7 +16,7 @@ interface AuthContextValue {
   isLoading: boolean;
   pendingAuthRoute: 'Login' | 'Register';
   login: (data: LoginPayload) => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithGoogle: (idToken: string, referralCode?: string) => Promise<void>;
   register: (data: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -189,8 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await applyAuthResponse(response);
   };
 
-  const loginWithGoogle = async (idToken: string) => {
-    const { data: response } = await authApi.googleLogin(idToken);
+  const loginWithGoogle = async (idToken: string, referralCode?: string) => {
+    const { data: response } = await authApi.googleLogin(idToken, referralCode);
     await applyAuthResponse(response);
   };
 

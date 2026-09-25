@@ -18,6 +18,7 @@ from local_services.models import LocalService
 from orders.models import Coupon, Order, OrderStatus, PaymentMethod, PaymentStatus, Review, Shipment, ShipmentKind, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
 from restaurants.models import Product, ProductPromotion, Restaurant
+from rewards.models import RewardProgramConfig
 
 from ..mixins import PanelAccessMixin
 from ..page_context import page_context
@@ -34,6 +35,7 @@ from .forms import (
     ShipmentStatusForm,
     UserCreateForm,
     UserEditForm,
+    RewardProgramConfigForm,
 )
 
 logger = logging.getLogger('dashboard')
@@ -832,7 +834,7 @@ class DisputeDetailView(PanelAccessMixin, UpdateView):
             messages.success(
                 self.request,
                 'Disputa marcada como reembolsada. El estado de pago del pedido no se modificó; '
-                'registra el reembolso en Mercado Pago u otro canal si aplica.',
+                'devuelve el SPEI por transferencia y anota la referencia aquí.',
             )
         else:
             messages.success(self.request, 'Disputa actualizada.')
@@ -1680,3 +1682,34 @@ class UserActivateView(PanelAccessMixin, View):
             f'Usuario «{user.username}» activado. Ya puede entrar en la app.',
         )
         return redirect('dashboard:users')
+
+
+class RewardConfigUpdateView(PanelAccessMixin, UpdateView):
+    model = RewardProgramConfig
+    form_class = RewardProgramConfigForm
+    template_name = 'dashboard/gestion/form.html'
+    success_url = reverse_lazy('gestion:rewards-config')
+
+    def get_object(self, queryset=None):
+        from rewards.services import get_program_config
+
+        return get_program_config()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(page_context(
+            'Beneficios ZinApp',
+            'rewards',
+            breadcrumbs=[
+                {'label': 'Beneficios', 'url': None},
+            ],
+        ))
+        ctx.update(
+            form_title='Beneficios ZinApp',
+            cancel_url=reverse('dashboard:home'),
+        )
+        return ctx
+
+    def form_valid(self, form):
+        messages.success(self.request, 'Configuración de beneficios actualizada.')
+        return super().form_valid(form)

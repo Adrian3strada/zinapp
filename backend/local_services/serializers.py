@@ -1,14 +1,17 @@
 from rest_framework import serializers
 
+from config.absolute_uri import public_absolute_uri
+
 from .models import LocalService
 
 
 def build_logo_url(obj, request):
     if not obj.logo:
         return None
-    if request:
-        return request.build_absolute_uri(obj.logo.url)
-    return obj.logo.url
+    url = obj.logo.url
+    if url and not url.startswith(('http://', 'https://', '/')):
+        url = f'/{url}'
+    return public_absolute_uri(request, url)
 
 
 class LocalServiceSerializer(serializers.ModelSerializer):

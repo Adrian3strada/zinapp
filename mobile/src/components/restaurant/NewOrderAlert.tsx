@@ -181,7 +181,9 @@ export default function NewOrderAlert({
             <View style={styles.confirmBox}>
               <Text style={styles.confirmTitle}>¿Rechazar este pedido?</Text>
               <Text style={styles.confirmSub}>
-                El cliente verá que el pedido fue cancelado por el restaurante.
+                {order.payment_method === 'transfer' && order.payment_status === 'paid'
+                  ? 'Este pedido ya tiene transferencia confirmada. Si lo rechazas, ZinApp tiene que devolver el dinero.'
+                  : 'El cliente verá que el pedido fue cancelado por el restaurante.'}
               </Text>
               <View style={styles.confirmRow}>
                 <Button
@@ -203,7 +205,11 @@ export default function NewOrderAlert({
           ) : (
             <>
               <Button
-                title={`Aceptar · ${prepMinutes} min`}
+                title={
+                  order.payment_method === 'transfer' && order.payment_status !== 'paid'
+                    ? `Confirmar transferencia y aceptar · ${prepMinutes} min`
+                    : `Aceptar · ${prepMinutes} min`
+                }
                 onPress={() => onAccept(prepMinutes)}
                 loading={busy}
                 style={styles.acceptBtn}

@@ -45,7 +45,7 @@ import { appAlert } from '../../utils/appAlert';
 import { formatCurrency, formatTimeAgo } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
-import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { previewToCartItems, reorderClosedMessage, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
 import { getSeasonalCopy, isMexicanCategory } from '../../config/seasonalTheme';
 import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
@@ -262,11 +262,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         }
         replaceCart(previewToCartItems(data));
         const skipped = reorderUnavailableMessage(data);
+        const closed = reorderClosedMessage(data);
         appAlert(
           'Revisa tu carrito',
-          skipped
-            ? `Usamos los precios actuales.\n\n${skipped}`
-            : 'Armamos tu carrito con los precios actuales. Confirma antes de pagar.',
+          [
+            skipped ? `Usamos los precios actuales.\n\n${skipped}` : 'Armamos tu carrito con los precios actuales. Confirma antes de pagar.',
+            closed,
+          ].filter(Boolean).join('\n\n'),
           [
             {
               text: 'Ir al carrito',

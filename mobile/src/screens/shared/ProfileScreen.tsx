@@ -14,9 +14,11 @@ import { appAlert, appConfirm } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { mxPhoneError, normalizeMxPhone } from '../../utils/phone';
 import { useTabScreenInsets } from '../../hooks/useTabScreenInsets';
+import { useRewards } from '../../hooks/useRewards';
 import AddressPinPicker from '../../components/AddressPinPicker';
 import Button from '../../components/Button';
 import CustomerProfileDashboard from '../../components/customer/CustomerProfileDashboard';
+import RewardsBenefitsCard from '../../components/customer/RewardsBenefitsCard';
 import DriverProfileDashboard from '../../components/driver/DriverProfileDashboard';
 import EmptyState from '../../components/EmptyState';
 import FormField from '../../components/FormField';
@@ -25,7 +27,6 @@ import ProfileAvatarPicker from '../../components/ProfileAvatarPicker';
 import RestaurantProfileDashboard from '../../components/restaurant/RestaurantProfileDashboard';
 import RestaurantSetupBanner from '../../components/RestaurantSetupBanner';
 import ScreenContainer from '../../components/ScreenContainer';
-import SettlementSummary from '../../components/SettlementSummary';
 import VehicleTypePicker from '../../components/VehicleTypePicker';
 import { useOptionalRestaurantContext } from '../../context/RestaurantContext';
 import { vehicleNeedsPlate } from '../../constants/vehicleTypes';
@@ -122,6 +123,7 @@ export default function ProfileScreen() {
   const { user, refreshUser, logout } = useAuth();
   const customerDeliveries = useOptionalCustomerActiveDeliveries();
   const activeOrderCount = customerDeliveries?.activeOrderCount ?? 0;
+  const { rewards, refresh: refreshRewards } = useRewards(user?.role === 'customer');
   const restaurantCtx = useOptionalRestaurantContext();
   const driverCtx = useOptionalDriverProfileContext();
   const { insets, keyboardHeaderless, tabBottomPadding } = useTabScreenInsets();
@@ -131,6 +133,7 @@ export default function ProfileScreen() {
     email: '',
     phone: '',
     address: '',
+    date_of_birth: '',
   });
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [oldPassword, setOldPassword] = useState('');
@@ -229,6 +232,7 @@ export default function ProfileScreen() {
         email: user.email ?? '',
         phone: user.phone ?? '',
         address: user.address ?? '',
+        date_of_birth: user.date_of_birth ?? '',
       });
       setAvatarUri(null);
       loadRoleData();
@@ -321,10 +325,14 @@ export default function ProfileScreen() {
       fd.append('email', email);
       fd.append('phone', normalizeMxPhone(phoneRaw));
       fd.append('address', form.address.trim());
+      if (/^\d{4}-\d{2}-\d{2}$/.test(form.date_of_birth.trim())) {
+        fd.append('date_of_birth', form.date_of_birth.trim());
+      }
       const uploadingAvatar = Boolean(avatarUri);
       if (avatarUri) await appendImage(fd, 'avatar', avatarUri, 'avatar.jpg');
       const { data: saved } = await authApi.updateMeForm(fd);
       await refreshUser();
+      await refreshRewards();
       setAvatarUri(null);
       if (uploadingAvatar && !saved.avatar_url) {
         appAlert(
@@ -597,6 +605,23 @@ export default function ProfileScreen() {
       <FormField label="Correo" value={form.email} onChangeText={(v) => update('email', v)} icon="mail-outline" embedded keyboardType="email-address" autoCapitalize="none" autoCorrect={false} required />
       <FormField label="Teléfono" value={form.phone} onChangeText={(v) => update('phone', v)} icon="call-outline" embedded keyboardType="phone-pad" required hint="Obligatorio. 10 dígitos, para contactarte durante pedidos." />
       <FormField label={addressLabel} value={form.address} onChangeText={(v) => update('address', v)} icon="location-outline" embedded multiline placeholder="Calle, número, colonia, Zinapécuaro" />
+      {isCustomer ? (
+        <FormField
+          label="Fecha de cumpleaños"
+          value={form.date_of_birth}
+          onChangeText={(v) => update('date_of_birth', v)}
+          icon="gift-outline"
+          embedded
+          placeholder="AAAA-MM-DD"
+          hint={
+            rewards?.birthday.can_edit === false
+              ? `Podrás cambiarla a partir del ${rewards.birthday.next_edit_at ?? 'próximo año'}.`
+              : 'El día de tu cumpleaños tienes envío gratis, una vez al año.'
+          }
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      ) : null}
       <Button title="Guardar perfil" onPress={handleSavePersonal} loading={saving} />
     </View>
   );
@@ -686,6 +711,17 @@ export default function ProfileScreen() {
             />
           ) : null}
 
+          {isCustomer ? (
+            <RewardsBenefitsCard
+              rewards={rewards}
+              user={user}
+              onUserUpdated={() => {
+                void refreshUser();
+                void refreshRewards();
+              }}
+            />
+          ) : null}
+
           {isRestaurant && restaurant?.setup_status ? (
             <View style={styles.setupBannerWrap}>
               <RestaurantSetupBanner restaurant={restaurant} setupStatus={restaurant.setup_status} />
@@ -706,10 +742,6 @@ export default function ProfileScreen() {
             </View>
           ) : null}
 
-          {isRestaurant && restaurant ? (
-            <View style={styles.card}>
-              <SettlementSummary role="restaurant" />
-            </View>
           ) : null}
 
           {isRestaurant && restaurant ? (
@@ -941,10 +973,6 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          {user.role === 'driver' && (
-            <View style={styles.card}>
-              <SettlementSummary role="driver" />
-            </View>
           )}
 
           {user.role === 'driver' && (

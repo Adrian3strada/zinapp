@@ -21,15 +21,17 @@ import ScreenContainer from '../../components/ScreenContainer';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useAppConfig } from '../../hooks/useAppConfig';
+import { useRewards } from '../../hooks/useRewards';
 import { useLocation } from '../../hooks/useLocation';
 import type { CartScreenProps } from '../../navigation/types';
 import { couponApi, orderApi, restaurantApi, authApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP, spacing } from '../../theme/spacing';
-import { DELIVERY_FEE } from '../../config/delivery';
+import { resolveDeliveryFee } from '../../config/delivery';
 import { resolveTransferInfo } from '../../config/payments';
 import type { Restaurant, SelectedProductOption } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { customerNeedsPhone, promptAddPhone } from '../../utils/requirePhone';
 import { formatCurrency } from '../../utils/format';
 import { isInCoverage } from '../../utils/coverage';
 import { createIdempotencyKey } from '../../utils/idempotency';
@@ -43,6 +45,7 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
   const { user, refreshUser, requestLogin } = useAuth();
   const { keyboardWithHeader, tabBottomPadding } = useTabScreenInsets();
   const { config: appConfig } = useAppConfig();
+  const { rewards } = useRewards(true);
   const { payWithSheet } = useNativeStripePayment();
   const { items, total, updateQuantity, updateItemNotes, clearCart, restaurantId } = useCart();
   const [address, setAddress] = useState(user?.address ?? '');
@@ -320,6 +323,10 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
       );
       return;
     }
+    if (customerNeedsPhone(user)) {
+      promptAddPhone();
+      return;
+    }
     if (!restaurantId || items.length === 0) {
       appAlert('Carrito vacío');
       return;
@@ -483,9 +490,17 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
     [updateQuantity],
   );
 
+  const deliveryFee = resolveDeliveryFee(appConfig.delivery_fee);
+  const rewardDiscount = useMemo(() => {
+    if (couponApplied && couponCode.trim().toUpperCase() === 'ENVIO0') return 0;
+    if (!rewards?.next_checkout.eligible) return 0;
+    const cap = parseFloat(rewards.next_checkout.cap);
+    const limit = Number.isFinite(cap) ? cap : deliveryFee;
+    return Math.min(deliveryFee, Math.max(limit, 0));
+  }, [couponApplied, couponCode, rewards, deliveryFee]);
   const grandTotal = useMemo(
-    () => Math.max(total + DELIVERY_FEE + tipAmount - discount, 0),
-    [total, discount, tipAmount],
+    () => Math.max(total + deliveryFee - rewardDiscount + tipAmount - discount, 0),
+    [deliveryFee, rewardDiscount, total, discount, tipAmount],
   );
 
   const routePreview = useMemo(() => {
@@ -541,6 +556,11 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
         footer={
           !stripeClientSecret ? (
             <View style={[styles.stickyFooter, { paddingBottom: Math.max(spacing.sm, tabBottomPadding(8)) }]}>
+              {customerNeedsPhone(user) ? (
+                <Text style={styles.phoneGate}>
+                  Agrega tu teléfono de 10 dígitos para confirmar el pedido.
+                </Text>
+              ) : null}
               <Pressable
                 onPress={handleCheckout}
                 disabled={loading || couponValidating}
@@ -564,9 +584,11 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
                       ? 'Procesando...'
                       : couponValidating
                         ? 'Actualizando cupón...'
-                        : paymentMethod === 'online'
-                          ? 'Confirmar y pagar'
-                          : 'Confirmar pedido'}
+                        : customerNeedsPhone(user)
+                          ? 'Agregar teléfono'
+                          : paymentMethod === 'online'
+                            ? 'Confirmar y pagar'
+                            : 'Confirmar pedido'}
                   </Text>
                   <View style={styles.checkoutTotalPill}>
                     <Text style={styles.checkoutTotal} numberOfLines={1}>
@@ -616,6 +638,9 @@ export default function CartScreen({ navigation, route }: CartScreenProps) {
             couponValidating={couponValidating}
             total={total}
             grandTotal={grandTotal}
+            deliveryFee={deliveryFee}
+            deliveryDiscount={rewardDiscount}
+            benefitLabel={rewards?.next_checkout.label}
             tipAmount={tipAmount}
             scheduleKey={scheduleKey}
             transferInfo={transferInfo}
@@ -678,4 +703,11 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   checkoutTotal: { color: '#FFF', fontSize: 15, fontWeight: '800' },
+  phoneGate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accentDark,
+    marginBottom: 8,
+    lineHeight: 18,
+  },
 });

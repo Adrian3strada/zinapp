@@ -796,6 +796,7 @@ class PageContextTests(TestCase):
         self.assertEqual(page_context('Repartidores', 'drivers')['nav_group'], 'personas')
         self.assertEqual(page_context('Promociones', 'promotions')['nav_group'], 'marketing')
         self.assertEqual(page_context('Cupones', 'coupons')['nav_group'], 'marketing')
+        self.assertEqual(page_context('Beneficios', 'rewards')['nav_group'], 'marketing')
         self.assertEqual(page_context('Reseñas', 'reviews')['nav_group'], 'marketing')
         self.assertEqual(page_context('Reportes', 'reports')['nav_group'], '')
         self.assertEqual(page_context('Cuentas', 'users')['nav_group'], 'sistema')
@@ -848,6 +849,7 @@ class PanelNavigationTests(TestCase):
             '/panel/gestion/productos/',
             '/panel/gestion/promociones/',
             '/panel/gestion/cupones/',
+            '/panel/gestion/beneficios/',
             '/panel/gestion/servicios/',
             '/panel/gestion/resenas/',
         ]

@@ -490,8 +490,90 @@ def _broadcast_to_available_drivers(title: str, body: str, data: dict) -> bool:
     return any(results)
 
 
+def notify_ops_users(title: str, body: str, data: dict | None = None) -> bool:
+    from django.db.models import Q
+
+    from accounts.models import User, UserRole
+
+    users = list(
+        User.objects.filter(is_active=True)
+        .filter(Q(role=UserRole.ADMIN) | Q(is_staff=True))
+        .exclude(expo_push_token='')
+    )
+    if not users:
+        logger.warning('[PUSH] Ops alert sin admin con token: %s', title)
+        return True
+    results = [
+        send_push_to_user(user, title, body, data or {}, channel_id='orders_v3')
+        for user in users
+    ]
+    return any(results) or True
+
+
+def notify_ops_refund_ticket(order, dispute) -> bool:
+    ref = _order_ref(order)
+    total_label = f'${order.total:.2f}'
+    return notify_ops_users(
+        f'Reembolso SPEI {ref}',
+        f'Devuelve {total_label} del pedido {ref}. Ya está en disputas del panel.',
+        {'orderId': getattr(order, 'id', None), 'disputeId': getattr(dispute, 'id', None), 'type': 'refund_ticket'},
+    )
+
+
 def _order_ref(order) -> str:
-    return order.code or f'#{order.id}'
+    return getattr(order, 'code', None) or f'#{order.id}'
+
+
+def _message_preview(body: str, limit: int = 80) -> str:
+    text = ' '.join((body or '').split())
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + '…'
+
+
+def _message_recipients(order, sender_id: int):
+    candidates = []
+    if getattr(order, 'customer_id', None) and order.customer_id != sender_id:
+        candidates.append(order.customer)
+    restaurant = getattr(order, 'restaurant', None)
+    owner = getattr(restaurant, 'owner', None) if restaurant else None
+    if owner and owner.id != sender_id:
+        candidates.append(owner)
+    if getattr(order, 'driver_id', None) and order.driver_id != sender_id:
+        candidates.append(order.driver)
+    seen = set()
+    unique = []
+    for user in candidates:
+        if not user or user.id in seen:
+            continue
+        seen.add(user.id)
+        unique.append(user)
+    return unique
+
+
+def notify_order_message(msg) -> None:
+    """Push a los demás participantes cuando hay un mensaje nuevo en el pedido."""
+    order = getattr(msg, 'order', None)
+    sender = getattr(msg, 'sender', None)
+    if not order or not sender:
+        return
+    sender_name = (
+        f'{getattr(sender, "first_name", "")} {getattr(sender, "last_name", "")}'.strip()
+        or getattr(sender, 'username', 'Alguien')
+    )
+    preview = _message_preview(getattr(msg, 'body', ''))
+    if not preview:
+        return
+    ref = _order_ref(order)
+    title = f'Mensaje · Pedido {ref}'
+    body = f'{sender_name}: {preview}'
+    data = {
+        'orderId': order.id,
+        'type': 'order_message',
+        'messageId': msg.id,
+    }
+    for user in _message_recipients(order, sender.id):
+        send_push_to_user(user, title, body, data, channel_id='orders_v3')
 
 
 def notify_order_status(order, previous_status=None):
@@ -523,21 +605,57 @@ def notify_order_status(order, previous_status=None):
     else:
         customer_msg = ORDER_CUSTOMER_MESSAGES.get(status)
 
+    awaiting_transfer = _awaits_transfer_payment(order)
     if status == 'pending':
-        customer_msg = (
-            f'¡Encargaste en {restaurant_name}! '
-            f'Pedido {ref} por {total_label}. '
-            f'El restaurante confirmará pronto.'
-        )
+        if awaiting_transfer:
+            customer_msg = (
+                f'Pedido {ref} en {restaurant_name} por {total_label}. '
+                f'Transfiere ahora y sube el comprobante. '
+                f'Si no llega en 30 min, se cancela.'
+            )
+        else:
+            customer_msg = (
+                f'¡Encargaste en {restaurant_name}! '
+                f'Pedido {ref} por {total_label}. '
+                f'El restaurante confirmará pronto.'
+            )
     elif status == 'on_the_way' and order.driver:
         customer_msg = f'¡Tu pedido va en camino! {_driver_name(order.driver)} te lo lleva.'
     elif status == 'cancelled':
-        from orders.models import CancellationSource
+        from orders.models import CancellationSource, PaymentMethod, PaymentStatus
 
-        if order.cancellation_source == CancellationSource.RESTAURANT_REJECT:
+        if order.cancellation_source == CancellationSource.PAYMENT_TIMEOUT:
+            if order.payment_method == PaymentMethod.TRANSFER:
+                customer_msg = (
+                    f'No confirmamos tu transferencia del pedido {ref} a tiempo y se canceló. '
+                    f'Si ya depositaste, mándanos el comprobante por WhatsApp.'
+                )
+            else:
+                customer_msg = (
+                    f'El pago del pedido {ref} no se completó y se canceló.'
+                )
+        elif order.cancellation_source == CancellationSource.RESTAURANT_REJECT:
+            if (
+                order.payment_method == PaymentMethod.TRANSFER
+                and order.payment_status == PaymentStatus.PAID
+            ):
+                customer_msg = (
+                    f'{restaurant_name} no pudo tomar tu pedido {ref}. '
+                    f'Si ya transferiste, escríbenos por WhatsApp para devolverte el dinero.'
+                )
+            else:
+                customer_msg = (
+                    f'{restaurant_name} no pudo tomar tu pedido {ref}. '
+                    f'Prueba otro local.'
+                )
+        elif (
+            order.cancellation_source == CancellationSource.CUSTOMER
+            and order.payment_method == PaymentMethod.TRANSFER
+            and order.payment_status == PaymentStatus.PAID
+        ):
             customer_msg = (
-                f'{restaurant_name} no pudo tomar tu pedido {ref}. '
-                f'Prueba otro local.'
+                f'Cancelamos tu pedido {ref}. ZinApp te devolverá la transferencia; '
+                f'te escribimos por WhatsApp.'
             )
         else:
             customer_msg = ORDER_CUSTOMER_MESSAGES['cancelled']
@@ -548,10 +666,21 @@ def notify_order_status(order, previous_status=None):
         owner = order.restaurant.owner
         owner_msg = ORDER_OWNER_MESSAGES.get(status)
         if status == 'pending':
-            owner_msg = (
-                f'¡Ya encargaron! Pedido {ref} por {total_label}. '
-                f'Confírmalo en la app.'
-            )
+            if awaiting_transfer:
+                owner_msg = (
+                    f'Pedido {ref} por {total_label} (transferencia). '
+                    f'Confírmalo cuando veas el comprobante.'
+                )
+            else:
+                owner_msg = (
+                    f'¡Ya encargaron! Pedido {ref} por {total_label}. '
+                    f'Confírmalo en la app.'
+                )
+        elif (
+            status == 'cancelled'
+            and getattr(order, 'cancellation_source', '') == 'payment_timeout'
+        ):
+            owner_msg = f'Se canceló el pedido {ref}: no llegó el pago.'
         if owner_msg:
             logger.info(
                 '[PUSH] Preparing notification for restaurant %s '
@@ -827,30 +956,193 @@ def notify_payment_confirmed(order) -> None:
         )
 
 
+def _awaits_transfer_payment(order) -> bool:
+    awaiting = getattr(order, 'awaits_transfer_payment', False)
+    if callable(awaiting):
+        return bool(awaiting())
+    return bool(awaiting)
+
+
+def _has_payment_proof(order) -> bool:
+    return bool(getattr(order, 'payment_proof', None))
+
+
+def _notify_order_customer(order, body: str, type_name: str) -> bool:
+    if not getattr(order, 'customer_id', None) or not getattr(order, 'customer', None):
+        return True
+    if getattr(order, 'source', 'zinapp') != 'zinapp':
+        return True
+    ref = _order_ref(order)
+    return send_push_to_user(
+        order.customer,
+        f'Pedido {ref}',
+        body,
+        {
+            'orderId': order.id,
+            'status': getattr(order, 'status', ''),
+            'type': type_name,
+        },
+        channel_id='orders_v3',
+    )
+
+
 def notify_pending_order_reminder(order) -> bool:
+    ref = _order_ref(order)
+    data = {'orderId': order.id, 'status': order.status, 'type': 'pending_reminder'}
+    ok_owner = True
     if not order.restaurant or not order.restaurant.owner:
         logger.warning(
             '[PUSH] Preparing reminder for restaurant %s — NO owner (order_id=%s)',
             getattr(order, 'restaurant_id', None),
             getattr(order, 'id', None),
         )
-        return True
-    owner = order.restaurant.owner
+    else:
+        owner = order.restaurant.owner
+        logger.info(
+            '[PUSH] Preparing notification for restaurant %s '
+            '(owner_id=%s order_id=%s type=pending_reminder)',
+            getattr(order.restaurant, 'id', None),
+            getattr(owner, 'pk', None),
+            getattr(order, 'id', None),
+        )
+        awaiting_transfer = _awaits_transfer_payment(order)
+        has_proof = _has_payment_proof(order)
+        if awaiting_transfer and has_proof:
+            owner_body = (
+                f'El cliente subió comprobante del pedido {ref}. '
+                f'Confirma si llegó el dinero.'
+            )
+        elif awaiting_transfer:
+            owner_body = (
+                f'El pedido {ref} lleva 8 min sin transferencia. '
+                f'No lo aceptes hasta ver el pago.'
+            )
+        else:
+            owner_body = (
+                f'Llevas 8 minutos sin aceptar el pedido {ref}. Respóndele al cliente.'
+            )
+        ok_owner = send_push_to_user(
+            owner,
+            f'Pedido {ref}',
+            owner_body,
+            data,
+        )
+
+    awaiting_transfer = _awaits_transfer_payment(order)
+    has_proof = _has_payment_proof(order)
+    if awaiting_transfer and has_proof:
+        customer_body = (
+            f'Ya tenemos tu comprobante del pedido {ref}. '
+            f'El restaurante debe confirmar que llegó el pago.'
+        )
+    elif awaiting_transfer:
+        customer_body = (
+            f'Aún no confirmamos tu transferencia del pedido {ref}. '
+            f'Sube el comprobante. Si no llega en 30 min, se cancela.'
+        )
+    else:
+        customer_body = (
+            f'El restaurante aún no confirma tu pedido {ref}. Si tarda, escríbeles en el chat.'
+        )
+    ok_customer = _notify_order_customer(
+        order,
+        customer_body,
+        'pending_reminder_customer',
+    )
+    return ok_owner and ok_customer
+
+
+def notify_transfer_proof(order) -> None:
+    if not order.restaurant or not order.restaurant.owner:
+        return
     ref = _order_ref(order)
-    data = {'orderId': order.id, 'status': order.status, 'type': 'pending_reminder'}
-    logger.info(
-        '[PUSH] Preparing notification for restaurant %s '
-        '(owner_id=%s order_id=%s type=pending_reminder)',
-        getattr(order.restaurant, 'id', None),
-        getattr(owner, 'pk', None),
-        getattr(order, 'id', None),
+    send_push_to_user(
+        order.restaurant.owner,
+        f'Comprobante · Pedido {ref}',
+        'El cliente subió el comprobante de transferencia. Confírmalo en la app.',
+        {'orderId': order.id, 'type': 'transfer_proof'},
+        channel_id='orders_v3',
     )
-    return send_push_to_user(
-        owner,
+
+
+def notify_transfer_confirmed(order) -> None:
+    if not order.customer_id:
+        return
+    ref = _order_ref(order)
+    send_push_to_user(
+        order.customer,
         f'Pedido {ref}',
-        f'El pedido {ref} sigue esperando confirmación. Respóndele al cliente.',
-        data,
+        'Ya llegó tu transferencia. El restaurante confirmará el pedido.',
+        {'orderId': order.id, 'type': 'transfer_confirmed'},
+        channel_id='orders_v3',
     )
+
+
+def notify_referral_credit(credit) -> None:
+    user = getattr(credit, 'user', None)
+    if not user:
+        return
+    send_push_to_user(
+        user,
+        'Envío gratis por invitar',
+        'Tu invitado ya hizo su primer pedido. Tienes un envío gratis en el siguiente.',
+        {'type': 'referral_credit'},
+        channel_id='orders_v3',
+    )
+
+
+def notify_driver_stale(order) -> bool:
+    driver = getattr(order, 'driver', None)
+    if not driver:
+        return True
+    ref = _order_ref(order)
+    ok_driver = send_push_to_user(
+        driver,
+        f'Pedido {ref}',
+        '¿Sigues en camino? Actualiza tu ubicación o avisa en el chat.',
+        {'orderId': getattr(order, 'id', None), 'type': 'driver_stale'},
+        channel_id='deliveries_v3',
+    )
+    ok_customer = True
+    if getattr(order, 'customer_id', None) and getattr(order, 'customer', None):
+        if getattr(order, 'restaurant_id', None):
+            ok_customer = _notify_order_customer(
+                order,
+                f'Tu pedido {ref} sigue en camino. Si ves algo raro, usa el chat.',
+                'driver_stale_customer',
+            )
+        else:
+            ok_customer = send_push_to_user(
+                order.customer,
+                f'Envío {ref}',
+                f'Tu envío {ref} sigue en camino. Si ves algo raro, usa el chat.',
+                {
+                    'shipmentId': order.id,
+                    'type': 'driver_stale_customer',
+                },
+                channel_id='deliveries_v3',
+            )
+    return ok_driver and ok_customer
+
+
+def notify_kitchen_stale(order) -> bool:
+    ref = _order_ref(order)
+    data = {'orderId': order.id, 'status': order.status, 'type': 'kitchen_stale'}
+    ok_owner = True
+    if order.restaurant and order.restaurant.owner:
+        ok_owner = send_push_to_user(
+            order.restaurant.owner,
+            f'Pedido {ref}',
+            f'El pedido {ref} ya pasó el tiempo de preparación. Actualiza al cliente.',
+            data,
+            channel_id='orders_v3',
+        )
+    ok_customer = _notify_order_customer(
+        order,
+        f'Tu pedido {ref} sigue en cocina. Ya le recordamos al restaurante.',
+        'kitchen_stale_customer',
+    )
+    return ok_owner and ok_customer
 
 
 def notify_ready_no_driver(order) -> bool:
@@ -882,7 +1174,49 @@ def notify_ready_no_driver(order) -> bool:
         f'Pedido {ref} lleva rato esperando en {restaurant_name}.',
         data,
     )
-    return ok_owner and ok_drivers
+    ok_customer = _notify_order_customer(
+        order,
+        f'Tu pedido {ref} ya está listo. Estamos buscando repartidor.',
+        'ready_no_driver_customer',
+    )
+    notify_ops_users(
+        f'Sin repartidor {ref}',
+        f'Pedido {ref} listo en {restaurant_name} y nadie lo toma.',
+        data,
+    )
+    return ok_owner and ok_drivers and ok_customer
+
+
+def notify_ready_no_driver_escalation(order) -> bool:
+    if getattr(order, 'source', 'zinapp') != 'zinapp':
+        return True
+    ref = _order_ref(order)
+    data = {'orderId': order.id, 'status': order.status, 'type': 'ready_no_driver_escalation'}
+    restaurant_name = order.restaurant.name if order.restaurant_id else 'el local'
+    ok_drivers = _broadcast_to_available_drivers(
+        'Entrega urgente',
+        f'Pedido {ref} lleva más de 30 min listo en {restaurant_name}.',
+        data,
+    )
+    ok_customer = _notify_order_customer(
+        order,
+        f'Seguimos sin repartidor para tu pedido {ref}. Ya avisamos a soporte de ZinApp.',
+        'ready_no_driver_escalation_customer',
+    )
+    ok_owner = True
+    if order.restaurant and order.restaurant.owner:
+        ok_owner = send_push_to_user(
+            order.restaurant.owner,
+            f'Pedido {ref}',
+            f'Sigue sin repartidor el pedido {ref}. Si puedes entregarlo tú, avísale al cliente.',
+            data,
+        )
+    notify_ops_users(
+        f'URGENTE sin repartidor {ref}',
+        f'Pedido {ref} lleva 30 min listo en {restaurant_name} sin driver.',
+        data,
+    )
+    return ok_owner and ok_drivers and ok_customer
 
 
 def notify_review_reminder(order) -> bool:

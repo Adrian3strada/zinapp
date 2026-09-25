@@ -240,7 +240,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING('Cupones'))
         coupons = [
             {'code': 'ZINA10', 'description': '10% de descuento', 'discount_percent': 10},
-            {'code': 'ENVIO0', 'description': 'Envío gratis (próximo pedido)', 'discount_fixed': Decimal('25.00')},
+            {'code': 'ENVIO0', 'description': 'Envío gratis (próximo pedido)', 'discount_fixed': Decimal('35.00')},
         ]
         for data in coupons:
             Coupon.objects.update_or_create(code=data['code'], defaults={**data, 'is_active': True})
@@ -276,4 +276,4 @@ class Command(BaseCommand):
         self.stdout.write('  rest_shukrani  - Shukrani Makis')
         self.stdout.write('  rest_jardines  - Restaurante Jardines')
         self.stdout.write('')
-        self.stdout.write('Cupones: ZINA10 (10%), ENVIO0 ($25 descuento)')
+        self.stdout.write('Cupones: ZINA10 (10%), ENVIO0 ($35 descuento)')

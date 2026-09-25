@@ -39,6 +39,7 @@ class CancellationSource(models.TextChoices):
     RESTAURANT_REJECT = 'restaurant_reject', 'Rechazo restaurante'
     CUSTOMER = 'customer', 'Cliente'
     POS = 'pos', 'Cancelación POS'
+    PAYMENT_TIMEOUT = 'payment_timeout', 'Pago no recibido'
 
 
 class Coupon(models.Model):
@@ -184,7 +185,17 @@ class Order(models.Model):
     )
     pending_reminder_sent = models.BooleanField(default=False)
     ready_no_driver_reminder_sent = models.BooleanField(default=False)
+    ready_no_driver_escalated = models.BooleanField(default=False)
     review_reminder_sent = models.BooleanField(default=False)
+    driver_stale_reminder_sent = models.BooleanField(default=False)
+    kitchen_stale_reminder_sent = models.BooleanField(default=False)
+    payment_proof = models.ImageField(
+        upload_to='payment_proofs/',
+        blank=True,
+        null=True,
+        help_text='Comprobante de transferencia subido por el cliente.',
+    )
+    transfer_confirmed_at = models.DateTimeField(null=True, blank=True)
     coupon = models.ForeignKey(
         Coupon,
         on_delete=models.SET_NULL,
@@ -208,7 +219,20 @@ class Order(models.Model):
     )
     delivery_notes = models.TextField(blank=True)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
-    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('25.00'))
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('35.00'))
+    delivery_discount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        help_text='Descuento de envío por beneficio ZinApp. El fee original no se modifica.',
+    )
+    applied_benefit = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text='Beneficio de envío aplicado: birthday | loyalty | referral_invitee | referral_credit.',
+    )
     tip_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -260,12 +284,22 @@ class Order(models.Model):
             and self.status != OrderStatus.CANCELLED
         )
 
+    def awaits_transfer_payment(self) -> bool:
+        """Transferencia aún no confirmada por el restaurante."""
+        return (
+            self.payment_method == PaymentMethod.TRANSFER
+            and self.payment_status != PaymentStatus.PAID
+            and self.status != OrderStatus.CANCELLED
+        )
+
     def recalculate_totals(self):
         self.subtotal = sum(item.subtotal for item in self.items.all())
         discount = self.discount_amount or Decimal('0.00')
         tip = self.tip_amount or Decimal('0.00')
+        delivery_discount = self.delivery_discount or Decimal('0.00')
+        payable_delivery = max((self.delivery_fee or Decimal('0.00')) - delivery_discount, Decimal('0.00'))
         self.total = max(
-            self.subtotal + self.delivery_fee + tip - discount,
+            self.subtotal + payable_delivery + tip - discount,
             Decimal('0.00'),
         )
         self.save(update_fields=['subtotal', 'total', 'updated_at'])
@@ -439,6 +473,7 @@ class Shipment(models.Model):
     delivered_at = models.DateTimeField(null=True, blank=True)
     driver_nearby_notified = models.BooleanField(default=False)
     pending_reminder_sent = models.BooleanField(default=False)
+    driver_stale_reminder_sent = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Envío'

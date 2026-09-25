@@ -1,7 +1,9 @@
 """Redirige el host público de Railway/Render a SITE_URL (canonical).
 
-Solo afecta rutas de la landing / SEO público. No toca API, panel, app web,
-media, static, health ni webhooks.
+Solo afecta rutas de marketing/SEO. No toca API, panel, app web, media,
+static, health ni webhooks. Tras el cutover, Next.js es el origen de
+zinapp.com.mx; este middleware evita que *.railway.app de la API compita
+en buscadores con la landing.
 """
 
 from __future__ import annotations

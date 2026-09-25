@@ -7,7 +7,8 @@
    datos reales de clientes, repartidores o restaurantes.
 3. Añade una migración para cada cambio de modelo y ejecuta
    `python manage.py makemigrations --check --dry-run`.
-4. Ejecuta la suite backend y `npx tsc --noEmit` descritos en
+4. Ejecuta la suite backend, `npm run typecheck` / `npm run build` en `web/`
+   y `npx tsc --noEmit` en `mobile/` descritos en
    [docs/testing.md](docs/testing.md).
 
 ## Pull requests

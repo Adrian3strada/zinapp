@@ -20,6 +20,28 @@ def get_public_app_config() -> dict:
         'password_reset_email_enabled': email_reset_enabled(),
         'google_sign_in_enabled': google_sign_in_enabled(),
         'coverage_label': 'Zinapécuaro, Michoacán',
+        'delivery_fee': f'{settings.DELIVERY_FEE:.2f}',
+        'rewards': _public_rewards_block(),
     }
+
+
+def _public_rewards_block() -> dict:
+    try:
+        from rewards.services import get_program_config
+
+        cfg = get_program_config()
+        return {
+            'birthday_enabled': cfg.birthday_enabled,
+            'loyalty_enabled': cfg.loyalty_enabled,
+            'loyalty_orders_required': cfg.loyalty_orders_required,
+            'delivery_discount_cap': f'{cfg.delivery_discount_cap:.2f}',
+        }
+    except Exception:
+        return {
+            'birthday_enabled': settings.REWARDS_BIRTHDAY_ENABLED,
+            'loyalty_enabled': settings.REWARDS_LOYALTY_ENABLED,
+            'loyalty_orders_required': settings.REWARDS_LOYALTY_ORDERS_REQUIRED,
+            'delivery_discount_cap': f'{settings.REWARDS_DELIVERY_DISCOUNT_CAP:.2f}',
+        }
 
 

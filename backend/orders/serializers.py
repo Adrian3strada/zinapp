@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -31,6 +32,17 @@ from .models import (
     ShipmentStatus,
     get_shipment_fee,
 )
+
+PHONE_REQUIRED_MSG = 'Agrega un teléfono de 10 dígitos en tu perfil antes de pedir.'
+
+
+def _ensure_customer_phone(user) -> None:
+    from accounts.phone import validate_required_mx_phone
+
+    try:
+        validate_required_mx_phone(getattr(user, 'phone', None))
+    except ValueError:
+        raise serializers.ValidationError({'phone': PHONE_REQUIRED_MSG})
 
 
 class PublicReviewAuthorSerializer(serializers.ModelSerializer):
@@ -153,6 +165,8 @@ class OrderSerializer(serializers.ModelSerializer):
     driver_latitude = serializers.SerializerMethodField()
     driver_longitude = serializers.SerializerMethodField()
     driver_location_updated_at = serializers.SerializerMethodField()
+    applied_benefit_label = serializers.SerializerMethodField()
+    payment_proof_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -164,21 +178,24 @@ class OrderSerializer(serializers.ModelSerializer):
             'payment_status_display', 'delivery_address',
             'delivery_latitude', 'delivery_longitude', 'delivery_notes',
             'driver_latitude', 'driver_longitude', 'driver_location_updated_at',
-            'coupon', 'discount_amount', 'subtotal', 'delivery_fee', 'tip_amount',
+            'coupon', 'discount_amount', 'subtotal', 'delivery_fee', 'delivery_discount',
+            'applied_benefit', 'applied_benefit_label', 'tip_amount',
             'scheduled_for', 'total',
             'items', 'review', 'dispute',
+            'payment_proof_url',
             'created_at', 'updated_at', 'accepted_at', 'ready_at', 'delivered_at',
             'prep_minutes', 'estimated_ready_at',
         )
         read_only_fields = (
             'id', 'code', 'customer', 'restaurant', 'driver', 'status', 'source', 'created_by',
             'subtotal',
-            'delivery_fee', 'total', 'payment_status', 'payment_method',
+            'delivery_fee', 'delivery_discount', 'applied_benefit', 'total', 'payment_status', 'payment_method',
             'discount_amount', 'delivery_address', 'delivery_latitude',
             'delivery_longitude', 'coupon',
             'created_at', 'updated_at', 'accepted_at', 'ready_at',
             'delivered_at', 'driver_latitude', 'driver_longitude',
             'driver_location_updated_at', 'prep_minutes', 'estimated_ready_at',
+            'payment_proof_url',
         )
 
     def _driver_profile(self, obj):
@@ -211,6 +228,14 @@ class OrderSerializer(serializers.ModelSerializer):
         if not dispute:
             return None
         return OrderDisputeSerializer(dispute).data
+
+    def get_applied_benefit_label(self, obj):
+        from rewards.services import benefit_label
+
+        return benefit_label(obj.applied_benefit)
+
+    def get_payment_proof_url(self, obj):
+        return absolute_media_url(obj.payment_proof, self.context.get('request'))
 
     def to_representation(self, instance):
         if not instance.code:
@@ -268,6 +293,8 @@ class OrderCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         from django.conf import settings
         from restaurants.geo import geocode_address
+
+        _ensure_customer_phone(self.context['request'].user)
 
         address = attrs['delivery_address']
         lat = attrs.get('delivery_latitude')
@@ -351,7 +378,7 @@ class OrderCreateSerializer(serializers.Serializer):
         payment_method = validated_data['payment_method']
         payment_status = (
             PaymentStatus.PENDING
-            if payment_method == PaymentMethod.ONLINE
+            if payment_method in (PaymentMethod.ONLINE, PaymentMethod.TRANSFER)
             else PaymentStatus.PAID
         )
 
@@ -436,6 +463,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 payment_status=payment_status,
                 tip_amount=tip_amount,
                 scheduled_for=scheduled_for,
+                delivery_fee=settings.DELIVERY_FEE,
             )
 
             for product, item_data, options_snapshot, line_total in line_items:
@@ -460,6 +488,11 @@ class OrderCreateSerializer(serializers.Serializer):
                 coupon.times_used += 1
                 coupon.save(update_fields=['times_used'])
                 order.recalculate_totals()
+
+            from rewards.services import apply_checkout_benefit
+
+            apply_checkout_benefit(order, coupon=order.coupon)
+            order.recalculate_totals()
 
             order_id = order.pk
 
@@ -817,6 +850,7 @@ class ShipmentCreateSerializer(serializers.Serializer):
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices)
 
     def validate(self, attrs):
+        _ensure_customer_phone(self.context['request'].user)
         kind = attrs.get('kind') or ShipmentKind.COURIER
         attrs['kind'] = kind
 

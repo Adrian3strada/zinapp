@@ -54,14 +54,36 @@ function buildSnapshot(
   return rows;
 }
 
+function groupChoiceCopy(
+  group: ProductOptionGroup,
+  picked: number,
+  optionCount: number,
+): string {
+  const min = group.min_select;
+  const max = group.max_select;
+  const ofTotal = optionCount > max ? ` de ${optionCount}` : '';
+  const progress = max > 1 ? ` · ${picked} de ${max}` : '';
+  if (min > 0) {
+    if (min === max) return `Elige ${min}${ofTotal}${progress}`;
+    return `Elige ${min}–${max}${ofTotal}${progress}`;
+  }
+  return `Opcional · hasta ${max}${ofTotal}${progress}`;
+}
+
 function validateSelection(groups: ProductOptionGroup[], selectedIds: Set<number>): string | null {
   for (const group of groups) {
-    const count = group.options.filter((o) => selectedIds.has(o.id) && o.is_available).length;
-    if (count < group.min_select) {
-      return `Elige al menos ${group.min_select} en «${group.name}».`;
+    const available = group.options.filter((o) => o.is_available);
+    if (group.min_select > 0 && available.length === 0) {
+      return `Hoy no hay opciones en «${group.name}».`;
     }
-    if (count > group.max_select) {
-      return `Máximo ${group.max_select} en «${group.name}».`;
+    const count = available.filter((o) => selectedIds.has(o.id)).length;
+    const minSelect = Math.min(group.min_select, available.length);
+    const maxSelect = Math.min(group.max_select, Math.max(available.length, 1));
+    if (count < minSelect) {
+      return `Elige al menos ${minSelect} en «${group.name}».`;
+    }
+    if (count > maxSelect) {
+      return `Máximo ${maxSelect} en «${group.name}».`;
     }
   }
   return null;
@@ -82,7 +104,10 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   const [imageOpen, setImageOpen] = useState(false);
 
   const groups = useMemo(
-    () => (product.option_groups ?? []).filter((g) => g.options?.some((o) => o.is_available)),
+    () =>
+      (product.option_groups ?? []).filter(
+        (g) => g.min_select > 0 || g.options?.some((o) => o.is_available),
+      ),
     [product.option_groups],
   );
 
@@ -130,7 +155,6 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
         return next;
       }
       if (selectedInGroup.length >= group.max_select) {
-        appAlert('Límite', `Máximo ${group.max_select} en «${group.name}».`);
         return prev;
       }
       next.add(opt.id);
@@ -281,35 +305,56 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             </View>
           ) : null}
 
-          {available && groups.map((group) => (
+          {available && groups.map((group) => {
+            const availableOptions = group.options.filter((o) => o.is_available);
+            const picked = availableOptions.filter((o) => selectedIds.has(o.id)).length;
+            const maxSelect = Math.min(group.max_select, Math.max(availableOptions.length, 1));
+            const atMax = maxSelect > 1 && picked >= maxSelect;
+            return (
             <View key={group.id} style={styles.section}>
-              <Text style={styles.sectionTitle}>{group.name}</Text>
+              <View style={styles.sectionTitleRow}>
+                <Text style={[styles.sectionTitle, styles.sectionTitleFlush]}>{group.name}</Text>
+                {maxSelect > 1 && availableOptions.length > 0 ? (
+                  <Text style={styles.sectionCount}>{picked}/{maxSelect}</Text>
+                ) : null}
+              </View>
               <Text style={styles.notesIntro}>
-                {group.min_select > 0
-                  ? `Elige ${group.min_select === group.max_select ? group.min_select : `${group.min_select}–${group.max_select}`}`
-                  : `Opcional · hasta ${group.max_select}`}
+                {availableOptions.length === 0
+                  ? 'Hoy no hay de este grupo. Elige otro platillo o vuelve más tarde.'
+                  : groupChoiceCopy(
+                      { ...group, max_select: maxSelect, min_select: Math.min(group.min_select, availableOptions.length) },
+                      picked,
+                      availableOptions.length,
+                    )}
               </Text>
               <View style={styles.optionList}>
-                {group.options.filter((o) => o.is_available).map((opt) => {
+                {availableOptions.map((opt) => {
                   const on = selectedIds.has(opt.id);
+                  const locked = atMax && !on;
                   const delta = parseFloat(opt.price_delta);
                   return (
                     <Pressable
                       key={opt.id}
-                      style={[styles.optionRow, on && styles.optionRowOn]}
-                      onPress={() => toggleOption(group, opt)}
+                      style={[
+                        styles.optionRow,
+                        on && styles.optionRowOn,
+                        locked && styles.optionRowLocked,
+                      ]}
+                      onPress={() => toggleOption({ ...group, max_select: maxSelect }, opt)}
+                      disabled={locked}
+                      accessibilityState={{ disabled: locked, checked: on }}
                     >
                       <Ionicons
                         name={
-                          group.max_select <= 1
+                          maxSelect <= 1
                             ? (on ? 'radio-button-on' : 'radio-button-off')
                             : (on ? 'checkbox' : 'square-outline')
                         }
                         size={20}
-                        color={on ? colors.primary : colors.textMuted}
+                        color={locked ? colors.textMuted : on ? colors.primary : colors.textMuted}
                       />
-                      <Text style={styles.optionName}>{opt.name}</Text>
-                      <Text style={styles.optionPrice}>
+                      <Text style={[styles.optionName, locked && styles.optionNameLocked]}>{opt.name}</Text>
+                      <Text style={[styles.optionPrice, locked && styles.optionNameLocked]}>
                         {delta > 0 ? `+${formatCurrency(delta)}` : 'Incluido'}
                       </Text>
                     </Pressable>
@@ -317,7 +362,8 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
                 })}
               </View>
             </View>
-          ))}
+            );
+          })}
 
           {available ? (
             <View style={styles.section}>
@@ -505,6 +551,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
     marginBottom: 8,
+    flex: 1,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
+  },
+  sectionCount: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  sectionTitleFlush: {
+    marginBottom: 0,
   },
   description: {
     fontSize: 15,
@@ -534,7 +596,11 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
   },
+  optionRowLocked: {
+    opacity: 0.45,
+  },
   optionName: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '600', color: colors.text },
+  optionNameLocked: { color: colors.textMuted },
   optionPrice: { fontSize: 13, fontWeight: '700', color: colors.primary },
   footer: {
     paddingHorizontal: spacing.screen,

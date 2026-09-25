@@ -149,13 +149,14 @@ class CustomerEditForm(PanelFormMixin, forms.ModelForm):
         model = User
         fields = (
             'username', 'first_name', 'last_name', 'email', 'phone', 'address',
-            'is_active',
+            'date_of_birth', 'is_active',
         )
         widgets = {
             'address': forms.Textarea(attrs={'rows': 2}),
             'first_name': forms.TextInput(attrs={'required': True}),
             'last_name': forms.TextInput(attrs={'required': True}),
             'username': forms.TextInput(attrs={'required': True, 'autocomplete': 'username'}),
+            'date_of_birth': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
         }
 
     def __init__(self, *args, **kwargs):
@@ -205,10 +206,21 @@ class CustomerEditForm(PanelFormMixin, forms.ModelForm):
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
 
+    def clean_date_of_birth(self):
+        from rewards.services import validate_date_of_birth
+
+        return validate_date_of_birth(
+            self.instance, self.cleaned_data.get('date_of_birth'), staff=True,
+        )
+
     def save(self, commit=True):
         user = super().save(commit=False)
         # Defensa: nunca permitir que un POST manipulado cambie el rol.
         user.role = UserRole.CUSTOMER
+        if 'date_of_birth' in self.changed_data:
+            from django.utils import timezone
+
+            user.birthday_updated_at = timezone.now()
         if commit:
             user.save()
         return user

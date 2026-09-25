@@ -11,6 +11,7 @@ const FIELD_LABELS: Record<string, string> = {
   delivery_latitude: 'Ubicación (latitud)',
   delivery_longitude: 'Ubicación (longitud)',
   coupon_code: 'Cupón',
+  phone: 'Teléfono',
   mandado_items: 'Productos del mandado',
   preferred_stores: 'Tienda o local',
   items: 'Productos',

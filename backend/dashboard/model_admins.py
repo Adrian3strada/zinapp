@@ -7,6 +7,7 @@ from dashboard.panel_admin import panel_admin
 from local_services.models import LocalService
 from orders.models import Coupon, Order, OrderDispute, OrderItem, Review, Shipment
 from restaurants.models import Product, ProductPromotion, Restaurant
+from rewards.models import LoyaltyProgressEvent, RewardProgramConfig, RewardRedemption
 
 
 class PanelModelAdmin(admin.ModelAdmin):
@@ -33,7 +34,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ('role', 'is_active', 'is_staff')
     search_fields = ('username', 'email', 'phone')
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Información adicional', {'fields': ('role', 'phone', 'address', 'expo_push_token')}),
+        ('Información adicional', {'fields': ('role', 'phone', 'address', 'date_of_birth', 'expo_push_token')}),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         ('Información adicional', {'fields': ('role', 'phone', 'address')}),
@@ -131,7 +132,7 @@ class OrderAdmin(PanelModelAdmin):
     list_filter = ('status', 'payment_method', 'source', 'created_at')
     search_fields = ('code', 'customer__username', 'restaurant__name')
     inlines = [OrderItemInline]
-    readonly_fields = ('code', 'subtotal', 'total', 'created_at', 'updated_at')
+    readonly_fields = ('code', 'subtotal', 'total', 'delivery_discount', 'applied_benefit', 'created_at', 'updated_at')
 
 
 class OrderItemAdmin(PanelModelAdmin):
@@ -176,6 +177,30 @@ class LocalServiceAdmin(PanelModelAdmin):
     ordering = ('sort_order', 'name')
 
 
+class RewardProgramConfigAdmin(PanelModelAdmin):
+    list_display = (
+        'birthday_enabled', 'loyalty_enabled',
+        'loyalty_orders_required', 'delivery_discount_cap',
+    )
+
+
+class RewardRedemptionAdmin(PanelModelAdmin):
+    list_display = ('user', 'kind', 'status', 'order', 'discount_amount', 'year', 'reserved_at')
+    list_filter = ('kind', 'status')
+    search_fields = ('user__username', 'order__code')
+    readonly_fields = (
+        'user', 'order', 'kind', 'status', 'year',
+        'delivery_fee', 'discount_amount',
+        'reserved_at', 'consumed_at', 'released_at',
+    )
+
+
+class LoyaltyProgressEventAdmin(PanelModelAdmin):
+    list_display = ('user', 'order', 'created_at')
+    search_fields = ('user__username', 'order__code')
+    readonly_fields = ('user', 'order', 'created_at')
+
+
 panel_admin.register(User, UserAdmin)
 panel_admin.register(PasswordResetToken, PasswordResetTokenAdmin)
 panel_admin.register(DeliveryProfile, DeliveryProfileAdmin)
@@ -190,3 +215,6 @@ panel_admin.register(Coupon, CouponAdmin)
 panel_admin.register(Review, ReviewAdmin)
 panel_admin.register(Shipment, ShipmentAdmin)
 panel_admin.register(LocalService, LocalServiceAdmin)
+panel_admin.register(RewardProgramConfig, RewardProgramConfigAdmin)
+panel_admin.register(RewardRedemption, RewardRedemptionAdmin)
+panel_admin.register(LoyaltyProgressEvent, LoyaltyProgressEventAdmin)

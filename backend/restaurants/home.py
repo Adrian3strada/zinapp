@@ -31,7 +31,7 @@ from .serializers import (
 from .views import annotate_is_open_now
 
 HOME_CACHE_TTL = 45
-HOME_CACHE_VERSION = 2
+HOME_CACHE_VERSION = 4
 OPEN_LIMIT = 12
 NEW_LIMIT = 8
 PROMO_LIMIT = 8

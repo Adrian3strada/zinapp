@@ -44,11 +44,12 @@ class PosSaleView(PosAccessMixin, View):
                 ]
                 if not options:
                     continue
+                n = len(options)
                 groups.append({
                     'id': g.id,
                     'name': g.name,
-                    'min_select': g.min_select,
-                    'max_select': g.max_select,
+                    'min_select': min(g.min_select, n),
+                    'max_select': min(g.max_select, n),
                     'options': options,
                 })
             catalog.append({

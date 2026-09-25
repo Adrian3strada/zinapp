@@ -32,6 +32,13 @@ export function reorderUnavailableMessage(preview: ReorderPreview): string {
   return preview.unavailable.map((row) => `• ${row.reason}`).join('\n');
 }
 
+export function reorderClosedMessage(preview: ReorderPreview): string | null {
+  if (preview.restaurant_is_open === false) {
+    return 'El local está cerrado ahora. Puedes armar el carrito y pedir cuando abran.';
+  }
+  return null;
+}
+
 /** Arma líneas de carrito a partir de un pedido (omite no disponibles). */
 export function buildReorderCartItems(order: Order): ReorderResult {
   const restaurantId = order.restaurant_detail?.id ?? order.restaurant ?? 0;

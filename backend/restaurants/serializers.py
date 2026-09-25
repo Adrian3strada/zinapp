@@ -4,6 +4,7 @@ from django.db.models import Avg
 from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
+from config.absolute_uri import public_absolute_uri
 
 from .fields import CoordinateField
 from .geo import geocode_address, is_in_coverage
@@ -28,9 +29,7 @@ def build_image_url(obj, request):
     # Root-relative so build_absolute_uri never joins under /api/...
     if url and not url.startswith(('http://', 'https://', '/')):
         url = f'/{url}'
-    if request:
-        return request.build_absolute_uri(url)
-    return url
+    return public_absolute_uri(request, url)
 
 
 class ProductOptionSerializer(serializers.ModelSerializer):
@@ -242,6 +241,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
+    next_open_label = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
     setup_status = serializers.SerializerMethodField()
@@ -255,6 +255,7 @@ class RestaurantSerializer(serializers.ModelSerializer):
             'image', 'image_url', 'latitude', 'longitude', 'location_pinned', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'business_hours',
             'is_open', 'is_favorited',
+            'next_open_label',
             'rating_average',
             'reviews_count', 'products_count', 'setup_status',
             'created_at', 'updated_at',
@@ -278,6 +279,9 @@ class RestaurantSerializer(serializers.ModelSerializer):
 
     def get_is_open(self, obj):
         return obj.is_open_now()
+
+    def get_next_open_label(self, obj):
+        return obj.next_open_label()
 
     def get_is_favorited(self, obj):
         if hasattr(obj, 'is_favorited_flag'):
@@ -414,6 +418,7 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
+    next_open_label = serializers.SerializerMethodField()
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
     business_hours = RestaurantBusinessHoursField(read_only=True)
@@ -424,7 +429,7 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
             'id', 'name', 'category', 'description', 'address',
             'image', 'image_url', 'is_active',
             'accepting_orders', 'opening_time', 'closing_time', 'business_hours', 'is_open',
-            'is_favorited', 'rating_average', 'reviews_count', 'products_count',
+            'is_favorited', 'next_open_label', 'rating_average', 'reviews_count', 'products_count',
             'created_at',
         )
 
@@ -436,6 +441,9 @@ class RestaurantPublicSerializer(serializers.ModelSerializer):
 
     def get_is_open(self, obj):
         return obj.is_open_now()
+
+    def get_next_open_label(self, obj):
+        return obj.next_open_label()
 
     def get_is_favorited(self, obj):
         if hasattr(obj, 'is_favorited_flag'):
@@ -493,6 +501,7 @@ class HomeRestaurantSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     is_open = serializers.SerializerMethodField()
     is_favorited = serializers.SerializerMethodField()
+    next_open_label = serializers.SerializerMethodField()
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     rating_average = serializers.SerializerMethodField()
     reviews_count = serializers.SerializerMethodField()
@@ -503,7 +512,7 @@ class HomeRestaurantSerializer(serializers.ModelSerializer):
         model = Restaurant
         fields = (
             'id', 'name', 'category', 'category_display', 'description',
-            'image_url', 'is_open', 'is_favorited', 'rating_average',
+            'image_url', 'is_open', 'is_favorited', 'next_open_label', 'rating_average',
             'reviews_count', 'products_count', 'has_active_promo', 'created_at',
         )
 
@@ -515,6 +524,11 @@ class HomeRestaurantSerializer(serializers.ModelSerializer):
         if flag is not None:
             return bool(flag)
         return obj.is_open_now()
+
+    def get_next_open_label(self, obj):
+        if getattr(obj, 'is_open_now_sort', None) is True:
+            return None
+        return obj.next_open_label()
 
     def get_is_favorited(self, obj):
         if hasattr(obj, 'is_favorited_flag'):

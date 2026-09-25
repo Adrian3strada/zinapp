@@ -307,3 +307,74 @@ class RestaurantOpenOncePerDayTests(TestCase):
             notify_restaurant_opened_if_needed(self.restaurant, manual=True),
         )
         self.assertEqual(mock_notify.call_count, 1)
+
+
+class NotifyOrderMessageTests(TestCase):
+    def setUp(self):
+        from decimal import Decimal
+
+        from orders.models import Order, OrderMessage
+        from restaurants.models import Restaurant
+
+        self.OrderMessage = OrderMessage
+        self.customer = User.objects.create_user(
+            username='chat_customer',
+            password='test1234',
+            role=UserRole.CUSTOMER,
+            first_name='Ana',
+            expo_push_token=VALID_TOKEN,
+        )
+        self.owner = User.objects.create_user(
+            username='chat_owner',
+            password='test1234',
+            role=UserRole.RESTAURANT,
+            first_name='Luis',
+            expo_push_token=VALID_TOKEN,
+        )
+        self.driver = User.objects.create_user(
+            username='chat_driver',
+            password='test1234',
+            role=UserRole.DRIVER,
+            first_name='Paco',
+            expo_push_token=VALID_TOKEN,
+        )
+        self.restaurant = Restaurant.objects.create(
+            owner=self.owner,
+            name='Chat Rest',
+            address='Centro',
+        )
+        self.order = Order.objects.create(
+            customer=self.customer,
+            restaurant=self.restaurant,
+            driver=self.driver,
+            delivery_address='Calle 1',
+            delivery_fee=Decimal('35.00'),
+            subtotal=Decimal('50.00'),
+            total=Decimal('85.00'),
+        )
+
+    @patch('accounts.notifications.send_push_to_user', return_value=True)
+    def test_customer_message_notifies_owner_and_driver(self, mock_push):
+        from accounts.notifications import notify_order_message
+
+        msg = self.OrderMessage.objects.create(
+            order=self.order, sender=self.customer, body='¿Cuánto tarda?',
+        )
+        notify_order_message(msg)
+        recipients = {call.args[0] for call in mock_push.call_args_list}
+        self.assertEqual(recipients, {self.owner, self.driver})
+        self.assertIn('Ana', mock_push.call_args_list[0].args[2])
+        self.assertIn('¿Cuánto tarda?', mock_push.call_args_list[0].args[2])
+
+    @patch('accounts.notifications.send_push_to_user', return_value=True)
+    def test_sender_is_not_notified(self, mock_push):
+        from accounts.notifications import notify_order_message
+
+        msg = self.OrderMessage.objects.create(
+            order=self.order, sender=self.owner, body='En 10 minutos',
+        )
+        notify_order_message(msg)
+        recipients = {call.args[0] for call in mock_push.call_args_list}
+        self.assertNotIn(self.owner, recipients)
+        self.assertIn(self.customer, recipients)
+        self.assertIn(self.driver, recipients)

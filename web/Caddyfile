@@ -1,0 +1,24 @@
+{
+	auto_https off
+	admin off
+}
+
+:{$PORT:8080} {
+	encode gzip
+
+	@backend path /api* /app* /panel* /pos* /media* /static* /ws*
+	handle @backend {
+		reverse_proxy {$DJANGO_ORIGIN:http://zinapp-api.railway.internal:8000} {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			# Railway termina TLS; Caddy habla HTTP interno. {scheme} sería http
+			# y Django armaría /media en http://, que iOS/Android bloquean.
+			header_up X-Forwarded-Proto https
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}

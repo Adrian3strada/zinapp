@@ -15,8 +15,12 @@ export function resolveMediaUrl(path: string | null | undefined): string | null 
       const mediaIdx = u.pathname.indexOf('/media/');
       if (mediaIdx > 0) {
         u.pathname = u.pathname.slice(mediaIdx);
-        return u.toString();
       }
+      const api = new URL(API_ORIGIN);
+      if (u.protocol === 'http:' && api.protocol === 'https:') {
+        u.protocol = 'https:';
+      }
+      return u.toString();
     } catch {
       // URL inválida: devolver tal cual
     }

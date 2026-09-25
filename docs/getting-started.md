@@ -22,6 +22,13 @@ físico usa la IP LAN del equipo, no `localhost`.
 backend lo sirve en producción. `mobile/dist*` y `mobile/backend/` son outputs
 locales y no deben incluirse en commits.
 
+## Landing (Next.js)
+
+Desde `web/`, copia `.env.example` a `.env.local` y arranca `npm run dev` en
+`:3000` con Django en `:8000`. En Railway el servicio `zinapp-web` es el origen
+público; Caddy reenvía API, `/app/`, panel y WebSockets a Django. Detalle en
+[`web/README.md`](../web/README.md).
+
 ## Entornos
 
 | Entorno | Base de datos | Uso |

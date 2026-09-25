@@ -38,7 +38,7 @@ export default function HomeRestaurantCard({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.card, !isOpen && styles.closed, pressed && styles.pressed]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${restaurant.name}${isOpen ? ', abierto' : ', cerrado'}`}
@@ -75,6 +75,11 @@ export default function HomeRestaurantCard({
         ) : null}
       </View>
       <Text style={styles.name} numberOfLines={2}>{restaurant.name}</Text>
+      {!isOpen ? (
+        <Text style={styles.closedHint} numberOfLines={1}>
+          {restaurant.next_open_label || 'Cerrado ahora'}
+        </Text>
+      ) : null}
       {categoryLabel ? (
         <Text style={styles.meta} numberOfLines={1}>
           {categoryEmoji(restaurant.category)} {categoryLabel}
@@ -108,6 +113,7 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   pressed: { opacity: 0.92 },
+  closed: { opacity: 0.58 },
   imageWrap: {
     position: 'relative',
     borderRadius: radii.lg,
@@ -151,6 +157,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     minHeight: 36,
   },
+  closedHint: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   meta: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   signals: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   signal: { flexDirection: 'row', alignItems: 'center', gap: 3 },

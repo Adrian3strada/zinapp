@@ -22,7 +22,11 @@
           </div>
           <div class="info-item">
             <label>Cliente</label>
-            <p>{{ dispute.customer.username }}</p>
+            <p>{{ dispute.customer.username }}{% if dispute.customer.phone %} · {{ dispute.customer.phone }}{% endif %}</p>
+          </div>
+          <div class="info-item">
+            <label>Pago</label>
+            <p>{{ dispute.order.get_payment_method_display }} · {{ dispute.order.get_payment_status_display }}</p>
           </div>
           <div class="info-item">
             <label>Restaurante</label>
@@ -64,7 +68,7 @@
             {% if field.errors %}<div class="field-error">{{ field.errors|striptags }}</div>{% endif %}
           </div>
           {% endfor %}
-          <p class="field-hint mb-3">Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: marcas el reembolso como procesado.</p>
+          <p class="field-hint mb-3">Aprobada: aceptas la solicitud. Rechazada: la niegas. Reembolsada: ya devolviste el SPEI (anota la referencia en notas).</p>
           <div class="form-actions">
             <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i> Guardar resolución</button>
           </div>

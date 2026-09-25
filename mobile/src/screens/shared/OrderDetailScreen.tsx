@@ -39,7 +39,7 @@ import { cardShadow } from '../../theme/shadows';
 import type { Order, OrderStatus } from '../../types';
 import { getApiErrorMessage } from '../../utils/apiErrors';
 import { formatCurrency } from '../../utils/format';
-import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { previewToCartItems, reorderClosedMessage, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
 import { trackEvent } from '../../utils/analytics';
 import {
   customerContactMessage,
@@ -62,12 +62,20 @@ const STATUS_HINTS: Partial<Record<OrderStatus, string>> = {
 };
 
 function statusHintForOrder(order: Order): string | undefined {
-  if (
-    order.status === 'pending'
-    && order.payment_method === 'online'
-    && order.payment_status !== 'paid'
-  ) {
-    return 'Completa el pago con tarjeta para enviar tu pedido al restaurante';
+  if (order.status === 'pending' && order.payment_status !== 'paid') {
+    if (order.payment_method === 'online') {
+      return 'Completa el pago con tarjeta para enviar tu pedido al restaurante';
+    }
+    if (order.payment_method === 'transfer') {
+      return order.payment_proof_url
+        ? 'Comprobante enviado. El restaurante confirmará cuando vea el pago.'
+        : 'Transfiere y sube el comprobante. Si no llega en 30 min, se cancela el pedido.';
+    }
+  }
+  if (order.status === 'cancelled' && order.payment_method === 'transfer') {
+    return order.payment_status === 'paid'
+      ? 'El local no pudo tomarlo. Si ya transferiste, escríbenos por WhatsApp para devolverte el dinero.'
+      : 'Se canceló porque no confirmamos la transferencia. Si ya depositaste, mándanos el comprobante por WhatsApp.';
   }
   return STATUS_HINTS[order.status];
 }
@@ -237,11 +245,15 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
       }
       replaceCart(previewToCartItems(data));
       const skipped = reorderUnavailableMessage(data);
+      const closed = reorderClosedMessage(data);
       appAlert(
         'Revisa tu carrito',
-        skipped
-          ? `Usamos los precios actuales.\n\n${skipped}`
-          : `Armamos tu carrito de ${data.restaurant_name} con los precios actuales.`,
+        [
+          skipped
+            ? `Usamos los precios actuales.\n\n${skipped}`
+            : `Armamos tu carrito de ${data.restaurant_name} con los precios actuales.`,
+          closed,
+        ].filter(Boolean).join('\n\n'),
         [
           {
             text: 'Ir al carrito',
@@ -266,6 +278,9 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     if (!order || actionBusy) return;
     setActionBusy(true);
     try {
+      if (order.payment_method === 'transfer' && order.payment_status !== 'paid') {
+        await orderApi.confirmTransfer(order.id);
+      }
       await orderApi.accept(order.id, prepMinutes);
       reloadOrder();
     } catch (err) {
@@ -279,7 +294,9 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
     if (!order || actionBusy) return;
     appConfirm(
       'Rechazar pedido',
-      '¿Seguro que quieres rechazar este pedido?',
+      order.payment_method === 'transfer' && order.payment_status === 'paid'
+        ? 'Este pedido ya tiene transferencia confirmada. Si lo rechazas, ZinApp tiene que devolver el dinero. ¿Seguro?'
+        : '¿Seguro que quieres rechazar este pedido?',
       async () => {
         setActionBusy(true);
         try {
@@ -393,6 +410,14 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                 Esperando pago en línea del cliente antes de confirmar
               </Text>
             )}
+            {user?.role === 'restaurant'
+              && order.payment_method === 'transfer'
+              && order.payment_status !== 'paid'
+              && order.status === 'pending' && (
+              <Text style={styles.heroPaymentWarn}>
+                Esperando transferencia. Confirma el pago antes de aceptar.
+              </Text>
+            )}
           </HeroBackground>
 
           {user?.role === 'customer' && order.payment_method === 'online' && (
@@ -476,16 +501,38 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
 
           {user?.role === 'customer' &&
             order.payment_method === 'transfer' &&
-            order.status !== 'delivered' &&
+            !(order.status === 'cancelled' && order.payment_status === 'paid') && (
+              <View style={styles.card}>
+                <TransferPaymentCard
+                  orderId={order.id}
+                  displayRef={orderRef(order)}
+                  total={order.total}
+                  paymentStatus={order.payment_status}
+                  paymentProofUrl={order.payment_proof_url}
+                  canUpload={order.status !== 'delivered' && order.status !== 'cancelled'}
+                  transferInfo={resolveTransferInfo({
+                    whatsapp: appConfig.support_whatsapp,
+                  })}
+                  onUpdated={reloadOrder}
+                />
+              </View>
+            )}
+
+          {user?.role === 'restaurant' &&
+            order.payment_method === 'transfer' &&
             order.status !== 'cancelled' && (
               <View style={styles.card}>
                 <TransferPaymentCard
                   orderId={order.id}
                   displayRef={orderRef(order)}
                   total={order.total}
+                  paymentStatus={order.payment_status}
+                  paymentProofUrl={order.payment_proof_url}
+                  canConfirm={order.payment_status !== 'paid'}
                   transferInfo={resolveTransferInfo({
                     whatsapp: appConfig.support_whatsapp,
                   })}
+                  onUpdated={reloadOrder}
                 />
               </View>
             )}
@@ -568,6 +615,16 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
               <Text style={styles.rowLabel}>Envío</Text>
               <Text>{formatCurrency(order.delivery_fee)}</Text>
             </View>
+            {order.delivery_discount && parseFloat(order.delivery_discount) > 0 ? (
+              <View style={styles.row}>
+                <Text style={[styles.rowLabel, { color: colors.success }]}>
+                  {order.applied_benefit_label || 'Beneficio ZinApp: Envío gratis'}
+                </Text>
+                <Text style={{ color: colors.success }}>
+                  -{formatCurrency(order.delivery_discount)}
+                </Text>
+              </View>
+            ) : null}
             {order.discount_amount && parseFloat(order.discount_amount) > 0 && (
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Descuento</Text>
@@ -622,7 +679,11 @@ export default function OrderDetailScreen({ route, navigation }: OrderDetailScre
                   </View>
                   <View style={styles.restaurantActions}>
                     <Button
-                      title={`Aceptar · ${prepMinutes} min`}
+                      title={
+                        order.payment_method === 'transfer' && order.payment_status !== 'paid'
+                          ? `Confirmar transferencia y aceptar · ${prepMinutes} min`
+                          : `Aceptar · ${prepMinutes} min`
+                      }
                       onPress={handleRestaurantAccept}
                       loading={actionBusy}
                       style={styles.restaurantBtn}

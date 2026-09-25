@@ -12,6 +12,7 @@ NAV_GROUPS = {
     'drivers': 'personas',
     'promotions': 'marketing',
     'coupons': 'marketing',
+    'rewards': 'marketing',
     'reviews': 'marketing',
     'reports': '',
     'users': 'sistema',

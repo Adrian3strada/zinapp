@@ -53,7 +53,7 @@ export type RestaurantTabParamList = {
 };
 
 export type RestaurantStackParamList = {
-  Main: undefined;
+  Main: NavigatorScreenParams<RestaurantTabParamList> | undefined;
   OrderDetail: { orderId: number };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };
 };
@@ -65,7 +65,7 @@ export type DriverTabParamList = {
 };
 
 export type DriverStackParamList = {
-  Main: undefined;
+  Main: NavigatorScreenParams<DriverTabParamList> | undefined;
   OrderDetail: { orderId: number; promptReview?: boolean };
   ShipmentDetail: { shipmentId: number };
   ParticipantProfile: { orderId: number; participant: 'driver' | 'customer' };

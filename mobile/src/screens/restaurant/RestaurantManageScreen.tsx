@@ -60,6 +60,11 @@ type AvailabilityFilter = 'all' | 'available' | 'hidden';
 interface OptionDraft {
   name: string;
   price_delta: string;
+  is_available: boolean;
+}
+
+function emptyOption(): OptionDraft {
+  return { name: '', price_delta: '0', is_available: true };
 }
 
 interface GroupDraft {
@@ -68,6 +73,10 @@ interface GroupDraft {
   required: boolean;
   /** true = puede elegir varias */
   multiple: boolean;
+  /** Mínimo a elegir si es obligatorio y múltiple. */
+  minSelect: number;
+  /** Máximo a elegir (independiente de cuántas opciones hay). */
+  maxSelect: number;
   options: OptionDraft[];
 }
 
@@ -90,14 +99,31 @@ type CatalogSection = {
   data: Product[];
 };
 
+function namedOptionCount(group: GroupDraft): number {
+  return group.options.filter((o) => o.name.trim()).length;
+}
+
+function groupLimits(group: GroupDraft): { minSelect: number; maxSelect: number } {
+  const n = Math.max(namedOptionCount(group), 1);
+  if (!group.multiple) {
+    return { minSelect: group.required ? 1 : 0, maxSelect: 1 };
+  }
+  const maxSelect = Math.min(Math.max(group.maxSelect || 2, 1), n);
+  const minSelect = group.required ? Math.min(Math.max(group.minSelect || 1, 1), maxSelect) : 0;
+  return { minSelect, maxSelect };
+}
+
 function groupsFromProduct(product: Product): GroupDraft[] {
   return (product.option_groups ?? []).map((g) => ({
     name: g.name,
     required: g.min_select > 0,
     multiple: g.max_select > 1,
+    minSelect: g.min_select,
+    maxSelect: g.max_select,
     options: g.options.map((o) => ({
       name: o.name,
       price_delta: o.price_delta,
+      is_available: o.is_available !== false,
     })),
   }));
 }
@@ -111,11 +137,20 @@ function buildGroupsPayload(optionGroups: GroupDraft[]) {
         .map((o) => ({
           name: o.name.trim(),
           price_delta: (parseExtraPriceInput(o.price_delta) ?? 0).toFixed(2),
+          is_available: o.is_available !== false,
         }));
+      const limits = groupLimits({
+        ...g,
+        options: options.map((o) => ({
+          name: o.name,
+          price_delta: o.price_delta,
+          is_available: o.is_available,
+        })),
+      });
       return {
         name: g.name.trim(),
-        min_select: g.required ? 1 : 0,
-        max_select: g.multiple ? Math.max(options.length, 1) : 1,
+        min_select: limits.minSelect,
+        max_select: limits.maxSelect,
         options,
       };
     });
@@ -161,8 +196,55 @@ function validateOptionDrafts(optionGroups: GroupDraft[]): string | null {
         return `Precio extra inválido en «${optName}». Usa 0 o un monto positivo.`;
       }
     }
+    if (group.multiple) {
+      const limits = groupLimits(group);
+      if (limits.minSelect > namedOptions.length) {
+        return `El mínimo de «${groupName}» no puede ser mayor que las opciones.`;
+      }
+    }
   }
   return null;
+}
+
+function LimitStepper({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <View style={styles.limitStepper}>
+      <Text style={styles.limitLabel}>{label}</Text>
+      <View style={styles.limitControls}>
+        <Pressable
+          style={[styles.limitBtn, value <= min && styles.limitBtnDisabled]}
+          onPress={() => onChange(Math.max(min, value - 1))}
+          disabled={value <= min}
+          hitSlop={HIT_SLOP}
+          accessibilityLabel={`Bajar ${label}`}
+        >
+          <Ionicons name="remove" size={16} color={value <= min ? colors.textMuted : colors.primary} />
+        </Pressable>
+        <Text style={styles.limitValue}>{value}</Text>
+        <Pressable
+          style={[styles.limitBtn, value >= max && styles.limitBtnDisabled]}
+          onPress={() => onChange(Math.min(max, value + 1))}
+          disabled={value >= max}
+          hitSlop={HIT_SLOP}
+          accessibilityLabel={`Subir ${label}`}
+        >
+          <Ionicons name="add" size={16} color={value >= max ? colors.textMuted : colors.primary} />
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 const ProductManageRow = React.memo(function ProductManageRow({
@@ -1054,7 +1136,7 @@ export default function RestaurantManageScreen() {
                 <View style={styles.optionsBlock}>
                   <Text style={styles.optionsTitle}>Sabores / extras</Text>
                   <Text style={styles.optionsHint}>
-                    El cliente elige al pedir. Puedes poner precio extra por opción.
+                    El cliente elige al pedir. Con varias opciones puedes poner 8 toppings y un máximo de 3. Si se acaba un guiso, márcalo «Hoy no».
                   </Text>
                   {(editor?.optionGroups ?? []).map((group, gIdx) => (
                     <View key={`g-${gIdx}`} style={styles.groupCard}>
@@ -1080,9 +1162,12 @@ export default function RestaurantManageScreen() {
                             setEditor((e) => {
                               if (!e) return e;
                               const optionGroups = [...e.optionGroups];
+                              const current = optionGroups[gIdx];
+                              const required = !current.required;
                               optionGroups[gIdx] = {
-                                ...optionGroups[gIdx],
-                                required: !optionGroups[gIdx].required,
+                                ...current,
+                                required,
+                                minSelect: required ? Math.max(current.minSelect || 1, 1) : 0,
                               };
                               return { ...e, optionGroups };
                             })
@@ -1101,9 +1186,18 @@ export default function RestaurantManageScreen() {
                             setEditor((e) => {
                               if (!e) return e;
                               const optionGroups = [...e.optionGroups];
+                              const current = optionGroups[gIdx];
+                              const multiple = !current.multiple;
+                              const n = Math.max(namedOptionCount(current), 2);
                               optionGroups[gIdx] = {
-                                ...optionGroups[gIdx],
-                                multiple: !optionGroups[gIdx].multiple,
+                                ...current,
+                                multiple,
+                                maxSelect: multiple
+                                  ? Math.min(current.maxSelect > 1 ? current.maxSelect : 2, n)
+                                  : 1,
+                                minSelect: current.required
+                                  ? Math.min(Math.max(current.minSelect || 1, 1), multiple ? 2 : 1)
+                                  : 0,
                               };
                               return { ...e, optionGroups };
                             })
@@ -1117,8 +1211,63 @@ export default function RestaurantManageScreen() {
                           <Text style={styles.toggleChipText}>Varias opciones</Text>
                         </Pressable>
                       </View>
+                      {group.multiple ? (
+                        <View style={styles.limitRow}>
+                          {group.required ? (
+                            <LimitStepper
+                              label="Mínimo"
+                              value={groupLimits(group).minSelect}
+                              min={1}
+                              max={groupLimits(group).maxSelect}
+                              onChange={(next) =>
+                                setEditor((e) => {
+                                  if (!e) return e;
+                                  const optionGroups = [...e.optionGroups];
+                                  optionGroups[gIdx] = { ...optionGroups[gIdx], minSelect: next };
+                                  return { ...e, optionGroups };
+                                })
+                              }
+                            />
+                          ) : null}
+                          <LimitStepper
+                            label="Máximo"
+                            value={groupLimits(group).maxSelect}
+                            min={group.required ? groupLimits(group).minSelect : 1}
+                            max={Math.max(namedOptionCount(group), 1)}
+                            onChange={(next) =>
+                              setEditor((e) => {
+                                if (!e) return e;
+                                const optionGroups = [...e.optionGroups];
+                                const current = optionGroups[gIdx];
+                                optionGroups[gIdx] = {
+                                  ...current,
+                                  maxSelect: next,
+                                  minSelect: current.required
+                                    ? Math.min(current.minSelect || 1, next)
+                                    : 0,
+                                };
+                                return { ...e, optionGroups };
+                              })
+                            }
+                          />
+                          <Text style={styles.limitHint}>
+                            El cliente ve las de «Hoy sí» y solo puede marcar hasta el máximo.
+                            «Hoy no» esconde el guiso sin borrarlo.
+                          </Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.limitHint}>
+                          El cliente elige una sola opción.
+                        </Text>
+                      )}
                       {group.options.map((opt, oIdx) => (
-                        <View key={`o-${gIdx}-${oIdx}`} style={styles.optionEditRow}>
+                        <View
+                          key={`o-${gIdx}-${oIdx}`}
+                          style={[
+                            styles.optionEditRow,
+                            opt.is_available === false && styles.optionEditRowOff,
+                          ]}
+                        >
                           <View style={styles.optionNameField}>
                             <FormField
                               label={oIdx === 0 ? 'Opción' : undefined}
@@ -1160,6 +1309,41 @@ export default function RestaurantManageScreen() {
                               keyboardType="decimal-pad"
                             />
                           </View>
+                          <Pressable
+                            style={[
+                              styles.todayChip,
+                              opt.is_available === false && styles.todayChipOff,
+                            ]}
+                            onPress={() =>
+                              setEditor((e) => {
+                                if (!e) return e;
+                                const optionGroups = [...e.optionGroups];
+                                const options = [...optionGroups[gIdx].options];
+                                options[oIdx] = {
+                                  ...options[oIdx],
+                                  is_available: options[oIdx].is_available === false,
+                                };
+                                optionGroups[gIdx] = { ...optionGroups[gIdx], options };
+                                return { ...e, optionGroups };
+                              })
+                            }
+                            accessibilityRole="switch"
+                            accessibilityState={{ checked: opt.is_available !== false }}
+                            accessibilityLabel={
+                              opt.is_available === false
+                                ? `${opt.name || 'Opción'} no se ofrece hoy`
+                                : `${opt.name || 'Opción'} se ofrece hoy`
+                            }
+                          >
+                            <Text
+                              style={[
+                                styles.todayChipText,
+                                opt.is_available === false && styles.todayChipTextOff,
+                              ]}
+                            >
+                              {opt.is_available === false ? 'Hoy no' : 'Hoy sí'}
+                            </Text>
+                          </Pressable>
                         </View>
                       ))}
                       <View style={styles.groupActions}>
@@ -1174,7 +1358,7 @@ export default function RestaurantManageScreen() {
                                 ...optionGroups[gIdx],
                                 options: [
                                   ...optionGroups[gIdx].options,
-                                  { name: '', price_delta: '0' },
+                                  emptyOption(),
                                 ],
                               };
                               return { ...e, optionGroups };
@@ -1214,10 +1398,9 @@ export default function RestaurantManageScreen() {
                                   name: '',
                                   required: true,
                                   multiple: false,
-                                  options: [
-                                    { name: '', price_delta: '0' },
-                                    { name: '', price_delta: '0' },
-                                  ],
+                                  minSelect: 1,
+                                  maxSelect: 1,
+                                  options: [emptyOption(), emptyOption()],
                                 },
                               ],
                             }
@@ -1588,7 +1771,52 @@ const styles = StyleSheet.create({
   groupToggles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 6 },
   toggleChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   toggleChipText: { fontSize: 13, fontWeight: '600', color: colors.text },
+  limitRow: { gap: 8, marginBottom: 8 },
+  limitStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  limitLabel: { fontSize: 13, fontWeight: '700', color: colors.text },
+  limitControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  limitBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  limitBtnDisabled: { opacity: 0.45 },
+  limitValue: { minWidth: 22, textAlign: 'center', fontSize: 16, fontWeight: '800', color: colors.text },
+  limitHint: { fontSize: 12, lineHeight: 16, color: colors.textSecondary },
   optionEditRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' },
+  optionEditRowOff: { opacity: 0.55 },
+  todayChip: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+  },
+  todayChipOff: {
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  todayChipText: { fontSize: 12, fontWeight: '800', color: colors.primary },
+  todayChipTextOff: { color: colors.textMuted },
   optionNameField: { flex: 1.4, flexBasis: '45%', minWidth: 0 },
   optionPriceField: { flex: 1, flexBasis: '40%', minWidth: 0 },
   groupActions: { flexDirection: 'row', gap: 8, marginTop: 4 },

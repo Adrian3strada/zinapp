@@ -3,8 +3,8 @@
 App móvil tipo Didi Food / Uber Eats enfocada en Zinapécuaro, Michoacán.
 
 ZinApp es un monorepo Windows-first: `backend/` contiene la API Django,
-panel y aplicación web; `mobile/` contiene la app Expo. La documentación
-detallada está en [`docs/`](docs/).
+el panel y el build Expo en `/app/`; `web/` es la landing Next.js;
+`mobile/` contiene la app Expo. La documentación detallada está en [`docs/`](docs/).
 
 ## Inicio rápido
 
@@ -26,7 +26,13 @@ copy .env.example .env
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
 
-# Terminal 2
+# Terminal 2 — landing Next.js
+cd web
+copy .env.example .env.local
+npm ci
+npm run dev
+
+# Terminal 3 — app móvil
 cd mobile
 npm ci
 npx expo start --go --clear
@@ -44,6 +50,7 @@ Para exponer la API a Expo Go en la red local, ajusta
 - [Seguridad y respuesta a vulnerabilidades](docs/security.md)
 - [Guía de contribución](CONTRIBUTING.md)
 - [Backend Django](backend/README.md)
+- [Landing Next.js](web/README.md)
 - [Aplicación Expo](mobile/README.md)
 
 ## Stack
@@ -51,6 +58,7 @@ Para exponer la API a Expo Go en la red local, ajusta
 | Capa | Tecnología |
 |------|------------|
 | Mobile | React Native + Expo SDK 54 |
+| Landing | Next.js (App Router) |
 | Backend | Django + Django REST Framework |
 | Base de datos | PostgreSQL (prod) / SQLite (dev) |
 | Auth | JWT (SimpleJWT) |
@@ -69,6 +77,8 @@ Para exponer la API a Expo Go en la red local, ajusta
 
 | Servicio | URL |
 |----------|-----|
+| Landing | `/` |
+| Aviso de privacidad | `/privacidad/` |
 | App web | `/app/` |
 | Panel admin | `/panel/login/` |
 | Gestión CRUD | `/panel/gestion/` |
@@ -214,6 +224,7 @@ Perfiles en `mobile/eas.json`: `development`, `preview` (APK), `production` (AAB
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
+| GET | `/api/landing/` | Payload público de la landing (Next.js) |
 | GET | `/api/orders/active/` | Pedidos activos del cliente (liviano) |
 | GET | `/api/shipments/active/` | Envíos activos del cliente |
 | GET | `/api/orders/driver-earnings/` | Ganancias repartidor (7 días) |

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -27,6 +28,12 @@ if DEBUG:
     ALLOWED_HOSTS = ['*']
 elif not ALLOWED_HOSTS or ALLOWED_HOSTS == ['localhost', '127.0.0.1']:
     ALLOWED_HOSTS = ['.railway.app', '.onrender.com']
+
+# Next.js SSR y Caddy en la red privada de Railway usan *.railway.internal.
+if not DEBUG:
+    for _private_host in ('.railway.internal', '.railway.app'):
+        if _private_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_private_host)
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip().rstrip('/')
@@ -86,6 +93,7 @@ INSTALLED_APPS = [
     'restaurants.apps.RestaurantsConfig',
     'local_services.apps.LocalServicesConfig',
     'orders',
+    'rewards.apps.RewardsConfig',
     'dashboard',
     'pos.apps.PosConfig',
 ]
@@ -222,6 +230,18 @@ SERVE_MEDIA = config('SERVE_MEDIA', default=False, cast=bool)
 API_DOCS_ENABLED = config('API_DOCS_ENABLED', default=DEBUG, cast=bool)
 
 SUPPORT_WHATSAPP = config('SUPPORT_WHATSAPP', default='').strip()
+# Tarifa de envío de comida a domicilio (Zinapécuaro).
+DELIVERY_FEE = Decimal(config('DELIVERY_FEE', default='35.00'))
+# Beneficios ZinApp (el panel puede sobrescribir el tope y los switches).
+REWARDS_BIRTHDAY_ENABLED = config('REWARDS_BIRTHDAY_ENABLED', default=True, cast=bool)
+REWARDS_LOYALTY_ENABLED = config('REWARDS_LOYALTY_ENABLED', default=True, cast=bool)
+REWARDS_LOYALTY_ORDERS_REQUIRED = config('REWARDS_LOYALTY_ORDERS_REQUIRED', default=5, cast=int)
+REWARDS_DELIVERY_DISCOUNT_CAP = Decimal(
+    config('REWARDS_DELIVERY_DISCOUNT_CAP', default=str(DELIVERY_FEE))
+)
+REWARDS_BIRTHDAY_CHANGE_DAYS = config('REWARDS_BIRTHDAY_CHANGE_DAYS', default=365, cast=int)
+REWARDS_BIRTHDAY_LOCK_DAYS = config('REWARDS_BIRTHDAY_LOCK_DAYS', default=7, cast=int)
+REWARDS_MIN_AGE = config('REWARDS_MIN_AGE', default=13, cast=int)
 APP_STORE_URL = config('APP_STORE_URL', default='').strip()
 PLAY_STORE_URL = config('PLAY_STORE_URL', default='').strip()
 # false mientras la ficha de Play no esté pública (evita botones a 404).
@@ -264,7 +284,12 @@ CORS_ALLOWED_ORIGINS = config(
     cast=Csv(),
 )
 # Preview local (Expo web) contra la API de producción: JWT, sin cookies.
-for _origin in ('http://localhost:8081', 'http://127.0.0.1:8081'):
+for _origin in (
+    'http://localhost:8081',
+    'http://127.0.0.1:8081',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+):
     if _origin not in CORS_ALLOWED_ORIGINS:
         CORS_ALLOWED_ORIGINS.append(_origin)
 

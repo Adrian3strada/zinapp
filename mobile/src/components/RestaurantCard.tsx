@@ -61,6 +61,11 @@ function RestaurantCard({ restaurant, onPress }: Props) {
         <Text style={styles.name} numberOfLines={1}>
           {restaurant.name}
         </Text>
+        {!isOpen ? (
+          <Text style={styles.closedHint} numberOfLines={1}>
+            {restaurant.next_open_label || 'Cerrado ahora'}
+          </Text>
+        ) : null}
 
         {restaurant.description ? (
           <Text style={styles.desc} numberOfLines={1}>
@@ -147,6 +152,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: -0.2,
   },
+  closedHint: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   desc: { fontSize: 12, color: colors.textMuted, lineHeight: 16 },
   signalRow: {
     flexDirection: 'row',

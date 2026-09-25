@@ -138,6 +138,12 @@
           </a>
         </li>
         <li class="nav-item">
+          <a href="{% url 'gestion:rewards-config' %}" class="nav-link {% if nav == 'rewards' %}active{% endif %}">
+            <i class="nav-icon fas fa-gift"></i>
+            <p>Beneficios</p>
+          </a>
+        </li>
+        <li class="nav-item">
           <a href="{% url 'gestion:reviews' %}" class="nav-link {% if nav == 'reviews' %}active{% endif %}">
             <i class="nav-icon fas fa-star"></i>
             <p>Reseñas</p>

@@ -8,6 +8,7 @@ const DEFAULT_CONFIG: AppConfig = {
   password_reset_via_whatsapp: false,
   google_sign_in_enabled: false,
   coverage_label: 'Zinapécuaro, Michoacán',
+  delivery_fee: '35.00',
 };
 
 let cachedConfig: AppConfig | null = null;

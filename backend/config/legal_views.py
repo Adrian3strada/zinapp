@@ -3,6 +3,7 @@ import json
 from django.conf import settings
 from django.views.generic import TemplateView
 
+from .landing_views import build_privacy_seo_graph
 from .seo import get_privacy_email, get_site_url
 
 
@@ -13,39 +14,7 @@ class PrivacyPolicyView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         site_url = get_site_url()
         logo_url = f'{site_url}/static/dashboard/img/logo-on-blue.png'
-        page_url = f'{site_url}/privacidad/'
-        seo_graph = [
-            {
-                '@type': 'WebPage',
-                '@id': f'{page_url}#webpage',
-                'url': page_url,
-                'name': 'Aviso de privacidad — ZinApp',
-                'description': (
-                    'Aviso de privacidad integral de ZinApp — delivery y servicios locales '
-                    'en Zinapécuaro, Michoacán, México.'
-                ),
-                'isPartOf': {'@id': f'{site_url}/#website'},
-                'inLanguage': 'es-MX',
-            },
-            {
-                '@type': 'BreadcrumbList',
-                '@id': f'{page_url}#breadcrumb',
-                'itemListElement': [
-                    {
-                        '@type': 'ListItem',
-                        'position': 1,
-                        'name': 'Inicio',
-                        'item': f'{site_url}/',
-                    },
-                    {
-                        '@type': 'ListItem',
-                        'position': 2,
-                        'name': 'Aviso de privacidad',
-                        'item': page_url,
-                    },
-                ],
-            },
-        ]
+        seo_graph = build_privacy_seo_graph(site_url=site_url)
         ctx.update(
             {
                 'site_url': site_url,

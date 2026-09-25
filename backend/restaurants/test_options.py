@@ -22,6 +22,7 @@ class ProductOptionsApiTests(APITestCase):
             password='test1234',
             role=UserRole.CUSTOMER,
             email='opt_customer@example.com',
+            phone='4431234567',
         )
         self.restaurant = Restaurant.objects.create(
             owner=self.owner,
@@ -131,3 +132,102 @@ class ProductOptionsApiTests(APITestCase):
             format='json',
         )
         self.assertEqual(order_resp.status_code, 400)
+
+    def test_max_select_can_be_lower_than_option_count(self):
+        self.client.force_authenticate(self.owner)
+        toppings = [{'name': f'Topping {i}', 'price_delta': '0'} for i in range(1, 9)]
+        resp = self.client.put(
+            f'/api/products/{self.product.id}/option-groups/',
+            {
+                'groups': [
+                    {
+                        'name': 'Guisos',
+                        'min_select': 1,
+                        'max_select': 2,
+                        'options': toppings,
+                    },
+                ],
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        group = resp.data['option_groups'][0]
+        self.assertEqual(group['max_select'], 2)
+        self.assertEqual(len(group['options']), 8)
+        ids = [opt['id'] for opt in group['options'][:3]]
+
+        self.client.force_authenticate(self.customer)
+        too_many = self.client.post(
+            '/api/orders/',
+            {
+                'restaurant_id': self.restaurant.id,
+                'delivery_address': 'Calle 1',
+                'delivery_latitude': '19.860000',
+                'delivery_longitude': '-100.820000',
+                'payment_method': 'cash',
+                'items': [{'product_id': self.product.id, 'quantity': 1, 'option_ids': ids}],
+            },
+            format='json',
+        )
+        self.assertEqual(too_many.status_code, 400)
+        ok = self.client.post(
+            '/api/orders/',
+            {
+                'restaurant_id': self.restaurant.id,
+                'delivery_address': 'Calle 1',
+                'delivery_latitude': '19.860000',
+                'delivery_longitude': '-100.820000',
+                'payment_method': 'cash',
+                'items': [{'product_id': self.product.id, 'quantity': 1, 'option_ids': ids[:2]}],
+            },
+            format='json',
+        )
+        self.assertEqual(ok.status_code, 201, ok.data)
+
+    def test_unavailable_option_cannot_be_ordered(self):
+        self.client.force_authenticate(self.owner)
+        resp = self.client.put(
+            f'/api/products/{self.product.id}/option-groups/',
+            {
+                'groups': [
+                    {
+                        'name': 'Guisos',
+                        'min_select': 1,
+                        'max_select': 2,
+                        'options': [
+                            {'name': 'Pollo BBQ', 'price_delta': '0', 'is_available': True},
+                            {'name': 'Pollo a la naranja', 'price_delta': '0', 'is_available': False},
+                            {'name': 'Res', 'price_delta': '0', 'is_available': True},
+                        ],
+                    },
+                ],
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        group = resp.data['option_groups'][0]
+        hidden = next(opt for opt in group['options'] if opt['name'] == 'Pollo a la naranja')
+        self.assertFalse(hidden['is_available'])
+        visible_id = next(opt['id'] for opt in group['options'] if opt['is_available'])
+
+        payload = {
+            'restaurant_id': self.restaurant.id,
+            'delivery_address': 'Calle 1',
+            'delivery_latitude': '19.860000',
+            'delivery_longitude': '-100.820000',
+            'payment_method': 'cash',
+        }
+        self.client.force_authenticate(self.customer)
+        blocked = self.client.post(
+            '/api/orders/',
+            {**payload, 'items': [{'product_id': self.product.id, 'quantity': 1, 'option_ids': [hidden['id']]}]},
+            format='json',
+        )
+        self.assertEqual(blocked.status_code, 400)
+        ok = self.client.post(
+            '/api/orders/',
+            {**payload, 'items': [{'product_id': self.product.id, 'quantity': 1, 'option_ids': [visible_id]}]},
+            format='json',
+        )
+        self.assertEqual(ok.status_code, 201, ok.data)
+        self.assertEqual(ok.data['delivery_fee'], '35.00')

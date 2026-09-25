@@ -59,6 +59,13 @@
             {% if form.address.errors %}<div class="field-error">{{ form.address.errors|striptags }}</div>{% endif %}
           </div>
 
+          <div class="form-group">
+            <label for="{{ form.date_of_birth.id_for_label }}">Fecha de cumpleaños</label>
+            {{ form.date_of_birth }}
+            {% if form.date_of_birth.errors %}<div class="field-error">{{ form.date_of_birth.errors|striptags }}</div>{% endif %}
+            <p class="field-hint">El admin puede corregirla sin el bloqueo de 365 días de la app.</p>
+          </div>
+
           <div class="form-group form-check">
             {{ form.is_active }}
             <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>

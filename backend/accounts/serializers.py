@@ -6,6 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from config.absolute_uri import public_absolute_uri
 from restaurants.fields import CoordinateField
 from restaurants.models import Restaurant
 
@@ -32,28 +33,32 @@ def absolute_media_url(file_field, request):
     url = file_field.url
     if url and not url.startswith(('http://', 'https://', '/')):
         url = f'/{url}'
-    if request:
-        return request.build_absolute_uri(url)
-    return url
+    return public_absolute_uri(request, url)
 
 
 class UserSerializer(serializers.ModelSerializer):
     avatar_url = serializers.SerializerMethodField()
     has_usable_password = serializers.SerializerMethodField()
     auth_provider = serializers.SerializerMethodField()
+    invite_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = User
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name',
             'role', 'phone', 'address', 'avatar', 'avatar_url',
-            'date_joined',
+            'date_joined', 'date_of_birth',
             'has_usable_password', 'auth_provider',
+            'referral_code', 'invite_code',
         )
         read_only_fields = (
             'id', 'role', 'date_joined',
             'avatar_url', 'has_usable_password', 'auth_provider',
+            'referral_code',
         )
+        extra_kwargs = {
+            'date_of_birth': {'required': False, 'allow_null': True},
+        }
 
     def get_avatar_url(self, obj):
         return absolute_media_url(obj.avatar, self.context.get('request'))
@@ -116,6 +121,46 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('El apellido es obligatorio.')
         return name
 
+    def validate_date_of_birth(self, value):
+        from django.core.exceptions import ValidationError as DjangoVE
+
+        from rewards.services import validate_date_of_birth
+
+        try:
+            return validate_date_of_birth(self.instance, value, staff=False)
+        except DjangoVE as exc:
+            raise serializers.ValidationError(
+                exc.messages[0] if getattr(exc, 'messages', None) else str(exc)
+            ) from exc
+
+    def to_internal_value(self, data):
+        if hasattr(data, 'copy'):
+            data = data.copy()
+            raw = data.get('date_of_birth', serializers.empty)
+            if raw is not serializers.empty and raw in ('', 'null'):
+                data['date_of_birth'] = None
+        return super().to_internal_value(data)
+
+    def update(self, instance, validated_data):
+        invite_code = validated_data.pop('invite_code', None)
+        old_dob = instance.date_of_birth
+        instance = super().update(instance, validated_data)
+        if 'date_of_birth' in validated_data and validated_data['date_of_birth'] != old_dob:
+            instance.birthday_updated_at = timezone.now()
+            instance.save(update_fields=['birthday_updated_at'])
+        if invite_code:
+            from django.core.exceptions import ValidationError as DjangoVE
+
+            from rewards.services import apply_referral_code
+
+            try:
+                apply_referral_code(instance, invite_code)
+            except DjangoVE as exc:
+                raise serializers.ValidationError({
+                    'invite_code': exc.messages[0] if getattr(exc, 'messages', None) else str(exc),
+                }) from exc
+        return instance
+
 
 class OrderParticipantUserSerializer(serializers.ModelSerializer):
     """Datos de contacto visibles entre cliente y repartidor en un pedido."""
@@ -165,6 +210,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     license_plate = serializers.CharField(
         required=False, allow_blank=True, write_only=True, max_length=20
     )
+    referral_code = serializers.CharField(
+        required=False, allow_blank=True, write_only=True, max_length=12,
+    )
 
     class Meta:
         model = User
@@ -173,6 +221,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'role', 'phone', 'address',
             'restaurant_name', 'restaurant_address', 'restaurant_phone',
             'restaurant_description', 'vehicle_type', 'license_plate',
+            'referral_code',
         )
 
     def validate_username(self, value):
@@ -274,6 +323,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         restaurant_description = validated_data.pop('restaurant_description', '').strip()
         vehicle_type = validated_data.pop('vehicle_type', '').strip()
         license_plate = validated_data.pop('license_plate', '').strip()
+        referral_code = (validated_data.pop('referral_code', '') or '').strip()
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
 
@@ -305,6 +355,18 @@ class RegisterSerializer(serializers.ModelSerializer):
                 )
                 user.active_restaurant = restaurant
                 user.save(update_fields=['active_restaurant'])
+
+            if referral_code and user.role == UserRole.CUSTOMER:
+                from django.core.exceptions import ValidationError as DjangoVE
+
+                from rewards.services import apply_referral_code
+
+                try:
+                    apply_referral_code(user, referral_code)
+                except DjangoVE as exc:
+                    raise serializers.ValidationError({
+                        'referral_code': exc.messages[0] if getattr(exc, 'messages', None) else str(exc),
+                    }) from exc
 
         return user
 
@@ -431,6 +493,7 @@ DEMO_USERNAMES = frozenset({
 
 class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(trim_whitespace=True, allow_blank=False)
+    referral_code = serializers.CharField(required=False, allow_blank=True, max_length=12)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -498,10 +561,7 @@ class DeliveryProfileSerializer(serializers.ModelSerializer):
     def get_identity_document_url(self, obj):
         if not obj.identity_document:
             return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.identity_document.url)
-        return obj.identity_document.url
+        return absolute_media_url(obj.identity_document, self.context.get('request'))
 
     def get_setup_status(self, obj):
         return driver_setup_status(obj)

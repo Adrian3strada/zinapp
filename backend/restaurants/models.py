@@ -126,6 +126,59 @@ class Restaurant(models.Model):
             return self.opening_time <= now <= self.closing_time
         return now >= self.opening_time or now <= self.closing_time
 
+    def next_open_label(self) -> str | None:
+        """Texto corto para el cliente cuando el local está cerrado."""
+        if self.is_open_now():
+            return None
+        if not self.is_active:
+            return 'No disponible'
+        if not self.accepting_orders:
+            return 'Cerrado hoy'
+        now_dt = timezone.localtime()
+        now_time = now_dt.time()
+        weekday_labels = {
+            0: 'lunes',
+            1: 'martes',
+            2: 'miércoles',
+            3: 'jueves',
+            4: 'viernes',
+            5: 'sábado',
+            6: 'domingo',
+        }
+        configured = list(getattr(self, '_prefetched_objects_cache', {}).get('business_hours', []))
+        if not configured:
+            configured = list(self.business_hours.all())
+        if configured:
+            by_day = {hours.day_of_week: hours for hours in configured}
+            for offset in range(0, 7):
+                day = (now_dt.weekday() + offset) % 7
+                hours = by_day.get(day)
+                if (
+                    not hours
+                    or hours.is_closed
+                    or not hours.opening_time
+                    or not hours.closing_time
+                ):
+                    continue
+                opens = hours.opening_time
+                if offset == 0:
+                    if hours.opening_time <= hours.closing_time:
+                        if now_time < opens:
+                            return f'Abre a las {opens.strftime("%H:%M")}'
+                        continue
+                    if now_time < opens and now_time > hours.closing_time:
+                        return f'Abre a las {opens.strftime("%H:%M")}'
+                    continue
+                if offset == 1:
+                    return f'Abre mañana a las {opens.strftime("%H:%M")}'
+                return f'Abre el {weekday_labels[day]} a las {opens.strftime("%H:%M")}'
+            return 'Cerrado hoy'
+        if self.opening_time and self.closing_time:
+            if self.opening_time <= self.closing_time and now_time < self.opening_time:
+                return f'Abre a las {self.opening_time.strftime("%H:%M")}'
+            return 'Cerrado hoy'
+        return 'Cerrado ahora'
+
 
 class RestaurantBusinessHour(models.Model):
     restaurant = models.ForeignKey(

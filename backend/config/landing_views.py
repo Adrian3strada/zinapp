@@ -1,13 +1,16 @@
 from datetime import date, time
+
+from django.utils import timezone
 import json
 import re
 
 from django.conf import settings
 from django.db import OperationalError
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_GET
 from django.views.generic import TemplateView
 
-from .seo import get_contact_email, get_site_url
+from .seo import get_contact_email, get_privacy_email, get_site_url
 
 SEO_TITLE = 'Comida a domicilio en Zinapécuaro | ZinApp'
 SEO_DESCRIPTION = (
@@ -152,6 +155,120 @@ def _shorten_schedule_text(raw: str) -> str:
     return text
 
 
+_DAY_INDEX = {
+    'lun': 0,
+    'mar': 1,
+    'mie': 2,
+    'jue': 3,
+    'vie': 4,
+    'sab': 5,
+    'dom': 6,
+}
+
+
+def _parse_clock_match(hour_s, minute_s, ampm) -> time | None:
+    try:
+        hour = int(hour_s)
+        minute = int(minute_s or 0)
+    except (TypeError, ValueError):
+        return None
+    suffix = re.sub(r'[\s.]', '', (ampm or '').lower())
+    if suffix.startswith('p') and hour < 12:
+        hour += 12
+    if suffix.startswith('a') and hour == 12:
+        hour = 0
+    if hour == 24:
+        hour = 0
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return None
+    return time(hour, minute)
+
+
+def parse_schedule_open_now(raw: str, *, now=None) -> bool | None:
+    """True/False si el texto de horario se puede interpretar; None si no es seguro."""
+    text = re.sub(r'\s+', ' ', (raw or '').strip())
+    if not text or 'no disponible' in text.lower():
+        return None
+    now_dt = now or timezone.localtime()
+    folded = (
+        text.lower()
+        .replace('é', 'e')
+        .replace('á', 'a')
+        .replace('í', 'i')
+    )
+    day_tokens = re.findall(r'\b(lun|mar|mie|jue|vie|sab|dom)\b', folded)
+    if day_tokens:
+        start = _DAY_INDEX[day_tokens[0]]
+        end = _DAY_INDEX[day_tokens[1]] if len(day_tokens) > 1 else start
+        weekday = now_dt.weekday()
+        in_range = start <= weekday <= end if start <= end else weekday >= start or weekday <= end
+        if not in_range:
+            return False
+
+    clocks = list(
+        re.finditer(
+            r'(\d{1,2})(?::(\d{2}))?\s*(a\.?\s*m\.?|p\.?\s*m\.?|am|pm)?',
+            text,
+            flags=re.I,
+        )
+    )
+    if len(clocks) < 2:
+        return None
+    opening = _parse_clock_match(*clocks[0].groups())
+    closing = _parse_clock_match(*clocks[1].groups())
+    if not opening or not closing:
+        return None
+    current = now_dt.time()
+    if opening <= closing:
+        return opening <= current <= closing
+    return current >= opening or current <= closing
+
+
+def _restaurant_open_now(restaurant) -> bool | None:
+    """Abierto según horario publicado. None si no hay horario que interpretar."""
+    now_dt = timezone.localtime()
+    hours = list(restaurant.business_hours.all())
+    if hours:
+        today = next((item for item in hours if item.day_of_week == now_dt.weekday()), None)
+        if today is None:
+            return False
+        return today.is_open_at(now_dt.time())
+    if not restaurant.opening_time or not restaurant.closing_time:
+        return None
+    now = now_dt.time()
+    opening = restaurant.opening_time
+    closing = restaurant.closing_time
+    if opening <= closing:
+        return opening <= now <= closing
+    return now >= opening or now <= closing
+
+
+def _optional_coord(value) -> float | None:
+    if value is None or value == '':
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number == 0:
+        return None
+    return number
+
+
+def _coverage_payload() -> dict:
+    from restaurants.geo import ZINAPECUARO_BOUNDS
+
+    bounds = ZINAPECUARO_BOUNDS
+    return {
+        'label': 'Zinapécuaro, Michoacán',
+        'bounds': bounds,
+        'center': {
+            'latitude': (bounds['min_lat'] + bounds['max_lat']) / 2,
+            'longitude': (bounds['min_lon'] + bounds['max_lon']) / 2,
+        },
+    }
+
+
 def _shorten_text(raw: str, limit: int = 110) -> str:
     text = re.sub(r'\s+', ' ', (raw or '').strip())
     if not text:
@@ -225,6 +342,9 @@ def _restaurant_cards(limit: int = 6, *, order_by: str = 'name') -> list[dict]:
                 'cta_url': settings.LANDING_APP_URL,
                 'source': 'restaurant',
                 'is_demo': False,
+                'is_open_now': _restaurant_open_now(r),
+                'latitude': _optional_coord(r.latitude),
+                'longitude': _optional_coord(r.longitude),
                 'created_at': r.created_at.isoformat() if r.created_at else '',
             }
         )
@@ -251,6 +371,7 @@ def _service_cards(limit: int = 6, *, order_by: str | None = None) -> list[dict]
     cards = []
     for s in services:
         image_url = _media_url(s.logo)
+        schedule = _shorten_schedule_text(s.schedule)
         cards.append(
             {
                 'id': f'service-{s.pk}',
@@ -261,7 +382,7 @@ def _service_cards(limit: int = 6, *, order_by: str | None = None) -> list[dict]
                     fallback='Servicio',
                 ),
                 'description': _shorten_text(s.description),
-                'schedule': _shorten_schedule_text(s.schedule),
+                'schedule': schedule,
                 'location': (s.address or 'Zinapécuaro').strip(),
                 'image_url': image_url,
                 'image_fit': 'contain' if image_url else '',
@@ -270,6 +391,9 @@ def _service_cards(limit: int = 6, *, order_by: str | None = None) -> list[dict]
                 'cta_url': settings.LANDING_APP_URL,
                 'source': 'service',
                 'is_demo': False,
+                'is_open_now': parse_schedule_open_now(s.schedule),
+                'latitude': None,
+                'longitude': None,
                 'created_at': s.created_at.isoformat() if s.created_at else '',
             }
         )
@@ -293,6 +417,9 @@ def _demo_featured_businesses() -> list[dict]:
             'cta_url': settings.LANDING_APP_URL,
             'source': 'demo',
             'is_demo': True,
+            'is_open_now': None,
+            'latitude': None,
+            'longitude': None,
             'created_at': '',
         },
         {
@@ -309,6 +436,9 @@ def _demo_featured_businesses() -> list[dict]:
             'cta_url': settings.LANDING_APP_URL,
             'source': 'demo',
             'is_demo': True,
+            'is_open_now': None,
+            'latitude': None,
+            'longitude': None,
             'created_at': '',
         },
         {
@@ -325,6 +455,9 @@ def _demo_featured_businesses() -> list[dict]:
             'cta_url': settings.LANDING_APP_URL,
             'source': 'demo',
             'is_demo': True,
+            'is_open_now': None,
+            'latitude': None,
+            'longitude': None,
             'created_at': '',
         },
     ]
@@ -504,189 +637,269 @@ def _social_url(platform: str, raw: str) -> str:
     return value
 
 
+REGISTER_WHATSAPP_TEXT = (
+    'Hola, quiero registrar mi negocio en ZinApp Zinapécuaro.\n\n'
+    'Nombre del negocio:\n'
+    'Giro / categoría:\n'
+    'Teléfono / WhatsApp:\n'
+    'Horario:\n'
+    'Dirección:'
+)
+
+
+def _build_seo_graph(
+    *,
+    site_url: str,
+    logo_url: str,
+    contact_email: str,
+    landing_faqs: list[dict],
+    featured: list[dict],
+    using_demo: bool,
+) -> list[dict]:
+    same_as = [
+        u for u in (
+            _social_url('instagram', settings.SOCIAL_INSTAGRAM),
+            _social_url('facebook', settings.SOCIAL_FACEBOOK),
+        )
+        if u
+    ]
+    organization = {
+        '@type': 'Organization',
+        '@id': f'{site_url}/#organization',
+        'name': 'ZinApp',
+        'url': f'{site_url}/',
+        'logo': logo_url,
+        'description': (
+            'ZinApp es la app local para pedir comida a domicilio, descubrir '
+            'restaurantes, negocios y servicios en Zinapécuaro, Michoacán.'
+        ),
+        'areaServed': {
+            '@type': 'City',
+            'name': 'Zinapécuaro',
+            'address': {
+                '@type': 'PostalAddress',
+                'addressLocality': 'Zinapécuaro',
+                'addressRegion': 'Michoacán',
+                'addressCountry': 'MX',
+            },
+        },
+        'contactPoint': {
+            '@type': 'ContactPoint',
+            'contactType': 'customer support',
+            'areaServed': 'MX',
+            'availableLanguage': 'Spanish',
+            **(
+                {'telephone': settings.SUPPORT_PHONE}
+                if settings.SUPPORT_PHONE
+                else {}
+            ),
+            **(
+                {'email': contact_email}
+                if contact_email
+                else {}
+            ),
+        },
+    }
+    if same_as:
+        organization['sameAs'] = same_as
+
+    seo_graph = [
+        organization,
+        {
+            '@type': 'WebSite',
+            '@id': f'{site_url}/#website',
+            'url': f'{site_url}/',
+            'name': 'ZinApp',
+            'publisher': {'@id': f'{site_url}/#organization'},
+            'inLanguage': 'es-MX',
+            'description': SEO_DESCRIPTION,
+        },
+        {
+            '@type': 'SoftwareApplication',
+            '@id': f'{site_url}/#app',
+            'name': 'ZinApp',
+            'applicationCategory': 'LifestyleApplication',
+            'operatingSystem': 'Android, iOS, Web',
+            'url': f'{site_url}/app/',
+            'description': (
+                'Pide comida a domicilio en Zinapécuaro, encuentra restaurantes, '
+                'negocios locales, servicios y promociones.'
+            ),
+            'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'MXN'},
+            'publisher': {'@id': f'{site_url}/#organization'},
+        },
+        {
+            '@type': 'LocalBusiness',
+            '@id': f'{site_url}/#local-business',
+            'name': 'ZinApp',
+            'url': f'{site_url}/',
+            'image': logo_url,
+            'description': (
+                'Plataforma local de comida a domicilio, restaurantes, negocios '
+                'y servicios en Zinapécuaro, Michoacán.'
+            ),
+            'address': {
+                '@type': 'PostalAddress',
+                'addressLocality': 'Zinapécuaro',
+                'addressRegion': 'Michoacán',
+                'addressCountry': 'MX',
+            },
+            'areaServed': 'Zinapécuaro, Michoacán',
+            'priceRange': '$',
+        },
+        {
+            '@type': 'FAQPage',
+            '@id': f'{site_url}/#faq',
+            'mainEntity': [
+                {
+                    '@type': 'Question',
+                    'name': item['question'],
+                    'acceptedAnswer': {
+                        '@type': 'Answer',
+                        'text': item['answer'],
+                    },
+                }
+                for item in landing_faqs
+            ],
+        },
+    ]
+    if not using_demo and featured:
+        seo_graph.append(
+            {
+                '@type': 'ItemList',
+                '@id': f'{site_url}/#negocios-destacados',
+                'name': 'Negocios destacados en ZinApp Zinapécuaro',
+                'itemListElement': [
+                    {
+                        '@type': 'ListItem',
+                        'position': index,
+                        'name': biz['name'],
+                        'url': f'{site_url}/app/',
+                    }
+                    for index, biz in enumerate(featured, start=1)
+                ],
+            }
+        )
+    return seo_graph
+
+
+def build_privacy_seo_graph(*, site_url: str) -> list[dict]:
+    page_url = f'{site_url}/privacidad/'
+    return [
+        {
+            '@type': 'WebPage',
+            '@id': f'{page_url}#webpage',
+            'url': page_url,
+            'name': 'Aviso de privacidad — ZinApp',
+            'description': (
+                'Aviso de privacidad integral de ZinApp — delivery y servicios locales '
+                'en Zinapécuaro, Michoacán, México.'
+            ),
+            'isPartOf': {'@id': f'{site_url}/#website'},
+            'inLanguage': 'es-MX',
+        },
+        {
+            '@type': 'BreadcrumbList',
+            '@id': f'{page_url}#breadcrumb',
+            'itemListElement': [
+                {
+                    '@type': 'ListItem',
+                    'position': 1,
+                    'name': 'Inicio',
+                    'item': f'{site_url}/',
+                },
+                {
+                    '@type': 'ListItem',
+                    'position': 2,
+                    'name': 'Aviso de privacidad',
+                    'item': page_url,
+                },
+            ],
+        },
+    ]
+
+
+def build_landing_payload() -> dict:
+    """Datos públicos de la landing: HTML Django y GET /api/landing/."""
+    whatsapp = (settings.SUPPORT_WHATSAPP or '').strip()
+    play = _play_store_context()
+    landing_faqs = get_landing_faqs(google_play_enabled=play['google_play_enabled'])
+    featured, using_demo = _featured_businesses(limit=6)
+    newest = [] if using_demo else _newest_businesses(
+        {biz['id'] for biz in featured},
+        limit=3,
+    )
+    discover_dishes = [] if using_demo else _discover_dishes(limit=8)
+    landing_promos = [] if using_demo else _active_promotions(limit=6)
+    contact_email = get_contact_email()
+    site_url = get_site_url()
+    logo_url = f'{site_url}/static/dashboard/img/logo-on-blue.png'
+    seo_graph = _build_seo_graph(
+        site_url=site_url,
+        logo_url=logo_url,
+        contact_email=contact_email,
+        landing_faqs=landing_faqs,
+        featured=featured,
+        using_demo=using_demo,
+    )
+    return {
+        'site_url': site_url,
+        'seo_title': SEO_TITLE,
+        'seo_description': SEO_DESCRIPTION,
+        'seo_logo_url': logo_url,
+        'seo_graph': seo_graph,
+        'privacy_seo_graph': build_privacy_seo_graph(site_url=site_url),
+        'landing_faqs': landing_faqs,
+        'app_url': settings.LANDING_APP_URL or '/app/',
+        'app_store_url': settings.APP_STORE_URL,
+        'google_play_enabled': play['google_play_enabled'],
+        'play_store_url': play['play_store_url'],
+        'whatsapp_url': _whatsapp_link(whatsapp),
+        'support_email': settings.SUPPORT_EMAIL,
+        'contact_email': contact_email,
+        'privacy_email': get_privacy_email(),
+        'support_phone': settings.SUPPORT_PHONE,
+        'social_instagram_url': _social_url('instagram', settings.SOCIAL_INSTAGRAM),
+        'social_facebook_url': _social_url('facebook', settings.SOCIAL_FACEBOOK),
+        'terms_url': settings.TERMS_URL,
+        'register_whatsapp_text': REGISTER_WHATSAPP_TEXT,
+        'featured_businesses': featured,
+        'featured_is_demo': using_demo,
+        'newest_businesses': newest,
+        'discover_dishes': discover_dishes,
+        'landing_promos': landing_promos,
+        'trust_metrics': _live_trust_metrics(),
+        'coverage': _coverage_payload(),
+        'stripe_payments_enabled': bool(
+            (getattr(settings, 'STRIPE_SECRET_KEY', '') or '').strip()
+        ),
+    }
+
+
 class LandingView(TemplateView):
     template_name = 'landing/home.html'
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        whatsapp = (settings.SUPPORT_WHATSAPP or '').strip()
-        play = _play_store_context()
-        landing_faqs = get_landing_faqs(google_play_enabled=play['google_play_enabled'])
-        featured, using_demo = _featured_businesses(limit=6)
-        newest = [] if using_demo else _newest_businesses(
-            {biz['id'] for biz in featured},
-            limit=3,
-        )
-        discover_dishes = [] if using_demo else _discover_dishes(limit=8)
-        landing_promos = [] if using_demo else _active_promotions(limit=6)
-        contact_email = get_contact_email()
-        register_msg = (
-            'Hola, quiero registrar mi negocio en ZinApp Zinapécuaro.\n\n'
-            'Nombre del negocio:\n'
-            'Giro / categoría:\n'
-            'Teléfono / WhatsApp:\n'
-            'Horario:\n'
-            'Dirección:'
-        )
-        site_url = get_site_url()
-        logo_url = f'{site_url}/static/dashboard/img/logo-on-blue.png'
-        same_as = [
-            u for u in (
-                _social_url('instagram', settings.SOCIAL_INSTAGRAM),
-                _social_url('facebook', settings.SOCIAL_FACEBOOK),
-            )
-            if u
-        ]
-        organization = {
-            '@type': 'Organization',
-            '@id': f'{site_url}/#organization',
-            'name': 'ZinApp',
-            'url': f'{site_url}/',
-            'logo': logo_url,
-            'description': (
-                'ZinApp es la app local para pedir comida a domicilio, descubrir '
-                'restaurantes, negocios y servicios en Zinapécuaro, Michoacán.'
-            ),
-            'areaServed': {
-                '@type': 'City',
-                'name': 'Zinapécuaro',
-                'address': {
-                    '@type': 'PostalAddress',
-                    'addressLocality': 'Zinapécuaro',
-                    'addressRegion': 'Michoacán',
-                    'addressCountry': 'MX',
-                },
-            },
-            'contactPoint': {
-                '@type': 'ContactPoint',
-                'contactType': 'customer support',
-                'areaServed': 'MX',
-                'availableLanguage': 'Spanish',
-                **(
-                    {'telephone': settings.SUPPORT_PHONE}
-                    if settings.SUPPORT_PHONE
-                    else {}
-                ),
-                **(
-                    {'email': contact_email}
-                    if contact_email
-                    else {}
-                ),
-            },
-        }
-        if same_as:
-            organization['sameAs'] = same_as
-
-        seo_graph = [
-            organization,
-            {
-                '@type': 'WebSite',
-                '@id': f'{site_url}/#website',
-                'url': f'{site_url}/',
-                'name': 'ZinApp',
-                'publisher': {'@id': f'{site_url}/#organization'},
-                'inLanguage': 'es-MX',
-                'description': SEO_DESCRIPTION,
-            },
-            {
-                '@type': 'SoftwareApplication',
-                '@id': f'{site_url}/#app',
-                'name': 'ZinApp',
-                'applicationCategory': 'LifestyleApplication',
-                'operatingSystem': 'Android, iOS, Web',
-                'url': f'{site_url}/app/',
-                'description': (
-                    'Pide comida a domicilio en Zinapécuaro, encuentra restaurantes, '
-                    'negocios locales, servicios y promociones.'
-                ),
-                'offers': {'@type': 'Offer', 'price': '0', 'priceCurrency': 'MXN'},
-                'publisher': {'@id': f'{site_url}/#organization'},
-            },
-            {
-                '@type': 'LocalBusiness',
-                '@id': f'{site_url}/#local-business',
-                'name': 'ZinApp',
-                'url': f'{site_url}/',
-                'image': logo_url,
-                'description': (
-                    'Plataforma local de comida a domicilio, restaurantes, negocios '
-                    'y servicios en Zinapécuaro, Michoacán.'
-                ),
-                'address': {
-                    '@type': 'PostalAddress',
-                    'addressLocality': 'Zinapécuaro',
-                    'addressRegion': 'Michoacán',
-                    'addressCountry': 'MX',
-                },
-                'areaServed': 'Zinapécuaro, Michoacán',
-                'priceRange': '$',
-            },
-            {
-                '@type': 'FAQPage',
-                '@id': f'{site_url}/#faq',
-                'mainEntity': [
-                    {
-                        '@type': 'Question',
-                        'name': item['question'],
-                        'acceptedAnswer': {
-                            '@type': 'Answer',
-                            'text': item['answer'],
-                        },
-                    }
-                    for item in landing_faqs
-                ],
-            },
-        ]
-        if not using_demo and featured:
-            seo_graph.append(
-                {
-                    '@type': 'ItemList',
-                    '@id': f'{site_url}/#negocios-destacados',
-                    'name': 'Negocios destacados en ZinApp Zinapécuaro',
-                    'itemListElement': [
-                        {
-                            '@type': 'ListItem',
-                            'position': index,
-                            'name': biz['name'],
-                            'url': f'{site_url}/app/',
-                        }
-                        for index, biz in enumerate(featured, start=1)
-                    ],
-                }
-            )
-        ctx.update(
-            {
-                'site_url': site_url,
-                'seo_title': SEO_TITLE,
-                'seo_description': SEO_DESCRIPTION,
-                'seo_logo_url': logo_url,
-                'landing_faqs': landing_faqs,
-                'seo_json_ld': json.dumps(
-                    {'@context': 'https://schema.org', '@graph': seo_graph},
-                    ensure_ascii=False,
-                    separators=(',', ':'),
-                ),
-                'app_url': settings.LANDING_APP_URL or '/app/',
-                'app_store_url': settings.APP_STORE_URL,
-                'google_play_enabled': play['google_play_enabled'],
-                'play_store_url': play['play_store_url'],
-                'whatsapp_url': _whatsapp_link(whatsapp),
-                'support_email': settings.SUPPORT_EMAIL,
-                'contact_email': contact_email,
-                'support_phone': settings.SUPPORT_PHONE,
-                'social_instagram_url': _social_url('instagram', settings.SOCIAL_INSTAGRAM),
-                'social_facebook_url': _social_url('facebook', settings.SOCIAL_FACEBOOK),
-                'terms_url': settings.TERMS_URL,
-                'register_whatsapp_text': register_msg,
-                'featured_businesses': featured,
-                'featured_is_demo': using_demo,
-                'newest_businesses': newest,
-                'discover_dishes': discover_dishes,
-                'landing_promos': landing_promos,
-                'trust_metrics': _live_trust_metrics(),
-            }
+        data = build_landing_payload()
+        ctx.update(data)
+        ctx['seo_json_ld'] = json.dumps(
+            {'@context': 'https://schema.org', '@graph': data['seo_graph']},
+            ensure_ascii=False,
+            separators=(',', ':'),
         )
         return ctx
+
+
+@require_GET
+def landing_api(_request):
+    """JSON público para la landing Next.js (ISR / revalidate 60s)."""
+    response = JsonResponse(
+        build_landing_payload(),
+        json_dumps_params={'ensure_ascii': False},
+    )
+    response['Cache-Control'] = 'public, max-age=60'
+    return response
 
 
 def robots_txt(request):

@@ -1,12 +1,13 @@
 # Arquitectura
 
-ZinApp agrupa el cliente Expo y una API Django. El backend también sirve el
-panel de operaciones, la landing y el build web de Expo en `/app/`.
+ZinApp agrupa el cliente Expo, una API Django y la landing pública en Next.js.
+El backend también sirve el panel de operaciones y el build web de Expo en `/app/`.
 
 ```mermaid
 flowchart LR
     Mobile[ExpoMobile] --> Api[DjangoAPI]
-    Web[ExpoWeb] --> Api
+    AppWeb[ExpoWeb] --> Api
+    Landing[NextLanding] --> Api
     Panel[PanelDjango] --> Api
     Api --> Database[PostgreSQL]
     Api --> MercadoPago[MercadoPago]
@@ -14,8 +15,14 @@ flowchart LR
     Api --> OSRM[OSRM]
 ```
 
+En producción (Railway, dos servicios):
+
+- `zinapp-web` es el origen de `zinapp.com.mx`. Caddy (mismo contenedor) envía `/`, `/privacidad/` y `/_next/` a Next.js, y `/api`, `/app`, `/panel`, `/pos`, `/media`, `/static` y `/ws` a Django.
+- `zinapp-api` permanece en red privada. La landing pide `GET /api/landing/` con ISR (60 s). Django acepta `Host: *.railway.internal` para ese fetch.
+
 ## Componentes
 
+- `web/`: landing Next.js (App Router), aviso de privacidad y SEO público.
 - `backend/accounts`: identidad, JWT, perfiles y verificación de repartidores.
 - `backend/restaurants`: catálogo, menú, favoritos y promociones.
 - `backend/orders`: pedidos, envíos, pagos, cupones, chat y disputas.
@@ -26,6 +33,7 @@ flowchart LR
 - `GET /api/schema/` y `GET /api/docs/`: contrato OpenAPI/Swagger generado
   desde Django REST Framework para revisión técnica cuando
   `API_DOCS_ENABLED=True`.
+- `GET /api/landing/`: payload público de la landing (negocios, promos, FAQs, SEO).
 
 ## Límites de confianza
 

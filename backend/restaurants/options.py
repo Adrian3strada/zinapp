@@ -55,16 +55,27 @@ def resolve_selected_options(
     for group in groups:
         selected = by_group.get(group.id, [])
         count = len(selected)
-        if count < group.min_select:
+        available_n = sum(1 for opt in group.options.all() if opt.is_available)
+        if available_n == 0:
+            if group.min_select > 0:
+                raise serializers.ValidationError({
+                    'option_ids': (
+                        f'Hoy no hay opciones en «{group.name}».'
+                    ),
+                })
+            continue
+        min_select = min(group.min_select, available_n)
+        max_select = min(group.max_select, available_n)
+        if count < min_select:
             raise serializers.ValidationError({
                 'option_ids': (
-                    f'Elige al menos {group.min_select} en «{group.name}».'
+                    f'Elige al menos {min_select} en «{group.name}».'
                 ),
             })
-        if count > group.max_select:
+        if count > max_select:
             raise serializers.ValidationError({
                 'option_ids': (
-                    f'Máximo {group.max_select} en «{group.name}».'
+                    f'Máximo {max_select} en «{group.name}».'
                 ),
             })
 

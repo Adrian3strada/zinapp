@@ -17,10 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { VEHICLE_OPTIONS } from '../../constants/vehicleTypes';
 import { useAuth } from '../../context/AuthContext';
-import { orderApi, settlementApi } from '../../services/api';
+import { orderApi } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { HIT_SLOP } from '../../theme/spacing';
-import type { DeliveryProfile, SettlementSummary as SettlementData, User } from '../../types';
+import type { DeliveryProfile, User } from '../../types';
 import { formatCurrency } from '../../utils/format';
 import { appConfirm } from '../../utils/appAlert';
 import { resolveMediaUrl } from '../../utils/media';
@@ -66,7 +66,6 @@ export default function DriverSideMenu({
   const slide = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const fade = useRef(new Animated.Value(0)).current;
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
-  const [settlement, setSettlement] = useState<SettlementData | null>(null);
   const [loadingMoney, setLoadingMoney] = useState(false);
 
   const isApproved = profile?.verification_status === 'approved';
@@ -85,12 +84,8 @@ export default function DriverSideMenu({
         Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
       setLoadingMoney(true);
-      Promise.all([
-        orderApi.driverEarnings().then((r) => r.data).catch(() => null),
-        settlementApi.driver().then((r) => r.data).catch(() => null),
-      ]).then(([earn, settle]) => {
+      orderApi.driverEarnings().then((r) => r.data).catch(() => null).then((earn) => {
         setEarnings(earn);
-        setSettlement(settle);
       }).finally(() => setLoadingMoney(false));
     }
   }, [visible, slide, fade]);
@@ -229,18 +224,6 @@ export default function DriverSideMenu({
                       </Text>
                     </View>
                   ))}
-                  {settlement ? (
-                    <View style={styles.settleBox}>
-                      <Text style={styles.settleTitle}>Liquidación estimada</Text>
-                      <Text style={styles.settleRow}>
-                        Envíos {formatCurrency(String(settlement.delivery_fees ?? 0))} · Propinas{' '}
-                        {formatCurrency(String(settlement.tips ?? 0))}
-                      </Text>
-                      <Text style={styles.settleTotal}>
-                        {formatCurrency(String(settlement.total_payout ?? 0))}
-                      </Text>
-                    </View>
-                  ) : null}
                 </>
               )}
               <Pressable

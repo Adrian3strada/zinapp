@@ -22,7 +22,7 @@ import type { Order, Shipment } from '../../types';
 import { appAlert } from '../../utils/appAlert';
 import { formatCurrency } from '../../utils/format';
 import { getApiErrorMessage } from '../../utils/apiErrors';
-import { previewToCartItems, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
+import { previewToCartItems, reorderClosedMessage, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
 import { trackEvent } from '../../utils/analytics';
 import { FLATLIST_TUNING } from '../../utils/responsive';
 import { getRestaurantVisual } from '../../utils/foodVisuals';
@@ -103,7 +103,7 @@ function OrderCard({
             accessibilityLabel="Pedir de nuevo"
             accessibilityState={{ busy: !!reordering, disabled: !!reordering }}
           >
-            <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+            <Ionicons name="refresh-outline" size={16} color="#FFF" />
             <Text style={styles.reorderText}>
               {reordering ? 'Agregando…' : 'Pedir de nuevo'}
             </Text>
@@ -281,8 +281,11 @@ export default function MyOrdersScreen({ navigation }: MyOrdersScreenProps) {
         }
         replaceCart(previewToCartItems(data));
         const skipped = reorderUnavailableMessage(data);
+        const closed = reorderClosedMessage(data);
         if (skipped) {
-          appAlert('Revisa tu carrito', `Usamos los precios actuales.\n\n${skipped}`);
+          appAlert('Revisa tu carrito', `Usamos los precios actuales.\n\n${skipped}${closed ? `\n\n${closed}` : ''}`);
+        } else if (closed) {
+          appAlert('Local cerrado', closed);
         }
         navigation.navigate('Carrito');
       } catch (err) {
@@ -422,10 +425,15 @@ const styles = StyleSheet.create({
   reorderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  reorderText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  reorderText: { fontSize: 13, fontWeight: '800', color: '#FFF' },
   right: { alignItems: 'flex-end', gap: 8 },
   total: { fontSize: 15, fontWeight: '800', color: colors.text },
 });

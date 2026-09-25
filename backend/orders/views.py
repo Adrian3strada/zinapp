@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -234,11 +235,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if (
-                order.payment_method == PaymentMethod.ONLINE
+                order.payment_method in (PaymentMethod.ONLINE, PaymentMethod.TRANSFER)
                 and order.payment_status != PaymentStatus.PAID
             ):
+                detail = (
+                    'Confirma primero que llegó la transferencia.'
+                    if order.payment_method == PaymentMethod.TRANSFER
+                    else 'El pago en línea aún no está confirmado.'
+                )
                 return Response(
-                    {'detail': 'El pago en línea aún no está confirmado.'},
+                    {'detail': detail},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             # Aceptar = pasar directo a preparando (flujo tipo DiDi tienda).
@@ -283,6 +289,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                 obj=order,
                 request=request,
                 metadata={'status': OrderStatus.CANCELLED},
+            )
+            from orders.refunds import open_paid_transfer_refund_ticket
+
+            open_paid_transfer_refund_ticket(
+                order,
+                f'Rechazo del restaurante con transferencia confirmada. Pedido {order.display_ref}.',
             )
         order.refresh_from_db()
         return Response(OrderSerializer(order).data)
@@ -340,6 +352,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                 obj=order,
                 request=request,
                 metadata={'status': OrderStatus.CANCELLED},
+            )
+            from orders.refunds import open_paid_transfer_refund_ticket
+
+            open_paid_transfer_refund_ticket(
+                order,
+                f'El cliente canceló con transferencia confirmada. Pedido {order.display_ref}.',
             )
         order.refresh_from_db()
         return Response(OrderSerializer(order).data)
@@ -623,6 +641,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             broadcast_order_message(msg)
         except Exception:
             pass
+        try:
+            from accounts.notifications import notify_order_message
+
+            notify_order_message(msg)
+        except Exception:
+            pass
         return Response(
             OrderMessageSerializer(msg).data,
             status=status.HTTP_201_CREATED,
@@ -779,6 +803,95 @@ class OrderViewSet(viewsets.ModelViewSet):
             request=request,
             metadata={'source': 'manual_admin'},
         )
+        return Response(OrderSerializer(order, context={'request': request}).data)
+
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='payment-proof',
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def payment_proof(self, request, pk=None):
+        """Cliente sube foto del comprobante SPEI."""
+        order = self.get_object()
+        if request.user != order.customer and not getattr(request.user, 'is_admin_user', False):
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        if order.payment_method != PaymentMethod.TRANSFER:
+            return Response(
+                {'detail': 'Este pedido no es por transferencia.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.status in (OrderStatus.DELIVERED, OrderStatus.CANCELLED):
+            return Response(
+                {'detail': 'Este pedido ya finalizó.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        proof = request.FILES.get('payment_proof')
+        if not proof:
+            return Response(
+                {'detail': 'Sube una foto del comprobante.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        name = (getattr(proof, 'name', '') or '').lower()
+        ext = '.' + name.rsplit('.', 1)[-1] if '.' in name else ''
+        if ext not in {'.jpg', '.jpeg', '.png', '.webp'}:
+            return Response(
+                {'detail': 'Usa una foto JPG, PNG o WebP.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if getattr(proof, 'size', 0) > 5 * 1024 * 1024:
+            return Response(
+                {'detail': 'La foto es demasiado grande (máximo 5 MB).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        order.payment_proof = proof
+        order.save(update_fields=['payment_proof', 'updated_at'])
+        try:
+            from accounts.notifications import notify_transfer_proof
+
+            notify_transfer_proof(order)
+        except Exception:
+            pass
+        return Response(OrderSerializer(order, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='confirm-transfer')
+    def confirm_transfer(self, request, pk=None):
+        """Restaurante o admin marca que sí llegó la transferencia."""
+        order = self.get_object()
+        user = request.user
+        owner_id = getattr(getattr(order, 'restaurant', None), 'owner_id', None)
+        if not (
+            getattr(user, 'is_admin_user', False)
+            or (owner_id and owner_id == user.id)
+        ):
+            return Response({'detail': 'No autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        if order.payment_method != PaymentMethod.TRANSFER:
+            return Response(
+                {'detail': 'Este pedido no es por transferencia.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.status == OrderStatus.CANCELLED:
+            return Response(
+                {'detail': 'El pedido está cancelado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.payment_status == PaymentStatus.PAID:
+            return Response(OrderSerializer(order, context={'request': request}).data)
+        order.payment_status = PaymentStatus.PAID
+        order.transfer_confirmed_at = timezone.now()
+        order.save(update_fields=['payment_status', 'transfer_confirmed_at', 'updated_at'])
+        write_audit_log(
+            action=AuditLog.Action.PAYMENT_CONFIRMED,
+            obj=order,
+            request=request,
+            metadata={'source': 'restaurant_transfer'},
+        )
+        try:
+            from accounts.notifications import notify_transfer_confirmed
+
+            notify_transfer_confirmed(order)
+        except Exception:
+            pass
         return Response(OrderSerializer(order, context={'request': request}).data)
 
 

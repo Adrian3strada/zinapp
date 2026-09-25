@@ -1,7 +1,8 @@
 export type PendingNavigation =
   | { type: 'order'; orderId: number }
   | { type: 'shipment'; shipmentId: number }
-  | { type: 'menu'; restaurantId: number; restaurantName: string };
+  | { type: 'menu'; restaurantId: number; restaurantName: string }
+  | { type: 'profile' };
 
 let pending: PendingNavigation | null = null;
 const listeners = new Set<(nav: PendingNavigation) => void>();

@@ -32,6 +32,7 @@ class OrderApiTests(TestCase):
             username='testclient',
             password='test1234',
             role='customer',
+            phone='4431234567',
         )
         self.owner = User.objects.create_user(
             username='testowner',
@@ -99,6 +100,28 @@ class OrderApiTests(TestCase):
         }, format='json')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(str(response.data['discount_amount']), '10.00')
+
+    def test_create_order_requires_phone(self):
+        from restaurants.models import Product
+
+        self.customer.phone = ''
+        self.customer.save(update_fields=['phone'])
+        product = Product.objects.create(
+            restaurant=self.restaurant,
+            name='Taco',
+            price=Decimal('50.00'),
+        )
+        self.client.force_authenticate(self.customer)
+        response = self.client.post('/api/orders/', {
+            'restaurant_id': self.restaurant.id,
+            'delivery_address': 'Calle 1, Zinapécuaro',
+            'delivery_latitude': '19.860273',
+            'delivery_longitude': '-100.828562',
+            'payment_method': 'cash',
+            'items': [{'product_id': product.id, 'quantity': 1}],
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('phone', response.data)
 
     def test_create_order_with_coupon(self):
         from restaurants.models import Product

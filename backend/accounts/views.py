@@ -86,7 +86,17 @@ class GoogleLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         try:
             claims = verify_google_id_token(serializer.validated_data['id_token'])
-            user = get_or_create_user_from_google(claims)
+            user, created = get_or_create_user_from_google(claims)
+            referral_code = (serializer.validated_data.get('referral_code') or '').strip()
+            if created and referral_code:
+                from django.core.exceptions import ValidationError as DjangoVE
+
+                from rewards.services import apply_referral_code
+
+                try:
+                    apply_referral_code(user, referral_code)
+                except DjangoVE:
+                    pass
         except serializers.ValidationError:
             raise
         except ValueError as exc:

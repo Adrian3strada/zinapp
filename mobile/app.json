@@ -3,7 +3,7 @@
     "name": "ZinApp",
     "slug": "zinapp",
     "owner": "g2adriaans-team",
-    "version": "1.1.41",
+    "version": "1.1.42",
     "scheme": [
       "zinapp",
       "com.googleusercontent.apps.470068451846-1pi2jua9f1q547krpp4fobgoskfh80kd",
@@ -84,7 +84,7 @@
       "apiUrl": "https://zinapp.com.mx/api",
       "privacyPolicyUrl": "https://zinapp.com.mx/privacidad/",
       "supportEmail": "adrianestradachavez123@gmail.com",
-      "deliveryFee": 25,
+      "deliveryFee": 35,
       "transferInfo": {
         "bank": "BBVA",
         "clabe": "012180015217582489",

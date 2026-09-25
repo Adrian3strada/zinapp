@@ -38,6 +38,9 @@ interface Props {
   couponValidating: boolean;
   total: number;
   grandTotal: number;
+  deliveryFee?: number;
+  deliveryDiscount?: number;
+  benefitLabel?: string | null;
   tipAmount: number;
   scheduleKey: ScheduleKey;
   transferInfo: TransferInfo;
@@ -102,6 +105,9 @@ function CartCheckoutSection({
   couponValidating,
   total,
   grandTotal,
+  deliveryFee = DELIVERY_FEE,
+  deliveryDiscount = 0,
+  benefitLabel = null,
   tipAmount,
   scheduleKey,
   transferInfo,
@@ -259,6 +265,9 @@ function CartCheckoutSection({
                 ? `WhatsApp: ${transferInfo.whatsapp} — ${transferInfo.note}`
                 : transferInfo.note}
             </Text>
+            <Text style={styles.transferNote}>
+              El restaurante confirma cuando llegue el pago. Si no transferiste en 30 min, se cancela el pedido.
+            </Text>
           </View>
         )}
         {!onlinePaymentsEnabled && (
@@ -325,8 +334,23 @@ function CartCheckoutSection({
         </View>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Envío</Text>
-          <Text style={styles.rowValue}>{formatCurrency(DELIVERY_FEE)}</Text>
+          <Text style={styles.rowValue}>{formatCurrency(deliveryFee)}</Text>
         </View>
+        {deliveryDiscount > 0 && (
+          <>
+            <View style={styles.row}>
+              <Text style={[styles.rowLabel, { color: colors.success }]}>
+                {benefitLabel || 'Beneficio ZinApp: Envío gratis'}
+              </Text>
+              <Text style={[styles.rowValue, { color: colors.success }]}>
+                -{formatCurrency(deliveryDiscount)}
+              </Text>
+            </View>
+            <Text style={styles.benefitHint}>
+              Envío {formatCurrency(deliveryFee)} · pagas {formatCurrency(Math.max(deliveryFee - deliveryDiscount, 0))}
+            </Text>
+          </>
+        )}
         {discount > 0 && (
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Descuento</Text>
@@ -497,6 +521,12 @@ const styles = StyleSheet.create({
   summary: { gap: 8 },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   rowLabel: { color: colors.textSecondary, fontSize: 15, flexShrink: 1 },
+  benefitHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 6,
+  },
   rowValue: { fontWeight: '600', color: colors.text, flexShrink: 0 },
   totalRow: { marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border },
   totalLabel: { fontSize: 18, fontWeight: '800', color: colors.text },

@@ -11,6 +11,7 @@ urlpatterns = [
     path('cupones/nuevo/', gestion_views.CouponCreateView.as_view(), name='coupon-create'),
     path('cupones/<int:pk>/', gestion_views.CouponUpdateView.as_view(), name='coupon-edit'),
     path('cupones/<int:pk>/eliminar/', gestion_views.CouponDeleteView.as_view(), name='coupon-delete'),
+    path('beneficios/', gestion_views.RewardConfigUpdateView.as_view(), name='rewards-config'),
     path('productos/', gestion_views.ProductListView.as_view(), name='products'),
     path('productos/nuevo/', gestion_views.ProductCreateView.as_view(), name='product-create'),
     path('productos/<int:pk>/', gestion_views.ProductUpdateView.as_view(), name='product-edit'),

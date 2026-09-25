@@ -22,6 +22,7 @@ import type {
   ReorderPreview,
   Restaurant,
   Review,
+  RewardsPayload,
   SearchPayload,
   Shipment,
   ShipmentActiveSummary,
@@ -258,6 +259,7 @@ export interface RegisterPayload {
   restaurant_description?: string;
   vehicle_type?: 'bicycle' | 'motorcycle' | 'car';
   license_plate?: string;
+  referral_code?: string;
 }
 
 export interface LoginPayload {
@@ -315,8 +317,11 @@ export interface CreateMandadoPayload {
 export const authApi = {
   register: (data: RegisterPayload) => api.post<User>('/auth/register/', data),
   login: (data: LoginPayload) => api.post<AuthResponse>('/auth/login/', data),
-  googleLogin: (id_token: string) =>
-    api.post<AuthResponse>('/auth/google/', { id_token }),
+  googleLogin: (id_token: string, referral_code?: string) =>
+    api.post<AuthResponse>('/auth/google/', {
+      id_token,
+      ...(referral_code ? { referral_code } : {}),
+    }),
   me: () => api.get<User>('/auth/me/'),
   updateMe: (data: Partial<User>) => api.patch<User>('/auth/me/', data),
   updateMeForm: (data: FormData) => api.patch<User>('/auth/me/', data),
@@ -470,6 +475,9 @@ export const orderApi = {
     ),
   accept: (id: number, prepMinutes = 15) =>
     api.post<Order>(`/orders/${id}/accept/`, { prep_minutes: prepMinutes }),
+  confirmTransfer: (id: number) => api.post<Order>(`/orders/${id}/confirm-transfer/`),
+  uploadPaymentProof: (id: number, data: FormData) =>
+    api.post<Order>(`/orders/${id}/payment-proof/`, data),
   reject: (id: number) => api.post<Order>(`/orders/${id}/reject/`),
   cancel: (id: number) => api.post<Order>(`/orders/${id}/cancel/`),
   updateStatus: (id: number, status: string) =>
@@ -646,7 +654,18 @@ export interface AppConfig {
   password_reset_email_enabled?: boolean;
   google_sign_in_enabled?: boolean;
   coverage_label: string;
+  delivery_fee?: string;
+  rewards?: {
+    birthday_enabled: boolean;
+    loyalty_enabled: boolean;
+    loyalty_orders_required: number;
+    delivery_discount_cap: string;
+  };
 }
+
+export const rewardsApi = {
+  me: () => api.get<RewardsPayload>('/rewards/'),
+};
 
 export const realtimeApi = {
   createWsTicket: async (signal?: AbortSignal) => {

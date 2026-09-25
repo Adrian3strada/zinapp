@@ -31,7 +31,7 @@ def unique_username_for_email(email: str) -> str:
 
 
 @transaction.atomic
-def get_or_create_user_from_google(claims: dict) -> User:
+def get_or_create_user_from_google(claims: dict) -> tuple[User, bool]:
     """
     Resuelve usuario por google_sub o email verificado.
     Altas nuevas siempre como cliente.
@@ -43,7 +43,7 @@ def get_or_create_user_from_google(claims: dict) -> User:
     if user:
         if not user.is_active:
             raise ValueError('account_inactive')
-        return user
+        return user, False
 
     user = User.objects.filter(email__iexact=email).first()
     if user:
@@ -63,7 +63,7 @@ def get_or_create_user_from_google(claims: dict) -> User:
             updates.append('last_name')
         if updates:
             user.save(update_fields=updates)
-        return user
+        return user, False
 
     username = unique_username_for_email(email)
     try:
@@ -90,4 +90,5 @@ def get_or_create_user_from_google(claims: dict) -> User:
         if not user.google_sub:
             user.google_sub = sub
             user.save(update_fields=['google_sub'])
-    return user
+        return user, False
+    return user, True

@@ -175,6 +175,9 @@ export default function RestaurantOrdersScreen({ navigation }: Props) {
     busyOrderIdRef.current = order.id;
     setBusyOrderId(order.id);
     try {
+      if (order.payment_method === 'transfer' && order.payment_status !== 'paid') {
+        await orderApi.confirmTransfer(order.id);
+      }
       await orderApi.accept(order.id, prepMinutes);
       await load();
       setFilter('kitchen');

@@ -25,9 +25,12 @@ export interface User {
   avatar?: string | null;
   avatar_url?: string | null;
   date_joined: string;
+  date_of_birth?: string | null;
   /** false for Google-only accounts until they set a password */
   has_usable_password?: boolean;
   auth_provider?: 'password' | 'google';
+  referral_code?: string;
+  invite_code?: string;
 }
 
 export interface DeliveryProfile {
@@ -113,6 +116,7 @@ export interface Restaurant {
   is_active: boolean;
   accepting_orders?: boolean;
   is_open?: boolean;
+  next_open_label?: string | null;
   is_favorited?: boolean;
   rating_average?: number | null;
   reviews_count?: number;
@@ -303,12 +307,16 @@ export interface Order {
   discount_amount?: string;
   subtotal: string;
   delivery_fee: string;
+  delivery_discount?: string;
+  applied_benefit?: string;
+  applied_benefit_label?: string | null;
   tip_amount?: string;
   scheduled_for?: string | null;
   total: string;
   items: OrderItem[];
   review?: Review | null;
   dispute?: OrderDispute | null;
+  payment_proof_url?: string | null;
   created_at: string;
   updated_at: string;
   accepted_at?: string | null;
@@ -467,6 +475,7 @@ export interface HomeRestaurant {
   description: string;
   image_url?: string | null;
   is_open?: boolean;
+  next_open_label?: string | null;
   is_favorited?: boolean;
   rating_average?: number | null;
   reviews_count?: number;
@@ -560,3 +569,39 @@ export interface PaginatedResponse<T> {
   previous: string | null;
   results: T[];
 }
+
+export interface RewardsPayload {
+  birthday: {
+    date: string | null;
+    can_edit: boolean;
+    next_edit_at: string | null;
+    is_today: boolean;
+    available: boolean;
+    used_this_year: boolean;
+    last_used_on: string | null;
+  };
+  loyalty: {
+    completed_in_cycle: number;
+    required: number;
+    remaining: number;
+    unlocked: boolean;
+    qualifying_orders: number;
+  };
+  referral?: {
+    code: string;
+    referred: boolean;
+    invitee_available: boolean;
+    credits: number;
+  };
+  next_checkout: {
+    eligible: boolean;
+    type: 'birthday' | 'loyalty' | 'referral_invitee' | 'referral_credit' | null;
+    label: string | null;
+    cap: string;
+  };
+  programs: {
+    birthday_enabled: boolean;
+    loyalty_enabled: boolean;
+  };
+}
+

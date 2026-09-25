@@ -259,6 +259,7 @@ class PosRegressionSourceTests(TestCase):
             username='cust1',
             password='pass12345',
             role=UserRole.CUSTOMER,
+            phone='4431234567',
         )
         self.owner, self.restaurant = _make_restaurant(username='reg_owner', name='Reg Rest')
         self.product = Product.objects.create(

@@ -125,6 +125,16 @@ class CustomerDetailView(PanelAccessMixin, CustomerQuerysetMixin, DetailView):
         activity = get_customer_panel_activity(customer)
         ctx['tab'] = tab
         ctx.update(activity)
+        if tab == 'info':
+            from rewards.models import RewardRedemption
+            from rewards.services import user_rewards_payload
+
+            ctx['rewards'] = user_rewards_payload(customer)
+            ctx['redemptions'] = (
+                RewardRedemption.objects.filter(user=customer)
+                .select_related('order')
+                .order_by('-reserved_at')[:20]
+            )
         return ctx
 
 

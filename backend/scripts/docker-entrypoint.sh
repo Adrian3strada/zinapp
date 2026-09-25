@@ -38,9 +38,9 @@ else
   echo "RESET_APP_DATA desactivado - se conservan pedidos, usuarios e imágenes"
 fi
 
-echo "Uvicorn ASGI (HTTP + WebSockets) en 0.0.0.0:${PORT:-8000}"
+echo "Uvicorn ASGI (HTTP + WebSockets) en [::]:${PORT:-8000}"
 exec uvicorn config.asgi:application \
-  --host "0.0.0.0" \
+  --host "::" \
   --port "${PORT:-8000}" \
   --workers "${GUNICORN_WORKERS:-3}" \
   --timeout-keep-alive "${GUNICORN_TIMEOUT:-120}" \

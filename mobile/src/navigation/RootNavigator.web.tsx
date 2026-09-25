@@ -5,6 +5,7 @@ import { ActivityIndicator, InteractionManager, View } from 'react-native';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { usePushNotifications } from '../hooks/useNotifications';
+import { usePhoneReminder } from '../hooks/usePhoneReminder';
 import { modalPresentationOptions, stackScreenDefaults } from './modalOptions';
 import { colors } from '../theme/colors';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -57,6 +58,7 @@ function MainRoutes() {
   }, []);
 
   usePushNotifications(!!user && deferPush);
+  usePhoneReminder(user);
 
   if (isLoading) {
     return <LoadingScreen />;

@@ -1,5 +1,13 @@
+import secrets
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+REFERRAL_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+
+def generate_referral_code() -> str:
+    return ''.join(secrets.choice(REFERRAL_ALPHABET) for _ in range(6))
 
 
 class UserRole(models.TextChoices):
@@ -35,10 +43,48 @@ class User(AbstractUser):
         related_name='+',
         help_text='Local que el dueño opera ahora en la app.',
     )
+    date_of_birth = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Cumpleaños del cliente (beneficio de envío gratis ese día).',
+    )
+    birthday_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Último cambio de fecha de cumpleaños (antiabuso).',
+    )
+    referral_code = models.CharField(
+        max_length=12,
+        unique=True,
+        blank=True,
+        help_text='Código para invitar amigos (envío gratis para ambos).',
+    )
+    referred_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referrals',
+        help_text='Cliente que invitó a esta cuenta.',
+    )
 
     class Meta:
         verbose_name = 'Usuario'
         verbose_name_plural = 'Usuarios'
+
+    def save(self, *args, **kwargs):
+        if not self.referral_code:
+            for _ in range(24):
+                code = generate_referral_code()
+                qs = User.objects.filter(referral_code=code)
+                if self.pk:
+                    qs = qs.exclude(pk=self.pk)
+                if not qs.exists():
+                    self.referral_code = code
+                    break
+            else:
+                self.referral_code = secrets.token_hex(4).upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.username} ({self.get_role_display()})'

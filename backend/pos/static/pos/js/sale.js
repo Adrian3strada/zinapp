@@ -225,6 +225,15 @@
         );
         wrap.appendChild(label);
       });
+      wrap.addEventListener('change', () => {
+        const maxSel = Number(wrap.dataset.maxSelect) || 1;
+        if (maxSel <= 1) return;
+        const boxes = wrap.querySelectorAll('input[type="checkbox"]');
+        const checkedCount = wrap.querySelectorAll('input[type="checkbox"]:checked').length;
+        boxes.forEach((box) => {
+          box.disabled = !box.checked && checkedCount >= maxSel;
+        });
+      });
       optionsBody.appendChild(wrap);
     });
     openDialog();

@@ -12,6 +12,7 @@ from orders.models import Coupon, Order, OrderStatus, Shipment, ShipmentStatus
 from orders.models import DisputeStatus, OrderDispute
 from local_services.models import LocalService
 from restaurants.models import Product, ProductPromotion, PromoType, Restaurant
+from rewards.models import RewardProgramConfig
 
 
 class PanelFormMixin:
@@ -53,6 +54,27 @@ class CouponForm(PanelFormMixin, forms.ModelForm):
                 'Indica un descuento: porcentaje mayor a 0 o monto fijo mayor a 0.'
             )
         return cleaned
+
+
+class RewardProgramConfigForm(PanelFormMixin, forms.ModelForm):
+    class Meta:
+        model = RewardProgramConfig
+        fields = (
+            'birthday_enabled', 'loyalty_enabled',
+            'loyalty_orders_required', 'delivery_discount_cap',
+        )
+
+    def clean_loyalty_orders_required(self):
+        value = self.cleaned_data.get('loyalty_orders_required')
+        if not value or value < 1:
+            raise ValidationError('Debe ser al menos 1 pedido.')
+        return value
+
+    def clean_delivery_discount_cap(self):
+        value = self.cleaned_data.get('delivery_discount_cap')
+        if value is None or value < 0:
+            raise ValidationError('El tope no puede ser negativo.')
+        return value
 
 
 class ProductForm(PanelFormMixin, forms.ModelForm):

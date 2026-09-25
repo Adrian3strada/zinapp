@@ -40,6 +40,7 @@ import {
 } from '../../utils/mandadoCategories';
 import { appAlert, appConfirm } from '../../utils/appAlert';
 import { getApiErrorMessage } from '../../utils/apiErrors';
+import { customerNeedsPhone, promptAddPhone } from '../../utils/requirePhone';
 import { createIdempotencyKey } from '../../utils/idempotency';
 import { isInCoverage } from '../../utils/coverage';
 import { formatCurrency } from '../../utils/format';
@@ -209,6 +210,10 @@ export default function MandadoScreen({ navigation }: MandadoScreenProps) {
         { text: 'Ahora no', style: 'cancel' },
         { text: 'Entrar', onPress: requestLogin },
       ]);
+      return;
+    }
+    if (customerNeedsPhone(user)) {
+      promptAddPhone();
       return;
     }
     const pending = readDraftItem();

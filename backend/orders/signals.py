@@ -72,6 +72,18 @@ def order_status_changed(sender, instance, created, **kwargs):
     # Otherwise push shows $0.00 because default total fires before recalculate_totals().
     if not created and previous != instance.status:
         notify_order_status(instance, previous_status=previous)
+        if instance.status == OrderStatus.DELIVERED:
+            from rewards.services import on_order_delivered
+
+            on_order_delivered(instance)
+        elif instance.status == OrderStatus.CANCELLED:
+            from rewards.services import on_order_cancelled
+
+            on_order_cancelled(instance)
+    elif created and instance.status == OrderStatus.DELIVERED:
+        from rewards.services import on_order_delivered
+
+        on_order_delivered(instance)
 
 
 @receiver(pre_save, sender=Shipment)

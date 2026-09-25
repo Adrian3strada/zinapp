@@ -57,6 +57,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     restaurant_description: '',
     vehicle_type: 'motorcycle' as NonNullable<DeliveryProfile['vehicle_type']>,
     license_plate: '',
+    referral_code: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -75,7 +76,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     setLoading(true);
     try {
       await wakeBackend(true);
-      await loginWithGoogle(idToken);
+      await loginWithGoogle(idToken, form.referral_code.trim() || undefined);
     } catch (err: unknown) {
       appAlert('Error', getApiErrorMessage(err, 'No se pudo crear la cuenta con Google'));
       throw err;
@@ -159,6 +160,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         role: form.role as 'customer' | 'restaurant' | 'driver',
         vehicle_type: form.role === 'driver' ? form.vehicle_type : undefined,
         license_plate: form.role === 'driver' ? form.license_plate.trim() : undefined,
+        referral_code: form.role === 'customer' ? form.referral_code.trim() || undefined : undefined,
       });
       if (form.role === 'driver') {
         appAlert(
@@ -290,6 +292,17 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             multiline
             placeholder="Ej. Félix Ireta, Las Galeras, Av. Hidalgo 64"
           />
+          {form.role === 'customer' ? (
+            <FormField
+              label="Código de referido (opcional)"
+              value={form.referral_code}
+              onChangeText={(v) => update('referral_code', v.toUpperCase())}
+              icon="gift-outline"
+              autoCapitalize="characters"
+              placeholder="Si te invitaron, escríbelo aquí"
+              hint="Los dos ganan envío gratis: tú en tu primer pedido y quien te invitó después."
+            />
+          ) : null}
         </FormSection>
 
         {form.role === 'driver' && (

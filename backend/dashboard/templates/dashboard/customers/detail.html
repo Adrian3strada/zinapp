@@ -55,6 +55,8 @@
           <dd>{{ customer.phone|default:"—" }}</dd>
           <dt>Dirección</dt>
           <dd>{{ customer.address|default:"—" }}</dd>
+          <dt>Cumpleaños</dt>
+          <dd>{{ customer.date_of_birth|date:"d/m/Y"|default:"—" }}</dd>
           <dt>Registro</dt>
           <dd>{{ customer.date_joined|date:"d/m/Y H:i" }}</dd>
         </dl>
@@ -85,6 +87,39 @@
         <span class="zin-stat-meta">{% if shipments_active %}{{ shipments_active }} en curso{% else %}Ninguno en curso{% endif %}</span>
       </article>
     </div>
+    {% if rewards %}
+    <div class="card zin-panel-card mt-3">
+      <div class="card-header"><h3 class="card-title mb-0">Beneficios ZinApp</h3></div>
+      <div class="card-body">
+        <dl class="detail-list mb-0">
+          <dt>Lealtad</dt>
+          <dd>{{ rewards.loyalty.completed_in_cycle }} de {{ rewards.loyalty.required }} pedidos
+            {% if rewards.loyalty.unlocked %}· desbloqueado{% endif %}
+          </dd>
+          <dt>Pedidos válidos (ciclo)</dt>
+          <dd>{{ rewards.loyalty.qualifying_orders }}</dd>
+          <dt>Cumpleaños disponible</dt>
+          <dd>{% if rewards.birthday.available %}Sí{% else %}No{% endif %}
+            {% if rewards.birthday.used_this_year %}· usado este año{% endif %}
+          </dd>
+          <dt>Último cumpleaños usado</dt>
+          <dd>{{ rewards.birthday.last_used_on|default:"—" }}</dd>
+        </dl>
+        {% if redemptions %}
+        <h4 class="h6 mt-3">Redenciones</h4>
+        <ul class="mb-0 pl-3">
+          {% for item in redemptions %}
+          <li>
+            {{ item.get_kind_display }} · {{ item.get_status_display }}
+            · pedido {{ item.order.display_ref }}
+            · ${{ item.discount_amount }}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 

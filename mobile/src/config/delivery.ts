@@ -6,7 +6,7 @@ const extra = Constants.expoConfig?.extra as {
 } | undefined;
 
 /** Tarifa de envío de comida (debe coincidir con el backend). */
-export const DELIVERY_FEE = extra?.deliveryFee ?? 25;
+export const DELIVERY_FEE = extra?.deliveryFee ?? 35;
 
 export type ShipmentSize = 'small' | 'medium' | 'large';
 
@@ -44,6 +44,14 @@ export const SHIPMENT_SIZES: ShipmentSizeOption[] = extra?.shipmentSizes?.map((s
     emoji: '🧳',
   },
 ];
+
+export function resolveDeliveryFee(fromApi?: string | number | null): number {
+  const parsed = typeof fromApi === 'string' ? parseFloat(fromApi) : fromApi;
+  if (typeof parsed === 'number' && Number.isFinite(parsed) && parsed >= 0) {
+    return parsed;
+  }
+  return DELIVERY_FEE;
+}
 
 export function getShipmentFee(size: ShipmentSize): number {
   return SHIPMENT_SIZES.find((s) => s.key === size)?.fee ?? SHIPMENT_SIZES[0].fee;
