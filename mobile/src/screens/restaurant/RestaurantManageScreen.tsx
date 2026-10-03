@@ -53,6 +53,7 @@ import {
   type ManageCategoryKey,
   type ProductCategoryKey,
 } from '../../utils/productCategories';
+import { looksLikeOptionalExtras } from '../../utils/optionGroups';
 import { FLATLIST_TUNING } from '../../utils/responsive';
 
 type AvailabilityFilter = 'all' | 'available' | 'hidden';
@@ -65,6 +66,28 @@ interface OptionDraft {
 
 function emptyOption(): OptionDraft {
   return { name: '', price_delta: '0', is_available: true };
+}
+
+function emptyFlavorGroup(): GroupDraft {
+  return {
+    name: 'Sabor',
+    required: true,
+    multiple: false,
+    minSelect: 1,
+    maxSelect: 1,
+    options: [emptyOption(), emptyOption()],
+  };
+}
+
+function emptyExtrasGroup(): GroupDraft {
+  return {
+    name: 'Extra',
+    required: false,
+    multiple: true,
+    minSelect: 0,
+    maxSelect: 2,
+    options: [emptyOption(), emptyOption()],
+  };
 }
 
 interface GroupDraft {
@@ -105,18 +128,19 @@ function namedOptionCount(group: GroupDraft): number {
 
 function groupLimits(group: GroupDraft): { minSelect: number; maxSelect: number } {
   const n = Math.max(namedOptionCount(group), 1);
+  const required = group.required && !looksLikeOptionalExtras(group.name);
   if (!group.multiple) {
-    return { minSelect: group.required ? 1 : 0, maxSelect: 1 };
+    return { minSelect: required ? 1 : 0, maxSelect: 1 };
   }
   const maxSelect = Math.min(Math.max(group.maxSelect || 2, 1), n);
-  const minSelect = group.required ? Math.min(Math.max(group.minSelect || 1, 1), maxSelect) : 0;
+  const minSelect = required ? Math.min(Math.max(group.minSelect || 1, 1), maxSelect) : 0;
   return { minSelect, maxSelect };
 }
 
 function groupsFromProduct(product: Product): GroupDraft[] {
   return (product.option_groups ?? []).map((g) => ({
     name: g.name,
-    required: g.min_select > 0,
+    required: g.min_select > 0 && !looksLikeOptionalExtras(g.name),
     multiple: g.max_select > 1,
     minSelect: g.min_select,
     maxSelect: g.max_select,
@@ -1136,7 +1160,7 @@ export default function RestaurantManageScreen() {
                 <View style={styles.optionsBlock}>
                   <Text style={styles.optionsTitle}>Sabores / extras</Text>
                   <Text style={styles.optionsHint}>
-                    El cliente elige al pedir. Con varias opciones puedes poner 8 toppings y un máximo de 3. Si se acaba un guiso, márcalo «Hoy no».
+                    El cliente elige al pedir. Los sabores suelen ser obligatorios. Los extras no: si no quiere, verá «Sin extras» y puede seguir. Si se acaba un guiso, márcalo «Hoy no».
                   </Text>
                   {(editor?.optionGroups ?? []).map((group, gIdx) => (
                     <View key={`g-${gIdx}`} style={styles.groupCard}>
@@ -1147,13 +1171,16 @@ export default function RestaurantManageScreen() {
                           setEditor((e) => {
                             if (!e) return e;
                             const optionGroups = [...e.optionGroups];
-                            optionGroups[gIdx] = { ...optionGroups[gIdx], name: v };
+                            const current = optionGroups[gIdx];
+                            optionGroups[gIdx] = looksLikeOptionalExtras(v)
+                              ? { ...current, name: v, required: false, minSelect: 0 }
+                              : { ...current, name: v };
                             return { ...e, optionGroups };
                           })
                         }
                         icon="list-outline"
                         embedded
-                        placeholder="Ej. Sabor, Toppings"
+                        placeholder="Ej. Sabor, Extra"
                       />
                       <View style={styles.groupToggles}>
                         <Pressable
@@ -1163,6 +1190,14 @@ export default function RestaurantManageScreen() {
                               if (!e) return e;
                               const optionGroups = [...e.optionGroups];
                               const current = optionGroups[gIdx];
+                              if (looksLikeOptionalExtras(current.name)) {
+                                optionGroups[gIdx] = {
+                                  ...current,
+                                  required: false,
+                                  minSelect: 0,
+                                };
+                                return { ...e, optionGroups };
+                              }
                               const required = !current.required;
                               optionGroups[gIdx] = {
                                 ...current,
@@ -1384,30 +1419,38 @@ export default function RestaurantManageScreen() {
                       </View>
                     </View>
                   ))}
-                  <Button
-                    title="Agregar grupo (sabor / toppings)"
-                    variant="secondary"
-                    onPress={() =>
-                      setEditor((e) =>
-                        e
-                          ? {
-                              ...e,
-                              optionGroups: [
-                                ...e.optionGroups,
-                                {
-                                  name: '',
-                                  required: true,
-                                  multiple: false,
-                                  minSelect: 1,
-                                  maxSelect: 1,
-                                  options: [emptyOption(), emptyOption()],
-                                },
-                              ],
-                            }
-                          : e,
-                      )
-                    }
-                  />
+                  <View style={styles.groupActions}>
+                    <Button
+                      title="Agregar sabor"
+                      variant="secondary"
+                      onPress={() =>
+                        setEditor((e) =>
+                          e
+                            ? {
+                                ...e,
+                                optionGroups: [...e.optionGroups, emptyFlavorGroup()],
+                              }
+                            : e,
+                        )
+                      }
+                      style={styles.groupActionBtn}
+                    />
+                    <Button
+                      title="Agregar extras"
+                      variant="secondary"
+                      onPress={() =>
+                        setEditor((e) =>
+                          e
+                            ? {
+                                ...e,
+                                optionGroups: [...e.optionGroups, emptyExtrasGroup()],
+                              }
+                            : e,
+                        )
+                      }
+                      style={styles.groupActionBtn}
+                    />
+                  </View>
                 </View>
 
                 <View style={styles.availabilityRow}>

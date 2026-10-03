@@ -205,6 +205,21 @@
         g.max_select +
         ')</span>';
       wrap.appendChild(legend);
+      if (Number(g.min_select) === 0) {
+        const skipLabel = document.createElement('label');
+        skipLabel.className = 'pos-option-choice';
+        const skipInput = document.createElement('input');
+        skipInput.type = Number(g.max_select) > 1 ? 'checkbox' : 'radio';
+        skipInput.name = 'group_' + g.id;
+        skipInput.value = '';
+        skipInput.dataset.skip = '1';
+        skipInput.checked = true;
+        skipLabel.appendChild(skipInput);
+        skipLabel.appendChild(document.createTextNode(
+          /extra/i.test(String(g.name || '')) ? ' Sin extras' : (' Sin ' + String(g.name || 'extras').toLowerCase())
+        ));
+        wrap.appendChild(skipLabel);
+      }
       (g.options || []).forEach((o, idx) => {
         const label = document.createElement('label');
         label.className = 'pos-option-choice';
@@ -225,11 +240,23 @@
         );
         wrap.appendChild(label);
       });
-      wrap.addEventListener('change', () => {
+      wrap.addEventListener('change', (ev) => {
+        const skip = wrap.querySelector('input[data-skip="1"]');
+        const extraInputs = wrap.querySelectorAll('input:not([data-skip])');
+        if (ev.target && ev.target.dataset && ev.target.dataset.skip === '1' && ev.target.checked) {
+          extraInputs.forEach((box) => {
+            box.checked = false;
+            box.disabled = false;
+          });
+        } else if (ev.target && ev.target.checked && skip) {
+          skip.checked = false;
+        }
         const maxSel = Number(wrap.dataset.maxSelect) || 1;
         if (maxSel <= 1) return;
-        const boxes = wrap.querySelectorAll('input[type="checkbox"]');
-        const checkedCount = wrap.querySelectorAll('input[type="checkbox"]:checked').length;
+        const boxes = wrap.querySelectorAll('input[type="checkbox"]:not([data-skip])');
+        const checkedCount = wrap.querySelectorAll(
+          'input[type="checkbox"]:not([data-skip]):checked'
+        ).length;
         boxes.forEach((box) => {
           box.disabled = !box.checked && checkedCount >= maxSel;
         });
@@ -242,14 +269,18 @@
   function collectSelectedOptionIds() {
     const selected = [];
     optionsBody.querySelectorAll('input:checked').forEach((el) => {
-      selected.push(asId(el.value));
+      if (el.dataset.skip === '1' || !el.value) return;
+      const id = asId(el.value);
+      if (id) selected.push(id);
     });
     return selected;
   }
 
   function validateOptions(product) {
     for (const g of product.groups || []) {
-      const checked = optionsBody.querySelectorAll('input[name="group_' + g.id + '"]:checked');
+      const checked = optionsBody.querySelectorAll(
+        'input[name="group_' + g.id + '"]:checked:not([data-skip])'
+      );
       const count = checked.length;
       const minSel = Number(g.min_select) || 0;
       const maxSel = Number(g.max_select) || 1;

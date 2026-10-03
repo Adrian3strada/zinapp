@@ -1,15 +1,16 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { isSeasonalActive, SEASONAL_THEME } from '../../config/seasonalTheme';
+import { getActiveCampaign, isSeasonalActive } from '../../config/seasonalTheme';
 
-/** Franja tricolor. Se oculta sola fuera de temporada. */
+/** Franja de temporada. Se oculta sola fuera de fechas. */
 export default function SeasonalStripe({ height = 6 }: { height?: number }) {
-  if (!isSeasonalActive()) return null;
+  const campaign = getActiveCampaign();
+  if (!isSeasonalActive() || !campaign) return null;
 
   return (
     <View style={[styles.row, { height }]} pointerEvents="none">
-      {SEASONAL_THEME.colors.stripe.map((tone, index) => (
+      {campaign.colors.stripe.map((tone, index) => (
         <View key={`${tone}-${index}`} style={[styles.band, { backgroundColor: tone }]} />
       ))}
     </View>

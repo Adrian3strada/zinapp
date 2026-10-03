@@ -1,19 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
-import { SEASONAL_THEME } from '../../config/seasonalTheme';
 import { useSeasonalTheme } from '../../hooks/useSeasonalTheme';
-
-const PICADO = Array.from({ length: 16 }, (_, i) => SEASONAL_THEME.colors.stripe[i % 3]);
-
-const CONFETTI = [
-  { left: '8%', delay: 0, color: SEASONAL_THEME.colors.green, emoji: '🎉' },
-  { left: '22%', delay: 400, color: SEASONAL_THEME.colors.red, emoji: '✨' },
-  { left: '38%', delay: 180, color: SEASONAL_THEME.colors.white, emoji: '🎊' },
-  { left: '58%', delay: 720, color: SEASONAL_THEME.colors.green, emoji: '⭐' },
-  { left: '74%', delay: 260, color: SEASONAL_THEME.colors.red, emoji: '🎉' },
-  { left: '88%', delay: 540, color: SEASONAL_THEME.colors.white, emoji: '✨' },
-] as const;
 
 function FallingBit({
   left,
@@ -111,25 +99,42 @@ function PicadoFlag({ color, index }: { color: string; index: number }) {
   );
 }
 
-/** Papel picado, franja tricolor y confeti animado. No tapa botones. */
+/** Papel picado, franja de temporada y confeti animado. No tapa botones. */
 export default function SeasonalHeaderDecor() {
-  const { active } = useSeasonalTheme();
-  if (!active) return null;
+  const { active, colors, confettiEmojis } = useSeasonalTheme();
+  const picado = useMemo(
+    () => (colors ? Array.from({ length: 16 }, (_, i) => colors.stripe[i % 3]) : []),
+    [colors],
+  );
+  const bits = useMemo(() => {
+    if (!colors || !confettiEmojis) return [];
+    const lefts = ['8%', '22%', '38%', '58%', '74%', '88%'];
+    const delays = [0, 400, 180, 720, 260, 540];
+    const tones = [colors.accent, colors.accentAlt, colors.white, colors.accent, colors.accentAlt, colors.white];
+    return lefts.map((left, i) => ({
+      left,
+      delay: delays[i],
+      color: tones[i],
+      emoji: confettiEmojis[i % confettiEmojis.length],
+    }));
+  }, [colors, confettiEmojis]);
+
+  if (!active || !colors) return null;
 
   return (
     <View pointerEvents="none" style={styles.layer} accessible={false} importantForAccessibility="no">
       <View style={styles.topStripe}>
-        {SEASONAL_THEME.colors.stripe.map((tone, index) => (
+        {colors.stripe.map((tone, index) => (
           <View key={`top-${tone}-${index}`} style={[styles.stripeBand, { backgroundColor: tone }]} />
         ))}
       </View>
 
-      {CONFETTI.map((bit) => (
+      {bits.map((bit) => (
         <FallingBit key={bit.left} {...bit} />
       ))}
 
       <View style={styles.picadoRow}>
-        {PICADO.map((color, index) => (
+        {picado.map((color, index) => (
           <PicadoFlag key={`flag-${index}`} color={color} index={index} />
         ))}
       </View>

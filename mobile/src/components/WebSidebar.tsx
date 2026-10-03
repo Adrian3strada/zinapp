@@ -55,7 +55,7 @@ export default function WebSidebar({ navigation, orderBadge = 0, cartBadge = 0 }
         <Text style={styles.brandText}>ZinApp</Text>
       </View>
       <Text style={styles.brandSub}>
-        {getSeasonalCopy() ? 'Zinapécuaro · Mes patrio' : 'Zinapécuaro, Mich.'}
+        {getSeasonalCopy()?.sidebarLine ?? 'Zinapécuaro, Mich.'}
       </Text>
 
       <View style={styles.nav}>

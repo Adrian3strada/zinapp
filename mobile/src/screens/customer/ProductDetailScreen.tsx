@@ -32,6 +32,11 @@ import { getProductEmoji } from '../../utils/foodVisuals';
 import { impactLight } from '../../utils/haptics';
 import { resolveMediaUrl } from '../../utils/media';
 import { optionsExtraPerUnit, promoDisplayLabel, promoPriceHint } from '../../utils/promo';
+import {
+  effectiveMinSelect,
+  isSkippableOptionGroup,
+  skipOptionLabel,
+} from '../../utils/optionGroups';
 import { webPassThroughPointerEvents } from '../../utils/webPlatform';
 
 function buildSnapshot(
@@ -59,7 +64,7 @@ function groupChoiceCopy(
   picked: number,
   optionCount: number,
 ): string {
-  const min = group.min_select;
+  const min = effectiveMinSelect(group);
   const max = group.max_select;
   const ofTotal = optionCount > max ? ` de ${optionCount}` : '';
   const progress = max > 1 ? ` · ${picked} de ${max}` : '';
@@ -67,17 +72,18 @@ function groupChoiceCopy(
     if (min === max) return `Elige ${min}${ofTotal}${progress}`;
     return `Elige ${min}–${max}${ofTotal}${progress}`;
   }
-  return `Opcional · hasta ${max}${ofTotal}${progress}`;
+  return `Opcional · ${skipOptionLabel(group.name)} o hasta ${max}${ofTotal}${progress}`;
 }
 
 function validateSelection(groups: ProductOptionGroup[], selectedIds: Set<number>): string | null {
   for (const group of groups) {
     const available = group.options.filter((o) => o.is_available);
-    if (group.min_select > 0 && available.length === 0) {
+    const minRequired = effectiveMinSelect(group);
+    if (minRequired > 0 && available.length === 0) {
       return `Hoy no hay opciones en «${group.name}».`;
     }
     const count = available.filter((o) => selectedIds.has(o.id)).length;
-    const minSelect = Math.min(group.min_select, available.length);
+    const minSelect = Math.min(minRequired, available.length);
     const maxSelect = Math.min(group.max_select, Math.max(available.length, 1));
     if (count < minSelect) {
       return `Elige al menos ${minSelect} en «${group.name}».`;
@@ -106,7 +112,10 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
   const groups = useMemo(
     () =>
       (product.option_groups ?? []).filter(
-        (g) => g.min_select > 0 || g.options?.some((o) => o.is_available),
+        (g) =>
+          effectiveMinSelect(g) > 0
+          || isSkippableOptionGroup(g)
+          || g.options?.some((o) => o.is_available),
       ),
     [product.option_groups],
   );
@@ -158,6 +167,14 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
         return prev;
       }
       next.add(opt.id);
+      return next;
+    });
+  }, []);
+
+  const clearGroup = useCallback((group: ProductOptionGroup) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      group.options.forEach((o) => next.delete(o.id));
       return next;
     });
   }, []);
@@ -310,6 +327,9 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
             const picked = availableOptions.filter((o) => selectedIds.has(o.id)).length;
             const maxSelect = Math.min(group.max_select, Math.max(availableOptions.length, 1));
             const atMax = maxSelect > 1 && picked >= maxSelect;
+            const skippable = isSkippableOptionGroup(group);
+            const noneOn = skippable && picked === 0;
+            const noneLabel = skipOptionLabel(group.name);
             return (
             <View key={group.id} style={styles.section}>
               <View style={styles.sectionTitleRow}>
@@ -319,15 +339,34 @@ export default function ProductDetailScreen({ route, navigation }: ProductDetail
                 ) : null}
               </View>
               <Text style={styles.notesIntro}>
-                {availableOptions.length === 0
+                {availableOptions.length === 0 && !skippable
                   ? 'Hoy no hay de este grupo. Elige otro platillo o vuelve más tarde.'
-                  : groupChoiceCopy(
-                      { ...group, max_select: maxSelect, min_select: Math.min(group.min_select, availableOptions.length) },
+                  : availableOptions.length === 0 && skippable
+                    ? `${noneLabel}. Hoy no hay de este grupo.`
+                    : groupChoiceCopy(
+                      { ...group, max_select: maxSelect, min_select: effectiveMinSelect(group) },
                       picked,
                       availableOptions.length,
                     )}
               </Text>
               <View style={styles.optionList}>
+                {skippable ? (
+                  <Pressable
+                    style={[styles.optionRow, noneOn && styles.optionRowOn]}
+                    onPress={() => clearGroup(group)}
+                    accessibilityRole="button"
+                    accessibilityState={{ checked: noneOn }}
+                    accessibilityLabel={noneLabel}
+                  >
+                    <Ionicons
+                      name={noneOn ? 'radio-button-on' : 'radio-button-off'}
+                      size={20}
+                      color={noneOn ? colors.primary : colors.textMuted}
+                    />
+                    <Text style={styles.optionName}>{noneLabel}</Text>
+                    <Text style={styles.optionPrice}>Incluido</Text>
+                  </Pressable>
+                ) : null}
                 {availableOptions.map((opt) => {
                   const on = selectedIds.has(opt.id);
                   const locked = atMax && !on;

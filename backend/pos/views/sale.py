@@ -8,6 +8,7 @@ from django.shortcuts import redirect, render
 from django.views import View
 
 from orders.models import PaymentMethod
+from restaurants.options import effective_min_select
 
 from ..exceptions import PosError
 from ..forms import PosCheckoutForm
@@ -48,7 +49,7 @@ class PosSaleView(PosAccessMixin, View):
                 groups.append({
                     'id': g.id,
                     'name': g.name,
-                    'min_select': min(g.min_select, n),
+                    'min_select': min(effective_min_select(g.name, g.min_select), n),
                     'max_select': min(g.max_select, n),
                     'options': options,
                 })

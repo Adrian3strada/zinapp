@@ -33,6 +33,7 @@ import {
 } from '../../utils/productCategories';
 import { buildMenuBannerMeta } from '../../utils/restaurantMeta';
 import { FLATLIST_TUNING } from '../../utils/responsive';
+import { effectiveMinSelect } from '../../utils/optionGroups';
 import FoodImage from '../../components/FoodImage';
 
 const MenuProductRow = React.memo(function MenuProductRow({
@@ -139,7 +140,7 @@ export default function MenuScreen({ route, navigation }: MenuScreenProps) {
   }, [navigation, restaurant?.name, restaurantName]);
 
   const productNeedsOptions = useCallback((product: Product) => {
-    return (product.option_groups ?? []).some((g) => g.min_select > 0);
+    return (product.option_groups ?? []).some((g) => effectiveMinSelect(g) > 0);
   }, []);
 
   const handleAdd = useCallback((product: Product) => {

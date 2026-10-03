@@ -4,7 +4,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient, APITestCase
 
 from accounts.models import UserRole
-from restaurants.models import Product, Restaurant
+from restaurants.models import Product, ProductOption, ProductOptionGroup, Restaurant
+from restaurants.options import looks_like_optional_extras, resolve_selected_options
 
 User = get_user_model()
 
@@ -132,6 +133,81 @@ class ProductOptionsApiTests(APITestCase):
             format='json',
         )
         self.assertEqual(order_resp.status_code, 400)
+
+    def test_extras_can_be_skipped_even_if_saved_required(self):
+        sabor = ProductOptionGroup.objects.create(
+            product=self.product,
+            name='Sabor',
+            min_select=1,
+            max_select=1,
+        )
+        pastor = ProductOption.objects.create(group=sabor, name='Pastor', price_delta=Decimal('0'))
+        extras = ProductOptionGroup.objects.create(
+            product=self.product,
+            name='Extra',
+            min_select=1,
+            max_select=2,
+        )
+        ProductOption.objects.create(group=extras, name='Queso', price_delta=Decimal('10.00'))
+
+        snapshot, extra = resolve_selected_options(self.product, [pastor.id])
+        self.assertEqual(extra, Decimal('0.00'))
+        self.assertEqual([row['name'] for row in snapshot], ['Pastor'])
+
+        self.client.force_authenticate(self.customer)
+        order_resp = self.client.post(
+            '/api/orders/',
+            {
+                'restaurant_id': self.restaurant.id,
+                'delivery_address': 'Calle 1',
+                'delivery_latitude': '19.860000',
+                'delivery_longitude': '-100.820000',
+                'payment_method': 'cash',
+                'items': [{'product_id': self.product.id, 'quantity': 1, 'option_ids': [pastor.id]}],
+            },
+            format='json',
+        )
+        self.assertEqual(order_resp.status_code, 201, order_resp.data)
+
+    def test_saving_extras_group_clears_required_min(self):
+        self.assertTrue(looks_like_optional_extras('Extra'))
+        self.assertFalse(looks_like_optional_extras('Sabor'))
+        self.client.force_authenticate(self.owner)
+        resp = self.client.put(
+            f'/api/products/{self.product.id}/option-groups/',
+            {
+                'groups': [
+                    {
+                        'name': 'Extra',
+                        'min_select': 1,
+                        'max_select': 2,
+                        'options': [
+                            {'name': 'Queso', 'price_delta': '10.00'},
+                            {'name': 'Piña', 'price_delta': '8.00'},
+                        ],
+                    },
+                ],
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        extra = resp.data['option_groups'][0]
+        self.assertEqual(extra['min_select'], 0)
+
+        self.client.force_authenticate(self.customer)
+        order_resp = self.client.post(
+            '/api/orders/',
+            {
+                'restaurant_id': self.restaurant.id,
+                'delivery_address': 'Calle 1',
+                'delivery_latitude': '19.860000',
+                'delivery_longitude': '-100.820000',
+                'payment_method': 'cash',
+                'items': [{'product_id': self.product.id, 'quantity': 1, 'option_ids': []}],
+            },
+            format='json',
+        )
+        self.assertEqual(order_resp.status_code, 201, order_resp.data)
 
     def test_max_select_can_be_lower_than_option_count(self):
         self.client.force_authenticate(self.owner)

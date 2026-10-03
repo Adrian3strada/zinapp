@@ -2,12 +2,47 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
 from collections import defaultdict
 from decimal import Decimal
 
 from rest_framework import serializers
 
 from .models import Product, ProductOption
+
+# Grupos que el cliente puede dejar en cero aunque el restaurante los haya
+# guardado como obligatorios (el editor nuevo defaulted required=true).
+_SKIPPABLE_GROUP = re.compile(
+    r'\b(extra|extras|topping|toppings|adicional|adicionales|'
+    r'complemento|complementos|salsa|salsas|aderezo|aderezos)\b'
+)
+
+
+def fold_option_group_name(name: str) -> str:
+    folded = unicodedata.normalize('NFD', (name or '').lower())
+    return ''.join(c for c in folded if unicodedata.category(c) != 'Mn')
+
+
+def looks_like_optional_extras(name: str) -> bool:
+    return bool(_SKIPPABLE_GROUP.search(fold_option_group_name(name)))
+
+
+def is_skippable_option_group(name: str, min_select: int) -> bool:
+    if int(min_select or 0) <= 0:
+        return True
+    return looks_like_optional_extras(name)
+
+
+def effective_min_select(
+    name: str,
+    min_select: int,
+    available_n: int | None = None,
+) -> int:
+    mn = 0 if is_skippable_option_group(name, min_select) else int(min_select or 0)
+    if available_n is not None:
+        mn = min(mn, available_n)
+    return mn
 
 
 def resolve_selected_options(
@@ -56,15 +91,15 @@ def resolve_selected_options(
         selected = by_group.get(group.id, [])
         count = len(selected)
         available_n = sum(1 for opt in group.options.all() if opt.is_available)
+        min_select = effective_min_select(group.name, group.min_select, available_n)
         if available_n == 0:
-            if group.min_select > 0:
+            if min_select > 0:
                 raise serializers.ValidationError({
                     'option_ids': (
                         f'Hoy no hay opciones en «{group.name}».'
                     ),
                 })
             continue
-        min_select = min(group.min_select, available_n)
         max_select = min(group.max_select, available_n)
         if count < min_select:
             raise serializers.ValidationError({
@@ -107,6 +142,8 @@ def replace_product_option_groups(product: Product, groups_data: list[dict]) -> 
             })
         min_select = int(group_data.get('min_select', 1))
         max_select = int(group_data.get('max_select', 1))
+        if looks_like_optional_extras(name):
+            min_select = 0
         if min_select < 0 or max_select < 1 or min_select > max_select:
             raise serializers.ValidationError({
                 'groups': f'Rangos inválidos en «{name}» (min/max).',

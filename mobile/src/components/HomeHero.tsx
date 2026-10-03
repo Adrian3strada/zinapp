@@ -62,16 +62,26 @@ export default function HomeHero({
             <Text style={styles.brandLabel}>ZinApp</Text>
             {seasonal.active && seasonal.copy ? (
               <View style={styles.kickerChip}>
-                <Text style={styles.kickerText}>🇲🇽  {seasonal.copy.headerKicker}</Text>
+                <Text style={styles.kickerText}>
+                  {seasonal.copy.emoji}  {seasonal.copy.headerKicker}
+                </Text>
               </View>
             ) : null}
           </View>
           <Text style={styles.greeting}>{greeting}</Text>
           <View style={styles.locationRow}>
-            <View style={[styles.locationPill, seasonal.active && styles.locationFestive]}>
+            <View style={[
+              styles.locationPill,
+              seasonal.active && styles.locationFestive,
+              seasonal.active && seasonal.colors
+                ? { backgroundColor: seasonal.colors.locationWash }
+                : null,
+            ]}>
               <Ionicons name="location" size={14} color="#FFF" />
               <Text style={styles.location}>
-                {seasonal.active ? `🇲🇽  ${subtitle}` : subtitle}
+                {seasonal.active && seasonal.copy
+                  ? `${seasonal.copy.emoji}  ${subtitle}`
+                  : subtitle}
               </Text>
             </View>
           </View>
@@ -190,7 +200,6 @@ const styles = StyleSheet.create({
   locationFestive: {
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'rgba(0, 104, 71, 0.35)',
   },
   avatarBtn: {
     borderRadius: 24,

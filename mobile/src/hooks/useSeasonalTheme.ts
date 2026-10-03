@@ -1,25 +1,28 @@
 import { useMemo } from 'react';
 
 import {
+  getActiveCampaign,
   getSeasonalCopy,
+  isFeaturedSeasonalCategory,
   isMexicanCategory,
   isSeasonalActive,
-  isSeasonalMexicanCategory,
-  SEASONAL_THEME,
 } from '../config/seasonalTheme';
 
 /** Lee la ambientación de temporada. Barato: se recalcula en cada render. */
 export function useSeasonalTheme() {
   const active = isSeasonalActive();
+  const campaign = getActiveCampaign();
   return useMemo(
     () => ({
       active,
-      type: SEASONAL_THEME.type,
-      colors: SEASONAL_THEME.colors,
+      type: campaign?.type ?? null,
+      colors: campaign?.colors ?? null,
       copy: getSeasonalCopy(),
+      confettiEmojis: campaign?.confettiEmojis ?? null,
       isMexicanCategory,
-      isSeasonalMexicanCategory,
+      isFeaturedSeasonalCategory,
+      isSeasonalMexicanCategory: isFeaturedSeasonalCategory,
     }),
-    [active],
+    [active, campaign],
   );
 }

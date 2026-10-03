@@ -1,15 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
-import { SEASONAL_THEME } from '../../config/seasonalTheme';
 import { useSeasonalTheme } from '../../hooks/useSeasonalTheme';
 import { colors } from '../../theme/colors';
 import { radii } from '../../theme/radii';
 import { spacing } from '../../theme/spacing';
 
-/** Banner 50% azul ZinApp / 50% tricolor. */
+/** Banner de temporada: marca ZinApp + acento del mes. */
 export default function SeasonalHomeBanner() {
-  const { active, copy } = useSeasonalTheme();
+  const { active, copy, colors: festive } = useSeasonalTheme();
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -34,32 +33,34 @@ export default function SeasonalHomeBanner() {
     return () => loop.stop();
   }, [active, pulse]);
 
-  if (!active || !copy) return null;
+  if (!active || !copy || !festive) return null;
 
   return (
     <View
-      style={styles.card}
+      style={[styles.card, { borderColor: festive.accent }]}
       accessibilityRole="summary"
       accessibilityLabel={`${copy.bannerTitle}. ${copy.bannerSubtitle}`}
     >
       <View style={styles.tricolorBar}>
-        {SEASONAL_THEME.colors.stripe.map((tone, index) => (
+        {festive.stripe.map((tone, index) => (
           <View key={`${tone}-${index}`} style={[styles.tricolorBand, { backgroundColor: tone }]} />
         ))}
       </View>
       <View style={styles.body}>
         <View style={styles.brandHalf}>
-          <Animated.Text style={[styles.flag, { transform: [{ scale: pulse }] }]}>🇲🇽</Animated.Text>
+          <Animated.Text style={[styles.flag, { transform: [{ scale: pulse }] }]}>
+            {copy.emoji}
+          </Animated.Text>
           <View style={styles.copy}>
-            <Text style={styles.kicker}>Orgullo local</Text>
+            <Text style={styles.kicker}>{copy.bannerKicker}</Text>
             <Text style={styles.title}>{copy.bannerTitle}</Text>
             <Text style={styles.subtitle}>{copy.bannerSubtitle}</Text>
           </View>
         </View>
         <View style={styles.emojiRow}>
-          <Text style={styles.food}>🌮</Text>
-          <Text style={styles.food}>🫔</Text>
-          <Text style={styles.food}>🌶️</Text>
+          {copy.foodEmojis.map((food, index) => (
+            <Text key={`${food}-${index}`} style={styles.food}>{food}</Text>
+          ))}
         </View>
       </View>
     </View>
@@ -72,7 +73,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.primary,
     borderWidth: 2,
-    borderColor: SEASONAL_THEME.colors.green,
   },
   tricolorBar: {
     height: 10,

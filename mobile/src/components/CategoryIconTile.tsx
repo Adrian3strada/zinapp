@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { isSeasonalMexicanCategory, SEASONAL_THEME } from '../config/seasonalTheme';
+import { isFeaturedSeasonalCategory, SEASONAL_THEME } from '../config/seasonalTheme';
 import { colors } from '../theme/colors';
 import { radii } from '../theme/radii';
 
@@ -16,7 +16,7 @@ interface Props {
 
 /** Icono de categoría estilo listado de comida: círculo de color + emoji grande. */
 export default function CategoryIconTile({ emoji, label, tint, categoryKey, selected, onPress }: Props) {
-  const festive = isSeasonalMexicanCategory(categoryKey);
+  const festive = isFeaturedSeasonalCategory(categoryKey);
   return (
     <Pressable
       onPress={onPress}
@@ -32,7 +32,7 @@ export default function CategoryIconTile({ emoji, label, tint, categoryKey, sele
           selected && styles.circleSelected,
           festive && !selected && {
             borderWidth: 3,
-            borderColor: SEASONAL_THEME.colors.green,
+            borderColor: SEASONAL_THEME.colors.accent,
           },
         ]}
       >

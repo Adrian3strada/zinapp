@@ -1,18 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
-import { SEASONAL_THEME } from '../../config/seasonalTheme';
 import { useSeasonalTheme } from '../../hooks/useSeasonalTheme';
-
-const PIECES = [
-  { left: '6%', delay: 0, color: SEASONAL_THEME.colors.green, size: 8 },
-  { left: '18%', delay: 350, color: SEASONAL_THEME.colors.red, size: 6 },
-  { left: '31%', delay: 120, color: '#FFF', size: 7 },
-  { left: '47%', delay: 680, color: SEASONAL_THEME.colors.green, size: 5 },
-  { left: '63%', delay: 220, color: SEASONAL_THEME.colors.red, size: 8 },
-  { left: '78%', delay: 500, color: '#FFF', size: 6 },
-  { left: '91%', delay: 80, color: SEASONAL_THEME.colors.green, size: 7 },
-] as const;
 
 function Piece({
   left,
@@ -88,12 +77,34 @@ function Piece({
 
 /** Confeti ligero sobre el Home. pointerEvents none. */
 export default function SeasonalConfetti() {
-  const { active } = useSeasonalTheme();
-  if (!active) return null;
+  const { active, colors } = useSeasonalTheme();
+  const pieces = useMemo(() => {
+    if (!colors) return [];
+    const lefts = ['6%', '18%', '31%', '47%', '63%', '78%', '91%'];
+    const delays = [0, 350, 120, 680, 220, 500, 80];
+    const sizes = [8, 6, 7, 5, 8, 6, 7];
+    const tones = [
+      colors.accent,
+      colors.accentAlt,
+      colors.white,
+      colors.accent,
+      colors.accentAlt,
+      colors.white,
+      colors.accent,
+    ];
+    return lefts.map((left, i) => ({
+      left,
+      delay: delays[i],
+      color: tones[i],
+      size: sizes[i],
+    }));
+  }, [colors]);
+
+  if (!active || !colors) return null;
 
   return (
     <View pointerEvents="none" style={styles.layer} accessible={false} importantForAccessibility="no">
-      {PIECES.map((piece) => (
+      {pieces.map((piece) => (
         <Piece key={piece.left} {...piece} />
       ))}
     </View>

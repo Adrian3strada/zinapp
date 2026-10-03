@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { SEASONAL_THEME } from '../../config/seasonalTheme';
 import { useSeasonalTheme } from '../../hooks/useSeasonalTheme';
 import SeasonalStripe from './SeasonalStripe';
 
-const PICADO = Array.from({ length: 14 }, (_, i) => SEASONAL_THEME.colors.stripe[i % 3]);
-
 /** Franja + papel picado para cualquier hero. Sin confeti (eso queda en Home). */
 export default function SeasonalHeroAccent() {
-  const { active } = useSeasonalTheme();
-  if (!active) return null;
+  const { active, colors } = useSeasonalTheme();
+  const picado = useMemo(
+    () => (colors ? Array.from({ length: 14 }, (_, i) => colors.stripe[i % 3]) : []),
+    [colors],
+  );
+
+  if (!active || !colors) return null;
 
   return (
     <View pointerEvents="none" style={styles.layer} accessible={false} importantForAccessibility="no">
@@ -18,7 +20,7 @@ export default function SeasonalHeroAccent() {
         <SeasonalStripe height={6} />
       </View>
       <View style={styles.picadoRow}>
-        {PICADO.map((color, index) => (
+        {picado.map((color, index) => (
           <View key={`flag-${index}`} style={[styles.flag, { borderTopColor: color }]} />
         ))}
       </View>

@@ -46,7 +46,7 @@ import { formatCurrency, formatTimeAgo } from '../../utils/format';
 import { getProductEmoji } from '../../utils/foodVisuals';
 import { resolveMediaUrl } from '../../utils/media';
 import { previewToCartItems, reorderClosedMessage, reorderUnavailableMessage } from '../../utils/reorderFromOrder';
-import { getSeasonalCopy, isMexicanCategory } from '../../config/seasonalTheme';
+import { getActiveCampaign, getSeasonalCopy, isFeaturedSeasonalCategory } from '../../config/seasonalTheme';
 import { categoryEmoji, categoryTint } from '../../utils/restaurantCategories';
 
 const EMPTY_HOME: HomePayload = {
@@ -331,11 +331,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const showPromos = home.promotions.length > 0 || (canFavorite && home.coupons.length > 0);
   const showNew = home.new_restaurants.length > 0;
   const seasonalCopy = getSeasonalCopy();
-  const mexicanFlavors = useMemo(() => {
+  const featuredFlavors = useMemo(() => {
     if (!seasonalCopy) return [];
     const seen = new Set<number>();
     return [...home.open_restaurants, ...home.new_restaurants].filter((row) => {
-      if (!isMexicanCategory(row.category) || seen.has(row.id)) return false;
+      if (!isFeaturedSeasonalCategory(row.category) || seen.has(row.id)) return false;
       seen.add(row.id);
       return true;
     });
@@ -401,7 +401,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
         <View style={styles.quickRow}>
           <QuickAction
-            emoji={seasonalCopy ? '🌮' : '🍔'}
+            emoji={seasonalCopy?.quickFoodEmoji ?? '🍔'}
             label="Pedir comida"
             color={FOOD_COLOR}
             onPress={() => navigation.navigate('Comida')}
@@ -478,14 +478,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         ) : null}
 
-        {mexicanFlavors.length > 0 ? (
+        {featuredFlavors.length > 0 ? (
           <RestaurantRail
-            title={seasonalCopy?.flavorsTitle ?? 'Sabores de septiembre'}
-            restaurants={mexicanFlavors}
+            title={seasonalCopy?.flavorsTitle ?? 'Antojos de temporada'}
+            restaurants={featuredFlavors}
             showFavorite={canFavorite}
-            onPress={(item) => openRestaurant(item, 'september')}
+            onPress={(item) => openRestaurant(item, 'seasonal')}
             onToggleFavorite={toggleRestaurantFavorite}
-            onSeeAll={() => navigation.navigate('Comida', { category: 'mexicana' })}
+            onSeeAll={() =>
+              navigation.navigate('Comida', {
+                category: getActiveCampaign()?.highlightCategoryKeys[0] ?? 'antojitos',
+              })
+            }
           />
         ) : null}
 

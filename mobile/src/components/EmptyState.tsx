@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   },
   emojiCircleFestive: {
     borderWidth: 3,
-    borderColor: SEASONAL_THEME.colors.green,
+    borderColor: SEASONAL_THEME.colors.accent,
     backgroundColor: SEASONAL_THEME.colors.categoryWash,
   },
   emoji: { fontSize: 28 },
