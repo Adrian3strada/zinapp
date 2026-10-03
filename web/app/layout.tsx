@@ -1,6 +1,7 @@
 import { Fredoka, Space_Grotesk } from 'next/font/google';
 import type { Metadata, Viewport } from 'next';
 import { ViewTransition } from 'react';
+import { isHalloweenActive } from '@/lib/seasonal';
 import './landing.css';
 
 const fredoka = Fredoka({
@@ -72,9 +73,20 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const halloween = isHalloweenActive();
   return (
-    <html lang="es-MX" className={`${fredoka.variable} ${spaceGrotesk.variable}`}>
+    <html
+      lang="es-MX"
+      className={`${fredoka.variable} ${spaceGrotesk.variable}${halloween ? ' season-halloween' : ''}`}
+    >
       <body>
+        {halloween ? (
+          <div className="season-stripe" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        ) : null}
         <ViewTransition name="zinapp-main">{children}</ViewTransition>
       </body>
     </html>

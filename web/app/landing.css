@@ -2170,6 +2170,62 @@ body { padding-bottom: calc(4.75rem + var(--safe-b)); }
   .wa-float { bottom: 1.5rem; }
 }
 
+.season-stripe {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  display: flex;
+  height: 6px;
+  width: 100%;
+}
+
+.season-stripe span {
+  flex: 1;
+}
+
+.season-stripe span:nth-child(1) { background: #EA580C; }
+.season-stripe span:nth-child(2) { background: #18181B; }
+.season-stripe span:nth-child(3) { background: #6D28D9; }
+
+.season-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.15rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: #FFEDD5;
+  color: #9A3412;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.hero.is-halloween {
+  background:
+    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(109, 40, 217, 0.14), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(234, 88, 12, 0.16), transparent 50%),
+    linear-gradient(180deg, #FFF7ED 0%, var(--white) 72%);
+}
+
+.hero.is-halloween .hero-badge {
+  background: #FFEDD5;
+  color: #9A3412;
+}
+
+.hero.is-halloween .local-clock {
+  border-left-color: rgba(154, 52, 18, 0.28);
+  color: #C2410C;
+}
+
+.season-halloween .ticker-band {
+  background: #18181B;
+}
+
+.season-halloween .ticker-label {
+  color: #FDBA74;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after {

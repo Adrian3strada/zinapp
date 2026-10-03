@@ -14,6 +14,7 @@ import { CatalogProvider } from '@/components/landing/Catalog';
 import { Contact, Faq, Trust } from '@/components/landing/Trust';
 import { WhatsAppFloat } from '@/components/landing/WhatsAppFloat';
 import { getLandingPayload } from '@/lib/api';
+import { isHalloweenActive } from '@/lib/seasonal';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 60;
@@ -46,6 +47,8 @@ export default async function HomePage() {
     ...data.newest_businesses.map((biz) => biz.name),
   ];
 
+  const halloween = isHalloweenActive();
+
   return (
     <>
       <script
@@ -56,7 +59,7 @@ export default async function HomePage() {
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido
       </a>
-      <Header appUrl={data.app_url} />
+      <Header appUrl={data.app_url} halloween={halloween} />
       <main id="contenido-principal" tabIndex={-1} style={{ viewTransitionName: 'zinapp-main' }}>
         <CatalogProvider
           businesses={[...data.featured_businesses, ...data.newest_businesses]}
@@ -67,8 +70,9 @@ export default async function HomePage() {
             googlePlayEnabled={data.google_play_enabled}
             playStoreUrl={data.play_store_url}
             liveHint={data.featured_businesses[0]?.name}
+            halloween={halloween}
           />
-          <Marquee items={tickerNames} />
+          <Marquee items={tickerNames} halloween={halloween} />
           <CoverageMap
             coverage={data.coverage}
             businesses={[...data.featured_businesses, ...data.newest_businesses]}

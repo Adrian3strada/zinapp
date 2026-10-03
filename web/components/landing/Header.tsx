@@ -7,9 +7,10 @@ import { ScrollProgress } from './ScrollProgress';
 
 type HeaderProps = {
   appUrl: string;
+  halloween?: boolean;
 };
 
-export function Header({ appUrl }: HeaderProps) {
+export function Header({ appUrl, halloween = false }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [compact, setCompact] = useState(false);
 
@@ -31,12 +32,17 @@ export function Header({ appUrl }: HeaderProps) {
   }, []);
 
   return (
-    <header className={`site-header${compact ? ' is-compact' : ''}`}>
+    <header className={`site-header${compact ? ' is-compact' : ''}${halloween ? ' is-halloween' : ''}`}>
       <ScrollProgress />
       <div className="wrap">
         <Link className="brand" href="/" style={{ viewTransitionName: 'zinapp-logo' }}>
           <Image src="/logo-on-blue.png" width={36} height={36} alt="ZinApp" />
           <span>ZinApp</span>
+          {halloween ? (
+            <span className="season-chip" aria-label="Halloween">
+              🎃 Halloween
+            </span>
+          ) : null}
         </Link>
 
         <nav className="nav-desktop" aria-label="Principal">

@@ -12,6 +12,7 @@ type HeroProps = {
   googlePlayEnabled: boolean;
   playStoreUrl: string;
   liveHint?: string;
+  halloween?: boolean;
 };
 
 const TITLE_WORDS = ['Todo', 'Zinapécuaro'];
@@ -22,13 +23,14 @@ export function Hero({
   googlePlayEnabled,
   playStoreUrl,
   liveHint,
+  halloween = false,
 }: HeroProps) {
   const reduce = useReducedMotion();
   const ease = [0.22, 1, 0.36, 1] as const;
   const { filter, applyKind } = useCatalog();
 
   return (
-    <section className="hero" aria-labelledby="hero-title">
+    <section className={`hero${halloween ? ' is-halloween' : ''}`} aria-labelledby="hero-title">
       <div className="hero-aurora" aria-hidden="true">
         <span className="hero-blob hero-blob-a" />
         <span className="hero-blob hero-blob-b" />
@@ -44,6 +46,7 @@ export function Hero({
             transition={{ duration: 0.45, ease }}
           >
             <span className="live-dot" aria-hidden="true" />
+            {halloween ? '🎃  Halloween en ZinApp · ' : null}
             Zinapécuaro, Michoacán
             <LocalClock />
           </motion.p>
